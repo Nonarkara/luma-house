@@ -107,23 +107,43 @@ button:active { transform: scale(.98); }
 .view-switch button.active { background: var(--bg-elevated); color: var(--text-primary); box-shadow: var(--shadow-sm); }
 
 .canvas-frame { min-height: 330px; position: relative; border: 1px solid #d8d5cc; border-radius: 3px; background: #dedbd2; overflow: hidden; box-shadow: inset 0 0 45px rgba(45, 48, 40, .045); }
-.plan-canvas { position: absolute; inset: 34px 52px 44px 48px; background-color: #f8f6ef; background-image: linear-gradient(rgba(65, 69, 59, .055) 1px, transparent 1px), linear-gradient(90deg, rgba(65, 69, 59, .055) 1px, transparent 1px); background-size: 2.5% 3.5%; border: 1px solid #bdbbb2; user-select: none; touch-action: none; }
+.plan-viewport { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; }
+.plan-viewport:active { cursor: grabbing; }
+.plan-viewport.tool-window, .plan-viewport.tool-door { cursor: crosshair; }
+.plan-stage { position: absolute; inset: 0; display: grid; place-items: center; will-change: transform; }
+.plan-canvas { position: relative; width: min(92%, calc(100% - 96px)); height: min(86%, calc(100% - 78px)); background-color: #f8f6ef; border: 1px solid #bdbbb2; user-select: none; touch-action: none; }
+.plan-canvas.show-grid { background-image: linear-gradient(rgba(65, 69, 59, .055) 1px, transparent 1px), linear-gradient(90deg, rgba(65, 69, 59, .055) 1px, transparent 1px); background-size: 2.5% 3.5%; }
 .plan-canvas::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 50px rgba(32, 35, 31, .035); pointer-events: none; }
-.plan-canvas.tool-window, .plan-canvas.tool-door { cursor: crosshair; }
 .sketch-underlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: .22; filter: grayscale(1) contrast(1.4); pointer-events: none; mix-blend-mode: multiply; }
-.room { position: absolute; border: 2px solid #343730; padding: 10px; text-align: left; color: #343730; display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; cursor: grab; transition: border-color 100ms, box-shadow 100ms; touch-action: none; }
-.room:active { cursor: grabbing; transform: none; }
-.room:hover { z-index: 3; box-shadow: inset 0 0 0 1px rgba(255,255,255,.8); }
-.room.is-selected { z-index: 4; border-color: #849b1e; box-shadow: 0 0 0 2px var(--accent-primary), inset 0 0 0 1px white; }
-.room-name { font: 700 clamp(8px, .8vw, 11px)/1.2 Manrope, sans-serif; }
-.room-area { font-size: 8px; color: rgba(32,35,31,.6); margin-top: 3px; }
+.room { position: absolute; border: 2px solid #343730; padding: 10px; text-align: left; color: #343730; display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: visible; cursor: grab; transition: border-color 100ms, opacity 100ms; touch-action: none; }
+.room:active { cursor: grabbing; transform: none; opacity: .92; }
+.room:hover { z-index: 3; }
+.room.is-selected { z-index: 4; border-color: #849b1e; outline: 2px solid var(--accent-primary); outline-offset: 0; }
+.room-name { font: 700 clamp(8px, .8vw, 11px)/1.2 Manrope, sans-serif; pointer-events: none; }
+.room-area { font-size: 8px; color: rgba(32,35,31,.6); margin-top: 3px; pointer-events: none; }
 .room-terrace { background-image: repeating-linear-gradient(45deg, transparent 0, transparent 7px, rgba(70,90,60,.07) 7px, rgba(70,90,60,.07) 8px) !important; border-style: dashed; }
 .room-bathroom { background-image: linear-gradient(45deg, rgba(255,255,255,.16) 25%, transparent 25%), linear-gradient(-45deg, rgba(255,255,255,.16) 25%, transparent 25%); background-size: 10px 10px !important; }
-.resize-corner { width: 8px; height: 8px; position: absolute; right: -1px; bottom: -1px; border: 1px solid #849b1e; background: var(--accent-primary); }
-.opening { position: absolute; z-index: 7; display: block; transform-origin: center; pointer-events: none; }
-.opening-window { width: 30px; height: 6px; margin: -3px 0 0 -15px; border: 1px solid #5486a0; border-left: 4px solid #5486a0; border-right: 4px solid #5486a0; background: #e9f8fc; }
-.opening-door { width: 24px; height: 3px; margin: -2px 0 0 -12px; background: #9e6947; }
-.opening-door i { position: absolute; width: 21px; height: 21px; left: 0; top: 0; border: 1px solid #9e6947; border-left: 0; border-bottom: 0; border-radius: 0 100% 0 0; }
+.resize-handle { position: absolute; z-index: 5; min-width: 44px; min-height: 44px; background: transparent; }
+.resize-handle::after { content: ''; position: absolute; border: 1px solid #849b1e; background: var(--accent-primary); }
+.handle-n, .handle-s { left: 50%; width: 100%; height: 44px; transform: translateX(-50%); }
+.handle-n { top: -22px; cursor: ns-resize; }
+.handle-s { bottom: -22px; cursor: ns-resize; }
+.handle-e, .handle-w { top: 50%; width: 44px; height: 100%; transform: translateY(-50%); }
+.handle-e { right: -22px; cursor: ew-resize; }
+.handle-w { left: -22px; cursor: ew-resize; }
+.handle-n::after, .handle-s::after { left: 50%; width: 18px; height: 6px; transform: translateX(-50%); top: 50%; margin-top: -3px; }
+.handle-e::after, .handle-w::after { top: 50%; width: 6px; height: 18px; transform: translateY(-50%); left: 50%; margin-left: -3px; }
+.handle-ne, .handle-nw, .handle-se, .handle-sw { width: 44px; height: 44px; }
+.handle-ne { top: -22px; right: -22px; cursor: nesw-resize; }
+.handle-nw { top: -22px; left: -22px; cursor: nwse-resize; }
+.handle-se { bottom: -22px; right: -22px; cursor: nwse-resize; }
+.handle-sw { bottom: -22px; left: -22px; cursor: nesw-resize; }
+.handle-ne::after, .handle-nw::after, .handle-se::after, .handle-sw::after { width: 10px; height: 10px; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.opening { position: absolute; z-index: 7; display: block; transform-origin: center; pointer-events: auto; border: 0; padding: 0; cursor: grab; touch-action: none; min-width: 44px; min-height: 44px; background: transparent; }
+.opening-window::before { content: ''; position: absolute; left: 50%; top: 50%; width: 30px; height: 6px; margin: -3px 0 0 -15px; border: 1px solid #5486a0; border-left: 4px solid #5486a0; border-right: 4px solid #5486a0; background: #e9f8fc; }
+.opening-door::before { content: ''; position: absolute; left: 50%; top: 50%; width: 24px; height: 3px; margin: -2px 0 0 -12px; background: #9e6947; }
+.opening-door i { position: absolute; width: 21px; height: 21px; left: calc(50% - 12px); top: calc(50% - 2px); border: 1px solid #9e6947; border-left: 0; border-bottom: 0; border-radius: 0 100% 0 0; pointer-events: none; }
+.opening.is-selected::after { content: ''; position: absolute; inset: 8px; outline: 2px solid var(--accent-primary); }
 .opening.rotate-90 { transform: rotate(90deg); }
 .sun-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; overflow: hidden; }
 .north-mark { position: absolute; left: -38px; top: 0; display: grid; place-items: center; color: var(--text-secondary); font-size: 9px; font-weight: 700; }
@@ -138,9 +158,18 @@ button:active { transform: scale(.98); }
 .dimension-y { top: 0; bottom: 0; width: 14px; right: -19px; border-top: 1px solid #aaa9a2; border-bottom: 1px solid #aaa9a2; writing-mode: vertical-rl; }
 .dimension-y::before { top: 0; bottom: 0; width: 1px; }
 .dimension-y span { background: #f8f6ef; z-index: 1; padding: 5px 0; }
-.zoom-control { position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; background: rgba(251,250,246,.92); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); overflow: hidden; }
+.zoom-control { position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; background: rgba(251,250,246,.92); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); overflow: hidden; z-index: 9; }
 .zoom-control button { width: 27px; height: 27px; border: 0; background: transparent; cursor: pointer; }
-.zoom-control span { font-size: 8px; border-inline: 1px solid var(--border); height: 27px; padding: 0 7px; display: grid; place-items: center; }
+.zoom-control .zoom-label { width: auto; min-width: 44px; padding: 0 7px; font-size: 8px; border-inline: 1px solid var(--border); }
+.spatial-wrap { position: absolute; inset: 0; }
+.concept-strip { position: absolute; left: 10px; right: 10px; bottom: 10px; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(120px, 1fr); gap: 8px; z-index: 8; }
+.concept-strip figure, .concept-preview { margin: 0; border: 1px solid var(--border); background: rgba(251,250,246,.94); }
+.concept-strip img, .concept-preview img { display: block; width: 100%; height: 88px; object-fit: cover; }
+.concept-strip figcaption, .concept-preview figcaption { padding: 6px 8px; font-size: 8px; color: var(--text-secondary); line-height: 1.4; }
+.concept-loading { display: flex; align-items: center; gap: 8px; min-height: 88px; padding: 12px; border: 1px solid var(--border); background: rgba(251,250,246,.94); font-size: 10px; font-weight: 600; }
+.concept-preview img { height: 140px; }
+.inspector-reopen { position: fixed; right: 12px; bottom: 18px; z-index: 40; min-height: 44px; padding: 0 14px; border: 1px solid var(--border); background: var(--bg-elevated); font-size: 11px; font-weight: 700; cursor: pointer; }
+.app-shell.inspector-collapsed .workspace { grid-template-columns: 72px 1fr; }
 .sun-status { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e3cb7b; background: rgba(255,249,219,.94); padding: 7px 10px; border-radius: 9px; box-shadow: var(--shadow-sm); z-index: 8; }
 .sun-status svg { width: 18px; color: #c08a20; }
 .sun-status span { display: grid; gap: 1px; }
@@ -305,13 +334,13 @@ button:active { transform: scale(.98); }
   .stage-head h1 { font-size: 21px; }
   .stage-meta { display: none; }
   .canvas-toolbar { height: 40px; }
-  .history-tools { display: none; }
   .view-switch { left: auto; right: 0; transform: none; }
-  .plan-canvas { inset: 28px 29px 39px 34px; }
+  .plan-canvas { width: min(94%, calc(100% - 48px)); height: min(88%, calc(100% - 56px)); }
   .room { padding: 3px; }
   .room-name { font-size: 7px; }
   .room-area { display: none; }
-  .opening-window { width: 18px; margin-left: -9px; }
+  .concept-strip { grid-auto-columns: minmax(100px, 1fr); }
+  .app-shell.inspector-collapsed .workspace { grid-template-columns: 1fr; }
   .assistant-bar { min-height: 45px; }
   .assistant-symbol { display: none; }
   .assistant-bar input { font-size: 11px; padding-left: 7px; }

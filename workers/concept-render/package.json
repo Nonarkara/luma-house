@@ -1,0 +1,13 @@
+{
+  "name": "luma-concept-render",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250416.0",
+    "wrangler": "^4.14.0"
+  }
+}

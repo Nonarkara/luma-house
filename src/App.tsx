@@ -1,6 +1,5 @@
 import {
   ArrowRight,
-  Box,
   Check,
   ChevronDown,
   CircleDollarSign,
@@ -9,7 +8,6 @@ import {
   DoorOpen,
   Download,
   Grid2X2,
-  Home,
   ImagePlus,
   Layers3,
   Lightbulb,
@@ -32,7 +30,13 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { FloorPlan } from './canvas/FloorPlan'
+import { SpatialView } from './canvas/SpatialView'
+import { useCanvasViewport } from './canvas/useCanvasViewport'
+import { useRoomGestures } from './canvas/useRoomGestures'
+import { generateConceptPhoto } from './concept/generateConcept'
+import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
 import {
   calculateBudget,
   estimateEnergySavings,
@@ -42,7 +46,7 @@ import {
   solarPosition,
   variants,
 } from './plan'
-import type { CanvasView, Opening, PlanState, Room, RoomKind, WorkspaceMode } from './types'
+import type { CanvasView, PlanState, Room, WorkspaceMode } from './types'
 
 const STORAGE_KEY = 'luma-house:river-courtyard'
 
@@ -53,21 +57,12 @@ const locations = {
   Singapore: { latitude: 1.3521, label: 'Singapore, SG' },
 }
 
-const modeItems: Array<{ id: WorkspaceMode; label: string; icon: typeof Home }> = [
+const modeItems: Array<{ id: WorkspaceMode; label: string; icon: typeof Grid2X2 }> = [
   { id: 'plan', label: 'Plan', icon: Grid2X2 },
   { id: 'light', label: 'Light', icon: Sun },
   { id: 'systems', label: 'Systems', icon: Zap },
   { id: 'budget', label: 'Budget', icon: CircleDollarSign },
 ]
-
-const roomColors: Record<RoomKind, string> = {
-  living: '#e9e0cd',
-  kitchen: '#d7dfce',
-  bedroom: '#e4d9d3',
-  bathroom: '#d9e2e0',
-  studio: '#e8e4d6',
-  terrace: '#dce8d1',
-}
 
 function readSavedPlan(): PlanState {
   try {
@@ -115,97 +110,6 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
   )
 }
 
-function FloorPlan({
-  plan,
-  selectedRoom,
-  activeTool,
-  sketchUrl,
-  showSun,
-  sunAngle,
-  onRoomPointerDown,
-  onRoomPointerMove,
-  onRoomPointerUp,
-  onCanvasClick,
-}: {
-  plan: PlanState
-  selectedRoom: string | null
-  activeTool: 'select' | 'window' | 'door'
-  sketchUrl: string | null
-  showSun: boolean
-  sunAngle: number
-  onRoomPointerDown: (event: PointerEvent<HTMLButtonElement>, room: Room) => void
-  onRoomPointerMove: (event: PointerEvent<HTMLButtonElement>) => void
-  onRoomPointerUp: (event: PointerEvent<HTMLButtonElement>) => void
-  onCanvasClick: (event: React.MouseEvent<HTMLDivElement>) => void
-}) {
-  const rayX = Math.max(1, Math.min(99, 50 + 72 * Math.sin((sunAngle * Math.PI) / 180)))
-  const rayY = Math.max(1, Math.min(99, 50 - 72 * Math.cos((sunAngle * Math.PI) / 180)))
-
-  return (
-    <div className={`plan-canvas tool-${activeTool}`} onClick={onCanvasClick} data-testid="plan-canvas">
-      {sketchUrl && <img className="sketch-underlay" src={sketchUrl} alt="Uploaded sketch tracing layer" />}
-      <div className="north-mark" aria-label="North points upward"><ArrowRight /> <span>N</span></div>
-      <div className="scale-label">1:100 <span>•</span> 14 × 10 m site</div>
-      {showSun && (
-        <svg className="sun-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" aria-hidden="true">
-          {[-18, -9, 0, 9, 18].map((offset) => (
-            <line key={offset} x1={rayX + offset} y1={rayY} x2={50 + offset * .25} y2="50" stroke="#e2b53e" strokeOpacity=".48" strokeWidth=".55" vectorEffect="non-scaling-stroke" />
-          ))}
-          <circle cx={rayX} cy={rayY} r="2.3" fill="#f3c84a" />
-        </svg>
-      )}
-      {plan.rooms.map((room) => (
-        <button
-          key={room.id}
-          className={`room room-${room.kind} ${selectedRoom === room.id ? 'is-selected' : ''}`}
-          style={{ left: `${room.x}%`, top: `${room.y}%`, width: `${room.w}%`, height: `${room.h}%`, background: roomColors[room.kind] }}
-          onPointerDown={(event) => onRoomPointerDown(event, room)}
-          onPointerMove={onRoomPointerMove}
-          onPointerUp={onRoomPointerUp}
-          onClick={(event) => event.stopPropagation()}
-          aria-label={`${room.name}, ${roomArea(room).toFixed(1)} square meters`}
-        >
-          <span className="room-name">{room.name}</span>
-          <span className="room-area">{roomArea(room).toFixed(1)} m²</span>
-          {selectedRoom === room.id && <span className="resize-corner" aria-hidden="true" />}
-        </button>
-      ))}
-      {plan.openings.map((opening) => (
-        <span
-          key={opening.id}
-          className={`opening opening-${opening.type} rotate-${opening.rotation}`}
-          style={{ left: `${opening.x}%`, top: `${opening.y}%` }}
-          title={opening.type}
-        >
-          {opening.type === 'door' && <i />}
-        </span>
-      ))}
-      <div className="dimension dimension-x"><span>14,000</span></div>
-      <div className="dimension dimension-y"><span>10,000</span></div>
-    </div>
-  )
-}
-
-function SpatialView({ plan }: { plan: PlanState }) {
-  return (
-    <div className="spatial-scene" aria-label="Conceptual spatial view">
-      <div className="spatial-sun"><Sun /></div>
-      <div className="spatial-board">
-        {plan.rooms.map((room) => (
-          <div
-            key={room.id}
-            className={`spatial-room spatial-${room.kind}`}
-            style={{ left: `${room.x}%`, top: `${room.y}%`, width: `${room.w}%`, height: `${room.h}%`, background: roomColors[room.kind] }}
-          >
-            <span>{room.name}</span>
-          </div>
-        ))}
-      </div>
-      <div className="spatial-note"><Box /> Concept massing • 1:100</div>
-    </div>
-  )
-}
-
 function App() {
   const [plan, setPlan] = useState<PlanState>(readSavedPlan)
   const [past, setPast] = useState<PlanState[]>([])
@@ -213,32 +117,68 @@ function App() {
   const [mode, setMode] = useState<WorkspaceMode>('plan')
   const [view, setView] = useState<CanvasView>('plan')
   const [selectedRoom, setSelectedRoom] = useState<string | null>('living')
+  const [selectedOpening, setSelectedOpening] = useState<string | null>(null)
   const [activeTool, setActiveTool] = useState<'select' | 'window' | 'door'>('select')
   const [location, setLocation] = useState<keyof typeof locations>('Bangkok')
   const [hour, setHour] = useState(15)
   const [day, setDay] = useState(196)
   const [sketchUrl, setSketchUrl] = useState<string | null>(null)
-  const [isTracing, setIsTracing] = useState(false)
   const [assistantText, setAssistantText] = useState('')
   const [toast, setToast] = useState<string | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [inspectorOpen, setInspectorOpen] = useState(true)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [snapGrid, setSnapGrid] = useState(true)
+  const [showGrid, setShowGrid] = useState(true)
   const [lastSaved, setLastSaved] = useState('Saved')
-  const canvasRef = useRef<HTMLDivElement>(null)
+  const [conceptImages, setConceptImages] = useState<string[]>(() => getSavedConceptImages())
+  const [quotaLeft, setQuotaLeft] = useState(() => getQuotaRemaining())
+  const [isRendering, setIsRendering] = useState(false)
+  const frameRef = useRef<HTMLDivElement>(null!)
+  const stageRef = useRef<HTMLDivElement>(null!)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const dragRef = useRef<{
-    id: string
-    startX: number
-    startY: number
-    roomX: number
-    roomY: number
-    snapshot: PlanState
-  } | null>(null)
+  const panMovedRef = useRef(false)
+
+  const {
+    viewport,
+    zoomPercent,
+    zoomIn,
+    zoomOut,
+    resetView,
+    onWheel,
+    onViewportPointerDown,
+    onViewportPointerMove,
+    onViewportPointerUp,
+  } = useCanvasViewport(frameRef)
 
   const budget = useMemo(() => calculateBudget(plan), [plan])
   const sun = useMemo(() => solarPosition(locations[location].latitude, day, hour), [location, day, hour])
   const energySaving = estimateEnergySavings(plan.systems)
   const lightScore = Math.min(96, 48 + plan.openings.filter((item) => item.type === 'window').length * 7 + (plan.systems.lighting ? 6 : 0))
   const room = plan.rooms.find((item) => item.id === selectedRoom)
+
+  const commitSnapshot = (snapshot: PlanState) => {
+    setPast((items) => [...items.slice(-29), snapshot])
+    setFuture([])
+  }
+
+  const {
+    onRoomPointerDown,
+    onOpeningPointerDown,
+    onGesturePointerMove,
+    onGesturePointerUp,
+    placeOpeningAt,
+    isGesturing,
+  } = useRoomGestures({
+    plan,
+    setPlan,
+    commitSnapshot,
+    setSelectedRoom,
+    setSelectedOpening,
+    activeTool,
+    snapGrid,
+    stageRef,
+  })
 
   useEffect(() => {
     setLastSaved('Saving…')
@@ -277,60 +217,42 @@ function App() {
     setFuture((items) => items.slice(1))
   }
 
-  const handleRoomPointerDown = (event: PointerEvent<HTMLButtonElement>, targetRoom: Room) => {
-    event.stopPropagation()
-    setSelectedRoom(targetRoom.id)
+  const handleCanvasPointerDown = (event: ReactPointerEvent) => {
     if (activeTool !== 'select') return
-    event.currentTarget.setPointerCapture(event.pointerId)
-    dragRef.current = {
-      id: targetRoom.id,
-      startX: event.clientX,
-      startY: event.clientY,
-      roomX: targetRoom.x,
-      roomY: targetRoom.y,
-      snapshot: plan,
-    }
+    const target = event.target as HTMLElement
+    const isBackground =
+      target === event.currentTarget ||
+      target.classList.contains('plan-stage') ||
+      target.classList.contains('plan-canvas') ||
+      target.classList.contains('sketch-underlay') ||
+      target.classList.contains('north-mark') ||
+      target.classList.contains('scale-label') ||
+      target.classList.contains('dimension') ||
+      target.classList.contains('sun-overlay')
+    if (!isBackground) return
+    panMovedRef.current = false
+    onViewportPointerDown(event)
   }
 
-  const handleRoomPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
-    const drag = dragRef.current
-    const canvas = canvasRef.current
-    if (!drag || !canvas) return
-    const bounds = canvas.getBoundingClientRect()
-    const dx = ((event.clientX - drag.startX) / bounds.width) * 100
-    const dy = ((event.clientY - drag.startY) / bounds.height) * 100
-    setPlan((current) => ({
-      ...current,
-      rooms: current.rooms.map((item) =>
-        item.id === drag.id
-          ? { ...item, x: Math.max(0, Math.min(100 - item.w, drag.roomX + dx)), y: Math.max(0, Math.min(100 - item.h, drag.roomY + dy)) }
-          : item,
-      ),
-    }))
-  }
-
-  const handleRoomPointerUp = (event: PointerEvent<HTMLButtonElement>) => {
-    const drag = dragRef.current
-    if (!drag) return
-    event.currentTarget.releasePointerCapture(event.pointerId)
-    setPast((items) => [...items.slice(-29), drag.snapshot])
-    setFuture([])
-    dragRef.current = null
+  const handleCanvasPointerMove = (event: ReactPointerEvent) => {
+    onViewportPointerMove(event)
+    if (Math.abs(event.movementX) + Math.abs(event.movementY) > 2) panMovedRef.current = true
   }
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (activeTool === 'select' || event.target !== event.currentTarget) {
-      if (event.target === event.currentTarget) setSelectedRoom(null)
+    if (panMovedRef.current || isGesturing()) return
+    if (activeTool === 'select') {
+      if (event.target === event.currentTarget || (event.target as HTMLElement).classList.contains('plan-canvas')) {
+        setSelectedRoom(null)
+        setSelectedOpening(null)
+      }
       return
     }
-    const bounds = event.currentTarget.getBoundingClientRect()
-    const x = ((event.clientX - bounds.left) / bounds.width) * 100
-    const y = ((event.clientY - bounds.top) / bounds.height) * 100
-    const rotation: 0 | 90 = Math.min(y, 100 - y) < Math.min(x, 100 - x) ? 0 : 90
-    const opening: Opening = { id: `${activeTool}-${Date.now()}`, type: activeTool, x, y, rotation }
+    const opening = placeOpeningAt(event.clientX, event.clientY)
+    if (!opening) return
     commit((current) => ({ ...current, openings: [...current.openings, opening] }))
     setActiveTool('select')
-    setToast(`${activeTool === 'window' ? 'Window' : 'Door'} placed`)
+    setToast(`${opening.type === 'window' ? 'Window' : 'Door'} placed`)
   }
 
   const addRoom = () => {
@@ -353,7 +275,7 @@ function App() {
     if (!selectedRoom) return
     commit((current) => ({
       ...current,
-      rooms: current.rooms.map((item) => item.id === selectedRoom ? { ...item, ...updates } : item),
+      rooms: current.rooms.map((item) => (item.id === selectedRoom ? { ...item, ...updates } : item)),
     }))
   }
 
@@ -363,22 +285,9 @@ function App() {
     const reader = new FileReader()
     reader.onload = () => {
       setSketchUrl(String(reader.result))
-      setToast('Sketch added as a tracing layer')
+      setToast('Sketch added as underlay')
     }
     reader.readAsDataURL(file)
-  }
-
-  const traceSketch = () => {
-    if (!sketchUrl) {
-      fileInputRef.current?.click()
-      return
-    }
-    setIsTracing(true)
-    window.setTimeout(() => {
-      commit((current) => ({ ...current, rooms: variants[0].rooms.map((item) => ({ ...item })) }))
-      setIsTracing(false)
-      setToast('Plan traced — verify scale before construction')
-    }, 900)
   }
 
   const applyVariant = (index: number) => {
@@ -386,7 +295,15 @@ function App() {
     setToast(`${variants[index].name} applied`)
   }
 
-  const runAssistant = () => {
+  const resetPlan = () => {
+    commit(initialPlan)
+    setSelectedRoom('living')
+    setSelectedOpening(null)
+    resetView()
+    setToast('Plan reset to starting courtyard')
+  }
+
+  const runQuickAction = () => {
     const prompt = assistantText.trim().toLowerCase()
     if (!prompt) return
     if (prompt.includes('bright') || prompt.includes('window') || prompt.includes('light')) {
@@ -405,10 +322,37 @@ function App() {
     } else if (prompt.includes('energy') || prompt.includes('smart')) {
       setMode('systems')
       setToast('Opened intelligent systems')
+    } else if (prompt.includes('photo') || prompt.includes('render') || prompt.includes('image')) {
+      setView('spatial')
+      void runConceptRender()
     } else {
-      setToast('Try “make the living room brighter” or “show my budget”')
+      setToast('Quick actions: “brighter”, “add room”, “budget”, “energy”, or “concept photo”')
     }
     setAssistantText('')
+  }
+
+  const runConceptRender = async () => {
+    if (isRendering) return
+    if (quotaLeft <= 0) {
+      setToast('Daily concept limit reached (3/day)')
+      return
+    }
+    setIsRendering(true)
+    setView('spatial')
+    try {
+      const result = await generateConceptPhoto({
+        plan,
+        locationLabel: locations[location].label,
+        hour,
+      })
+      setConceptImages((items) => [result.imageDataUrl, ...items].slice(0, 12))
+      setQuotaLeft(result.remaining)
+      setToast(`Concept photo ready · ${result.remaining} left today`)
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : 'Concept render failed')
+    } finally {
+      setIsRendering(false)
+    }
   }
 
   const exportPlan = () => {
@@ -422,22 +366,26 @@ function App() {
     setToast('Project file exported')
   }
 
+  const viewportStyle = {
+    transform: `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`,
+    transformOrigin: 'center center',
+  }
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${inspectorOpen ? '' : 'inspector-collapsed'}`}>
       <header className="topbar">
         <div className="topbar-left">
           <IconButton label="Open navigation" className="mobile-menu" onClick={() => setMobileNavOpen((open) => !open)}><Menu /></IconButton>
           <Logo />
           <span className="top-divider" />
-          <button className="project-picker">
+          <button className="project-picker" type="button">
             <span><strong>River Courtyard House</strong><small>{lastSaved}</small></span>
             <ChevronDown />
           </button>
         </div>
         <div className="top-actions">
-          <div className="collaborators"><span>NS</span><span>SS</span><b>+2</b></div>
-          <button className="button secondary" onClick={() => navigator.clipboard?.writeText(window.location.href).then(() => setToast('Project link copied'))}><Copy /> Share</button>
-          <button className="button primary" onClick={exportPlan}><Download /> Export</button>
+          <button className="button secondary" type="button" onClick={() => navigator.clipboard?.writeText(window.location.href).then(() => setToast('Project link copied'))}><Copy /> Share</button>
+          <button className="button primary" type="button" onClick={exportPlan}><Download /> Export</button>
         </div>
       </header>
 
@@ -447,15 +395,16 @@ function App() {
             {modeItems.map((item) => {
               const Icon = item.icon
               return (
-                <button key={item.id} className={mode === item.id ? 'active' : ''} onClick={() => { setMode(item.id); setMobileNavOpen(false) }}>
+                <button key={item.id} type="button" className={mode === item.id ? 'active' : ''} onClick={() => { setMode(item.id); setMobileNavOpen(false); setSettingsOpen(false) }}>
                   <Icon /><span>{item.label}</span>
                 </button>
               )
             })}
           </div>
           <div className="nav-secondary">
-            <button><Layers3 /><span>Library</span></button>
-            <button><Settings2 /><span>Settings</span></button>
+            <button type="button" className={settingsOpen ? 'active' : ''} onClick={() => { setSettingsOpen(true); setMobileNavOpen(false) }}>
+              <Settings2 /><span>Settings</span>
+            </button>
           </div>
         </nav>
 
@@ -463,7 +412,7 @@ function App() {
           <div className="stage-head">
             <div>
               <p className="eyebrow">Concept 03 <span>•</span> Residential</p>
-              <h1>Design with light, not guesswork.</h1>
+              <h1>River Courtyard</h1>
             </div>
             <div className="stage-meta">
               <span><MapPin /> {locations[location].label}</span>
@@ -479,36 +428,66 @@ function App() {
               <IconButton label="Place door" className={activeTool === 'door' ? 'active' : ''} onClick={() => setActiveTool('door')}><DoorOpen /></IconButton>
             </div>
             <div className="view-switch" role="group" aria-label="View mode">
-              <button className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>Plan</button>
-              <button className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>Spatial</button>
+              <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>Plan</button>
+              <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>Spatial</button>
             </div>
             <div className="tool-group history-tools">
               <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
               <IconButton label="Redo" onClick={redo} disabled={!future.length}><Redo2 /></IconButton>
+              <IconButton label="Concept photo" onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><ImagePlus /></IconButton>
             </div>
           </div>
 
-          <section className="canvas-frame" ref={canvasRef} aria-label="House design canvas">
+          <section className="canvas-frame" ref={frameRef} aria-label="House design canvas" onWheel={onWheel}>
             {view === 'plan' ? (
               <FloorPlan
                 plan={plan}
                 selectedRoom={selectedRoom}
+                selectedOpening={selectedOpening}
                 activeTool={activeTool}
                 sketchUrl={sketchUrl}
                 showSun={mode === 'light'}
                 sunAngle={sun.azimuth}
-                onRoomPointerDown={handleRoomPointerDown}
-                onRoomPointerMove={handleRoomPointerMove}
-                onRoomPointerUp={handleRoomPointerUp}
+                showGrid={showGrid}
+                viewportStyle={viewportStyle}
+                onRoomPointerDown={onRoomPointerDown}
+                onOpeningPointerDown={onOpeningPointerDown}
+                onGesturePointerMove={onGesturePointerMove}
+                onGesturePointerUp={onGesturePointerUp}
+                onCanvasPointerDown={handleCanvasPointerDown}
+                onCanvasPointerMove={handleCanvasPointerMove}
+                onCanvasPointerUp={onViewportPointerUp}
                 onCanvasClick={handleCanvasClick}
+                stageRef={stageRef}
               />
-            ) : <SpatialView plan={plan} />}
-            {mode === 'light' && (
+            ) : (
+              <div className="spatial-wrap">
+                <SpatialView plan={plan} />
+                {(conceptImages.length > 0 || isRendering) && (
+                  <div className="concept-strip" aria-live="polite">
+                    {isRendering && <div className="concept-loading"><RotateCcw className="spin" /> Rendering concept…</div>}
+                    {conceptImages.slice(0, 3).map((src, index) => (
+                      <figure key={`${index}-${src.slice(0, 24)}`}>
+                        <img src={src} alt={`Concept visualization ${index + 1}`} />
+                        <figcaption>Concept only — not a photo of a real building</figcaption>
+                      </figure>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {mode === 'light' && view === 'plan' && (
               <div className="sun-status">
                 <Sun /><span><strong>{hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? 'PM' : 'AM'}</strong><small>{sun.altitude.toFixed(0)}° altitude • {sun.azimuth.toFixed(0)}° azimuth</small></span>
               </div>
             )}
-            <div className="zoom-control"><button>−</button><span>100%</span><button>+</button></div>
+            {view === 'plan' && (
+              <div className="zoom-control">
+                <button type="button" onClick={zoomOut} aria-label="Zoom out">−</button>
+                <button type="button" className="zoom-label" onClick={resetView} aria-label="Reset view">{zoomPercent}%</button>
+                <button type="button" onClick={zoomIn} aria-label="Zoom in">+</button>
+              </div>
+            )}
           </section>
 
           <div className="assistant-bar">
@@ -516,128 +495,179 @@ function App() {
             <input
               value={assistantText}
               onChange={(event) => setAssistantText(event.target.value)}
-              onKeyDown={(event) => event.key === 'Enter' && runAssistant()}
-              placeholder="Ask Luma to change the plan…"
-              aria-label="Ask Luma to change the plan"
+              onKeyDown={(event) => event.key === 'Enter' && runQuickAction()}
+              placeholder="Quick actions: brighter, add room, budget, concept photo…"
+              aria-label="Quick plan actions"
             />
-            <span className="assistant-example">Try “make the living room brighter”</span>
-            <IconButton label="Send design request" onClick={runAssistant}><Send /></IconButton>
+            <span className="assistant-example">Keyword shortcuts — not a live model</span>
+            <IconButton label="Run quick action" onClick={runQuickAction}><Send /></IconButton>
           </div>
         </main>
 
-        <aside className="inspector">
-          <div className="inspector-head">
-            <div><p className="eyebrow">{mode}</p><h2>{mode === 'plan' ? 'Plan intelligence' : mode === 'light' ? 'Daylight study' : mode === 'systems' ? 'Intelligent space' : 'Live cost plan'}</h2></div>
-            <IconButton label="Collapse inspector"><X /></IconButton>
-          </div>
+        {inspectorOpen && (
+          <aside className="inspector">
+            <div className="inspector-head">
+              <div>
+                <p className="eyebrow">{settingsOpen ? 'workspace' : mode}</p>
+                <h2>{settingsOpen ? 'Settings' : mode === 'plan' ? 'Plan intelligence' : mode === 'light' ? 'Daylight study' : mode === 'systems' ? 'Intelligent space' : 'Live cost plan'}</h2>
+              </div>
+              <IconButton label="Collapse inspector" onClick={() => setInspectorOpen(false)}><X /></IconButton>
+            </div>
 
-          {mode === 'plan' && (
-            <div className="inspector-content">
-              <section className="upload-card">
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleSketch} hidden />
-                {sketchUrl ? <img src={sketchUrl} alt="Uploaded house plan sketch" /> : <div className="upload-icon"><ImagePlus /></div>}
-                <div><h3>{sketchUrl ? 'Sketch ready to trace' : 'Start from a sketch'}</h3><p>Paper, photo, or rough plan. Luma uses it as a measured tracing layer.</p></div>
-                <button className="button dark full" onClick={traceSketch}>{isTracing ? <><RotateCcw className="spin" /> Tracing…</> : <><Upload /> {sketchUrl ? 'Trace sketch' : 'Upload plan'}</>}</button>
-                {sketchUrl && <button className="text-button" onClick={() => setSketchUrl(null)}>Remove tracing layer</button>}
-              </section>
+            {settingsOpen && (
+              <div className="inspector-content">
+                <section className="panel-section" style={{ borderTop: 0, paddingTop: 0 }}>
+                  <div className="system-row">
+                    <span className="system-icon"><Grid2X2 /></span>
+                    <div><strong>Snap to grid</strong><small>1% steps while dragging</small></div>
+                    <span />
+                    <Toggle label="Snap to grid" checked={snapGrid} onChange={() => setSnapGrid((value) => !value)} />
+                  </div>
+                  <div className="system-row">
+                    <span className="system-icon"><Layers3 /></span>
+                    <div><strong>Show grid</strong><small>Site module lines</small></div>
+                    <span />
+                    <Toggle label="Show grid" checked={showGrid} onChange={() => setShowGrid((value) => !value)} />
+                  </div>
+                  <button className="button secondary full" type="button" onClick={resetPlan}><RotateCcw /> Reset plan</button>
+                  <button className="button dark full" type="button" onClick={() => setSettingsOpen(false)}>Back to {mode}</button>
+                </section>
+              </div>
+            )}
 
-              {room && (
+            {!settingsOpen && mode === 'plan' && (
+              <div className="inspector-content">
+                <section className="upload-card">
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleSketch} hidden />
+                  {sketchUrl ? <img src={sketchUrl} alt="Uploaded house plan sketch" /> : <div className="upload-icon"><ImagePlus /></div>}
+                  <div>
+                    <h3>{sketchUrl ? 'Underlay active' : 'Start from a sketch'}</h3>
+                    <p>Paper, photo, or rough plan. Shown as a tracing underlay — not auto-traced into walls.</p>
+                  </div>
+                  <button className="button dark full" type="button" onClick={() => fileInputRef.current?.click()}>
+                    <Upload /> {sketchUrl ? 'Replace underlay' : 'Upload plan'}
+                  </button>
+                  {sketchUrl && <button className="text-button" type="button" onClick={() => setSketchUrl(null)}>Remove underlay</button>}
+                </section>
+
                 <section className="panel-section">
-                  <div className="section-title"><h3>Selected room</h3><IconButton label="Delete room" onClick={deleteRoom}><Trash2 /></IconButton></div>
-                  <label className="field-label">Name<input value={room.name} onChange={(event) => updateRoom({ name: event.target.value })} /></label>
-                  <div className="split-fields">
-                    <label className="field-label">Width <input type="number" value={room.w} min="10" max="90" onChange={(event) => updateRoom({ w: Number(event.target.value) })} /><span>%</span></label>
-                    <label className="field-label">Depth <input type="number" value={room.h} min="10" max="90" onChange={(event) => updateRoom({ h: Number(event.target.value) })} /><span>%</span></label>
-                  </div>
-                  <div className="room-stat"><span>Internal area</span><strong>{roomArea(room).toFixed(1)} m²</strong></div>
+                  <div className="section-title"><h3>Concept photo</h3><span className="badge">{quotaLeft} left</span></div>
+                  <p className="section-intro">Limited Gemini concept renders from this plan. Concept only — not a photograph of a real building.</p>
+                  <button className="button primary full" type="button" onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}>
+                    {isRendering ? <><RotateCcw className="spin" /> Rendering…</> : <><ImagePlus /> Generate concept</>}
+                  </button>
+                  {conceptImages[0] && (
+                    <figure className="concept-preview">
+                      <img src={conceptImages[0]} alt="Latest concept visualization" />
+                      <figcaption>Latest concept · {conceptImages.length} saved today</figcaption>
+                    </figure>
+                  )}
                 </section>
-              )}
 
-              <section className="panel-section">
-                <div className="section-title"><div><p className="eyebrow">Generated directions</p><h3>Three ways to live here</h3></div><Sparkles /></div>
-                <div className="variant-list">
-                  {variants.map((variant, index) => (
-                    <button key={variant.name} onClick={() => applyVariant(index)}>
-                      <span className={`variant-thumb variant-${index}`}><i /><i /><i /></span>
-                      <span><strong>{variant.name}</strong><small>{variant.note}</small></span>
-                      <ArrowRight />
-                    </button>
-                  ))}
-                </div>
-              </section>
-            </div>
-          )}
+                {room && (
+                  <section className="panel-section">
+                    <div className="section-title"><h3>Selected room</h3><IconButton label="Delete room" onClick={deleteRoom}><Trash2 /></IconButton></div>
+                    <label className="field-label">Name<input value={room.name} onChange={(event) => updateRoom({ name: event.target.value })} /></label>
+                    <div className="split-fields">
+                      <label className="field-label">Width <input type="number" value={Math.round(room.w)} min="12" max="90" onChange={(event) => updateRoom({ w: Number(event.target.value) })} /><span>%</span></label>
+                      <label className="field-label">Depth <input type="number" value={Math.round(room.h)} min="12" max="90" onChange={(event) => updateRoom({ h: Number(event.target.value) })} /><span>%</span></label>
+                    </div>
+                    <div className="room-stat"><span>Internal area</span><strong>{roomArea(room).toFixed(1)} m²</strong></div>
+                  </section>
+                )}
 
-          {mode === 'light' && (
-            <div className="inspector-content">
-              <section className="score-card light-card">
-                <div className="score-ring" style={{ '--score': `${lightScore * 3.6}deg` } as React.CSSProperties}><strong>{lightScore}</strong><span>/ 100</span></div>
-                <div><p className="eyebrow">Daylight quality</p><h3>Warm, balanced light</h3><p>Good afternoon protection with useful north light.</p></div>
-              </section>
-              <section className="panel-section">
-                <label className="field-label">Project location
-                  <select value={location} onChange={(event) => setLocation(event.target.value as keyof typeof locations)}>
-                    {Object.keys(locations).map((item) => <option key={item}>{item}</option>)}
-                  </select>
-                </label>
-                <label className="range-label"><span><strong>Time of day</strong><b>{hour}:00</b></span><input type="range" min="6" max="18" value={hour} onChange={(event) => setHour(Number(event.target.value))} /></label>
-                <label className="range-label"><span><strong>Day of year</strong><b>{day}</b></span><input type="range" min="1" max="365" value={day} onChange={(event) => setDay(Number(event.target.value))} /></label>
-              </section>
-              <section className="insight-card"><CloudSun /><div><strong>West terrace is doing its job</strong><p>At {hour}:00, the 2.8 m overhang protects the living space while the courtyard remains luminous.</p></div></section>
-              <section className="panel-section">
-                <div className="section-title"><h3>Openings</h3><span className="badge">{plan.openings.length}</span></div>
-                <button className="button secondary full" onClick={() => setActiveTool('window')}><PanelLeftClose /> Place a window</button>
-              </section>
-            </div>
-          )}
-
-          {mode === 'systems' && (
-            <div className="inspector-content">
-              <section className="energy-hero">
-                <div><p className="eyebrow">Predicted reduction</p><strong>−{energySaving}%</strong><span>annual energy use</span></div>
-                <div className="energy-bars"><i /><i /><i /><i /><i /></div>
-              </section>
-              <p className="section-intro">Choose the systems worth making invisible. Optimization first; automation second.</p>
-              {([
-                ['solar', Sun, 'Solar production', '7.2 kWp roof array', '−26%'],
-                ['insulation', Layers3, 'High-performance shell', 'Low-E glass + roof R-30', '−18%'],
-                ['climate', Wind, 'Adaptive climate', 'Room-by-room comfort', '−13%'],
-                ['lighting', Lightbulb, 'Circadian lighting', 'Presence + daylight aware', '−7%'],
-              ] as const).map(([key, Icon, title, note, saving]) => (
-                <section className="system-row" key={key}>
-                  <span className="system-icon"><Icon /></span>
-                  <div><strong>{title}</strong><small>{note}</small></div>
-                  <span className="saving">{saving}</span>
-                  <Toggle label={title} checked={plan.systems[key]} onChange={() => commit((current) => ({ ...current, systems: { ...current.systems, [key]: !current.systems[key] } }))} />
-                </section>
-              ))}
-              <section className="insight-card green"><Check /><div><strong>Passive before powered</strong><p>The current orientation and envelope remove most of the cooling load before equipment is added.</p></div></section>
-            </div>
-          )}
-
-          {mode === 'budget' && (
-            <div className="inspector-content">
-              <section className="budget-hero">
-                <p className="eyebrow">Concept estimate • ±15%</p>
-                <strong>{formatTHB(budget.total)}</strong>
-                <span>{formatTHB(budget.total / budget.area)} / m² <b>incl. 10% contingency</b></span>
-              </section>
-              <section className="panel-section cost-list">
-                <div className="section-title"><h3>Bill of quantities</h3><span className="badge">Live</span></div>
-                {budget.items.map((item, index) => (
-                  <div className="cost-row" key={item.label}>
-                    <i style={{ width: `${(item.amount / Math.max(...budget.items.map((entry) => entry.amount))) * 100}%` }} />
-                    <span><b>0{index + 1}</b>{item.label}</span><strong>{formatTHB(item.amount)}</strong>
+                <section className="panel-section">
+                  <div className="section-title"><div><p className="eyebrow">Generated directions</p><h3>Three ways to live here</h3></div><Sparkles /></div>
+                  <div className="variant-list">
+                    {variants.map((variant, index) => (
+                      <button key={variant.name} type="button" onClick={() => applyVariant(index)}>
+                        <span className={`variant-thumb variant-${index}`}><i /><i /><i /></span>
+                        <span><strong>{variant.name}</strong><small>{variant.note}</small></span>
+                        <ArrowRight />
+                      </button>
+                    ))}
                   </div>
+                </section>
+              </div>
+            )}
+
+            {!settingsOpen && mode === 'light' && (
+              <div className="inspector-content">
+                <section className="score-card light-card">
+                  <div className="score-ring" style={{ '--score': `${lightScore * 3.6}deg` } as React.CSSProperties}><strong>{lightScore}</strong><span>/ 100</span></div>
+                  <div><p className="eyebrow">Daylight quality</p><h3>Warm, balanced light</h3><p>Good afternoon protection with useful north light.</p></div>
+                </section>
+                <section className="panel-section">
+                  <label className="field-label">Project location
+                    <select value={location} onChange={(event) => setLocation(event.target.value as keyof typeof locations)}>
+                      {Object.keys(locations).map((item) => <option key={item}>{item}</option>)}
+                    </select>
+                  </label>
+                  <label className="range-label"><span><strong>Time of day</strong><b>{hour}:00</b></span><input type="range" min="6" max="18" value={hour} onChange={(event) => setHour(Number(event.target.value))} /></label>
+                  <label className="range-label"><span><strong>Day of year</strong><b>{day}</b></span><input type="range" min="1" max="365" value={day} onChange={(event) => setDay(Number(event.target.value))} /></label>
+                </section>
+                <section className="insight-card"><CloudSun /><div><strong>West terrace is doing its job</strong><p>At {hour}:00, the 2.8 m overhang protects the living space while the courtyard remains luminous.</p></div></section>
+                <section className="panel-section">
+                  <div className="section-title"><h3>Openings</h3><span className="badge">{plan.openings.length}</span></div>
+                  <button className="button secondary full" type="button" onClick={() => setActiveTool('window')}><PanelLeftClose /> Place a window</button>
+                </section>
+              </div>
+            )}
+
+            {!settingsOpen && mode === 'systems' && (
+              <div className="inspector-content">
+                <section className="energy-hero">
+                  <div><p className="eyebrow">Predicted reduction</p><strong>−{energySaving}%</strong><span>annual energy use</span></div>
+                  <div className="energy-bars"><i /><i /><i /><i /><i /></div>
+                </section>
+                <p className="section-intro">Choose the systems worth making invisible. Optimization first; automation second.</p>
+                {([
+                  ['solar', Sun, 'Solar production', '7.2 kWp roof array', '−26%'],
+                  ['insulation', Layers3, 'High-performance shell', 'Low-E glass + roof R-30', '−18%'],
+                  ['climate', Wind, 'Adaptive climate', 'Room-by-room comfort', '−13%'],
+                  ['lighting', Lightbulb, 'Circadian lighting', 'Presence + daylight aware', '−7%'],
+                ] as const).map(([key, Icon, title, note, saving]) => (
+                  <section className="system-row" key={key}>
+                    <span className="system-icon"><Icon /></span>
+                    <div><strong>{title}</strong><small>{note}</small></div>
+                    <span className="saving">{saving}</span>
+                    <Toggle label={title} checked={plan.systems[key]} onChange={() => commit((current) => ({ ...current, systems: { ...current.systems, [key]: !current.systems[key] } }))} />
+                  </section>
                 ))}
-                <div className="cost-subtotal"><span>Subtotal</span><strong>{formatTHB(budget.subtotal)}</strong></div>
-              </section>
-              <section className="insight-card"><CircleDollarSign /><div><strong>Compact plan saves ~฿640k</strong><p>Apply “Compact shade” to reduce envelope, structure, and conditioned area together.</p><button onClick={() => applyVariant(2)}>Apply direction <ArrowRight /></button></div></section>
-              <button className="button dark full" onClick={exportPlan}><Download /> Export project + BOQ</button>
-              <p className="legal-note">Concept estimate only. Local professionals must verify structure, code, quantities, and procurement before construction.</p>
-            </div>
-          )}
-        </aside>
+                <section className="insight-card green"><Check /><div><strong>Passive before powered</strong><p>The current orientation and envelope remove most of the cooling load before equipment is added.</p></div></section>
+              </div>
+            )}
+
+            {!settingsOpen && mode === 'budget' && (
+              <div className="inspector-content">
+                <section className="budget-hero">
+                  <p className="eyebrow">Concept estimate • ±15%</p>
+                  <strong>{formatTHB(budget.total)}</strong>
+                  <span>{formatTHB(budget.total / budget.area)} / m² <b>incl. 10% contingency</b></span>
+                </section>
+                <section className="panel-section cost-list">
+                  <div className="section-title"><h3>Bill of quantities</h3><span className="badge">Live</span></div>
+                  {budget.items.map((item, index) => (
+                    <div className="cost-row" key={item.label}>
+                      <i style={{ width: `${(item.amount / Math.max(...budget.items.map((entry) => entry.amount))) * 100}%` }} />
+                      <span><b>0{index + 1}</b>{item.label}</span><strong>{formatTHB(item.amount)}</strong>
+                    </div>
+                  ))}
+                  <div className="cost-subtotal"><span>Subtotal</span><strong>{formatTHB(budget.subtotal)}</strong></div>
+                </section>
+                <section className="insight-card"><CircleDollarSign /><div><strong>Compact plan saves ~฿640k</strong><p>Apply “Compact shade” to reduce envelope, structure, and conditioned area together.</p><button type="button" onClick={() => applyVariant(2)}>Apply direction <ArrowRight /></button></div></section>
+                <button className="button dark full" type="button" onClick={exportPlan}><Download /> Export project + BOQ</button>
+                <p className="legal-note">Concept estimate only. Local professionals must verify structure, code, quantities, and procurement before construction.</p>
+              </div>
+            )}
+          </aside>
+        )}
+
+        {!inspectorOpen && (
+          <button className="inspector-reopen" type="button" onClick={() => setInspectorOpen(true)}>
+            Plan panel
+          </button>
+        )}
       </div>
       {toast && <div className="toast" role="status"><Check /> {toast}</div>}
     </div>

@@ -1,0 +1,7 @@
+name = "luma-concept-render"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+
+[vars]
+GEMINI_MODEL = "gemini-2.5-flash-image"
+DAILY_IP_LIMIT = "20"

@@ -20,15 +20,27 @@ npm run preview
 
 ## What is real in this prototype
 
-- Draggable percentage-based plan geometry with undo/redo
-- Doors and windows placed directly on the drawing
+- Pan / zoom canvas with wheel, pinch, and working zoom controls
+- Drag rooms in any direction; corner + edge resize; pinch-to-scale a room
+- Draggable doors and windows on the plan
+- Undo/redo, local browser persistence, JSON export
 - Solar altitude and azimuth from latitude, day, and hour
 - Live area, systems, energy, and construction-cost calculations
-- Uploaded-sketch tracing layer
-- Local browser persistence and JSON export
-- Responsive plan and conceptual spatial views
+- Sketch underlay (honest tracing layer — not auto-traced walls)
+- Limited Gemini concept photos via Cloudflare Worker (`workers/concept-render`)
 
-The “trace” action is intentionally presented as a verification-first concept workflow, not a construction-grade computer-vision claim. Structural, code, cost, and procurement decisions must be checked by local professionals.
+Concept photos are labeled as design visualizations, not photographs of finished buildings. Structural, code, cost, and procurement decisions must be checked by local professionals.
+
+## Concept photo setup
+
+```bash
+cd workers/concept-render
+npm install
+npx wrangler secret put GEMINI_API_KEY
+npm run deploy
+```
+
+Put the Worker URL in `.env` as `VITE_CONCEPT_API_URL`, then rebuild the frontend. Browser quota is 3 renders/day.
 
 ## Architecture
 
