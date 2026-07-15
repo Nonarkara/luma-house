@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f2f0e9"/>
+  <path d="M0 510h1200v120H0z" fill="#22251f"/>
+  <g transform="translate(680 90) rotate(-5)">
+    <rect width="410" height="350" fill="#fbfaf6" stroke="#343730" stroke-width="5"/>
+    <path d="M20 20h220v150H20zm220 0h150v90H240zM20 170h170v155H20zm170 70h180v85H190z" fill="#e4d9d3" stroke="#343730" stroke-width="4"/>
+    <path d="M240 110h130v130H240z" fill="#dce8d1" stroke="#343730" stroke-width="4" stroke-dasharray="10 7"/>
+    <path d="M80 20v-12m70 12v-12m130 0v12" stroke="#5486a0" stroke-width="10"/>
+  </g>
+  <g transform="translate(80 82)">
+    <rect width="48" height="48" rx="12" fill="#22251f"/>
+    <path d="M14 31v9m10-22v22m10-5v5" stroke="#d8f15c" stroke-width="6" stroke-linecap="round"/>
+    <text x="64" y="37" font-family="Arial,sans-serif" font-weight="700" font-size="31" fill="#20231f">Luma<tspan fill="#9b9d96">/house</tspan></text>
+  </g>
+  <text x="80" y="230" font-family="Arial,sans-serif" font-weight="700" font-size="68" fill="#20231f">Design with light,</text>
+  <text x="80" y="307" font-family="Arial,sans-serif" font-weight="700" font-size="68" fill="#20231f">not guesswork.</text>
+  <text x="82" y="370" font-family="Arial,sans-serif" font-size="24" fill="#666961">Plan • sunlight • intelligent systems • live BOQ</text>
+  <circle cx="84" cy="568" r="10" fill="#d8f15c"/>
+  <text x="108" y="577" font-family="Arial,sans-serif" font-size="26" fill="#f2f0e9">From a sketch to a buildable conversation.</text>
+</svg>
