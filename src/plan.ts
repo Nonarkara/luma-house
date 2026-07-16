@@ -8,6 +8,8 @@ export const locations = {
   'Chiang Mai': { latitude: 18.7883, label: 'Chiang Mai, TH' },
   Phuket: { latitude: 7.8804, label: 'Phuket, TH' },
   Singapore: { latitude: 1.3521, label: 'Singapore, SG' },
+  Quito: { latitude: -0.1807, label: 'Quito, EC' },
+  Anchorage: { latitude: 61.2181, label: 'Anchorage, US' },
 }
 
 export const initialRooms: Room[] = [
@@ -174,4 +176,54 @@ export function estimateEnergySavings(systems: PlanState['systems']): number {
       (systems.climate ? 13 : 0) +
       (systems.lighting ? 7 : 0),
   )
+}
+
+export interface SunPatch {
+  windowId: string
+  roomId: string
+  // parallelogram corners in percent coordinates, order: [W1, W2, W2+depth, W1+depth]
+  polygon: Array<{ x: number; y: number }>
+  areaM2: number // approximate unclipped patch area in m²
+}
+
+export function sunPatches(plan: PlanState, azimuthDeg: number, altitudeDeg: number): SunPatch[] {
+  if (altitudeDeg <= 2) return []
+  const radians = Math.PI / 180
+  const azimuthRad = azimuthDeg * radians
+  const altitudeRad = altitudeDeg * radians
+  const direction = { x: -Math.sin(azimuthRad), y: Math.cos(azimuthRad) }
+  const depth = Math.max(0.3, Math.min(6, 2.4 / Math.tan(altitudeRad)))
+
+  const patches: SunPatch[] = []
+  for (const opening of plan.openings) {
+    if (opening.type !== 'window') continue
+    const centerX = (opening.x / 100) * SITE_WIDTH_METERS
+    const centerY = (opening.y / 100) * SITE_HEIGHT_METERS
+    const axisX = opening.rotation === 0 ? 1 : 0
+    const axisY = opening.rotation === 0 ? 0 : 1
+    const w1 = { x: centerX - 0.8 * axisX, y: centerY - 0.8 * axisY }
+    const w2 = { x: centerX + 0.8 * axisX, y: centerY + 0.8 * axisY }
+    const offset = { x: depth * direction.x, y: depth * direction.y }
+    const w3 = { x: w2.x + offset.x, y: w2.y + offset.y }
+    const w4 = { x: w1.x + offset.x, y: w1.y + offset.y }
+
+    const probeX = ((centerX + 0.5 * direction.x) / SITE_WIDTH_METERS) * 100
+    const probeY = ((centerY + 0.5 * direction.y) / SITE_HEIGHT_METERS) * 100
+    const room = plan.rooms.find(
+      (item) => probeX >= item.x && probeX <= item.x + item.w && probeY >= item.y && probeY <= item.y + item.h,
+    )
+    if (!room) continue
+
+    const f = opening.rotation === 0 ? Math.abs(direction.y) : Math.abs(direction.x)
+    patches.push({
+      windowId: opening.id,
+      roomId: room.id,
+      polygon: [w1, w2, w3, w4].map((point) => ({
+        x: (point.x / SITE_WIDTH_METERS) * 100,
+        y: (point.y / SITE_HEIGHT_METERS) * 100,
+      })),
+      areaM2: 1.6 * depth * f,
+    })
+  }
+  return patches
 }

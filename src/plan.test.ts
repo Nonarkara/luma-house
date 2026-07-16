@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { calculateBudget, estimateEnergySavings, furnitureDoorConflicts, furnitureRect, initialPlan, roomArea, solarPosition, totalArea } from './plan'
-import type { Opening } from './types'
+import { calculateBudget, estimateEnergySavings, furnitureDoorConflicts, furnitureRect, initialPlan, locations, roomArea, solarPosition, sunPatches, totalArea } from './plan'
+import type { Opening, PlanState } from './types'
 
 describe('plan calculations', () => {
   it('converts percentage room dimensions into square meters', () => {
@@ -43,5 +43,49 @@ describe('plan calculations', () => {
     )
     expect(conflicts.has('near')).toBe(true)
     expect(conflicts.has('far')).toBe(false)
+  })
+
+  it('returns no sun patches when the sun is at or below the horizon', () => {
+    expect(sunPatches(initialPlan, 180, 0)).toEqual([])
+    expect(sunPatches(initialPlan, 180, 2)).toEqual([])
+  })
+
+  const westWindowPlan: PlanState = {
+    rooms: [{ id: 'room', name: 'Room', kind: 'living', x: 50, y: 20, w: 40, h: 60 }],
+    openings: [{ id: 'w', type: 'window', x: 50, y: 50, rotation: 90 }],
+    furniture: [],
+    systems: { solar: false, insulation: false, climate: false, lighting: false },
+  }
+
+  it('casts a west-facing sun patch into the room it lights', () => {
+    const patches = sunPatches(westWindowPlan, 270, 30)
+    expect(patches).toHaveLength(1)
+    const [patch] = patches
+    const depth = 2.4 / Math.tan((30 * Math.PI) / 180)
+    expect(patch.roomId).toBe('room')
+    expect(patch.polygon.every((point) => point.x >= 50 - 0.01)).toBe(true)
+    const maxX = Math.max(...patch.polygon.map((point) => point.x))
+    expect(maxX).toBeGreaterThan(50)
+    expect(maxX).toBeCloseTo(50 + (depth / 14) * 100, 0)
+    expect(patch.areaM2).toBeCloseTo(1.6 * depth, 1)
+  })
+
+  it('clamps sun patch depth between 0.3 m and 6 m', () => {
+    const [steep] = sunPatches(westWindowPlan, 270, 85)
+    const steepMaxX = Math.max(...steep.polygon.map((point) => point.x))
+    expect(steepMaxX - 50).toBeCloseTo((0.3 / 14) * 100, 1)
+
+    const [low] = sunPatches(westWindowPlan, 270, 5)
+    const lowMaxX = Math.max(...low.polygon.map((point) => point.x))
+    expect(lowMaxX - 50).toBeCloseTo((6 / 14) * 100, 1)
+  })
+
+  it('drops a sun patch whose light falls outside every room', () => {
+    expect(sunPatches(westWindowPlan, 90, 30)).toEqual([])
+  })
+
+  it('adds Quito and Anchorage to the location list', () => {
+    expect(locations.Quito.latitude).toBeLessThan(0)
+    expect(locations.Anchorage.latitude).toBeGreaterThan(61)
   })
 })

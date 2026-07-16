@@ -1,6 +1,7 @@
 import { ArrowRight } from 'lucide-react'
 import React, { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { furnitureCatalog, furnitureRect, roomArea } from '../plan'
+import type { SunPatch } from '../plan'
 import type { Furniture, Opening, PlanState, PlanTool, Room, RoomKind } from '../types'
 import type { ResizeHandle, StrokePoint } from './geometry'
 
@@ -26,6 +27,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   sketchUrl,
   showSun,
   sunAngle,
+  sunPatchList,
   showGrid,
   viewportStyle,
   onRoomPointerDown,
@@ -49,6 +51,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   sketchUrl: string | null
   showSun: boolean
   sunAngle: number
+  sunPatchList: SunPatch[]
   showGrid: boolean
   viewportStyle: CSSProperties
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
@@ -91,8 +94,24 @@ export const FloorPlan = React.memo(function FloorPlan({
           <div className="scale-label">1:100 <span>•</span> 14 × 10 m site</div>
           {showSun && (
             <svg className="sun-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" aria-hidden="true">
-              {[-18, -9, 0, 9, 18].map((offset) => (
-                <line key={offset} x1={rayX + offset} y1={rayY} x2={50 + offset * .25} y2="50" stroke="#e2b53e" strokeOpacity=".48" strokeWidth=".55" vectorEffect="non-scaling-stroke" />
+              {Array.from(new Set(sunPatchList.map((patch) => patch.roomId))).map((roomId) => {
+                const litRoom = plan.rooms.find((item) => item.id === roomId)
+                if (!litRoom) return null
+                return (
+                  <clipPath key={roomId} id={`clip-${roomId}`}>
+                    <rect x={litRoom.x} y={litRoom.y} width={litRoom.w} height={litRoom.h} />
+                  </clipPath>
+                )
+              })}
+              {sunPatchList.map((patch) => (
+                <polygon
+                  key={patch.windowId}
+                  points={patch.polygon.map((point) => `${point.x},${point.y}`).join(' ')}
+                  fill="#f3c84a"
+                  fillOpacity="0.16"
+                  stroke="none"
+                  clipPath={`url(#clip-${patch.roomId})`}
+                />
               ))}
               <circle cx={rayX} cy={rayY} r="2.3" fill="#f3c84a" />
             </svg>

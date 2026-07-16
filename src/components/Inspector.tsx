@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { IconButton, Toggle } from './ui'
 import { formatTHB, roomArea } from '../plan'
+import type { SunPatch } from '../plan'
 import type { PlanState, PlanTool, Room, WorkspaceMode } from '../types'
 
 export interface InspectorProps {
@@ -42,7 +43,8 @@ export interface InspectorProps {
   deleteRoom: () => void
   updateRoom: (updates: Partial<Room>) => void
   applyVariant: (index: number) => void
-  lightScore: number
+  patches: SunPatch[]
+  directSunM2: number
   location: string
   setLocation: (loc: string) => void
   locations: Record<string, { label: string, latitude: number }>
@@ -81,7 +83,8 @@ export const Inspector = React.memo(function Inspector({
   deleteRoom,
   updateRoom,
   applyVariant,
-  lightScore,
+  patches,
+  directSunM2,
   location,
   setLocation,
   locations,
@@ -99,6 +102,8 @@ export const Inspector = React.memo(function Inspector({
   setShowGrid,
 }: InspectorProps) {
   if (!inspectorOpen) return null
+
+  const directSunPercent = Math.round((100 * directSunM2) / Math.max(1, budget.area))
 
   return (
     <aside className="inspector">
@@ -243,13 +248,13 @@ export const Inspector = React.memo(function Inspector({
       {!settingsOpen && mode === 'light' && (
         <div className="inspector-content">
           <section className="score-card light-card">
-            <div className="score-ring" style={{ '--score': `${lightScore * 3.6}deg` } as React.CSSProperties}>
-              <strong>{lightScore}</strong><span>/ 100</span>
+            <div className="score-ring" style={{ '--score': `${directSunPercent * 3.6}deg` } as React.CSSProperties}>
+              <strong>{directSunPercent}</strong><span>% of floor</span>
             </div>
             <div>
-              <p className="eyebrow">Daylight quality</p>
-              <h3>Warm, balanced light</h3>
-              <p>Good afternoon protection with useful north light.</p>
+              <p className="eyebrow">Direct sun now</p>
+              <h3>≈ {directSunM2.toFixed(1)} m² in direct light</h3>
+              <p>Estimated from {patches.length} window{patches.length === 1 ? '' : 's'} at this hour. Diffuse light not included.</p>
             </div>
           </section>
           <section className="panel-section">
@@ -273,8 +278,17 @@ export const Inspector = React.memo(function Inspector({
           <section className="insight-card">
             <CloudSun />
             <div>
-              <strong>West terrace is doing its job</strong>
-              <p>At {hour}:00, the 2.8 m overhang protects the living space while the courtyard remains luminous.</p>
+              {patches.length > 0 ? (
+                <>
+                  <strong>Sun reaches {new Set(patches.map((patch) => patch.roomId)).size} room(s)</strong>
+                  <p>Drag windows or change the hour to move the light.</p>
+                </>
+              ) : (
+                <>
+                  <strong>No direct sun right now</strong>
+                  <p>The sun is below the horizon or no window faces it. Try another hour.</p>
+                </>
+              )}
             </div>
           </section>
           <section className="panel-section">

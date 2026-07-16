@@ -7,7 +7,7 @@ import { useRoomGestures } from './canvas/useRoomGestures'
 import { clientToPercent, strokeToRoomRect, type StrokePoint } from './canvas/geometry'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
-import { SITE_HEIGHT_METERS, SITE_WIDTH_METERS, calculateBudget, furnitureCatalog, furnitureDoorConflicts, initialPlan, roomArea, solarPosition, variants, locations } from './plan'
+import { SITE_HEIGHT_METERS, SITE_WIDTH_METERS, calculateBudget, furnitureCatalog, furnitureDoorConflicts, initialPlan, roomArea, solarPosition, sunPatches, variants, locations } from './plan'
 import type { CanvasView, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
 import { TopBar } from './components/TopBar'
 import { SideNav } from './components/SideNav'
@@ -77,7 +77,8 @@ function App() {
 
   const budget = useMemo(() => calculateBudget(plan), [plan])
   const sun = useMemo(() => solarPosition(locations[location as keyof typeof locations].latitude, day, hour), [location, day, hour])
-  const lightScore = Math.min(96, 48 + plan.openings.filter((item) => item.type === 'window').length * 7 + (plan.systems.lighting ? 6 : 0))
+  const patches = useMemo(() => sunPatches(plan, sun.azimuth, sun.altitude), [plan, sun.azimuth, sun.altitude])
+  const directSunM2 = Math.min(budget.area, patches.reduce((sum, patch) => sum + patch.areaM2, 0))
   const room = useMemo(() => plan.rooms.find((item) => item.id === selectedRoom), [plan.rooms, selectedRoom])
   const furnitureConflicts = useMemo(() => furnitureDoorConflicts(plan.furniture, plan.openings), [plan.furniture, plan.openings])
   const furnitureItem = useMemo(() => plan.furniture.find((item) => item.id === selectedFurniture), [plan.furniture, selectedFurniture])
@@ -440,6 +441,7 @@ function App() {
                 sketchUrl={sketchUrl}
                 showSun={mode === 'light'}
                 sunAngle={sun.azimuth}
+                sunPatchList={mode === 'light' ? patches : []}
                 showGrid={showGrid}
                 viewportStyle={viewportStyle}
                 onRoomPointerDown={onRoomPointerDown}
@@ -541,7 +543,8 @@ function App() {
           deleteRoom={deleteRoom}
           updateRoom={updateRoom}
           applyVariant={applyVariant}
-          lightScore={lightScore}
+          patches={patches}
+          directSunM2={directSunM2}
           location={location}
           setLocation={setLocation}
           locations={locations}
