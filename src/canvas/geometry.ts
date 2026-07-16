@@ -103,6 +103,31 @@ export function moveOpening(opening: Opening, dx: number, dy: number, snapGrid: 
   }
 }
 
+export interface StrokePoint {
+  x: number
+  y: number
+}
+
+// ponytail: the stroke's bounding box — an L-shaped stroke becomes its enclosing
+// rectangle. Polygon rooms come when the model grows non-rectangular walls.
+export function strokeToRoomRect(points: StrokePoint[]): Pick<Room, 'x' | 'y' | 'w' | 'h'> | null {
+  if (points.length < 2) return null
+  const xs = points.map((point) => point.x)
+  const ys = points.map((point) => point.y)
+  const minX = Math.min(...xs)
+  const minY = Math.min(...ys)
+  const w = Math.max(...xs) - minX
+  const h = Math.max(...ys) - minY
+  // A tap or a single line is not a room.
+  if (w < 6 || h < 6) return null
+  return clampRoom({
+    x: snap(minX, true),
+    y: snap(minY, true),
+    w: snap(w, true),
+    h: snap(h, true),
+  })
+}
+
 export function clientToPercent(
   clientX: number,
   clientY: number,

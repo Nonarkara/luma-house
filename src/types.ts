@@ -18,6 +18,16 @@ export interface Opening {
   rotation: 0 | 90
 }
 
+export type FurnitureKind = 'bed' | 'sofa' | 'dining' | 'wardrobe' | 'desk'
+
+export interface Furniture {
+  id: string
+  kind: FurnitureKind
+  x: number
+  y: number
+  rotated: boolean
+}
+
 export interface HouseSystems {
   solar: boolean
   insulation: boolean
@@ -28,8 +38,10 @@ export interface HouseSystems {
 export interface PlanState {
   rooms: Room[]
   openings: Opening[]
+  furniture: Furniture[]
   systems: HouseSystems
 }
 
+export type PlanTool = 'select' | 'draw' | 'window' | 'door'
 export type WorkspaceMode = 'plan' | 'light' | 'systems' | 'budget'
 export type CanvasView = 'plan' | 'spatial'

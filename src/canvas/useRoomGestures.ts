@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
-import type { Opening, PlanState, Room } from '../types'
+import type { Furniture, Opening, PlanState, PlanTool, Room } from '../types'
+import { furnitureRect } from '../plan'
 import {
   clientToPercent,
   moveOpening,
   moveRoom,
   resizeRoom,
   scaleRoomFromCenter,
+  snap,
   type ResizeHandle,
 } from './geometry'
 
-type GestureKind = 'move-room' | 'resize-room' | 'pinch-room' | 'move-opening'
+type GestureKind = 'move-room' | 'resize-room' | 'pinch-room' | 'move-opening' | 'move-furniture'
 
 interface ActiveGesture {
   kind: GestureKind
@@ -20,9 +22,11 @@ interface ActiveGesture {
   snapshot: PlanState
   roomId?: string
   openingId?: string
+  furnitureId?: string
   handle?: ResizeHandle
   startRoom?: Room
   startOpening?: Opening
+  startFurniture?: Furniture
   startDistance?: number
 }
 
@@ -32,6 +36,7 @@ export function useRoomGestures({
   commitSnapshot,
   setSelectedRoom,
   setSelectedOpening,
+  setSelectedFurniture,
   activeTool,
   snapGrid,
   stageRef,
@@ -41,7 +46,8 @@ export function useRoomGestures({
   commitSnapshot: (snapshot: PlanState) => void
   setSelectedRoom: (id: string | null) => void
   setSelectedOpening: (id: string | null) => void
-  activeTool: 'select' | 'window' | 'door'
+  setSelectedFurniture: (id: string | null) => void
+  activeTool: PlanTool
   snapGrid: boolean
   stageRef: RefObject<HTMLElement>
 }) {
@@ -91,6 +97,18 @@ export function useRoomGestures({
         setPlan((current) => ({
           ...current,
           rooms: current.rooms.map((item) => (item.id === gesture.roomId ? { ...item, ...next } : item)),
+        }))
+        return
+      }
+
+      if (gesture.kind === 'move-furniture' && gesture.furnitureId && gesture.startFurniture) {
+        const start = gesture.startFurniture
+        const rect = furnitureRect(start)
+        const x = Math.max(0, Math.min(100 - rect.w, snap(start.x + dx, snapRef.current)))
+        const y = Math.max(0, Math.min(100 - rect.h, snap(start.y + dy, snapRef.current)))
+        setPlan((current) => ({
+          ...current,
+          furniture: current.furniture.map((item) => (item.id === gesture.furnitureId ? { ...item, x, y } : item)),
         }))
         return
       }
@@ -146,6 +164,7 @@ export function useRoomGestures({
       event.stopPropagation()
       setSelectedRoom(room.id)
       setSelectedOpening(null)
+      setSelectedFurniture(null)
       if (activeTool !== 'select') return
 
       const existing = gestureRef.current
@@ -173,7 +192,7 @@ export function useRoomGestures({
         startRoom: room,
       }
     },
-    [activeTool, setSelectedOpening, setSelectedRoom],
+    [activeTool, setSelectedFurniture, setSelectedOpening, setSelectedRoom],
   )
 
   const onOpeningPointerDown = useCallback(
@@ -181,6 +200,7 @@ export function useRoomGestures({
       event.stopPropagation()
       setSelectedOpening(opening.id)
       setSelectedRoom(null)
+      setSelectedFurniture(null)
       if (activeTool !== 'select') return
       gestureRef.current = {
         kind: 'move-opening',
@@ -193,7 +213,28 @@ export function useRoomGestures({
         startOpening: opening,
       }
     },
-    [activeTool, setSelectedOpening, setSelectedRoom],
+    [activeTool, setSelectedFurniture, setSelectedOpening, setSelectedRoom],
+  )
+
+  const onFurniturePointerDown = useCallback(
+    (event: ReactPointerEvent, item: Furniture) => {
+      event.stopPropagation()
+      setSelectedFurniture(item.id)
+      setSelectedRoom(null)
+      setSelectedOpening(null)
+      if (activeTool !== 'select') return
+      gestureRef.current = {
+        kind: 'move-furniture',
+        pointerIds: [event.pointerId],
+        points: new Map([[event.pointerId, { x: event.clientX, y: event.clientY }]]),
+        originX: event.clientX,
+        originY: event.clientY,
+        snapshot: planRef.current,
+        furnitureId: item.id,
+        startFurniture: item,
+      }
+    },
+    [activeTool, setSelectedFurniture, setSelectedOpening, setSelectedRoom],
   )
 
   const onGesturePointerMove = useCallback(
@@ -213,7 +254,7 @@ export function useRoomGestures({
   const placeOpeningAt = useCallback(
     (clientX: number, clientY: number) => {
       const bounds = stageBounds()
-      if (!bounds || activeTool === 'select') return null
+      if (!bounds || (activeTool !== 'window' && activeTool !== 'door')) return null
       const { x, y } = clientToPercent(clientX, clientY, bounds)
       const rotation: 0 | 90 = Math.min(y, 100 - y) < Math.min(x, 100 - x) ? 0 : 90
       return {
@@ -230,6 +271,7 @@ export function useRoomGestures({
   return {
     onRoomPointerDown,
     onOpeningPointerDown,
+    onFurniturePointerDown,
     onGesturePointerMove,
     onGesturePointerUp,
     placeOpeningAt,

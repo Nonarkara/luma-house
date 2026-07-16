@@ -1,4 +1,4 @@
-import type { PlanState, Room } from './types'
+import type { Furniture, FurnitureKind, Opening, PlanState, Room } from './types'
 
 export const SITE_WIDTH_METERS = 14
 export const SITE_HEIGHT_METERS = 10
@@ -29,7 +29,59 @@ export const initialPlan: PlanState = {
     { id: 'd1', type: 'door', x: 43, y: 76, rotation: 90 },
     { id: 'd2', type: 'door', x: 51, y: 40, rotation: 90 },
   ],
+  furniture: [
+    { id: 'f-sofa', kind: 'sofa', x: 12, y: 20, rotated: false },
+    { id: 'f-bed', kind: 'bed', x: 10, y: 62, rotated: false },
+    { id: 'f-dining', kind: 'dining', x: 28, y: 34, rotated: false },
+  ],
   systems: { solar: true, insulation: true, climate: false, lighting: true },
+}
+
+// Real-world footprints in meters (width × depth), the whole point of testing fit.
+export const furnitureCatalog: Record<FurnitureKind, { label: string; w: number; d: number }> = {
+  bed: { label: 'Bed', w: 2.0, d: 1.8 },
+  sofa: { label: 'Sofa', w: 2.2, d: 0.9 },
+  dining: { label: 'Dining table', w: 1.8, d: 0.9 },
+  wardrobe: { label: 'Wardrobe', w: 2.0, d: 0.6 },
+  desk: { label: 'Desk', w: 1.4, d: 0.7 },
+}
+
+export function furnitureRect(item: Furniture): { x: number; y: number; w: number; h: number } {
+  const spec = furnitureCatalog[item.kind]
+  const widthMeters = item.rotated ? spec.d : spec.w
+  const depthMeters = item.rotated ? spec.w : spec.d
+  return {
+    x: item.x,
+    y: item.y,
+    w: (widthMeters / SITE_WIDTH_METERS) * 100,
+    h: (depthMeters / SITE_HEIGHT_METERS) * 100,
+  }
+}
+
+export const DOOR_CLEARANCE_METERS = 0.9
+
+// A door needs its swing radius free; furniture inside that arc gets flagged.
+export function furnitureDoorConflicts(furniture: Furniture[], openings: Opening[]): Set<string> {
+  const doors = openings.filter((opening) => opening.type === 'door')
+  const conflicts = new Set<string>()
+  for (const item of furniture) {
+    const rect = furnitureRect(item)
+    const left = (rect.x / 100) * SITE_WIDTH_METERS
+    const top = (rect.y / 100) * SITE_HEIGHT_METERS
+    const right = ((rect.x + rect.w) / 100) * SITE_WIDTH_METERS
+    const bottom = ((rect.y + rect.h) / 100) * SITE_HEIGHT_METERS
+    for (const door of doors) {
+      const doorX = (door.x / 100) * SITE_WIDTH_METERS
+      const doorY = (door.y / 100) * SITE_HEIGHT_METERS
+      const nearestX = Math.max(left, Math.min(doorX, right))
+      const nearestY = Math.max(top, Math.min(doorY, bottom))
+      if (Math.hypot(doorX - nearestX, doorY - nearestY) < DOOR_CLEARANCE_METERS) {
+        conflicts.add(item.id)
+        break
+      }
+    }
+  }
+  return conflicts
 }
 
 export const variants: Array<{ name: string; note: string; rooms: Room[] }> = [

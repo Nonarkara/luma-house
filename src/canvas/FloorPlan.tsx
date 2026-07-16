@@ -1,8 +1,8 @@
 import { ArrowRight } from 'lucide-react'
 import React, { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
-import { roomArea } from '../plan'
-import type { Opening, PlanState, Room, RoomKind } from '../types'
-import type { ResizeHandle } from './geometry'
+import { furnitureCatalog, furnitureRect, roomArea } from '../plan'
+import type { Furniture, Opening, PlanState, PlanTool, Room, RoomKind } from '../types'
+import type { ResizeHandle, StrokePoint } from './geometry'
 
 const roomColors: Record<RoomKind, string> = {
   living: 'rgba(163, 255, 0, 0.06)',
@@ -19,6 +19,9 @@ export const FloorPlan = React.memo(function FloorPlan({
   plan,
   selectedRoom,
   selectedOpening,
+  selectedFurniture,
+  furnitureConflicts,
+  draftStroke,
   activeTool,
   sketchUrl,
   showSun,
@@ -27,6 +30,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   viewportStyle,
   onRoomPointerDown,
   onOpeningPointerDown,
+  onFurniturePointerDown,
   onGesturePointerMove,
   onGesturePointerUp,
   onCanvasPointerDown,
@@ -38,7 +42,10 @@ export const FloorPlan = React.memo(function FloorPlan({
   plan: PlanState
   selectedRoom: string | null
   selectedOpening: string | null
-  activeTool: 'select' | 'window' | 'door'
+  selectedFurniture: string | null
+  furnitureConflicts: Set<string>
+  draftStroke: StrokePoint[] | null
+  activeTool: PlanTool
   sketchUrl: string | null
   showSun: boolean
   sunAngle: number
@@ -46,6 +53,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   viewportStyle: CSSProperties
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
   onOpeningPointerDown: (event: ReactPointerEvent, opening: Opening) => void
+  onFurniturePointerDown: (event: ReactPointerEvent, item: Furniture) => void
   onGesturePointerMove: (event: ReactPointerEvent) => void
   onGesturePointerUp: (event: ReactPointerEvent) => void
   onCanvasPointerDown: (event: ReactPointerEvent) => void
@@ -111,6 +119,23 @@ export const FloorPlan = React.memo(function FloorPlan({
               ))}
             </button>
           ))}
+          {plan.furniture.map((item) => {
+            const rect = furnitureRect(item)
+            const spec = furnitureCatalog[item.kind]
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`furniture ${selectedFurniture === item.id ? 'is-selected' : ''} ${furnitureConflicts.has(item.id) ? 'is-conflict' : ''}`}
+                style={{ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%` }}
+                onPointerDown={(event) => onFurniturePointerDown(event, item)}
+                onClick={(event) => event.stopPropagation()}
+                aria-label={`${spec.label}, ${spec.w} by ${spec.d} meters${furnitureConflicts.has(item.id) ? ', blocks a door swing' : ''}`}
+              >
+                <span>{spec.label}</span>
+              </button>
+            )
+          })}
           {plan.openings.map((opening) => (
             <button
               key={opening.id}
@@ -125,6 +150,20 @@ export const FloorPlan = React.memo(function FloorPlan({
               {opening.type === 'door' && <i />}
             </button>
           ))}
+          {draftStroke && draftStroke.length > 1 && (
+            <svg className="draw-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <polyline
+                points={draftStroke.map((point) => `${point.x},${point.y}`).join(' ')}
+                fill="none"
+                stroke="var(--accent-primary)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+                opacity="0.9"
+              />
+            </svg>
+          )}
           <div className="dimension dimension-x"><span>14,000</span></div>
           <div className="dimension dimension-y"><span>10,000</span></div>
         </div>

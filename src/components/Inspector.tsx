@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { IconButton, Toggle } from './ui'
 import { formatTHB, roomArea } from '../plan'
-import type { PlanState, Room, WorkspaceMode } from '../types'
+import type { PlanState, PlanTool, Room, WorkspaceMode } from '../types'
 
 export interface InspectorProps {
   mode: WorkspaceMode
@@ -50,7 +50,7 @@ export interface InspectorProps {
   setHour: (hour: number) => void
   day: number
   setDay: (day: number) => void
-  setActiveTool: (tool: 'select' | 'window' | 'door') => void
+  setActiveTool: (tool: PlanTool) => void
   budget: { area: number; subtotal: number; total: number; items: { label: string; amount: number }[] }
   exportPlan: () => void
   variants: Array<{ name: string; note: string; rooms: Room[] }>

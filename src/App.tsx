@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { Check, DoorOpen, ImagePlus, MapPin, MousePointer2, PanelLeftClose, Plus, Redo2, RotateCcw, Ruler, Sun, Undo2 } from 'lucide-react'
+import { Armchair, Check, DoorOpen, ImagePlus, MapPin, MousePointer2, PanelLeftClose, Pencil, Plus, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
 import { FloorPlan } from './canvas/FloorPlan'
 import { SpatialView } from './canvas/SpatialView'
 import { useCanvasViewport } from './canvas/useCanvasViewport'
 import { useRoomGestures } from './canvas/useRoomGestures'
+import { clientToPercent, strokeToRoomRect, type StrokePoint } from './canvas/geometry'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
-import { calculateBudget, initialPlan, solarPosition, variants, locations } from './plan'
-import type { CanvasView, PlanState, Room, WorkspaceMode } from './types'
+import { SITE_HEIGHT_METERS, SITE_WIDTH_METERS, calculateBudget, furnitureCatalog, furnitureDoorConflicts, initialPlan, roomArea, solarPosition, variants, locations } from './plan'
+import type { CanvasView, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
 import { TopBar } from './components/TopBar'
 import { SideNav } from './components/SideNav'
 import { AssistantBar } from './components/AssistantBar'
@@ -19,7 +20,9 @@ const STORAGE_KEY = 'luma-house:river-courtyard'
 function readSavedPlan(): PlanState {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    return saved ? (JSON.parse(saved) as PlanState) : initialPlan
+    if (!saved) return initialPlan
+    const parsed = JSON.parse(saved) as Partial<PlanState>
+    return { ...initialPlan, ...parsed, furniture: parsed.furniture ?? [] }
   } catch {
     return initialPlan
   }
@@ -33,7 +36,10 @@ function App() {
   const [view, setView] = useState<CanvasView>('plan')
   const [selectedRoom, setSelectedRoom] = useState<string | null>('living')
   const [selectedOpening, setSelectedOpening] = useState<string | null>(null)
-  const [activeTool, setActiveTool] = useState<'select' | 'window' | 'door'>('select')
+  const [selectedFurniture, setSelectedFurniture] = useState<string | null>(null)
+  const [activeTool, setActiveTool] = useState<PlanTool>('select')
+  const [furnitureTrayOpen, setFurnitureTrayOpen] = useState(false)
+  const [draftStroke, setDraftStroke] = useState<StrokePoint[] | null>(null)
   const [location, setLocation] = useState<string>('Bangkok')
   const [hour, setHour] = useState(15)
   const [day, setDay] = useState(196)
@@ -53,6 +59,7 @@ function App() {
   const stageRef = useRef<HTMLDivElement>(null!)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const panMovedRef = useRef(false)
+  const drawPointerRef = useRef<number | null>(null)
 
   const {
     viewport,
@@ -70,6 +77,8 @@ function App() {
   const sun = useMemo(() => solarPosition(locations[location as keyof typeof locations].latitude, day, hour), [location, day, hour])
   const lightScore = Math.min(96, 48 + plan.openings.filter((item) => item.type === 'window').length * 7 + (plan.systems.lighting ? 6 : 0))
   const room = useMemo(() => plan.rooms.find((item) => item.id === selectedRoom), [plan.rooms, selectedRoom])
+  const furnitureConflicts = useMemo(() => furnitureDoorConflicts(plan.furniture, plan.openings), [plan.furniture, plan.openings])
+  const furnitureItem = useMemo(() => plan.furniture.find((item) => item.id === selectedFurniture), [plan.furniture, selectedFurniture])
 
   const commitSnapshot = useCallback((snapshot: PlanState) => {
     setPast((items) => [...items.slice(-29), snapshot])
@@ -79,6 +88,7 @@ function App() {
   const {
     onRoomPointerDown,
     onOpeningPointerDown,
+    onFurniturePointerDown,
     onGesturePointerMove,
     onGesturePointerUp,
     placeOpeningAt,
@@ -89,6 +99,7 @@ function App() {
     commitSnapshot,
     setSelectedRoom,
     setSelectedOpening,
+    setSelectedFurniture,
     activeTool,
     snapGrid,
     stageRef,
@@ -132,6 +143,19 @@ function App() {
   }, [future, plan])
 
   const handleCanvasPointerDown = useCallback((event: ReactPointerEvent) => {
+    if (activeTool === 'draw') {
+      if (drawPointerRef.current !== null) return
+      const bounds = stageRef.current?.getBoundingClientRect()
+      if (!bounds) return
+      drawPointerRef.current = event.pointerId
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      } catch {
+        // Synthetic pointers (tests) have no active pointer to capture.
+      }
+      setDraftStroke([clientToPercent(event.clientX, event.clientY, bounds)])
+      return
+    }
     if (activeTool !== 'select') return
     const target = event.target as HTMLElement
     const isBackground =
@@ -149,16 +173,44 @@ function App() {
   }, [activeTool, onViewportPointerDown])
 
   const handleCanvasPointerMove = useCallback((event: ReactPointerEvent) => {
+    if (drawPointerRef.current === event.pointerId) {
+      const bounds = stageRef.current?.getBoundingClientRect()
+      if (!bounds) return
+      const point = clientToPercent(event.clientX, event.clientY, bounds)
+      setDraftStroke((points) => (points ? [...points, point] : points))
+      return
+    }
     onViewportPointerMove(event)
     if (Math.abs(event.movementX) + Math.abs(event.movementY) > 2) panMovedRef.current = true
   }, [onViewportPointerMove])
 
+  const handleCanvasPointerUp = useCallback((event: ReactPointerEvent) => {
+    if (drawPointerRef.current === event.pointerId) {
+      drawPointerRef.current = null
+      const rect = draftStroke ? strokeToRoomRect(draftStroke) : null
+      setDraftStroke(null)
+      if (!rect) {
+        setToast('Sketch a rough room outline — it snaps to scale')
+        return
+      }
+      const id = `room-${Date.now()}`
+      const sketched: Room = { id, name: 'Sketched room', kind: 'studio', ...rect }
+      commit((current) => ({ ...current, rooms: [...current.rooms, sketched] }))
+      setSelectedRoom(id)
+      setToast(`Room snapped to scale · ${roomArea(sketched).toFixed(1)} m²`)
+      return
+    }
+    onViewportPointerUp(event)
+  }, [commit, draftStroke, onViewportPointerUp])
+
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (panMovedRef.current || isGesturing()) return
+    if (activeTool === 'draw') return
     if (activeTool === 'select') {
       if (event.target === event.currentTarget || (event.target as HTMLElement).classList.contains('plan-canvas')) {
         setSelectedRoom(null)
         setSelectedOpening(null)
+        setSelectedFurniture(null)
       }
       return
     }
@@ -192,6 +244,41 @@ function App() {
       rooms: current.rooms.map((item) => (item.id === selectedRoom ? { ...item, ...updates } : item)),
     }))
   }, [commit, selectedRoom])
+
+  const addFurniture = useCallback((kind: FurnitureKind) => {
+    const spec = furnitureCatalog[kind]
+    const w = (spec.w / SITE_WIDTH_METERS) * 100
+    const h = (spec.d / SITE_HEIGHT_METERS) * 100
+    const id = `f-${Date.now()}`
+    commit((current) => ({
+      ...current,
+      furniture: [...current.furniture, { id, kind, x: 50 - w / 2, y: 50 - h / 2, rotated: false }],
+    }))
+    setSelectedFurniture(id)
+    setFurnitureTrayOpen(false)
+    setToast(`${spec.label} placed at real size — drag it into a room`)
+  }, [commit])
+
+  const rotateFurniture = useCallback(() => {
+    if (!selectedFurniture) return
+    commit((current) => ({
+      ...current,
+      furniture: current.furniture.map((item) => {
+        if (item.id !== selectedFurniture) return item
+        const spec = furnitureCatalog[item.kind]
+        const rotated = !item.rotated
+        const w = ((rotated ? spec.d : spec.w) / SITE_WIDTH_METERS) * 100
+        const h = ((rotated ? spec.w : spec.d) / SITE_HEIGHT_METERS) * 100
+        return { ...item, rotated, x: Math.min(item.x, 100 - w), y: Math.min(item.y, 100 - h) }
+      }),
+    }))
+  }, [commit, selectedFurniture])
+
+  const deleteFurniture = useCallback(() => {
+    if (!selectedFurniture) return
+    commit((current) => ({ ...current, furniture: current.furniture.filter((item) => item.id !== selectedFurniture) }))
+    setSelectedFurniture(null)
+  }, [commit, selectedFurniture])
 
   const handleSketch = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -319,9 +406,11 @@ function App() {
           <div className="canvas-toolbar" aria-label="Plan tools">
             <div className="tool-group">
               <IconButton label="Select and move" className={activeTool === 'select' ? 'active' : ''} onClick={() => setActiveTool('select')}><MousePointer2 /></IconButton>
+              <IconButton label="Sketch a room" className={activeTool === 'draw' ? 'active' : ''} onClick={() => setActiveTool(activeTool === 'draw' ? 'select' : 'draw')}><Pencil /></IconButton>
               <IconButton label="Add room" onClick={addRoom}><Plus /></IconButton>
               <IconButton label="Place window" className={activeTool === 'window' ? 'active' : ''} onClick={() => setActiveTool('window')}><PanelLeftClose /></IconButton>
               <IconButton label="Place door" className={activeTool === 'door' ? 'active' : ''} onClick={() => setActiveTool('door')}><DoorOpen /></IconButton>
+              <IconButton label="Add furniture" className={furnitureTrayOpen ? 'active' : ''} onClick={() => setFurnitureTrayOpen((open) => !open)}><Armchair /></IconButton>
             </div>
             <div className="view-switch" role="group" aria-label="View mode">
               <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>Plan</button>
@@ -340,6 +429,9 @@ function App() {
                 plan={plan}
                 selectedRoom={selectedRoom}
                 selectedOpening={selectedOpening}
+                selectedFurniture={selectedFurniture}
+                furnitureConflicts={furnitureConflicts}
+                draftStroke={draftStroke}
                 activeTool={activeTool}
                 sketchUrl={sketchUrl}
                 showSun={mode === 'light'}
@@ -348,11 +440,12 @@ function App() {
                 viewportStyle={viewportStyle}
                 onRoomPointerDown={onRoomPointerDown}
                 onOpeningPointerDown={onOpeningPointerDown}
+                onFurniturePointerDown={onFurniturePointerDown}
                 onGesturePointerMove={onGesturePointerMove}
                 onGesturePointerUp={onGesturePointerUp}
                 onCanvasPointerDown={handleCanvasPointerDown}
                 onCanvasPointerMove={handleCanvasPointerMove}
-                onCanvasPointerUp={onViewportPointerUp}
+                onCanvasPointerUp={handleCanvasPointerUp}
                 onCanvasClick={handleCanvasClick}
                 stageRef={stageRef}
               />
@@ -375,6 +468,36 @@ function App() {
             {mode === 'light' && view === 'plan' && (
               <div className="sun-status">
                 <Sun /><span><strong>{hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? 'PM' : 'AM'}</strong><small>{sun.altitude.toFixed(0)}° altitude • {sun.azimuth.toFixed(0)}° azimuth</small></span>
+              </div>
+            )}
+            {view === 'plan' && activeTool === 'draw' && !draftStroke && (
+              <div className="draw-hint" role="status">
+                <Pencil /> Draw a rough room with one finger — it snaps straight, to scale
+              </div>
+            )}
+            {view === 'plan' && furnitureTrayOpen && (
+              <div className="furniture-tray" aria-label="Add furniture at real size">
+                {(Object.keys(furnitureCatalog) as FurnitureKind[]).map((kind) => (
+                  <button key={kind} type="button" onClick={() => addFurniture(kind)}>
+                    <strong>{furnitureCatalog[kind].label}</strong>
+                    <small>{furnitureCatalog[kind].w} × {furnitureCatalog[kind].d} m</small>
+                  </button>
+                ))}
+              </div>
+            )}
+            {view === 'plan' && furnitureItem && (
+              <div className={`furniture-chip ${furnitureConflicts.has(furnitureItem.id) ? 'is-conflict' : ''}`} role="status">
+                <span>
+                  <strong>{furnitureCatalog[furnitureItem.kind].label}</strong>
+                  <small>
+                    {furnitureItem.rotated
+                      ? `${furnitureCatalog[furnitureItem.kind].d} × ${furnitureCatalog[furnitureItem.kind].w} m`
+                      : `${furnitureCatalog[furnitureItem.kind].w} × ${furnitureCatalog[furnitureItem.kind].d} m`}
+                    {furnitureConflicts.has(furnitureItem.id) ? ' · blocks a door swing' : ''}
+                  </small>
+                </span>
+                <IconButton label="Rotate furniture" onClick={rotateFurniture}><RotateCw /></IconButton>
+                <IconButton label="Remove furniture" onClick={deleteFurniture}><Trash2 /></IconButton>
               </div>
             )}
             {view === 'plan' && (

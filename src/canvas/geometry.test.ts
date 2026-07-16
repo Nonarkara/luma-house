@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clampRoom, moveRoom, resizeRoom, scaleRoomFromCenter } from './geometry'
+import { clampRoom, moveRoom, resizeRoom, scaleRoomFromCenter, strokeToRoomRect } from './geometry'
 import type { Room } from '../types'
 
 const base: Room = { id: 'r1', name: 'Test', kind: 'studio', x: 20, y: 20, w: 30, h: 30 }
@@ -35,5 +35,25 @@ describe('geometry', () => {
     expect({ x: next.x, y: next.y, w: next.w, h: next.h }).toEqual(clamped)
     expect(next.w).toBeGreaterThan(base.w)
     expect(next.h).toBeGreaterThan(base.h)
+  })
+
+  it('snaps a rough drawn loop to a clean grid rectangle', () => {
+    const points = Array.from({ length: 40 }, (_, i) => {
+      const t = (i / 40) * 2 * Math.PI
+      return { x: 45 + 15 * Math.cos(t) + (i % 2) * 0.8, y: 42 + 12 * Math.sin(t) - (i % 3) * 0.5 }
+    })
+    const rect = strokeToRoomRect(points)
+    expect(rect).not.toBeNull()
+    expect(rect!.x % 1).toBe(0)
+    expect(rect!.w).toBeGreaterThanOrEqual(28)
+    expect(rect!.h).toBeGreaterThanOrEqual(22)
+    expect(rect!.x + rect!.w).toBeLessThanOrEqual(100)
+    expect(rect!.y + rect!.h).toBeLessThanOrEqual(100)
+  })
+
+  it('rejects taps and single lines as rooms', () => {
+    expect(strokeToRoomRect([{ x: 10, y: 10 }, { x: 11, y: 10 }])).toBeNull()
+    const line = Array.from({ length: 20 }, (_, i) => ({ x: 10 + i * 3, y: 20 + (i % 2) }))
+    expect(strokeToRoomRect(line)).toBeNull()
   })
 })
