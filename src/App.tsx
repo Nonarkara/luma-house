@@ -8,6 +8,8 @@ import { clientToPercent, strokeToRoomRect, type StrokePoint } from './canvas/ge
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
 import { SITE_HEIGHT_METERS, SITE_WIDTH_METERS, calculateBudget, furnitureCatalog, furnitureDoorConflicts, initialPlan, roomArea, solarPosition, sunPatches, variants, locations } from './plan'
+import { analyze } from './analysis'
+import type { AnalysisResult, Suggestion } from './analysis'
 import type { CanvasView, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
 import { TopBar } from './components/TopBar'
 import { SideNav } from './components/SideNav'
@@ -82,6 +84,10 @@ function App() {
   const room = useMemo(() => plan.rooms.find((item) => item.id === selectedRoom), [plan.rooms, selectedRoom])
   const furnitureConflicts = useMemo(() => furnitureDoorConflicts(plan.furniture, plan.openings), [plan.furniture, plan.openings])
   const furnitureItem = useMemo(() => plan.furniture.find((item) => item.id === selectedFurniture), [plan.furniture, selectedFurniture])
+  const climateResult = useMemo<AnalysisResult>(
+    () => analyze({ plan, location: locations[location as keyof typeof locations] }),
+    [plan, location],
+  )
 
   const commitSnapshot = useCallback((snapshot: PlanState) => {
     setPast((items) => [...items.slice(-29), snapshot])
@@ -300,6 +306,19 @@ function App() {
     commit((current) => ({ ...current, rooms: variants[index].rooms.map((item) => ({ ...item })) }))
     setToast(`${variants[index].name} applied`)
   }, [commit])
+
+  const applySuggestion = useCallback((suggestion: Suggestion) => {
+    if (!suggestion.action || suggestion.action.type !== 'place-window') return
+    const targetRoom = plan.rooms.find((r) => r.id === suggestion.roomId)
+    if (!targetRoom) return
+    const compass = suggestion.action.compass
+    // Place a window at the midpoint of the target wall
+    const x = compass === 'W' ? targetRoom.x : compass === 'E' ? targetRoom.x + targetRoom.w : targetRoom.x + targetRoom.w / 2
+    const y = compass === 'N' ? targetRoom.y : compass === 'S' ? targetRoom.y + targetRoom.h : targetRoom.y + targetRoom.h / 2
+    const opening = { id: `w-${Date.now()}`, type: 'window' as const, x: Math.round(x), y: Math.round(y), rotation: 0 as const }
+    commit((current) => ({ ...current, openings: [...current.openings, opening] }))
+    setToast(`Window added — scores update live`)
+  }, [commit, plan.rooms])
 
   const resetPlan = useCallback(() => {
     commit(initialPlan)
@@ -560,6 +579,8 @@ function App() {
           setSnapGrid={setSnapGrid}
           showGrid={showGrid}
           setShowGrid={setShowGrid}
+          climateResult={climateResult}
+          applySuggestion={applySuggestion}
         />
 
         {!inspectorOpen && (

@@ -1,5 +1,5 @@
 import React from 'react'
-import { CircleDollarSign, Grid2X2, Settings2, Sun, Zap } from 'lucide-react'
+import { CircleDollarSign, Grid2X2, Leaf, Settings2, Sun, Zap } from 'lucide-react'
 import type { WorkspaceMode } from '../types'
 
 interface SideNavProps {
@@ -14,6 +14,7 @@ interface SideNavProps {
 const modeItems: Array<{ id: WorkspaceMode; label: string; icon: typeof Grid2X2 }> = [
   { id: 'plan', label: 'Plan', icon: Grid2X2 },
   { id: 'light', label: 'Light', icon: Sun },
+  { id: 'climate', label: 'Climate', icon: Leaf },
   { id: 'systems', label: 'Systems', icon: Zap },
   { id: 'budget', label: 'Budget', icon: CircleDollarSign },
 ]

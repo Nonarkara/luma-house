@@ -26,5 +26,28 @@ score), Quito + Anchorage locations. 41 tests green. Live at
 luma-house.pages.dev (deployment 515c5b5b). Visually verified: Bangkok 15:00
 lights 3 rooms from the WSW; Anchorage same hour lights 2 rooms from the NW.
 
+## Review — climate performance increment, shipped 2026-07-16
+
+Ported the orphaned `src/analysis/` engine from the
+`feature/environmental-analysis-and-photo-input` worktree onto current main,
+reconciled it with main's furniture/door-swing types, and wired it into the UI
+as a new "Climate" workspace mode. The engine computes per-wall solar exposure,
+cross-ventilation scores, a directional peak-indoor-temperature model, and
+severity-ranked suggestions — all driven by transparent formulas, not a black
+box. 56 tests green (15 new analysis tests). Lint and build clean.
+
+What the user now sees in Climate mode:
+- Whole-house scores: ventilation, solar balance, shade, overall (0–100).
+- Per-room diagnostics: peak °C, ΔT over outdoor, vent %, severity badge.
+- Actionable suggestions with one-click "Apply" (e.g. "Add a window to the
+  south wall" → places the opening → scores update live).
+- Honest model caveat: "Directional model… not a substitute for EnergyPlus."
+
+Learned: the analysis engine existed on a stale branch (cut before draw/furniture
+features) with zero UI references — a complete but invisible feature. Porting
+required adding the `furniture` field to test fixtures and the `action` field
+to suggestions for the interactive apply loop.
+
 Remaining (vision gap, next increments): true 3D walkthrough view, sketch
-auto-trace assist, material/installation guidance feeding the BOQ.
+auto-trace assist, material/installation guidance feeding the BOQ, annual
+overheating-hours integration, embodied carbon line item.

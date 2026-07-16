@@ -409,6 +409,138 @@ button:active { transform: scale(.97); }
   .furniture-chip { bottom: 64px; max-width: calc(100% - 24px); }
 }
 
+/* ── Climate Performance panel ─────────────────────────── */
+.climate-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.climate-overall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 64px;
+}
+.climate-overall strong {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--accent-primary);
+}
+.climate-overall span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.climate-scores {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+}
+.climate-scores > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.climate-scores svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+.climate-scores strong {
+  font-size: 18px;
+  font-weight: 700;
+}
+.climate-scores span {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.climate-room {
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  border-left: 3px solid transparent;
+  margin-bottom: 8px;
+}
+.climate-room.sev-3 { border-left-color: var(--danger, #ef4444); }
+.climate-room.sev-2 { border-left-color: var(--warning, #f59e0b); }
+.climate-room.sev-1 { border-left-color: var(--accent-primary); }
+.climate-room.sev-0 { border-left-color: var(--success, #22c55e); }
+.climate-room-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.climate-room-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.climate-room-stats span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.climate-room-stats svg { width: 12px; height: 12px; }
+.climate-room small {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.sev-badge {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-weight: 600;
+}
+.sev-badge.sev-3 { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+.sev-badge.sev-2 { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
+.sev-badge.sev-1 { background: rgba(163, 255, 0, 0.12); color: var(--accent-primary); }
+.sev-badge.sev-0 { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
+.suggestion-card {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  margin-bottom: 8px;
+  border-left: 3px solid transparent;
+}
+.suggestion-card.sev-3 { border-left-color: var(--danger, #ef4444); }
+.suggestion-card.sev-2 { border-left-color: var(--warning, #f59e0b); }
+.suggestion-card.sev-1 { border-left-color: var(--accent-primary); }
+.suggestion-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+}
+.suggestion-icon svg { width: 14px; height: 14px; color: var(--text-muted); }
+.suggestion-card > div { flex: 1; min-width: 0; }
+.suggestion-card strong { font-size: 12px; display: block; margin-bottom: 2px; }
+.suggestion-card p { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+.suggestion-card small { font-size: 9px; color: var(--text-faint); }
+.button.small {
+  align-self: center;
+  padding: 6px 12px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }

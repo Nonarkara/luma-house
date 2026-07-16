@@ -8,18 +8,22 @@ import {
   Grid2X2,
   ImagePlus,
   Layers3,
+  Leaf,
   Lightbulb,
   PanelLeftClose,
   RotateCcw,
   Sun,
+  Thermometer,
   Trash2,
   Upload,
   Wind,
   X,
+  Zap,
 } from 'lucide-react'
 import { IconButton, Toggle } from './ui'
 import { formatTHB, roomArea } from '../plan'
 import type { SunPatch } from '../plan'
+import type { AnalysisResult, Suggestion } from '../analysis'
 import type { PlanState, PlanTool, Room, WorkspaceMode } from '../types'
 
 export interface InspectorProps {
@@ -60,6 +64,8 @@ export interface InspectorProps {
   setSnapGrid: React.Dispatch<React.SetStateAction<boolean>>
   showGrid: boolean
   setShowGrid: React.Dispatch<React.SetStateAction<boolean>>
+  climateResult: AnalysisResult
+  applySuggestion: (suggestion: Suggestion) => void
 }
 
 export const Inspector = React.memo(function Inspector({
@@ -100,6 +106,8 @@ export const Inspector = React.memo(function Inspector({
   setSnapGrid,
   showGrid,
   setShowGrid,
+  climateResult,
+  applySuggestion,
 }: InspectorProps) {
   if (!inspectorOpen) return null
 
@@ -117,6 +125,8 @@ export const Inspector = React.memo(function Inspector({
               ? 'Plan intelligence'
               : mode === 'light'
               ? 'Daylight study'
+              : mode === 'climate'
+              ? 'Climate performance'
               : mode === 'systems'
               ? 'Intelligent space'
               : 'Live cost plan'}
@@ -299,6 +309,85 @@ export const Inspector = React.memo(function Inspector({
             <button className="button secondary full" type="button" onClick={() => setActiveTool('window')}>
               <PanelLeftClose /> Place a window
             </button>
+          </section>
+        </div>
+      )}
+
+      {!settingsOpen && mode === 'climate' && (
+        <div className="inspector-content">
+          <section className="score-card climate-card">
+            <div className="climate-overall">
+              <strong>{climateResult.scores.overall}</strong>
+              <span>overall</span>
+            </div>
+            <div className="climate-scores">
+              <div><Wind /><strong>{climateResult.scores.ventilation}</strong><span>Ventilation</span></div>
+              <div><Sun /><strong>{climateResult.scores.solarGain}</strong><span>Solar balance</span></div>
+              <div><Leaf /><strong>{climateResult.scores.shade}</strong><span>Shade</span></div>
+            </div>
+          </section>
+
+          <p className="section-intro">
+            Directional model from wall orientation, daily sun exposure, and cross-ventilation at{' '}
+            <strong>{climateResult.location}</strong>. Not a substitute for EnergyPlus — but the hot room shows up fast.
+          </p>
+
+          <section className="panel-section">
+            <div className="section-title"><h3>Room diagnostics</h3></div>
+            {climateResult.rooms.map((rc) => {
+              const sevLabel =
+                rc.severity >= 3 ? 'Critical' : rc.severity === 2 ? 'Recommended' : rc.severity === 1 ? 'Nice-to-have' : 'Comfortable'
+              const sevClass = rc.severity >= 3 ? 'sev-3' : rc.severity === 2 ? 'sev-2' : rc.severity === 1 ? 'sev-1' : 'sev-0'
+              return (
+                <div key={rc.room.id} className={`climate-room ${sevClass}`}>
+                  <div className="climate-room-head">
+                    <strong>{rc.room.name}</strong>
+                    <span className={`sev-badge ${sevClass}`}>{sevLabel}</span>
+                  </div>
+                  <div className="climate-room-stats">
+                    <span><Thermometer /> {rc.peakIndoorC.toFixed(0)}°C peak</span>
+                    <span><Zap /> +{rc.deltaC.toFixed(1)}°C over outdoor</span>
+                    <span><Wind /> {Math.round(rc.crossVentilation * 100)}% vent</span>
+                  </div>
+                  <small>{rc.ventilationNote}</small>
+                </div>
+              )
+            })}
+          </section>
+
+          <section className="panel-section">
+            <div className="section-title">
+              <h3>Suggestions</h3>
+              <span className="badge">{climateResult.suggestions.length}</span>
+            </div>
+            {climateResult.suggestions.length === 0 && (
+              <p className="section-intro">No critical issues detected — a solid passive starting point.</p>
+            )}
+            {climateResult.suggestions.map((suggestion, index) => {
+              const icon =
+                suggestion.kind === 'ventilation' ? <Wind /> :
+                suggestion.kind === 'shading' ? <Sun /> :
+                suggestion.kind === 'insulation' ? <Thermometer /> :
+                suggestion.kind === 'orientation' ? <Leaf /> :
+                <Lightbulb />
+              const sevClass = suggestion.severity === 3 ? 'sev-3' : suggestion.severity === 2 ? 'sev-2' : 'sev-1'
+              const roomName = suggestion.roomId ? plan.rooms.find((r) => r.id === suggestion.roomId)?.name : null
+              return (
+                <div key={`${suggestion.title}-${index}`} className={`suggestion-card ${sevClass}`}>
+                  <span className="suggestion-icon">{icon}</span>
+                  <div>
+                    <strong>{suggestion.title}</strong>
+                    <p>{suggestion.body}</p>
+                    {roomName && <small>Room: {roomName}</small>}
+                  </div>
+                  {suggestion.action && (
+                    <button type="button" className="button primary small" onClick={() => applySuggestion(suggestion)}>
+                      Apply <ArrowRight />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
           </section>
         </div>
       )}

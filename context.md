@@ -12,10 +12,18 @@
 
 ## Deploy targets
 
-- Frontend: https://nonarkara.github.io/luma-house/ (GitHub Pages workflow)
+- **Frontend (primary):** https://luma-house.pages.dev (Cloudflare Pages, project `luma-house`)
+- Latest deployment: https://8fbb6a98.luma-house.pages.dev (commit `1fa345c` — finger-draw rooms + furniture door-swing checks)
+- Mirror: https://nonarkara.github.io/luma-house/ (GitHub Pages workflow)
 - Repo: https://github.com/Nonarkara/luma-house
-- Optional static: Render (`render.yaml`)
 - Concept renders: Cloudflare Worker above
+
+## Deploy commands
+
+```bash
+npm run build
+npx wrangler pages deploy dist --project-name=luma-house --commit-dirty=true
+```
 
 ## Required secret (one-time)
 

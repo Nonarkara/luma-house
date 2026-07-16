@@ -2,14 +2,15 @@
 
 Luma House is a local-first home design prototype that turns a rough plan into an interactive conversation about space, daylight, intelligent systems, and cost. Users can move rooms, place windows and doors, trace an uploaded sketch, test the sun by place and time, compare plan directions, select energy systems, and export a live concept BOQ.
 
-## Run it
+## Deploy (Cloudflare Pages)
 
 ```bash
-npm install
-npm run dev
+npm run deploy:pages
 ```
 
-Then open the local URL printed by Vite. Production checks:
+Live: **https://luma-house.pages.dev**
+
+GitHub: **https://github.com/Nonarkara/luma-house**
 
 ```bash
 npm test
