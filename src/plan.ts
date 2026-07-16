@@ -3,6 +3,13 @@ import type { PlanState, Room } from './types'
 export const SITE_WIDTH_METERS = 14
 export const SITE_HEIGHT_METERS = 10
 
+export const locations = {
+  Bangkok: { latitude: 13.7563, label: 'Bangkok, TH' },
+  'Chiang Mai': { latitude: 18.7883, label: 'Chiang Mai, TH' },
+  Phuket: { latitude: 7.8804, label: 'Phuket, TH' },
+  Singapore: { latitude: 1.3521, label: 'Singapore, SG' },
+}
+
 export const initialRooms: Room[] = [
   { id: 'living', name: 'Living + dining', kind: 'living', x: 5, y: 6, w: 46, h: 43 },
   { id: 'kitchen', name: 'Kitchen', kind: 'kitchen', x: 51, y: 6, w: 28, h: 25 },

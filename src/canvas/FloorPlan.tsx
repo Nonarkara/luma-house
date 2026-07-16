@@ -1,21 +1,21 @@
 import { ArrowRight } from 'lucide-react'
-import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react'
+import React, { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { roomArea } from '../plan'
 import type { Opening, PlanState, Room, RoomKind } from '../types'
 import type { ResizeHandle } from './geometry'
 
 const roomColors: Record<RoomKind, string> = {
-  living: '#e9e0cd',
-  kitchen: '#d7dfce',
-  bedroom: '#e4d9d3',
-  bathroom: '#d9e2e0',
-  studio: '#e8e4d6',
-  terrace: '#dce8d1',
+  living: 'rgba(163, 255, 0, 0.06)',
+  kitchen: 'rgba(56, 189, 248, 0.06)',
+  bedroom: 'rgba(232, 121, 249, 0.06)',
+  bathroom: 'rgba(45, 212, 191, 0.06)',
+  studio: 'rgba(251, 146, 60, 0.06)',
+  terrace: 'transparent',
 }
 
 const HANDLES: ResizeHandle[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
 
-export function FloorPlan({
+export const FloorPlan = React.memo(function FloorPlan({
   plan,
   selectedRoom,
   selectedOpening,
@@ -131,4 +131,4 @@ export function FloorPlan({
       </div>
     </div>
   )
-}
+})

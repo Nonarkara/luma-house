@@ -1,16 +1,17 @@
+import React from 'react'
 import { Box, Sun } from 'lucide-react'
 import type { PlanState, RoomKind } from '../types'
 
 const roomColors: Record<RoomKind, string> = {
-  living: '#e9e0cd',
-  kitchen: '#d7dfce',
-  bedroom: '#e4d9d3',
-  bathroom: '#d9e2e0',
-  studio: '#e8e4d6',
-  terrace: '#dce8d1',
+  living: 'rgba(163, 255, 0, 0.1)',
+  kitchen: 'rgba(56, 189, 248, 0.1)',
+  bedroom: 'rgba(232, 121, 249, 0.1)',
+  bathroom: 'rgba(45, 212, 191, 0.1)',
+  studio: 'rgba(251, 146, 60, 0.1)',
+  terrace: 'transparent',
 }
 
-export function SpatialView({ plan }: { plan: PlanState }) {
+export const SpatialView = React.memo(function SpatialView({ plan }: { plan: PlanState }) {
   return (
     <div className="spatial-scene" aria-label="Conceptual spatial view">
       <div className="spatial-sun"><Sun /></div>
@@ -28,4 +29,4 @@ export function SpatialView({ plan }: { plan: PlanState }) {
       <div className="spatial-note"><Box /> Concept massing • 1:100</div>
     </div>
   )
-}
+})

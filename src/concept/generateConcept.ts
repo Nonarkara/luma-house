@@ -2,7 +2,9 @@ import type { PlanState } from '../types'
 import { buildRenderPrompt, buildRenderSummary } from './buildRenderPrompt'
 import { canGenerateConcept, getQuotaRemaining, recordConceptImage } from './renderQuota'
 
-const DEFAULT_API = import.meta.env.VITE_CONCEPT_API_URL as string | undefined
+const DEFAULT_API =
+  (import.meta.env.VITE_CONCEPT_API_URL as string | undefined) ||
+  'https://luma-concept-render.drnon.workers.dev'
 
 export interface ConceptResult {
   imageDataUrl: string
