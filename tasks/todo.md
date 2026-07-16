@@ -18,6 +18,13 @@ dragged bed to a door → red flag + "blocks a door swing" chip. 36 tests green.
 Learned: finalize gesture data from refs, not state closures — instant
 down/move/up sequences batch in React and lose state-only strokes.
 
-Remaining (vision gap, next increments): sun patches cast into rooms through
-openings (real light, not a ray icon), true 3D walkthrough view, sketch
-auto-trace assist, material/installation guidance, honest light score.
+## Review — sun increment, shipped 2026-07-16 (Sonnet-implemented, Fable-specced)
+
+Real sun patches through windows (depth = 2.4m / tan(altitude), clipped to the
+lit room), honest daylight panel (measured m² + lit rooms replace the fake
+score), Quito + Anchorage locations. 41 tests green. Live at
+luma-house.pages.dev (deployment 515c5b5b). Visually verified: Bangkok 15:00
+lights 3 rooms from the WSW; Anchorage same hour lights 2 rooms from the NW.
+
+Remaining (vision gap, next increments): true 3D walkthrough view, sketch
+auto-trace assist, material/installation guidance feeding the BOQ.
