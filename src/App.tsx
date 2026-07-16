@@ -60,6 +60,8 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const panMovedRef = useRef(false)
   const drawPointerRef = useRef<number | null>(null)
+  // Source of truth for the active stroke; draftStroke state only mirrors it for rendering.
+  const strokePointsRef = useRef<StrokePoint[]>([])
 
   const {
     viewport,
@@ -153,7 +155,8 @@ function App() {
       } catch {
         // Synthetic pointers (tests) have no active pointer to capture.
       }
-      setDraftStroke([clientToPercent(event.clientX, event.clientY, bounds)])
+      strokePointsRef.current = [clientToPercent(event.clientX, event.clientY, bounds)]
+      setDraftStroke(strokePointsRef.current)
       return
     }
     if (activeTool !== 'select') return
@@ -176,8 +179,8 @@ function App() {
     if (drawPointerRef.current === event.pointerId) {
       const bounds = stageRef.current?.getBoundingClientRect()
       if (!bounds) return
-      const point = clientToPercent(event.clientX, event.clientY, bounds)
-      setDraftStroke((points) => (points ? [...points, point] : points))
+      strokePointsRef.current = [...strokePointsRef.current, clientToPercent(event.clientX, event.clientY, bounds)]
+      setDraftStroke(strokePointsRef.current)
       return
     }
     onViewportPointerMove(event)
@@ -187,7 +190,8 @@ function App() {
   const handleCanvasPointerUp = useCallback((event: ReactPointerEvent) => {
     if (drawPointerRef.current === event.pointerId) {
       drawPointerRef.current = null
-      const rect = draftStroke ? strokeToRoomRect(draftStroke) : null
+      const rect = strokeToRoomRect(strokePointsRef.current)
+      strokePointsRef.current = []
       setDraftStroke(null)
       if (!rect) {
         setToast('Sketch a rough room outline — it snaps to scale')
@@ -201,7 +205,7 @@ function App() {
       return
     }
     onViewportPointerUp(event)
-  }, [commit, draftStroke, onViewportPointerUp])
+  }, [commit, onViewportPointerUp])
 
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (panMovedRef.current || isGesturing()) return
