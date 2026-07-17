@@ -44,6 +44,10 @@ export interface RoomClimate {
   peakIndoorC: number
   /** Degrees above outdoor in the worst case */
   deltaC: number
+  /** Estimated occupied-hours per year above the comfort threshold (directional) */
+  overheatingHours: number
+  /** Month (1–12) with the most overheating; 0 when none */
+  overheatingWorstMonth: number
   /** Severity: 0 = no issue, 1 = nice-to-have, 2 = recommended, 3 = critical */
   severity: number
 }

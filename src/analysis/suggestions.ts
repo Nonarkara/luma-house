@@ -135,6 +135,34 @@ export function generateSuggestions(result: AnalysisResult, plan: PlanState): Su
     })
   }
 
+  // 8. Location-specific ventilation strategy (passive-first, climate-aware)
+  const locName = result.location || 'Bangkok'
+  if (locName.includes('Anchorage')) {
+    out.unshift({
+      roomId: null,
+      severity: 3,
+      kind: 'ventilation',
+      title: 'Specify HRV for cold-climate ventilation',
+      body: 'Anchorage needs controlled fresh air without dumping heat. A heat-recovery ventilator captures exhaust warmth and pre-heats incoming air — standard practice below −10°C design temps.',
+    })
+  } else if (locName.includes('Quito')) {
+    out.unshift({
+      roomId: null,
+      severity: 2,
+      kind: 'ventilation',
+      title: 'Use high-level louvers for diurnal thermal mass',
+      body: 'Quito\'s mild days and cool nights reward operable high louvers: open during the warm afternoon for purge ventilation, close at sunset to retain mass warmth in thick walls.',
+    })
+  } else {
+    out.unshift({
+      roomId: null,
+      severity: 2,
+      kind: 'ventilation',
+      title: 'Stack passive cooling before mechanical AC',
+      body: 'In this climate, pair cross-ventilation with a solar chimney or high-level exhaust shaft. Ceiling fans move air at roughly 5% the energy cost of split AC for most occupied hours.',
+    })
+  }
+
   return out
 }
 

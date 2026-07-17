@@ -6,9 +6,10 @@ export interface RenderContext {
   locationLabel: string
   hour: number
   projectName?: string
+  styleKeywords?: string
 }
 
-export function buildRenderPrompt({ plan, locationLabel, hour, projectName = 'River Courtyard House' }: RenderContext): string {
+export function buildRenderPrompt({ plan, locationLabel, hour, projectName = 'River Courtyard House', styleKeywords }: RenderContext): string {
   const rooms = plan.rooms
     .map((room) => `${room.name} (${roomArea(room).toFixed(1)} m²)`)
     .join(', ')
@@ -25,7 +26,7 @@ export function buildRenderPrompt({ plan, locationLabel, hour, projectName = 'Ri
     `Location atmosphere: ${locationLabel}. Time of day: ${timeLabel}, soft natural light.`,
     `Program: ${rooms}.`,
     `Openings: ${windows} windows, ${doors} doors. Systems emphasis: ${systems}.`,
-    'Style: quiet contemporary tropical residential, timber and light concrete, deep eaves, shaded terrace, green courtyard.',
+    `Style: ${styleKeywords || 'quiet contemporary tropical residential, timber and light concrete, deep eaves, shaded terrace, green courtyard'}.`,
     'Camera: exterior eye-level three-quarter view of the house and courtyard, photographic realism for a design concept board.',
     'Important: this is a concept visualization only, not a photograph of a finished building. No text, logos, watermarks, or UI chrome.',
   ].join(' ')

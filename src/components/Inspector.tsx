@@ -5,6 +5,7 @@ import {
   CircleDollarSign,
   CloudSun,
   Download,
+  Flame,
   Grid2X2,
   ImagePlus,
   Layers3,
@@ -21,8 +22,9 @@ import {
   Zap,
 } from 'lucide-react'
 import { IconButton, Toggle } from './ui'
-import { formatTHB, roomArea } from '../plan'
-import type { SunPatch } from '../plan'
+import { estimateEnergySavings, formatTHB, roomArea } from '../plan'
+import type { CarbonLine, SunPatch } from '../plan'
+import { automationRules, lightingChannels, lightingScenes } from '../mockups/completeHouse'
 import type { AnalysisResult, Suggestion } from '../analysis'
 import type { PlanState, PlanTool, Room, WorkspaceMode } from '../types'
 
@@ -57,7 +59,9 @@ export interface InspectorProps {
   day: number
   setDay: (day: number) => void
   setActiveTool: (tool: PlanTool) => void
-  budget: { area: number; subtotal: number; total: number; items: { label: string; amount: number }[] }
+  budget: { area: number; subtotal: number; total: number; items: { label: string; amount: number; quantity: number; unit: string; rate: number }[] }
+  carbon: { lines: CarbonLine[]; totalKg: number; kgPerM2: number }
+  importProject: (event: React.ChangeEvent<HTMLInputElement>) => void
   exportPlan: () => void
   variants: Array<{ name: string; note: string; rooms: Room[] }>
   snapGrid: boolean
@@ -66,6 +70,8 @@ export interface InspectorProps {
   setShowGrid: React.Dispatch<React.SetStateAction<boolean>>
   climateResult: AnalysisResult
   applySuggestion: (suggestion: Suggestion) => void
+  styleKeywords: string
+  setStyleKeywords: React.Dispatch<React.SetStateAction<string>>
 }
 
 export const Inspector = React.memo(function Inspector({
@@ -100,6 +106,8 @@ export const Inspector = React.memo(function Inspector({
   setDay,
   setActiveTool,
   budget,
+  carbon,
+  importProject,
   exportPlan,
   variants,
   snapGrid,
@@ -108,7 +116,13 @@ export const Inspector = React.memo(function Inspector({
   setShowGrid,
   climateResult,
   applySuggestion,
+  styleKeywords,
+  setStyleKeywords,
 }: InspectorProps) {
+  const [lightingLevels, setLightingLevels] = React.useState<Record<string, number>>(() => ({ ...lightingScenes.Entertain }))
+  const [activeLightingScene, setActiveLightingScene] = React.useState('Entertain')
+  const importInputRef = React.useRef<HTMLInputElement>(null)
+
   if (!inspectorOpen) return null
 
   const directSunPercent = Math.round((100 * directSunM2) / Math.max(1, budget.area))
@@ -155,6 +169,10 @@ export const Inspector = React.memo(function Inspector({
             <button className="button secondary full" type="button" onClick={resetPlan}>
               <RotateCcw /> Reset plan
             </button>
+            <input ref={importInputRef} type="file" accept="application/json,.json" onChange={importProject} hidden />
+            <button className="button secondary full" type="button" onClick={() => importInputRef.current?.click()}>
+              <Upload /> Import project JSON
+            </button>
             <button className="button dark full" type="button" onClick={() => setSettingsOpen(false)}>
               Back to {mode}
             </button>
@@ -190,7 +208,17 @@ export const Inspector = React.memo(function Inspector({
               <h3>Concept photo</h3>
               <span className="badge">{quotaLeft} left</span>
             </div>
-            <p className="section-intro">Limited Gemini concept renders from this plan. Concept only — not a photograph of a real building.</p>
+            <p className="section-intro">Style keywords feed the concept render and the live finish estimate below.</p>
+            <label className="field-label" style={{ marginBottom: 12 }}>
+              Style & interior keywords
+              <input
+                type="text"
+                placeholder="e.g. cozy tropical cabin, warm wood, minimalist"
+                value={styleKeywords}
+                onChange={(e) => setStyleKeywords(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </label>
             <button
               className="button primary full"
               type="button"
@@ -285,6 +313,41 @@ export const Inspector = React.memo(function Inspector({
               <input type="range" min="1" max="365" value={day} onChange={(event) => setDay(Number(event.target.value))} />
             </label>
           </section>
+          <section className="panel-section lighting-schedule">
+            <div className="section-title">
+              <div><p className="eyebrow">Control schedule</p><h3>Six lighting channels</h3></div>
+              <span className="badge">204 W</span>
+            </div>
+            <div className="scene-buttons" aria-label="Lighting scenes">
+              {Object.entries(lightingScenes).map(([scene, levels]) => (
+                <button
+                  key={scene}
+                  type="button"
+                  className={activeLightingScene === scene ? 'active' : ''}
+                  onClick={() => { setActiveLightingScene(scene); setLightingLevels(levels) }}
+                >
+                  {scene}
+                </button>
+              ))}
+            </div>
+            <div className="channel-list">
+              {lightingChannels.map((channel) => (
+                <label key={channel.id} className="channel-row">
+                  <span className="channel-code">{channel.circuit}</span>
+                  <span><strong>{channel.name}</strong><small>{channel.zone} · {channel.loadWatts} W · {channel.control}</small></span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={lightingLevels[channel.id] ?? 0}
+                    onChange={(event) => { setActiveLightingScene('Custom'); setLightingLevels((levels) => ({ ...levels, [channel.id]: Number(event.target.value) })) }}
+                    aria-label={`${channel.name} level`}
+                  />
+                  <b>{lightingLevels[channel.id] ?? 0}%</b>
+                </label>
+              ))}
+            </div>
+          </section>
           <section className="insight-card">
             <CloudSun />
             <div>
@@ -329,7 +392,8 @@ export const Inspector = React.memo(function Inspector({
 
           <p className="section-intro">
             Directional model from wall orientation, daily sun exposure, and cross-ventilation at{' '}
-            <strong>{climateResult.location}</strong>. Not a substitute for EnergyPlus — but the hot room shows up fast.
+            <strong>{climateResult.location}</strong>. Annual overheating samples one day per month, 07:00–19:00.
+            Not a substitute for EnergyPlus — but the hot room shows up fast.
           </p>
 
           <section className="panel-section">
@@ -348,6 +412,9 @@ export const Inspector = React.memo(function Inspector({
                     <span><Thermometer /> {rc.peakIndoorC.toFixed(0)}°C peak</span>
                     <span><Zap /> +{rc.deltaC.toFixed(1)}°C over outdoor</span>
                     <span><Wind /> {Math.round(rc.crossVentilation * 100)}% vent</span>
+                    <span className={rc.overheatingHours > 0 ? 'overheat-stat' : ''}>
+                      <Flame /> {rc.overheatingHours > 0 ? `${rc.overheatingHours} h/yr >30°C` : 'No overheating'}
+                    </span>
                   </div>
                   <small>{rc.ventilationNote}</small>
                 </div>
@@ -397,7 +464,7 @@ export const Inspector = React.memo(function Inspector({
           <section className="energy-hero">
             <div>
               <p className="eyebrow">Predicted reduction</p>
-              <strong>−{Math.min(68, (plan.systems.solar ? 26 : 0) + (plan.systems.insulation ? 18 : 0) + (plan.systems.climate ? 13 : 0) + (plan.systems.lighting ? 7 : 0))}%</strong>
+              <strong>−{estimateEnergySavings(plan.systems)}%</strong>
               <span>annual energy use</span>
             </div>
             <div className="energy-bars"><i /><i /><i /><i /><i /></div>
@@ -432,6 +499,25 @@ export const Inspector = React.memo(function Inspector({
               <p>The current orientation and envelope remove most of the cooling load before equipment is added.</p>
             </div>
           </section>
+          <section className="panel-section system-summary">
+            <div className="section-title"><h3>Installed capacity</h3><span className="badge">Coordinated</span></div>
+            <div className="system-metrics">
+              <span><strong>7.2 kWp</strong><small>solar array</small></span>
+              <span><strong>13.5 kWh</strong><small>battery</small></span>
+              <span><strong>3 zones</strong><small>heat-pump</small></span>
+              <span><strong>6</strong><small>DALI channels</small></span>
+            </div>
+          </section>
+          <section className="panel-section automation-list">
+            <div className="section-title"><h3>Automation rules</h3><span className="badge">4 active</span></div>
+            {automationRules.map((rule, index) => (
+              <div className="automation-row" key={rule.name}>
+                <span>0{index + 1}</span>
+                <div><strong>{rule.name}</strong><small>{rule.trigger}</small><p>{rule.action}</p></div>
+                <i />
+              </div>
+            ))}
+          </section>
         </div>
       )}
 
@@ -450,7 +536,7 @@ export const Inspector = React.memo(function Inspector({
             {budget.items.map((item, index) => (
               <div className="cost-row" key={item.label}>
                 <i style={{ width: `${(item.amount / Math.max(1, ...budget.items.map((entry) => entry.amount))) * 100}%` }} />
-                <span><b>0{index + 1}</b>{item.label}</span>
+                <span><b>{String(index + 1).padStart(2, '0')}</b><span>{item.label}<small>{item.quantity.toFixed(item.unit === 'm²' ? 1 : 0)} {item.unit} × {formatTHB(item.rate)}</small></span></span>
                 <strong>{formatTHB(item.amount)}</strong>
               </div>
             ))}
@@ -458,16 +544,51 @@ export const Inspector = React.memo(function Inspector({
               <span>Subtotal</span><strong>{formatTHB(budget.subtotal)}</strong>
             </div>
           </section>
+          <section className="panel-section carbon-list">
+            <div className="section-title">
+              <h3>Embodied carbon</h3>
+              <span className="badge carbon-badge">{(carbon.totalKg / 1000).toFixed(1)} t CO₂e</span>
+            </div>
+            {carbon.lines.map((line) => (
+              <div className="carbon-row" key={line.label}>
+                <span>{line.label}<small>{line.basis}</small></span>
+                <strong>{line.kgCO2e >= 1000 ? `${(line.kgCO2e / 1000).toFixed(1)} t` : `${Math.round(line.kgCO2e)} kg`}</strong>
+              </div>
+            ))}
+            <div className="cost-subtotal">
+              <span>Per m² of floor</span><strong>{Math.round(carbon.kgPerM2)} kg CO₂e</strong>
+            </div>
+            <p className="legal-note">Concept-level factors in the spirit of the ICE Database. Product-specific EPDs replace these at tender.</p>
+          </section>
           <section className="insight-card">
             <CircleDollarSign />
             <div>
-              <strong>Compact plan saves ~฿640k</strong>
-              <p>Apply “Compact shade” to reduce envelope, structure, and conditioned area together.</p>
+              <strong>100 m² is the cost anchor</strong>
+              <p>Every authored direction preserves the same measured area, so cost changes reflect specification—not hidden floor growth.</p>
               <button type="button" onClick={() => applyVariant(2)}>
-                Apply direction <ArrowRight />
+                Compare work-from-garden <ArrowRight />
               </button>
             </div>
           </section>
+          
+          <section className="panel-section">
+            <label className="field-label">
+              Style & finish keywords
+              <input
+                type="text"
+                placeholder="e.g. luxury gold marble, minimalist cozy"
+                value={styleKeywords}
+                onChange={(e) => setStyleKeywords(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </label>
+            <p className="legal-note" style={{ marginTop: 6, fontSize: '10.5px', lineHeight: '1.4' }}>
+              Keywords like <strong>luxury</strong>, <strong>marble</strong>, or <strong>premium</strong> scale finishes up.
+              <strong>Smart</strong> or <strong>digital</strong> scale automation.
+              <strong>Minimalist</strong> or <strong>cozy</strong> scale finishes down.
+            </p>
+          </section>
+
           <button className="button dark full" type="button" onClick={exportPlan}>
             <Download /> Export project + BOQ
           </button>

@@ -95,12 +95,45 @@ export function scaleRoomFromCenter(room: Room, scale: number, snapGrid: boolean
   }
 }
 
-export function moveOpening(opening: Opening, dx: number, dy: number, snapGrid: boolean): Opening {
-  return {
+export function moveOpening(opening: Opening, dx: number, dy: number, snapGrid: boolean, rooms: Room[] = []): Opening {
+  const moved = {
     ...opening,
     x: Math.max(1, Math.min(99, snap(opening.x + dx, snapGrid))),
     y: Math.max(1, Math.min(99, snap(opening.y + dy, snapGrid))),
   }
+  return snapOpeningToWall(moved, rooms)
+}
+
+// An opening is only meaningful on a wall — sun patches, ventilation scores,
+// and the rendered glyph all assume it. Snap to the nearest room edge within
+// reach and derive the rotation from that wall (N/S walls → horizontal glyph).
+const WALL_SNAP_PCT = 5
+
+export function snapOpeningToWall(opening: Opening, rooms: Room[]): Opening {
+  let best: { distance: number; x: number; y: number; rotation: 0 | 90 } | null = null
+  for (const room of rooms) {
+    const right = room.x + room.w
+    const bottom = room.y + room.h
+    // (distance off the edge, snapped position, rotation) per wall, only when
+    // the opening falls within the wall's span (with a small margin).
+    const margin = 2
+    const inSpanX = opening.x >= room.x - margin && opening.x <= right + margin
+    const inSpanY = opening.y >= room.y - margin && opening.y <= bottom + margin
+    const candidates: Array<{ distance: number; x: number; y: number; rotation: 0 | 90 }> = []
+    if (inSpanX) {
+      candidates.push({ distance: Math.abs(opening.y - room.y), x: opening.x, y: room.y, rotation: 0 })
+      candidates.push({ distance: Math.abs(opening.y - bottom), x: opening.x, y: bottom, rotation: 0 })
+    }
+    if (inSpanY) {
+      candidates.push({ distance: Math.abs(opening.x - room.x), x: room.x, y: opening.y, rotation: 90 })
+      candidates.push({ distance: Math.abs(opening.x - right), x: right, y: opening.y, rotation: 90 })
+    }
+    for (const candidate of candidates) {
+      if (!best || candidate.distance < best.distance) best = candidate
+    }
+  }
+  if (!best || best.distance > WALL_SNAP_PCT) return opening
+  return { ...opening, x: best.x, y: best.y, rotation: best.rotation }
 }
 
 export interface StrokePoint {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { calculateBudget, estimateEnergySavings, furnitureDoorConflicts, furnitureRect, initialPlan, locations, roomArea, solarPosition, sunPatches, totalArea } from './plan'
-import type { Opening, PlanState } from './types'
+import { calculateBudget, estimateEmbodiedCarbon, estimateEnergySavings, furnitureDoorConflicts, furnitureRect, initialPlan, locations, roomArea, roomOverlaps, solarPosition, sunPatches, totalArea } from './plan'
+import type { Opening, PlanState, Room } from './types'
 
 describe('plan calculations', () => {
   it('converts percentage room dimensions into square meters', () => {
@@ -87,5 +87,37 @@ describe('plan calculations', () => {
   it('adds Quito and Anchorage to the location list', () => {
     expect(locations.Quito.latitude).toBeLessThan(0)
     expect(locations.Anchorage.latitude).toBeGreaterThan(61)
+  })
+
+  it('scales budget from style keywords without changing base area', () => {
+    const base = calculateBudget(initialPlan)
+    const luxury = calculateBudget(initialPlan, 'luxury marble premium')
+    const minimal = calculateBudget(initialPlan, 'minimalist cozy simple')
+    expect(luxury.area).toBe(base.area)
+    expect(luxury.total).toBeGreaterThan(base.total)
+    expect(minimal.total).toBeLessThan(base.total)
+  })
+
+  const rect = (id: string, x: number, y: number, w: number, h: number): Room => ({ id, name: id, kind: 'studio', x, y, w, h })
+
+  it('flags overlapping rooms and clears clean layouts', () => {
+    const clean = roomOverlaps([rect('a', 0, 0, 30, 30), rect('b', 30, 0, 30, 30)])
+    expect(clean.size).toBe(0)
+    const clashing = roomOverlaps([rect('a', 0, 0, 30, 30), rect('b', 20, 10, 30, 30), rect('c', 60, 60, 20, 20)])
+    expect(clashing.has('a')).toBe(true)
+    expect(clashing.has('b')).toBe(true)
+    expect(clashing.has('c')).toBe(false)
+  })
+
+  it('estimates embodied carbon with transparent per-line factors', () => {
+    const carbon = estimateEmbodiedCarbon(initialPlan)
+    expect(carbon.totalKg).toBeGreaterThan(0)
+    expect(carbon.kgPerM2).toBeCloseTo(carbon.totalKg / totalArea(initialPlan.rooms), 1)
+    expect(carbon.lines.length).toBeGreaterThanOrEqual(5)
+    const summed = carbon.lines.reduce((sum, line) => sum + line.kgCO2e, 0)
+    expect(carbon.totalKg).toBeCloseTo(summed, 6)
+    // Systems add real lines, not hidden multipliers.
+    const bare = estimateEmbodiedCarbon({ ...initialPlan, systems: { solar: false, insulation: false, climate: false, lighting: false } })
+    expect(bare.totalKg).toBeLessThan(carbon.totalKg)
   })
 })

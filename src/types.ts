@@ -44,4 +44,4 @@ export interface PlanState {
 
 export type PlanTool = 'select' | 'draw' | 'window' | 'door'
 export type WorkspaceMode = 'plan' | 'light' | 'climate' | 'systems' | 'budget'
-export type CanvasView = 'plan' | 'spatial'
+export type CanvasView = 'plan' | 'spatial' | 'renders'

@@ -3,6 +3,7 @@ import { wallSunForDay, wallNeedsShade } from './sunHours'
 import { crossVentilationScore } from './ventilation'
 import { thermalProfile } from './thermal'
 import { generateSuggestions } from './suggestions'
+import { overheatingProfile } from './overheating'
 import type { AnalysisInput, AnalysisResult, RoomClimate, WallSun } from './types'
 
 export type { AnalysisInput, AnalysisResult, RoomClimate, WallSun, Suggestion, Compass } from './types'
@@ -11,6 +12,7 @@ export { wallSunForDay, wallNeedsShade } from './sunHours'
 export { crossVentilationScore, missingOppositeWall } from './ventilation'
 export { thermalProfile, peakOutdoorC } from './thermal'
 export { generateSuggestions } from './suggestions'
+export { overheatingProfile, OVERHEAT_THRESHOLD_C } from './overheating'
 
 const SCAN_DAY_DEFAULT = 172 // ~summer solstice (June 21 in northern hemisphere)
 
@@ -53,6 +55,14 @@ export function analyze(input: AnalysisInput): AnalysisResult {
       insulationOn: plan.systems.insulation,
       latitude: location.latitude,
     })
+    const overheat = overheatingProfile({
+      latitude: location.latitude,
+      plan,
+      room,
+      walls: roomWalls,
+      ventilationScore: vent.score,
+      insulationOn: plan.systems.insulation,
+    })
     const sev = severity(roomWalls, vent.score, thermal.stress)
     return {
       room,
@@ -62,6 +72,8 @@ export function analyze(input: AnalysisInput): AnalysisResult {
       comfortScore: 1 - thermal.stress,
       peakIndoorC: thermal.peakIndoorC,
       deltaC: thermal.deltaC,
+      overheatingHours: overheat.hoursPerYear,
+      overheatingWorstMonth: overheat.worstMonth,
       severity: sev,
     }
   })

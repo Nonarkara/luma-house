@@ -3,13 +3,14 @@ import { ChevronDown, Copy, Download, Menu } from 'lucide-react'
 import { Logo, IconButton } from './ui'
 
 interface TopBarProps {
+  projectName: string
   lastSaved: string
   setMobileNavOpen: React.Dispatch<React.SetStateAction<boolean>>
   exportPlan: () => void
-  setToast: React.Dispatch<React.SetStateAction<string | null>>
+  sharePlan: () => void
 }
 
-export const TopBar = React.memo(function TopBar({ lastSaved, setMobileNavOpen, exportPlan, setToast }: TopBarProps) {
+export const TopBar = React.memo(function TopBar({ projectName, lastSaved, setMobileNavOpen, exportPlan, sharePlan }: TopBarProps) {
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -19,7 +20,7 @@ export const TopBar = React.memo(function TopBar({ lastSaved, setMobileNavOpen, 
         <Logo />
         <span className="top-divider" />
         <button className="project-picker" type="button">
-          <span><strong>River Courtyard House</strong><small>{lastSaved}</small></span>
+          <span><strong>{projectName}</strong><small>{lastSaved}</small></span>
           <ChevronDown />
         </button>
       </div>
@@ -27,7 +28,7 @@ export const TopBar = React.memo(function TopBar({ lastSaved, setMobileNavOpen, 
         <button
           className="button secondary"
           type="button"
-          onClick={() => navigator.clipboard?.writeText(window.location.href).then(() => setToast('Project link copied'))}
+          onClick={sharePlan}
         >
           <Copy /> Share
         </button>

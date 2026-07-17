@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject, type WheelEvent as ReactWheelEvent } from 'react'
 
-const MIN_ZOOM = 0.5
+export const MIN_ZOOM = 1
 const MAX_ZOOM = 2.5
 const ZOOM_STEP = 0.1
 
@@ -12,6 +12,19 @@ export interface ViewportState {
 
 function clampZoom(zoom: number) {
   return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom))
+}
+
+export function constrainViewport(viewport: ViewportState, width: number, height: number): ViewportState {
+  const zoom = clampZoom(viewport.zoom)
+  if (zoom === MIN_ZOOM) return { zoom, panX: 0, panY: 0 }
+
+  const maxPanX = Math.max(0, (width * (zoom - 1)) / 2)
+  const maxPanY = Math.max(0, (height * (zoom - 1)) / 2)
+  return {
+    zoom,
+    panX: Math.max(-maxPanX, Math.min(maxPanX, viewport.panX)),
+    panY: Math.max(-maxPanY, Math.min(maxPanY, viewport.panY)),
+  }
 }
 
 export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
@@ -33,17 +46,18 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
     setViewport((current) => {
       const nextZoom = clampZoom(current.zoom + delta)
       if (nextZoom === current.zoom) return current
+      const frame = frameRef.current
       if (originX === undefined || originY === undefined) {
-        return { ...current, zoom: nextZoom }
+        return constrainViewport({ ...current, zoom: nextZoom }, frame?.clientWidth ?? 0, frame?.clientHeight ?? 0)
       }
       const scale = nextZoom / current.zoom
-      return {
+      return constrainViewport({
         zoom: nextZoom,
         panX: originX - (originX - current.panX) * scale,
         panY: originY - (originY - current.panY) * scale,
-      }
+      }, frame?.clientWidth ?? 0, frame?.clientHeight ?? 0)
     })
-  }, [])
+  }, [frameRef])
 
   const zoomIn = useCallback(() => zoomBy(ZOOM_STEP), [zoomBy])
   const zoomOut = useCallback(() => zoomBy(-ZOOM_STEP), [zoomBy])
@@ -65,7 +79,7 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
 
   const beginPan = useCallback(
     (event: ReactPointerEvent) => {
-      if (event.button !== 0) return
+      if (event.button !== 0 || viewport.zoom <= MIN_ZOOM) return
       panRef.current = {
         pointerId: event.pointerId,
         startX: event.clientX,
@@ -75,18 +89,19 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
       }
       event.currentTarget.setPointerCapture(event.pointerId)
     },
-    [viewport.panX, viewport.panY],
+    [viewport.panX, viewport.panY, viewport.zoom],
   )
 
   const movePan = useCallback((event: ReactPointerEvent) => {
     const pan = panRef.current
     if (!pan || pan.pointerId !== event.pointerId) return
-    setViewport((current) => ({
+    const frame = frameRef.current
+    setViewport((current) => constrainViewport({
       ...current,
       panX: pan.originX + (event.clientX - pan.startX),
       panY: pan.originY + (event.clientY - pan.startY),
-    }))
-  }, [])
+    }, frame?.clientWidth ?? 0, frame?.clientHeight ?? 0))
+  }, [frameRef])
 
   const endPan = useCallback((event: ReactPointerEvent) => {
     const pan = panRef.current
@@ -142,11 +157,11 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
           const midY = (pts[0].y + pts[1].y) / 2 - bounds.top
           setViewport((current) => {
             const scale = nextZoom / current.zoom
-            return {
+            return constrainViewport({
               zoom: nextZoom,
               panX: midX - (midX - current.panX) * scale,
               panY: midY - (midY - current.panY) * scale,
-            }
+            }, bounds.width, bounds.height)
           })
         }
         return
@@ -182,9 +197,23 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
     return () => frame.removeEventListener('wheel', prevent)
   }, [frameRef])
 
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+    const fitToBounds = () => {
+      setViewport((current) => constrainViewport(current, frame.clientWidth, frame.clientHeight))
+    }
+    fitToBounds()
+    const observer = new ResizeObserver(fitToBounds)
+    observer.observe(frame)
+    return () => observer.disconnect()
+  }, [frameRef])
+
   return {
     viewport,
     zoomPercent: Math.round(viewport.zoom * 100),
+    canZoomIn: viewport.zoom < MAX_ZOOM,
+    canZoomOut: viewport.zoom > MIN_ZOOM,
     zoomIn,
     zoomOut,
     resetView,

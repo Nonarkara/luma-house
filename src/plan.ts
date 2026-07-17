@@ -125,6 +125,28 @@ export function totalArea(rooms: Room[]): number {
   return rooms.reduce((sum, room) => sum + roomArea(room), 0)
 }
 
+/**
+ * Ids of rooms whose rectangles overlap. Overlapping floor area is
+ * double-counted by totalArea and breaks the shared-wall logic in the
+ * climate analysis, so the UI flags it instead of hiding it.
+ */
+export function roomOverlaps(rooms: Room[]): Set<string> {
+  const overlapping = new Set<string>()
+  for (let i = 0; i < rooms.length; i += 1) {
+    for (let j = i + 1; j < rooms.length; j += 1) {
+      const a = rooms[i]
+      const b = rooms[j]
+      const overlapX = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
+      const overlapY = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
+      if (overlapX > 0.1 && overlapY > 0.1) {
+        overlapping.add(a.id)
+        overlapping.add(b.id)
+      }
+    }
+  }
+  return overlapping
+}
+
 export function formatTHB(value: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -133,23 +155,84 @@ export function formatTHB(value: number): string {
   }).format(value)
 }
 
-export function calculateBudget(plan: PlanState) {
+export function calculateBudget(plan: PlanState, styleKeywords: string = '') {
   const area = totalArea(plan.rooms)
-  const systemsCost =
+  
+  // Keyword-based budget multipliers for child-friendly/custom styles
+  const keywords = styleKeywords.toLowerCase()
+  let finishMultiplier = 1.0
+  let structureMultiplier = 1.0
+  let systemsMultiplier = 1.0
+  let playfulAddition = 0
+  
+  if (keywords.includes('luxury') || keywords.includes('gold') || keywords.includes('marble') || keywords.includes('premium') || keywords.includes('designer')) {
+    finishMultiplier = 1.8
+    structureMultiplier = 1.3
+  }
+  if (keywords.includes('minimalist') || keywords.includes('simple') || keywords.includes('diy') || keywords.includes('cozy') || keywords.includes('wooden')) {
+    finishMultiplier = 0.85
+  }
+  if (keywords.includes('smart') || keywords.includes('digital') || keywords.includes('cyber') || keywords.includes('high tech') || keywords.includes('iot')) {
+    systemsMultiplier = 1.6
+  }
+  if (keywords.includes('playful') || keywords.includes('kids') || keywords.includes('child') || keywords.includes('color') || keywords.includes('family')) {
+    playfulAddition = 120_000
+  }
+
+  const energySystemsCost =
     (plan.systems.solar ? 290_000 : 0) +
     (plan.systems.insulation ? area * 1_250 : 0) +
-    (plan.systems.climate ? 185_000 : 0) +
-    (plan.systems.lighting ? 95_000 : 0)
+    (plan.systems.climate ? 185_000 : 0)
+  const lightingCost = (plan.systems.lighting ? 21_000 : 8_000) * 6 * systemsMultiplier
 
   const items = [
-    { label: 'Structure', amount: area * 17_800 },
-    { label: 'Envelope', amount: area * 6_200 + plan.openings.length * 8_500 },
-    { label: 'Interior finishes', amount: area * 8_900 },
-    { label: 'MEP services', amount: area * 4_600 },
-    { label: 'Intelligent systems', amount: systemsCost },
+    { label: 'Preliminaries', quantity: area, unit: 'm²', rate: 1_200, amount: area * 1_200 },
+    { label: 'Structure', quantity: area, unit: 'm²', rate: 16_400 * structureMultiplier, amount: area * 16_400 * structureMultiplier },
+    { label: 'Roof & envelope', quantity: area, unit: 'm²', rate: 6_200, amount: area * 6_200 },
+    { label: 'Windows & doors', quantity: plan.openings.length, unit: 'units', rate: 8_500, amount: plan.openings.length * 8_500 },
+    { label: 'Interior finishes', quantity: area, unit: 'm²', rate: 8_100 * finishMultiplier, amount: area * 8_100 * finishMultiplier },
+    { label: 'Built-in joinery', quantity: area, unit: 'm²', rate: 2_400 * finishMultiplier, amount: area * 2_400 * finishMultiplier },
+    { label: 'Plumbing & electrical', quantity: area, unit: 'm²', rate: 4_600, amount: area * 4_600 },
+    { label: 'Lighting & controls', quantity: 6, unit: 'channels', rate: lightingCost / 6, amount: lightingCost },
+    { label: 'Energy & automation', quantity: 1, unit: 'system', rate: energySystemsCost * systemsMultiplier, amount: energySystemsCost * systemsMultiplier },
   ]
+
+  if (playfulAddition > 0) {
+    items.push({ label: 'Playful additions', quantity: 1, unit: 'allowance', rate: playfulAddition, amount: playfulAddition })
+  }
+
   const subtotal = items.reduce((sum, item) => sum + item.amount, 0)
   return { area, items, subtotal, total: subtotal * 1.1 }
+}
+
+// ---------------------------------------------------------------------------
+// Embodied carbon — concept-level factors in kgCO₂e, aligned with
+// ICE-database order of magnitude for residential construction. Directional
+// only; a real LCA needs product-level EPDs.
+// ---------------------------------------------------------------------------
+export interface CarbonLine {
+  label: string
+  basis: string
+  kgCO2e: number
+}
+
+export function estimateEmbodiedCarbon(plan: PlanState): { lines: CarbonLine[]; totalKg: number; kgPerM2: number } {
+  const area = totalArea(plan.rooms)
+  const lines: CarbonLine[] = [
+    { label: 'Structure & slab', basis: `${area.toFixed(1)} m² × 280 kg`, kgCO2e: area * 280 },
+    { label: 'Roof & envelope', basis: `${area.toFixed(1)} m² × 65 kg`, kgCO2e: area * 65 },
+    { label: 'Windows & doors', basis: `${plan.openings.length} units × 90 kg`, kgCO2e: plan.openings.length * 90 },
+    { label: 'Interior finishes', basis: `${area.toFixed(1)} m² × 40 kg`, kgCO2e: area * 40 },
+    { label: 'Plumbing & electrical', basis: `${area.toFixed(1)} m² × 35 kg`, kgCO2e: area * 35 },
+  ]
+  if (plan.systems.solar) {
+    lines.push({ label: 'Solar array (7.2 kWp)', basis: '7.2 kWp × 400 kg/kWp', kgCO2e: 7.2 * 400 })
+  }
+  if (plan.systems.climate) {
+    lines.push({ label: 'Battery + heat pumps', basis: '13.5 kWh × 75 kg/kWh + plant', kgCO2e: 13.5 * 75 + 450 })
+  }
+  const totalKg = lines.reduce((sum, line) => sum + line.kgCO2e, 0)
+  return { lines, totalKg, kgPerM2: area > 0 ? totalKg / area : 0 }
 }
 
 export function solarPosition(latitude: number, dayOfYear: number, hour: number) {

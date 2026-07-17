@@ -22,6 +22,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   selectedOpening,
   selectedFurniture,
   furnitureConflicts,
+  overlaps,
   draftStroke,
   activeTool,
   sketchUrl,
@@ -46,6 +47,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   selectedOpening: string | null
   selectedFurniture: string | null
   furnitureConflicts: Set<string>
+  overlaps: Set<string>
   draftStroke: StrokePoint[] | null
   activeTool: PlanTool
   sketchUrl: string | null
@@ -120,7 +122,7 @@ export const FloorPlan = React.memo(function FloorPlan({
             <button
               key={room.id}
               type="button"
-              className={`room room-${room.kind} ${selectedRoom === room.id ? 'is-selected' : ''}`}
+              className={`room room-${room.kind} ${selectedRoom === room.id ? 'is-selected' : ''} ${overlaps.has(room.id) ? 'is-overlap' : ''}`}
               style={{ left: `${room.x}%`, top: `${room.y}%`, width: `${room.w}%`, height: `${room.h}%`, background: roomColors[room.kind] }}
               onPointerDown={(event) => onRoomPointerDown(event, room)}
               onClick={(event) => event.stopPropagation()}

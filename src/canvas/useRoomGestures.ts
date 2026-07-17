@@ -8,6 +8,7 @@ import {
   resizeRoom,
   scaleRoomFromCenter,
   snap,
+  snapOpeningToWall,
   type ResizeHandle,
 } from './geometry'
 
@@ -114,7 +115,7 @@ export function useRoomGestures({
       }
 
       if (gesture.kind === 'move-opening' && gesture.openingId && gesture.startOpening) {
-        const next = moveOpening(gesture.startOpening, dx, dy, snapRef.current)
+        const next = moveOpening(gesture.startOpening, dx, dy, snapRef.current, planRef.current.rooms)
         setPlan((current) => ({
           ...current,
           openings: current.openings.map((item) => (item.id === gesture.openingId ? next : item)),
@@ -257,13 +258,16 @@ export function useRoomGestures({
       if (!bounds || (activeTool !== 'window' && activeTool !== 'door')) return null
       const { x, y } = clientToPercent(clientX, clientY, bounds)
       const rotation: 0 | 90 = Math.min(y, 100 - y) < Math.min(x, 100 - x) ? 0 : 90
-      return {
-        id: `${activeTool}-${Date.now()}`,
-        type: activeTool,
-        x,
-        y,
-        rotation,
-      } satisfies Opening
+      return snapOpeningToWall(
+        {
+          id: `${activeTool}-${Date.now()}`,
+          type: activeTool,
+          x,
+          y,
+          rotation,
+        },
+        planRef.current.rooms,
+      ) satisfies Opening
     },
     [activeTool, stageBounds],
   )

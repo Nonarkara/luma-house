@@ -16,6 +16,7 @@ export async function generateConceptPhoto(options: {
   locationLabel: string
   hour: number
   apiUrl?: string
+  styleKeywords?: string
 }): Promise<ConceptResult> {
   if (!canGenerateConcept()) {
     throw new Error(`Daily concept limit reached (${getQuotaRemaining()} left). Try again tomorrow.`)
@@ -26,6 +27,7 @@ export async function generateConceptPhoto(options: {
     plan: options.plan,
     locationLabel: options.locationLabel,
     hour: options.hour,
+    styleKeywords: options.styleKeywords,
   })
 
   const response = await fetch(endpoint, {

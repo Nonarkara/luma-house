@@ -28,7 +28,20 @@ function readQuota(): QuotaState {
 }
 
 function writeQuota(state: QuotaState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  // Concept images are multi-MB data URLs and browsers cap localStorage near
+  // 5 MB. Evict oldest images until the payload fits — storage failure must
+  // never swallow a render the user already spent daily quota on. The count
+  // always persists so quota accounting stays honest even with zero images.
+  let images = state.images
+  for (;;) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, images }))
+      return
+    } catch {
+      if (images.length === 0) return
+      images = images.slice(0, -1)
+    }
+  }
 }
 
 export function getQuotaRemaining(): number {

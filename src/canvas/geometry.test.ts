@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { clampRoom, moveRoom, resizeRoom, scaleRoomFromCenter, strokeToRoomRect } from './geometry'
-import type { Room } from '../types'
+import { clampRoom, moveRoom, resizeRoom, scaleRoomFromCenter, snapOpeningToWall, strokeToRoomRect } from './geometry'
+import type { Opening, Room } from '../types'
 
 const base: Room = { id: 'r1', name: 'Test', kind: 'studio', x: 20, y: 20, w: 30, h: 30 }
 
@@ -55,5 +55,22 @@ describe('geometry', () => {
     expect(strokeToRoomRect([{ x: 10, y: 10 }, { x: 11, y: 10 }])).toBeNull()
     const line = Array.from({ length: 20 }, (_, i) => ({ x: 10 + i * 3, y: 20 + (i % 2) }))
     expect(strokeToRoomRect(line)).toBeNull()
+  })
+
+  it('snaps a nearby opening onto the closest wall with matching rotation', () => {
+    const near: Opening = { id: 'w', type: 'window', x: 35, y: 22.5, rotation: 0 }
+    const snapped = snapOpeningToWall(near, [base])
+    expect(snapped.y).toBe(20) // north wall of base room
+    expect(snapped.rotation).toBe(0)
+
+    const nearWest: Opening = { id: 'w', type: 'window', x: 22, y: 35, rotation: 0 }
+    const snappedWest = snapOpeningToWall(nearWest, [base])
+    expect(snappedWest.x).toBe(20) // west wall
+    expect(snappedWest.rotation).toBe(90)
+  })
+
+  it('leaves far-off openings untouched instead of teleporting them', () => {
+    const far: Opening = { id: 'w', type: 'window', x: 80, y: 80, rotation: 0 }
+    expect(snapOpeningToWall(far, [base])).toEqual(far)
   })
 })

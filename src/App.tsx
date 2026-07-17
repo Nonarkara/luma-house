@@ -2,12 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, ty
 import { Armchair, Check, DoorOpen, ImagePlus, MapPin, MousePointer2, PanelLeftClose, Pencil, Plus, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
 import { FloorPlan } from './canvas/FloorPlan'
 import { SpatialView } from './canvas/SpatialView'
+import { RenderGallery } from './canvas/RenderGallery'
 import { useCanvasViewport } from './canvas/useCanvasViewport'
 import { useRoomGestures } from './canvas/useRoomGestures'
-import { clientToPercent, strokeToRoomRect, type StrokePoint } from './canvas/geometry'
+import { clientToPercent, moveOpening, moveRoom, strokeToRoomRect, type StrokePoint } from './canvas/geometry'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
-import { SITE_HEIGHT_METERS, SITE_WIDTH_METERS, calculateBudget, furnitureCatalog, furnitureDoorConflicts, initialPlan, roomArea, solarPosition, sunPatches, variants, locations } from './plan'
+import { SITE_HEIGHT_METERS, SITE_WIDTH_METERS, calculateBudget, estimateEmbodiedCarbon, furnitureCatalog, furnitureDoorConflicts, furnitureRect, roomArea, roomOverlaps, solarPosition, sunPatches, locations } from './plan'
+import { COMPLETE_PROJECT_KEY, COMPLETE_PROJECT_LOCATION, COMPLETE_PROJECT_NAME, completeHousePlan, completeHouseVariants, lightingChannels } from './mockups/completeHouse'
+import { buildShareUrl, decodePlanFromHash, sanitizePlan } from './sharePlan'
 import { analyze } from './analysis'
 import type { AnalysisResult, Suggestion } from './analysis'
 import type { CanvasView, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
@@ -17,16 +20,18 @@ import { AssistantBar } from './components/AssistantBar'
 import { Inspector } from './components/Inspector'
 import { IconButton } from './components/ui'
 
-const STORAGE_KEY = 'luma-house:river-courtyard'
-
 function readSavedPlan(): PlanState {
+  // Priority: share link in the URL hash, then the local draft, then the demo plan.
+  if (typeof window !== 'undefined') {
+    const shared = decodePlanFromHash(window.location.hash)
+    if (shared) return shared
+  }
   try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (!saved) return initialPlan
-    const parsed = JSON.parse(saved) as Partial<PlanState>
-    return { ...initialPlan, ...parsed, furniture: parsed.furniture ?? [] }
+    const saved = localStorage.getItem(COMPLETE_PROJECT_KEY)
+    if (!saved) return completeHousePlan
+    return sanitizePlan(JSON.parse(saved)) ?? completeHousePlan
   } catch {
-    return initialPlan
+    return completeHousePlan
   }
 }
 
@@ -42,7 +47,8 @@ function App() {
   const [activeTool, setActiveTool] = useState<PlanTool>('select')
   const [furnitureTrayOpen, setFurnitureTrayOpen] = useState(false)
   const [draftStroke, setDraftStroke] = useState<StrokePoint[] | null>(null)
-  const [location, setLocation] = useState<string>('Bangkok')
+  const [location, setLocation] = useState<string>(COMPLETE_PROJECT_LOCATION)
+  const [styleKeywords, setStyleKeywords] = useState<string>(() => localStorage.getItem('luma-style-keywords') || 'tropical modern, warm timber, light concrete, deep eaves')
   const [hour, setHour] = useState(15)
   const [day, setDay] = useState(196)
   const [sketchUrl, setSketchUrl] = useState<string | null>(null)
@@ -68,6 +74,8 @@ function App() {
   const {
     viewport,
     zoomPercent,
+    canZoomIn,
+    canZoomOut,
     zoomIn,
     zoomOut,
     resetView,
@@ -77,7 +85,7 @@ function App() {
     onViewportPointerUp,
   } = useCanvasViewport(frameRef)
 
-  const budget = useMemo(() => calculateBudget(plan), [plan])
+  const budget = useMemo(() => calculateBudget(plan, styleKeywords), [plan, styleKeywords])
   const sun = useMemo(() => solarPosition(locations[location as keyof typeof locations].latitude, day, hour), [location, day, hour])
   const patches = useMemo(() => sunPatches(plan, sun.azimuth, sun.altitude), [plan, sun.azimuth, sun.altitude])
   const directSunM2 = Math.min(budget.area, patches.reduce((sum, patch) => sum + patch.areaM2, 0))
@@ -88,6 +96,8 @@ function App() {
     () => analyze({ plan, location: locations[location as keyof typeof locations] }),
     [plan, location],
   )
+  const carbon = useMemo(() => estimateEmbodiedCarbon(plan), [plan])
+  const overlaps = useMemo(() => roomOverlaps(plan.rooms), [plan.rooms])
 
   const commitSnapshot = useCallback((snapshot: PlanState) => {
     setPast((items) => [...items.slice(-29), snapshot])
@@ -117,11 +127,15 @@ function App() {
   useEffect(() => {
     setLastSaved('Saving…')
     const timeout = window.setTimeout(() => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(plan))
+      localStorage.setItem(COMPLETE_PROJECT_KEY, JSON.stringify(plan))
       setLastSaved('Saved locally')
     }, 300)
     return () => window.clearTimeout(timeout)
   }, [plan])
+
+  useEffect(() => {
+    localStorage.setItem('luma-style-keywords', styleKeywords)
+  }, [styleKeywords])
 
   useEffect(() => {
     if (!toast) return
@@ -291,6 +305,128 @@ function App() {
     setSelectedFurniture(null)
   }, [commit, selectedFurniture])
 
+  const deleteOpening = useCallback(() => {
+    if (!selectedOpening) return
+    const kind = plan.openings.find((item) => item.id === selectedOpening)?.type ?? 'opening'
+    commit((current) => ({ ...current, openings: current.openings.filter((item) => item.id !== selectedOpening) }))
+    setSelectedOpening(null)
+    setToast(`${kind === 'window' ? 'Window' : 'Door'} removed`)
+  }, [commit, plan.openings, selectedOpening])
+
+  const shareProject = useCallback(() => {
+    const url = buildShareUrl(plan)
+    window.history.replaceState(null, '', url)
+    navigator.clipboard?.writeText(url).then(
+      () => setToast('Link copied — it restores this exact plan'),
+      () => setToast('Share link ready in the address bar'),
+    )
+  }, [plan])
+
+  const importProject = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result)) as unknown
+        // Accept both raw plans and wrapped exports ({ plan, budget, … }).
+        const candidate =
+          typeof parsed === 'object' && parsed !== null && 'plan' in parsed
+            ? (parsed as { plan: unknown }).plan
+            : parsed
+        const next = sanitizePlan(candidate)
+        if (!next) {
+          setToast('That file does not contain a valid Luma House plan')
+          return
+        }
+        commit(next)
+        setSelectedRoom(next.rooms[0].id)
+        setSelectedOpening(null)
+        setSelectedFurniture(null)
+        setToast('Project imported')
+      } catch {
+        setToast('Could not read that project file')
+      }
+    }
+    reader.readAsText(file)
+  }, [commit])
+
+  // Keyboard: Delete removes the selection, Ctrl/Cmd+Z history, Esc deselects,
+  // arrows nudge. Inputs keep their native behavior.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+
+      const meta = event.metaKey || event.ctrlKey
+      if (meta && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        if (event.shiftKey) redo()
+        else undo()
+        return
+      }
+      if (meta && event.key.toLowerCase() === 'y') {
+        event.preventDefault()
+        redo()
+        return
+      }
+      if (meta) return
+
+      if (event.key === 'Escape') {
+        setSelectedRoom(null)
+        setSelectedOpening(null)
+        setSelectedFurniture(null)
+        setActiveTool('select')
+        setFurnitureTrayOpen(false)
+        return
+      }
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        if (selectedFurniture) { event.preventDefault(); deleteFurniture(); return }
+        if (selectedOpening) { event.preventDefault(); deleteOpening(); return }
+        if (selectedRoom) { event.preventDefault(); deleteRoom() }
+        return
+      }
+      if (event.key.startsWith('Arrow')) {
+        const step = event.shiftKey ? 5 : 1
+        const dx = event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0
+        const dy = event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0
+        if (dx === 0 && dy === 0) return
+        if (selectedRoom) {
+          event.preventDefault()
+          commit((current) => ({
+            ...current,
+            rooms: current.rooms.map((item) => (item.id === selectedRoom ? moveRoom(item, dx, dy, false) : item)),
+          }))
+        } else if (selectedOpening) {
+          event.preventDefault()
+          commit((current) => ({
+            ...current,
+            openings: current.openings.map((item) =>
+              item.id === selectedOpening ? moveOpening(item, dx, dy, false, current.rooms) : item,
+            ),
+          }))
+        } else if (selectedFurniture) {
+          event.preventDefault()
+          commit((current) => ({
+            ...current,
+            furniture: current.furniture.map((item) => {
+              if (item.id !== selectedFurniture) return item
+              const rect = furnitureRect(item)
+              return {
+                ...item,
+                x: Math.max(0, Math.min(100 - rect.w, item.x + dx)),
+                y: Math.max(0, Math.min(100 - rect.h, item.y + dy)),
+              }
+            }),
+          }))
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [commit, deleteFurniture, deleteOpening, deleteRoom, redo, selectedFurniture, selectedOpening, selectedRoom, undo])
+
   const handleSketch = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -303,8 +439,8 @@ function App() {
   }, [])
 
   const applyVariant = useCallback((index: number) => {
-    commit((current) => ({ ...current, rooms: variants[index].rooms.map((item) => ({ ...item })) }))
-    setToast(`${variants[index].name} applied`)
+    commit((current) => ({ ...current, rooms: completeHouseVariants[index].rooms.map((item) => ({ ...item })) }))
+    setToast(`${completeHouseVariants[index].name} applied`)
   }, [commit])
 
   const applySuggestion = useCallback((suggestion: Suggestion) => {
@@ -312,20 +448,21 @@ function App() {
     const targetRoom = plan.rooms.find((r) => r.id === suggestion.roomId)
     if (!targetRoom) return
     const compass = suggestion.action.compass
-    // Place a window at the midpoint of the target wall
+    // Place a window at the midpoint of the target wall; E/W walls are vertical.
+    const vertical = compass === 'W' || compass === 'E'
     const x = compass === 'W' ? targetRoom.x : compass === 'E' ? targetRoom.x + targetRoom.w : targetRoom.x + targetRoom.w / 2
     const y = compass === 'N' ? targetRoom.y : compass === 'S' ? targetRoom.y + targetRoom.h : targetRoom.y + targetRoom.h / 2
-    const opening = { id: `w-${Date.now()}`, type: 'window' as const, x: Math.round(x), y: Math.round(y), rotation: 0 as const }
+    const opening = { id: `w-${Date.now()}`, type: 'window' as const, x: Math.round(x), y: Math.round(y), rotation: (vertical ? 90 : 0) as 0 | 90 }
     commit((current) => ({ ...current, openings: [...current.openings, opening] }))
     setToast(`Window added — scores update live`)
   }, [commit, plan.rooms])
 
   const resetPlan = useCallback(() => {
-    commit(initialPlan)
+    commit(completeHousePlan)
     setSelectedRoom('living')
     setSelectedOpening(null)
     resetView()
-    setToast('Plan reset to starting courtyard')
+    setToast('Complete 100 m² house restored')
   }, [commit, resetView])
 
   const runConceptRender = useCallback(async () => {
@@ -341,6 +478,7 @@ function App() {
         plan,
         locationLabel: locations[location as keyof typeof locations].label,
         hour,
+        styleKeywords,
       })
       setConceptImages((items) => [result.imageDataUrl, ...items].slice(0, 12))
       setQuotaLeft(result.remaining)
@@ -350,18 +488,27 @@ function App() {
     } finally {
       setIsRendering(false)
     }
-  }, [hour, isRendering, location, plan, quotaLeft])
+  }, [hour, isRendering, location, plan, quotaLeft, styleKeywords])
 
   const runQuickAction = useCallback(() => {
     const prompt = assistantText.trim().toLowerCase()
     if (!prompt) return
     if (prompt.includes('bright') || prompt.includes('window') || prompt.includes('light')) {
+      // Put the window on the north wall of the selected (or largest) room so
+      // the analysis actually credits it — a window off every wall is a lie.
+      const target =
+        plan.rooms.find((item) => item.id === selectedRoom) ??
+        [...plan.rooms].sort((a, b) => roomArea(b) - roomArea(a))[0]
+      if (!target) return
       commit((current) => ({
         ...current,
-        openings: [...current.openings, { id: `w-${Date.now()}`, type: 'window', x: 36, y: 6, rotation: 0 }],
+        openings: [
+          ...current.openings,
+          { id: `w-${Date.now()}`, type: 'window', x: Math.round(target.x + target.w / 2), y: Math.round(target.y), rotation: 0 },
+        ],
       }))
       setMode('light')
-      setToast('Added a north window and opened the light study')
+      setToast(`North window added to ${target.name} — light study open`)
     } else if (prompt.includes('bedroom') || prompt.includes('room')) {
       addRoom()
       setToast('Added a flexible room to the plan')
@@ -378,18 +525,18 @@ function App() {
       setToast('Quick actions: “brighter”, “add room”, “budget”, “energy”, or “concept photo”')
     }
     setAssistantText('')
-  }, [addRoom, assistantText, commit, runConceptRender])
+  }, [addRoom, assistantText, commit, plan.rooms, runConceptRender, selectedRoom])
 
   const exportPlan = useCallback(() => {
-    const blob = new Blob([JSON.stringify({ project: 'River Courtyard House', exportedAt: new Date().toISOString(), plan, budget }, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify({ project: COMPLETE_PROJECT_NAME, exportedAt: new Date().toISOString(), plan, budget, carbon, lightingChannels }, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = 'river-courtyard-house.json'
+    anchor.download = 'lantern-courtyard-100.json'
     anchor.click()
     URL.revokeObjectURL(url)
     setToast('Project file exported')
-  }, [budget, plan])
+  }, [budget, carbon, plan])
 
   const viewportStyle = useMemo(() => ({
     transform: `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`,
@@ -398,11 +545,12 @@ function App() {
 
   return (
     <div className={`app-shell ${inspectorOpen ? '' : 'inspector-collapsed'}`}>
-      <TopBar 
-        lastSaved={lastSaved} 
-        setMobileNavOpen={setMobileNavOpen} 
-        exportPlan={exportPlan} 
-        setToast={setToast} 
+      <TopBar
+        projectName={COMPLETE_PROJECT_NAME}
+        lastSaved={lastSaved}
+        setMobileNavOpen={setMobileNavOpen}
+        exportPlan={exportPlan}
+        sharePlan={shareProject}
       />
 
       <div className="workspace">
@@ -418,13 +566,22 @@ function App() {
         <main className="design-stage">
           <div className="stage-head">
             <div>
-              <p className="eyebrow">Concept 03 <span>•</span> Residential</p>
-              <h1>River Courtyard</h1>
+              <p className="eyebrow">Complete house <span>•</span> 100 m² residential</p>
+              <h1>{COMPLETE_PROJECT_NAME}</h1>
             </div>
             <div className="stage-meta">
               <span><MapPin /> {locations[location as keyof typeof locations].label}</span>
               <span><Ruler /> {budget.area.toFixed(1)} m²</span>
             </div>
+          </div>
+
+          <div className="deliverable-rail" aria-label="Complete project deliverables">
+            <button type="button" className={mode === 'plan' && view === 'plan' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('plan'); setView('plan') }}><small>01</small><span>Plan<strong>100.0 m²</strong></span></button>
+            <button type="button" className={mode === 'light' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('light'); setView('plan') }}><small>02</small><span>Daylight<strong>{plan.openings.filter((item) => item.type === 'window').length} windows</strong></span></button>
+            <button type="button" className={mode === 'climate' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('climate') }}><small>03</small><span>Climate<strong>{climateResult.scores.overall}/100</strong></span></button>
+            <button type="button" className={mode === 'systems' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('systems') }}><small>04</small><span>Lighting<strong>{lightingChannels.length} channels</strong></span></button>
+            <button type="button" className={mode === 'budget' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('budget') }}><small>05</small><span>BOQ<strong>{budget.items.length} packages</strong></span></button>
+            <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setSettingsOpen(false); setInspectorOpen(false); setView('renders') }}><small>06</small><span>Renders<strong>3 views</strong></span></button>
           </div>
 
           <div className="canvas-toolbar" aria-label="Plan tools">
@@ -439,6 +596,7 @@ function App() {
             <div className="view-switch" role="group" aria-label="View mode">
               <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>Plan</button>
               <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>Spatial</button>
+              <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>Renders</button>
             </div>
             <div className="tool-group history-tools">
               <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
@@ -455,6 +613,7 @@ function App() {
                 selectedOpening={selectedOpening}
                 selectedFurniture={selectedFurniture}
                 furnitureConflicts={furnitureConflicts}
+                overlaps={overlaps}
                 draftStroke={draftStroke}
                 activeTool={activeTool}
                 sketchUrl={sketchUrl}
@@ -474,9 +633,9 @@ function App() {
                 onCanvasClick={handleCanvasClick}
                 stageRef={stageRef}
               />
-            ) : (
+            ) : view === 'spatial' ? (
               <div className="spatial-wrap">
-                <SpatialView plan={plan} />
+                <SpatialView plan={plan} sun={sun} location={location} />
                 {(conceptImages.length > 0 || isRendering) && (
                   <div className="concept-strip" aria-live="polite">
                     {isRendering && <div className="concept-loading"><RotateCcw className="spin" /> Rendering concept…</div>}
@@ -489,7 +648,7 @@ function App() {
                   </div>
                 )}
               </div>
-            )}
+            ) : <RenderGallery />}
             {mode === 'light' && view === 'plan' && (
               <div className="sun-status">
                 <Sun /><span><strong>{hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? 'PM' : 'AM'}</strong><small>{sun.altitude.toFixed(0)}° altitude • {sun.azimuth.toFixed(0)}° azimuth</small></span>
@@ -525,11 +684,25 @@ function App() {
                 <IconButton label="Remove furniture" onClick={deleteFurniture}><Trash2 /></IconButton>
               </div>
             )}
+            {view === 'plan' && selectedOpening && !furnitureItem && (
+              <div className="furniture-chip" role="status">
+                <span>
+                  <strong>{plan.openings.find((item) => item.id === selectedOpening)?.type === 'door' ? 'Door' : 'Window'}</strong>
+                  <small>Drag along the wall · Delete key removes</small>
+                </span>
+                <IconButton label="Remove opening" onClick={deleteOpening}><Trash2 /></IconButton>
+              </div>
+            )}
+            {view === 'plan' && overlaps.size > 0 && (
+              <div className="overlap-warning" role="alert">
+                Rooms overlap — floor area is double-counted and climate analysis is unreliable
+              </div>
+            )}
             {view === 'plan' && (
               <div className="zoom-control">
-                <button type="button" onClick={zoomOut} aria-label="Zoom out">−</button>
-                <button type="button" className="zoom-label" onClick={resetView} aria-label="Reset view">{zoomPercent}%</button>
-                <button type="button" onClick={zoomIn} aria-label="Zoom in">+</button>
+                <button type="button" onClick={zoomOut} aria-label="Zoom out" disabled={!canZoomOut}>−</button>
+                <button type="button" className="zoom-label" onClick={resetView} aria-label="Fit plan to view">{zoomPercent === 100 ? 'Fit' : `${zoomPercent}%`}</button>
+                <button type="button" onClick={zoomIn} aria-label="Zoom in" disabled={!canZoomIn}>+</button>
               </div>
             )}
           </section>
@@ -573,14 +746,18 @@ function App() {
           setDay={setDay}
           setActiveTool={setActiveTool}
           budget={budget}
+          carbon={carbon}
+          importProject={importProject}
           exportPlan={exportPlan}
-          variants={variants}
+          variants={completeHouseVariants}
           snapGrid={snapGrid}
           setSnapGrid={setSnapGrid}
           showGrid={showGrid}
           setShowGrid={setShowGrid}
           climateResult={climateResult}
           applySuggestion={applySuggestion}
+          styleKeywords={styleKeywords}
+          setStyleKeywords={setStyleKeywords}
         />
 
         {!inspectorOpen && (

@@ -48,6 +48,54 @@ features) with zero UI references — a complete but invisible feature. Porting
 required adding the `furniture` field to test fixtures and the `action` field
 to suggestions for the interactive apply loop.
 
-Remaining (vision gap, next increments): true 3D walkthrough view, sketch
-auto-trace assist, material/installation guidance feeding the BOQ, annual
-overheating-hours integration, embodied carbon line item.
+Remaining (vision gap, next increments): sketch auto-trace assist, material/installation
+guidance feeding the BOQ, annual overheating-hours integration, embodied carbon line item.
+
+## Review — spatial pass cleanup, 2026-07-17
+
+Previous agent (Fabel5) inflated a markdown feature list while regressing the product:
+Three.js dollhouse (+800 KB bundle), neon cyan plan canvas, child-friendly climate copy,
+and broken cold-climate logic (`sun.altitude < 15`).
+
+- [x] Remove @react-three/fiber / drei / three — bundle 1124 → 214 KB gzip
+- [x] Restore Luma House plan canvas (dark site, citron selection, double-line CAD walls via ::before inset)
+- [x] Rebuild SpatialView as CSS axonometric: dollhouse cut faces, furniture blocks, sun rays, breeze path, HVAC badge, solar badge
+- [x] Pass location into SpatialView for Anchorage heat vs tropical cool labels
+- [x] Rewrite location-specific climate suggestions in professional tone
+- [x] Keep styleKeywords → concept render + budget scaling (with test)
+- [x] 57 tests green, lint clean, build clean
+
+## Review — integrity + analysis increment, 2026-07-17
+
+Full-codebase audit (`tasks/audit-2026-07-17.md`) found the last increments
+polished surfaces while the plumbing leaked. Fixed in priority order:
+
+- [x] H1: concept-render success no longer dies on localStorage quota —
+      `writeQuota` evicts oldest images until the payload fits; count persists
+- [x] H2: climate "Apply" gives E/W windows `rotation: 90` (was horizontal on
+      vertical walls, breaking glyphs and sun patches)
+- [x] H3: Share embeds the plan in the URL hash (`#plan=…`, `sharePlan.ts`);
+      recipient restores the exact plan — previously shared nothing
+- [x] H4: "brighter" quick action puts the window on the selected/largest
+      room's north wall (was hardcoded off every room → zero analysis credit)
+- [x] Openings snap to the nearest wall on place/drag (`snapOpeningToWall`)
+- [x] Keyboard: Delete (room/opening/furniture), Ctrl/Cmd+Z+Shift/Y, Esc,
+      arrow nudge ±1% (Shift ±5%); opening chip with delete affordance
+- [x] Room-overlap detection → dashed red rooms + canvas warning (area was
+      silently double-counted, breaking the 100 m² cost anchor)
+- [x] Import project JSON (export finally has its counterpart); all plan
+      inputs (hash/localStorage/file) pass through `sanitizePlan`
+- [x] Vitest excludes stale `.worktrees/**` (64 → 54 tests, all real)
+- [x] Inspector imports `estimateEnergySavings` instead of re-implementing it
+- [x] Canonical/OG URLs point at luma-house.pages.dev (primary, not mirror)
+- [x] Vision: embodied-carbon section in BOQ (transparent per-line kgCO₂e
+      factors, ICE order of magnitude, exported in project JSON)
+- [x] Vision: annual overheating-hours per room (12 months × 07–19 h sampling,
+      calibrated so insulation/ventilation moves the number; Anchorage reads 0)
+- [x] 54 tests green (13 new), lint clean, build clean (77 KB gzip, +3 KB)
+
+Learned: the first overheating calibration failed its own test — the outdoor
+baseline sat above the comfort threshold year-round, so insulation changed
+nothing. Fix was recalibrating gains to physical peak magnitudes (600 W/m²
+wall irradiance × 0.35, ~700 W per window) and treating the outdoor model as
+monthly average daily max. A model that can't fail its knobs is decoration.
