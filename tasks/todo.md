@@ -120,3 +120,19 @@ Draw → Model → Sun → Advice → Cost → Picture
 Learned: “3D” for this product means *the plan you drew, extruded* — not a
 generic game-engine scene. Isometric SVG keeps the conservation law (room
 geometry ↔ massing) visible and testable.
+
+## Review — 3D Spatial view, shipped 2026-07-19 (researched + Sonnet-implemented, Fable-specced/QA'd)
+
+Research (2 parallel agents): no viable ready-made floor-plan repo — blueprint3d
+dead 5y, react-planner dead, pascalorg/editor is WebGPU-first + model mismatch,
+CADmium license-blocked. Decision: build on react-three-fiber v8 (repo is React
+18) + drei; steal UX patterns from blueprint3d-modern (MIT, live reference).
+
+Shipped: Spatial tab = real 3D massing (extruded walls, window/door panels,
+furniture volumes, solar-driven shadows), SketchUp-style pull-up wall height
+(gizmo + stepper chip, 2.2–4.5 m, 5 cm rounding, undo-able wallHeight on Room).
+Lazy chunk 247 kB gzip; main bundle unchanged. 62 tests green. Live at
+luma-house.pages.dev (deployment 793c4e94), verified on production at phone width.
+
+Polish backlog: chip can clip at screen edge for corner rooms (orbits back into
+view); first-person walk mode; openings as real wall holes (CSG) if ever needed.
