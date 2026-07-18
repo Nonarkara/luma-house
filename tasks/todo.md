@@ -99,3 +99,24 @@ baseline sat above the comfort threshold year-round, so insulation changed
 nothing. Fix was recalibrating gains to physical peak magnitudes (600 W/m²
 wall irradiance × 0.35, ~700 W per window) and treating the outdoor model as
 monthly average daily max. A model that can't fail its knobs is decoration.
+
+## Review — journey loop, 2026-07-19 (Grok 4.5)
+
+Other agents failed by shipping feature checklists (Three.js dollhouse, fake
+SVG renders, neon blueprint chrome) instead of the newcomer path:
+
+Draw → Model → Sun → Advice → Cost → Picture
+
+- [x] Plan-driven SVG isometric massing (`isometric.ts` + SpatialView) — your
+      rooms become 3D volumes; no Three.js
+- [x] Polar sun chart in Light mode (location + day path + live hour)
+- [x] Design brief in Advice: insulation, digital, solar, climate with BOQ
+      deltas and one-click Add
+- [x] Deliverable rail reordered to the real journey; Model is a first-class step
+- [x] Render gallery driven by live plan massing + optional Gemini concept photo
+      (static courtyard SVGs removed)
+- [x] 60 tests green, lint/build clean (~79 KB gzip)
+
+Learned: “3D” for this product means *the plan you drew, extruded* — not a
+generic game-engine scene. Isometric SVG keeps the conservation law (room
+geometry ↔ massing) visible and testable.

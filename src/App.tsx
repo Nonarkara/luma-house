@@ -575,13 +575,13 @@ function App() {
             </div>
           </div>
 
-          <div className="deliverable-rail" aria-label="Complete project deliverables">
-            <button type="button" className={mode === 'plan' && view === 'plan' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('plan'); setView('plan') }}><small>01</small><span>Plan<strong>100.0 m²</strong></span></button>
-            <button type="button" className={mode === 'light' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('light'); setView('plan') }}><small>02</small><span>Daylight<strong>{plan.openings.filter((item) => item.type === 'window').length} windows</strong></span></button>
-            <button type="button" className={mode === 'climate' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('climate') }}><small>03</small><span>Climate<strong>{climateResult.scores.overall}/100</strong></span></button>
-            <button type="button" className={mode === 'systems' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('systems') }}><small>04</small><span>Lighting<strong>{lightingChannels.length} channels</strong></span></button>
-            <button type="button" className={mode === 'budget' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('budget') }}><small>05</small><span>BOQ<strong>{budget.items.length} packages</strong></span></button>
-            <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setSettingsOpen(false); setInspectorOpen(false); setView('renders') }}><small>06</small><span>Renders<strong>3 views</strong></span></button>
+          <div className="deliverable-rail" aria-label="Design journey">
+            <button type="button" className={mode === 'plan' && view === 'plan' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('plan'); setView('plan'); setActiveTool('draw') }}><small>01</small><span>Draw<strong>{budget.area.toFixed(0)} m²</strong></span></button>
+            <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('plan'); setView('spatial') }}><small>02</small><span>Model<strong>{plan.rooms.length} volumes</strong></span></button>
+            <button type="button" className={mode === 'light' && view === 'plan' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('light'); setView('plan') }}><small>03</small><span>Sun<strong>{sun.altitude.toFixed(0)}° now</strong></span></button>
+            <button type="button" className={mode === 'climate' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('climate'); setView('plan') }}><small>04</small><span>Advice<strong>{climateResult.scores.overall}/100</strong></span></button>
+            <button type="button" className={mode === 'budget' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('budget'); setView('plan') }}><small>05</small><span>Cost<strong>BOQ</strong></span></button>
+            <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setSettingsOpen(false); setInspectorOpen(false); setView('renders') }}><small>06</small><span>Picture<strong>{conceptImages.length ? `${conceptImages.length} photo` : 'Massing'}</strong></span></button>
           </div>
 
           <div className="canvas-toolbar" aria-label="Plan tools">
@@ -648,7 +648,16 @@ function App() {
                   </div>
                 )}
               </div>
-            ) : <RenderGallery />}
+            ) : (
+              <RenderGallery
+                plan={plan}
+                sun={sun}
+                conceptImages={conceptImages}
+                onRequestConcept={() => void runConceptRender()}
+                isRendering={isRendering}
+                quotaLeft={quotaLeft}
+              />
+            )}
             {mode === 'light' && view === 'plan' && (
               <div className="sun-status">
                 <Sun /><span><strong>{hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? 'PM' : 'AM'}</strong><small>{sun.altitude.toFixed(0)}° altitude • {sun.azimuth.toFixed(0)}° azimuth</small></span>

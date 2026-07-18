@@ -25,8 +25,9 @@ import { IconButton, Toggle } from './ui'
 import { estimateEnergySavings, formatTHB, roomArea } from '../plan'
 import type { CarbonLine, SunPatch } from '../plan'
 import { automationRules, lightingChannels, lightingScenes } from '../mockups/completeHouse'
-import type { AnalysisResult, Suggestion } from '../analysis'
+import { buildDesignBrief, type AnalysisResult, type Suggestion } from '../analysis'
 import type { PlanState, PlanTool, Room, WorkspaceMode } from '../types'
+import { SunChart } from '../canvas/SunChart'
 
 export interface InspectorProps {
   mode: WorkspaceMode
@@ -126,6 +127,21 @@ export const Inspector = React.memo(function Inspector({
   if (!inspectorOpen) return null
 
   const directSunPercent = Math.round((100 * directSunM2) / Math.max(1, budget.area))
+  const brief = buildDesignBrief(plan, climateResult, styleKeywords)
+  const lat = locations[location as keyof typeof locations]?.latitude ?? 13.7563
+  const locationLabel = locations[location as keyof typeof locations]?.label ?? location
+
+  const applyBriefItem = (id: 'insulation' | 'digital' | 'solar') => {
+    commit((current) => ({
+      ...current,
+      systems: {
+        ...current.systems,
+        ...(id === 'insulation' ? { insulation: true } : {}),
+        ...(id === 'digital' ? { lighting: true, climate: true } : {}),
+        ...(id === 'solar' ? { solar: true } : {}),
+      },
+    }))
+  }
 
   return (
     <aside className="inspector">
@@ -140,7 +156,7 @@ export const Inspector = React.memo(function Inspector({
               : mode === 'light'
               ? 'Daylight study'
               : mode === 'climate'
-              ? 'Climate performance'
+              ? 'Advice & climate'
               : mode === 'systems'
               ? 'Intelligent space'
               : 'Live cost plan'}
@@ -295,6 +311,7 @@ export const Inspector = React.memo(function Inspector({
               <p>Estimated from {patches.length} window{patches.length === 1 ? '' : 's'} at this hour. Diffuse light not included.</p>
             </div>
           </section>
+          <SunChart latitude={lat} day={day} hour={hour} locationLabel={locationLabel} />
           <section className="panel-section">
             <label className="field-label">
               Project location
@@ -388,6 +405,44 @@ export const Inspector = React.memo(function Inspector({
               <div><Sun /><strong>{climateResult.scores.solarGain}</strong><span>Solar balance</span></div>
               <div><Leaf /><strong>{climateResult.scores.shade}</strong><span>Shade</span></div>
             </div>
+          </section>
+
+          <section className="design-brief">
+            <p className="eyebrow">Design advice</p>
+            <h3>{brief.headline}</h3>
+            <p className="section-intro">{brief.summary}</p>
+            <div className="brief-meta">
+              <span>If you take the recommended stack: <strong>−{brief.projectedSavingsPct}%</strong> energy</span>
+              <span>Projected BOQ <strong>{formatTHB(brief.projectedTotalTHB)}</strong></span>
+            </div>
+            {brief.items.map((item) => {
+              const canApply = item.id === 'insulation' || item.id === 'digital' || item.id === 'solar'
+              return (
+              <article key={item.id} className={`brief-item ${item.active ? 'is-active' : ''} ${item.recommended ? 'is-recommended' : ''}`}>
+                <div>
+                  <strong>{item.title}</strong>
+                  <p>{item.body}</p>
+                  {item.costImpactTHB > 0 && !item.active && (
+                    <small>+{formatTHB(item.costImpactTHB)} on BOQ · ≈−{item.energyDeltaPct}% energy</small>
+                  )}
+                </div>
+                {!item.active && item.recommended && canApply && (
+                  <button
+                    type="button"
+                    className="button primary small"
+                    onClick={() => {
+                      if (item.id === 'insulation' || item.id === 'digital' || item.id === 'solar') {
+                        applyBriefItem(item.id)
+                      }
+                    }}
+                  >
+                    Add <ArrowRight />
+                  </button>
+                )}
+                {item.active && <span className="brief-done"><Check /> On</span>}
+              </article>
+              )
+            })}
           </section>
 
           <p className="section-intro">

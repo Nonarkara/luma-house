@@ -158,7 +158,7 @@ export function formatTHB(value: number): string {
 export function calculateBudget(plan: PlanState, styleKeywords: string = '') {
   const area = totalArea(plan.rooms)
   
-  // Keyword-based budget multipliers for child-friendly/custom styles
+  // Keyword-based finish / systems multipliers for concept BOQ
   const keywords = styleKeywords.toLowerCase()
   let finishMultiplier = 1.0
   let structureMultiplier = 1.0

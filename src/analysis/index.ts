@@ -13,6 +13,8 @@ export { crossVentilationScore, missingOppositeWall } from './ventilation'
 export { thermalProfile, peakOutdoorC } from './thermal'
 export { generateSuggestions } from './suggestions'
 export { overheatingProfile, OVERHEAT_THRESHOLD_C } from './overheating'
+export { buildDesignBrief } from './designBrief'
+export type { DesignBrief, BriefItem } from './designBrief'
 
 const SCAN_DAY_DEFAULT = 172 // ~summer solstice (June 21 in northern hemisphere)
 
