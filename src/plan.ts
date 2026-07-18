@@ -261,6 +261,27 @@ export function estimateEnergySavings(systems: PlanState['systems']): number {
   )
 }
 
+export const DEFAULT_WALL_HEIGHT = 2.7
+
+export function roomHeight(room: Room): number {
+  return room.wallHeight ?? DEFAULT_WALL_HEIGHT
+}
+
+/**
+ * Unit vector from the scene center toward the sun in three.js coords:
+ * x = east (plan +x), y = up, z = south (plan +y).
+ */
+export function sunVector(azimuthDeg: number, altitudeDeg: number): { x: number; y: number; z: number } {
+  const radians = Math.PI / 180
+  const az = azimuthDeg * radians
+  const alt = altitudeDeg * radians
+  return {
+    x: Math.sin(az) * Math.cos(alt),
+    y: Math.sin(alt),
+    z: -Math.cos(az) * Math.cos(alt),
+  }
+}
+
 export interface SunPatch {
   windowId: string
   roomId: string

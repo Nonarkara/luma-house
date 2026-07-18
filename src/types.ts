@@ -8,6 +8,7 @@ export interface Room {
   y: number
   w: number
   h: number
+  wallHeight?: number
 }
 
 export interface Opening {

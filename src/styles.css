@@ -279,6 +279,14 @@ button:active { transform: scale(.97); }
 .spatial-note { position: absolute; left: 16px; bottom: 16px; border: 1px solid var(--glass-border); background: var(--glass-bg); backdrop-filter: blur(16px); padding: 10px 14px; display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 600; color: #fff; max-width: calc(100% - 32px); }
 .spatial-note svg { width: 16px; flex: none; color: var(--accent-primary); }
 
+.spatial-chip { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; border: 1px solid var(--glass-border); background: rgba(20, 20, 22, 0.88); backdrop-filter: blur(12px); border-radius: 12px; box-shadow: var(--shadow-md); white-space: nowrap; }
+.spatial-chip strong { font-size: 11px; color: #fff; }
+.spatial-chip span { font: 700 11px/1 monospace; color: var(--accent-primary); letter-spacing: 0.02em; }
+.spatial-chip-controls { display: flex; align-items: center; gap: 4px; }
+.spatial-chip-controls button { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--glass-border); border-radius: 9px; background: transparent; color: var(--text-secondary); font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s ease; }
+.spatial-chip-controls button:hover { background: rgba(163, 255, 0, 0.15); color: var(--accent-primary); border-color: rgba(163, 255, 0, 0.3); }
+.spatial-north-label { font: 700 11px/1 monospace; letter-spacing: 0.08em; color: var(--text-secondary); }
+
 .sun-chart { display: grid; justify-items: center; gap: 8px; padding: 14px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.25); }
 .sun-chart svg { width: 180px; height: 180px; }
 .sun-chart-disk { fill: rgba(251, 191, 36, 0.06); stroke: rgba(251, 191, 36, 0.35); stroke-width: 1.2; }

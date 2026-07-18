@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Armchair, Check, DoorOpen, ImagePlus, MapPin, MousePointer2, PanelLeftClose, Pencil, Plus, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
 import { FloorPlan } from './canvas/FloorPlan'
-import { SpatialView } from './canvas/SpatialView'
 import { RenderGallery } from './canvas/RenderGallery'
 import { useCanvasViewport } from './canvas/useCanvasViewport'
 import { useRoomGestures } from './canvas/useRoomGestures'
@@ -19,6 +18,8 @@ import { SideNav } from './components/SideNav'
 import { AssistantBar } from './components/AssistantBar'
 import { Inspector } from './components/Inspector'
 import { IconButton } from './components/ui'
+
+const Spatial3D = lazy(() => import('./canvas/Spatial3D'))
 
 function readSavedPlan(): PlanState {
   // Priority: share link in the URL hash, then the local draft, then the demo plan.
@@ -269,6 +270,14 @@ function App() {
       rooms: current.rooms.map((item) => (item.id === selectedRoom ? { ...item, ...updates } : item)),
     }))
   }, [commit, selectedRoom])
+
+  const setWallHeight = useCallback((roomId: string, height: number) => {
+    const rounded = Math.round(Math.min(4.5, Math.max(2.2, height)) * 20) / 20
+    commit((current) => ({
+      ...current,
+      rooms: current.rooms.map((item) => (item.id === roomId ? { ...item, wallHeight: rounded } : item)),
+    }))
+  }, [commit])
 
   const addFurniture = useCallback((kind: FurnitureKind) => {
     const spec = furnitureCatalog[kind]
@@ -635,7 +644,16 @@ function App() {
               />
             ) : view === 'spatial' ? (
               <div className="spatial-wrap">
-                <SpatialView plan={plan} sun={sun} location={location} />
+                <Suspense fallback={<div className="spatial-note">Loading 3D…</div>}>
+                  <Spatial3D
+                    plan={plan}
+                    sunAzimuth={sun.azimuth}
+                    sunAltitude={sun.altitude}
+                    selectedRoom={selectedRoom}
+                    onSelectRoom={setSelectedRoom}
+                    onSetWallHeight={setWallHeight}
+                  />
+                </Suspense>
                 {(conceptImages.length > 0 || isRendering) && (
                   <div className="concept-strip" aria-live="polite">
                     {isRendering && <div className="concept-loading"><RotateCcw className="spin" /> Rendering concept…</div>}

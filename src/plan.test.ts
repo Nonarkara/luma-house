@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculateBudget, estimateEmbodiedCarbon, estimateEnergySavings, furnitureDoorConflicts, furnitureRect, initialPlan, locations, roomArea, roomOverlaps, solarPosition, sunPatches, totalArea } from './plan'
+import { calculateBudget, DEFAULT_WALL_HEIGHT, estimateEmbodiedCarbon, estimateEnergySavings, furnitureDoorConflicts, furnitureRect, initialPlan, locations, roomArea, roomHeight, roomOverlaps, solarPosition, sunPatches, sunVector, totalArea } from './plan'
 import type { Opening, PlanState, Room } from './types'
 
 describe('plan calculations', () => {
@@ -107,6 +107,28 @@ describe('plan calculations', () => {
     expect(clashing.has('a')).toBe(true)
     expect(clashing.has('b')).toBe(true)
     expect(clashing.has('c')).toBe(false)
+  })
+
+  it('defaults room wall height and respects an explicit override', () => {
+    const bare: Room = { id: 'a', name: 'Room', kind: 'living', x: 0, y: 0, w: 30, h: 30 }
+    expect(roomHeight(bare)).toBe(DEFAULT_WALL_HEIGHT)
+    const tall: Room = { ...bare, wallHeight: 3.2 }
+    expect(roomHeight(tall)).toBe(3.2)
+  })
+
+  it('points the sun vector toward east, south, and straight up', () => {
+    const east = sunVector(90, 0)
+    expect(east.x).toBeCloseTo(1)
+    expect(east.y).toBeCloseTo(0)
+    expect(east.z).toBeCloseTo(0)
+
+    const south = sunVector(180, 0)
+    expect(south.x).toBeCloseTo(0)
+    expect(south.y).toBeCloseTo(0)
+    expect(south.z).toBeCloseTo(1)
+
+    const overhead = sunVector(0, 90)
+    expect(overhead.y).toBeCloseTo(1)
   })
 
   it('estimates embodied carbon with transparent per-line factors', () => {
