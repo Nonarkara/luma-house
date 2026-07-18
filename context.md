@@ -13,7 +13,7 @@
 ## Deploy targets
 
 - **Frontend (primary):** https://luma-house.pages.dev (Cloudflare Pages, project `luma-house`)
-- Latest deployment: https://8fbb6a98.luma-house.pages.dev (commit `1fa345c` — finger-draw rooms + furniture door-swing checks)
+- Latest deployment: https://520d7424.luma-house.pages.dev (commit `3837693` — draw→model→sun→advice→cost journey)
 - Mirror: https://nonarkara.github.io/luma-house/ (GitHub Pages workflow)
 - Repo: https://github.com/Nonarkara/luma-house
 - Concept renders: Cloudflare Worker above
