@@ -199,3 +199,40 @@ Follow-up (documented, not rushed per Anti-Regression §11): triplicate `.welcom
 CSS blocks (styles.css ~637 / ~4005 / ~4107) still cascade over each other and the
 second :root is now a bg/shadow/font layer only — safe to merge into one, but it's
 layout-surface surgery to do deliberately, not in a color pass.
+
+## Review — subtraction redesign shipped, 2026-07-21 (SSDIY end-to-end)
+
+Diagnosis: 9 layers of chrome left the canvas ~40% of pixels; three disagreeing
+nav systems (SideNav / JourneyRail / view tabs); duplicate coaching (JourneyCoach
+banner + AssistantBar); dead-void empty states; phone landed inside the Inspector.
+
+Shipped (commit a7c38b9, 11 files, +184/−457):
+
+- [x] ONE nav — deleted `SideNav.tsx`; JourneyRail is the single stage nav;
+      Plan/Spatial/Renders tabs stay as the quiet view axis
+- [x] ONE coaching voice — deleted `JourneyCoach.tsx`; its primary CTA folded
+      into AssistantBar (`cta`/`onCta` props, driven by `journey.coach`)
+- [x] Inspector on-demand — defaults CLOSED; single TopBar toggle (PanelRight)
+      + settings button; desktop 344px right dock, phone full-screen overlay;
+      WelcomeGate now lands on the canvas (`inspector: false`)
+- [x] Empty states — Spatial/Sun with no rooms renders a ghost demo massing
+      (translucent volumes, citron Edges via drei) + "Draw a room in Plan to
+      see it in 3D" + Go to Plan button
+- [x] Single progress truth — `living`/`cost` stages in `stages.ts` now require
+      a real plan (rooms ≥ 1) before a visit locks them; rail, headline count
+      and AssistantBar all read `evaluateJourney` only
+- [x] Fonts — dropped @fontsource/inter, manrope, josefin-sans. Verified via
+      grep: Inter/Manrope were referenced in CSS but NEVER loaded (dead
+      references → now point at Source Sans 3); Josefin headings → JetBrains
+      Mono. Kept: Source Sans 3 (body) + JetBrains Mono (headings/labels)
+
+Gates: 83/83 tests green · eslint clean · tsc + vite build clean ·
+deployed https://luma-house.pages.dev (deploy id b7b9a4e9.luma-house.pages.dev)
+Live playwright verification (desktop 1440×900 + phone 390×844, fresh profiles):
+post-gate canvas hero, Spatial ghost empty state, Sun stage ghost, Inspector
+dock + phone overlay — all correct, ZERO console errors.
+
+Learned: ghost state reuses `chinaApartmentPlan` read-only with a `ghost` prop
+on Spatial3D (skips RoomVolume/openings/furniture/selection) — no demo-plan
+duplication. Stage nav (`inspector: true` in StageNav) is how mode content is
+reached, so chips still open the panel on tap; only the DEFAULT changed.
