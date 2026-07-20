@@ -3979,10 +3979,6 @@ select {
   --bg-primary: #0b0b0b;
   --bg-secondary: #121212;
   --bg-elevated: #191919;
-  --accent-primary: #f59e0b;
-  --accent-deep: #d97706;
-  --success: #f59e0b;
-  --warning: #f59e0b;
   --shadow-sm: none;
   --shadow-md: none;
   --glass-bg: rgba(14, 14, 14, 0.94);
@@ -4052,7 +4048,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 summary:focus-visible {
-  outline-color: rgba(245, 158, 11, 0.75);
+  outline-color: rgba(163, 255, 0, 0.75);
 }
 
 .button.primary {
@@ -4062,14 +4058,14 @@ summary:focus-visible {
 }
 
 .button.primary:hover {
-  background: #fbbf24;
-  border-color: #fbbf24;
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
 }
 
 .brand-mark {
   border-radius: 0;
-  border-color: rgba(245, 158, 11, 0.55);
-  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(163, 255, 0, 0.55);
+  background: rgba(163, 255, 0, 0.12);
   box-shadow: none;
 }
 
@@ -4087,8 +4083,8 @@ summary:focus-visible {
 .journey-coach,
 .draw-hint {
   color: var(--accent-primary);
-  border-color: rgba(245, 158, 11, 0.45);
-  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(163, 255, 0, 0.45);
+  background: rgba(163, 255, 0, 0.08);
   box-shadow: none;
 }
 
@@ -4113,7 +4109,7 @@ summary:focus-visible {
   width: min(620px, 100%);
   gap: 18px;
   padding: 36px;
-  border-color: rgba(245, 158, 11, 0.45);
+  border-color: rgba(163, 255, 0, 0.45);
   background: #101010;
 }
 
@@ -4180,8 +4176,8 @@ summary:focus-visible {
   display: grid;
   gap: 12px;
   padding: 14px;
-  border: 1px solid rgba(245, 158, 11, 0.42);
-  background: rgba(245, 158, 11, 0.055);
+  border: 1px solid rgba(163, 255, 0, 0.42);
+  background: rgba(163, 255, 0, 0.055);
 }
 
 .scale-calibration h3,
@@ -4257,7 +4253,7 @@ summary:focus-visible {
   gap: 9px;
   min-width: 164px;
   padding: 9px 10px;
-  border: 1px solid rgba(245, 158, 11, 0.45);
+  border: 1px solid rgba(163, 255, 0, 0.45);
   border-radius: 0;
   background: rgba(10, 10, 10, 0.94);
   color: #fff;
@@ -4367,7 +4363,7 @@ summary:focus-visible {
 
 .science-net {
   border-right: 0;
-  background: rgba(245, 158, 11, 0.08);
+  background: rgba(163, 255, 0, 0.08);
 }
 
 .science-net.is-heat-out {
@@ -4495,7 +4491,7 @@ summary:focus-visible {
   bottom: 36px;
   width: min(390px, calc(100vw - 48px));
   padding: 16px;
-  border: 1px solid rgba(245, 158, 11, 0.5);
+  border: 1px solid rgba(163, 255, 0, 0.5);
   background: #101010;
 }
 
@@ -4713,7 +4709,7 @@ summary:focus-visible {
 .scale-calibration,
 .interior-boq-room-head,
 .interior-boq-summary {
-  background-color: rgba(245, 158, 11, 0.055);
+  background-color: rgba(163, 255, 0, 0.055);
 }
 
 .scale-chip,
