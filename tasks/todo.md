@@ -178,3 +178,24 @@ any zoom — the variable is set once on the canvas element in percent, and
 the radial-gradient background-size reads it. Scale is per-plan, not global,
 so a shared link restores the exact grid. Vision trace is approximate by
 design — the "verify before costing" label is non-negotiable.
+
+## Review — parallel-agent consolidation, 2026-07-21 (Opus)
+
+Dr Non asked "what do we need? Unreal engine?" and to check other agents' work
+first. Found ~5,760 lines of green-but-UNCOMMITTED work from parallel sessions
+(journey UX, AI plan trace, per-room interior BOQ, honest heat-flow science,
+china-apartment demo). One mind had not verified it held together.
+
+- [x] Committed the parallel work to protect it (34ab168) — 83 tests green, build clean
+- [x] Verified functional coherence: app renders end-to-end, all layers cohere
+- [x] Found + reverted an undocumented citron->amber re-theme (shadow :root +
+      ~12 hardcoded amber tints). Restored #a3ff00 per project identity (b8c25bc);
+      kept semantic amber (sun, .sev-2 severity, --warning). Verified citron app-wide.
+- Unreal Engine: NO. In-browser Unreal = Pixel Streaming (GPU farm, latency,
+      kills the shared-link-on-a-phone first impression). We already have real 3D
+      (r3f, lazy 247KB). Photoreal belongs to the Gemini render path, not an engine.
+
+Follow-up (documented, not rushed per Anti-Regression §11): triplicate `.welcome-*`
+CSS blocks (styles.css ~637 / ~4005 / ~4107) still cascade over each other and the
+second :root is now a bg/shadow/font layer only — safe to merge into one, but it's
+layout-surface surgery to do deliberately, not in a color pass.
