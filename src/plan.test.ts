@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculateBudget, DEFAULT_WALL_HEIGHT, estimateEmbodiedCarbon, estimateEnergySavings, furnitureDoorConflicts, furnitureRect, initialPlan, locations, roomArea, roomHeight, roomOverlaps, solarPosition, sunPatches, sunVector, totalArea } from './plan'
+import { calculateBudget, DEFAULT_WALL_HEIGHT, estimateEmbodiedCarbon, estimateEnergySavings, furnitureDoorConflicts, furnitureRect, furnitureRectFor, initialPlan, locations, roomArea, roomAreaFor, roomHeight, roomOverlaps, solarPosition, sunPatches, sunVector, totalArea, totalAreaFor } from './plan'
 import type { Opening, PlanState, Room } from './types'
 
 describe('plan calculations', () => {
@@ -141,5 +141,35 @@ describe('plan calculations', () => {
     // Systems add real lines, not hidden multipliers.
     const bare = estimateEmbodiedCarbon({ ...initialPlan, systems: { solar: false, insulation: false, climate: false, lighting: false } })
     expect(bare.totalKg).toBeLessThan(carbon.totalKg)
+  })
+})
+
+describe('site scale', () => {
+  it('roomAreaFor scales with site dimensions, not the hardcoded default', () => {
+    const room = { id: 'r', name: 'R', kind: 'living' as const, x: 0, y: 0, w: 50, h: 50 }
+    // Default 14×10: 50%×50% = 7×5 = 35 m²
+    expect(roomAreaFor(room, { w: 14, h: 10, unit: 1 })).toBe(35)
+    // Custom 20×16: 50%×50% = 10×8 = 80 m²
+    expect(roomAreaFor(room, { w: 20, h: 16, unit: 1 })).toBe(80)
+  })
+
+  it('furnitureRectFor uses the plan site, not the global default', () => {
+    const item = { id: 'f', kind: 'bed' as const, x: 10, y: 10, rotated: false }
+    // Bed is 2.0 × 1.8 m. On a 14×10 site → (2/14*100)% × (1.8/10*100)%
+    const defaultRect = furnitureRectFor(item, { w: 14, h: 10, unit: 1 })
+    expect(defaultRect.w).toBeCloseTo((2.0 / 14) * 100, 5)
+    // On a 20×16 site the bed covers a smaller percentage of the canvas
+    const bigRect = furnitureRectFor(item, { w: 20, h: 16, unit: 1 })
+    expect(bigRect.w).toBeCloseTo((2.0 / 20) * 100, 5)
+    expect(bigRect.w).toBeLessThan(defaultRect.w)
+  })
+
+  it('totalAreaFor sums room areas at a custom site', () => {
+    const rooms = [
+      { id: 'a', name: 'A', kind: 'living' as const, x: 0, y: 0, w: 50, h: 50 },
+      { id: 'b', name: 'B', kind: 'kitchen' as const, x: 50, y: 0, w: 50, h: 50 },
+    ]
+    // On a 10×10 site: each is 5×5=25 m², total 50
+    expect(totalAreaFor(rooms, { w: 10, h: 10, unit: 1 })).toBe(50)
   })
 })

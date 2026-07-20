@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import type { Furniture, Opening, PlanState, PlanTool, Room } from '../types'
-import { furnitureRect } from '../plan'
+import { furnitureRectFor, siteOf } from '../plan'
 import {
   clientToPercent,
   moveOpening,
@@ -104,7 +104,7 @@ export function useRoomGestures({
 
       if (gesture.kind === 'move-furniture' && gesture.furnitureId && gesture.startFurniture) {
         const start = gesture.startFurniture
-        const rect = furnitureRect(start)
+        const rect = furnitureRectFor(start, siteOf(planRef.current))
         const x = Math.max(0, Math.min(100 - rect.w, snap(start.x + dx, snapRef.current)))
         const y = Math.max(0, Math.min(100 - rect.h, snap(start.y + dy, snapRef.current)))
         setPlan((current) => ({

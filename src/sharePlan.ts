@@ -1,4 +1,5 @@
 import type { Furniture, Opening, PlanState, Room, RoomKind } from './types'
+import { sanitizeSite } from './plan'
 
 // ---------------------------------------------------------------------------
 // Plan sharing: encode the full plan into a URL hash so a copied link restores
@@ -28,7 +29,10 @@ function sanitizeRoom(raw: unknown): Room | null {
   if (!id || x === null || y === null || w === null || h === null) return null
   if (w <= 0 || h <= 0) return null
   const kind = ROOM_KINDS.includes(candidate.kind as RoomKind) ? (candidate.kind as RoomKind) : 'studio'
-  return { id, name: str(candidate.name) ?? 'Room', kind, x, y, w, h }
+  const room: Room = { id, name: str(candidate.name) ?? 'Room', kind, x, y, w, h }
+  const wallHeight = num(candidate.wallHeight)
+  if (wallHeight !== null && wallHeight >= 1.5 && wallHeight <= 6) room.wallHeight = wallHeight
+  return room
 }
 
 function sanitizeOpening(raw: unknown): Opening | null {
@@ -83,6 +87,9 @@ export function sanitizePlan(raw: unknown): PlanState | null {
       climate: systemsRaw.climate === true,
       lighting: systemsRaw.lighting === true,
     },
+    // Preserve a custom site/scale when present; legacy plans omit it and
+    // fall back to the default via siteOf().
+    site: candidate.site ? sanitizeSite(candidate.site) : undefined,
   }
 }
 

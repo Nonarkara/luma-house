@@ -7,17 +7,54 @@ import { useRoomGestures } from './canvas/useRoomGestures'
 import { clientToPercent, moveOpening, moveRoom, strokeToRoomRect, type StrokePoint } from './canvas/geometry'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
-import { SITE_HEIGHT_METERS, SITE_WIDTH_METERS, calculateBudget, estimateEmbodiedCarbon, furnitureCatalog, furnitureDoorConflicts, furnitureRect, roomArea, roomOverlaps, solarPosition, sunPatches, locations } from './plan'
-import { COMPLETE_PROJECT_KEY, COMPLETE_PROJECT_LOCATION, COMPLETE_PROJECT_NAME, completeHousePlan, completeHouseVariants, lightingChannels } from './mockups/completeHouse'
+import { defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureRectFor, roomAreaFor, roomOverlaps, siteOf, solarPosition, sunPatches, locations } from './plan'
+import { interiorBoq } from './boq/interiorBoq'
+import { tracePlanFromImage } from './concept/tracePlan'
+import type { SiteSpec } from './types'
+
+/** A truly blank plan — the napkin / tissue-paper starting point. */
+function blankPlan(): PlanState {
+  return {
+    rooms: [],
+    openings: [],
+    furniture: [],
+    systems: { solar: false, insulation: false, climate: false, lighting: false },
+    site: defaultSite(),
+  }
+}
+import {
+  CHINA_PROJECT_KEY,
+  CHINA_PROJECT_LOCATION,
+  CHINA_PROJECT_NAME,
+  calculateChinaApartmentBudget,
+  chinaApartmentPlan,
+  chinaApartmentVariants,
+  chinaLightingChannels,
+  estimateApartmentCarbon,
+} from './mockups/chinaApartment'
 import { buildShareUrl, decodePlanFromHash, sanitizePlan } from './sharePlan'
-import { analyze } from './analysis'
+import { analyze, heatFlowSnapshot } from './analysis'
 import type { AnalysisResult, Suggestion } from './analysis'
 import type { CanvasView, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
 import { TopBar } from './components/TopBar'
 import { SideNav } from './components/SideNav'
 import { AssistantBar } from './components/AssistantBar'
 import { Inspector } from './components/Inspector'
+import { JourneyCoach } from './components/JourneyCoach'
+import { JourneyRail } from './components/JourneyRail'
+import { WelcomeGate } from './components/WelcomeGate'
+import { ScienceDock } from './components/ScienceDock'
 import { IconButton } from './components/ui'
+import { evaluateJourney } from './journey/evaluateJourney'
+import {
+  readVisited,
+  readWelcomeDismissed,
+  stageFromVisit,
+  writeVisited,
+  writeWelcomeDismissed,
+  type JourneyStageId,
+  type StageNav,
+} from './journey/stages'
 
 const Spatial3D = lazy(() => import('./canvas/Spatial3D'))
 
@@ -28,11 +65,11 @@ function readSavedPlan(): PlanState {
     if (shared) return shared
   }
   try {
-    const saved = localStorage.getItem(COMPLETE_PROJECT_KEY)
-    if (!saved) return completeHousePlan
-    return sanitizePlan(JSON.parse(saved)) ?? completeHousePlan
+    const saved = localStorage.getItem(CHINA_PROJECT_KEY)
+    if (!saved) return chinaApartmentPlan
+    return sanitizePlan(JSON.parse(saved)) ?? chinaApartmentPlan
   } catch {
-    return completeHousePlan
+    return chinaApartmentPlan
   }
 }
 
@@ -48,10 +85,11 @@ function App() {
   const [activeTool, setActiveTool] = useState<PlanTool>('select')
   const [furnitureTrayOpen, setFurnitureTrayOpen] = useState(false)
   const [draftStroke, setDraftStroke] = useState<StrokePoint[] | null>(null)
-  const [location, setLocation] = useState<string>(COMPLETE_PROJECT_LOCATION)
-  const [styleKeywords, setStyleKeywords] = useState<string>(() => localStorage.getItem('luma-style-keywords') || 'tropical modern, warm timber, light concrete, deep eaves')
-  const [hour, setHour] = useState(15)
-  const [day, setDay] = useState(196)
+  const [location, setLocation] = useState<string>(CHINA_PROJECT_LOCATION)
+  const [styleKeywords, setStyleKeywords] = useState<string>(() => localStorage.getItem('luma-style-keywords:shanghai-50') || 'contemporary Shanghai, custom elm joinery, mineral plaster, linen screens, quiet craftsmanship')
+  const [hour, setHour] = useState(10)
+  const [day, setDay] = useState(355)
+  const [outsideC, setOutsideC] = useState(34)
   const [sketchUrl, setSketchUrl] = useState<string | null>(null)
   const [assistantText, setAssistantText] = useState('')
   const [toast, setToast] = useState<string | null>(null)
@@ -64,6 +102,9 @@ function App() {
   const [conceptImages, setConceptImages] = useState<string[]>(() => getSavedConceptImages())
   const [quotaLeft, setQuotaLeft] = useState(() => getQuotaRemaining())
   const [isRendering, setIsRendering] = useState(false)
+  const [visitedStages, setVisitedStages] = useState<Set<JourneyStageId>>(() => readVisited())
+  const [welcomeOpen, setWelcomeOpen] = useState(() => !readWelcomeDismissed())
+  const [coachDismissed, setCoachDismissed] = useState(false)
   const frameRef = useRef<HTMLDivElement>(null!)
   const stageRef = useRef<HTMLDivElement>(null!)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -86,19 +127,83 @@ function App() {
     onViewportPointerUp,
   } = useCanvasViewport(frameRef)
 
-  const budget = useMemo(() => calculateBudget(plan, styleKeywords), [plan, styleKeywords])
+  const budget = useMemo(() => calculateChinaApartmentBudget(plan), [plan])
+  const site = useMemo<SiteSpec>(() => siteOf(plan), [plan])
   const sun = useMemo(() => solarPosition(locations[location as keyof typeof locations].latitude, day, hour), [location, day, hour])
   const patches = useMemo(() => sunPatches(plan, sun.azimuth, sun.altitude), [plan, sun.azimuth, sun.altitude])
   const directSunM2 = Math.min(budget.area, patches.reduce((sum, patch) => sum + patch.areaM2, 0))
+  const heatFlow = useMemo(
+    () => heatFlowSnapshot({ plan, sunAzimuth: sun.azimuth, sunAltitude: sun.altitude, outsideC }),
+    [outsideC, plan, sun.altitude, sun.azimuth],
+  )
   const room = useMemo(() => plan.rooms.find((item) => item.id === selectedRoom), [plan.rooms, selectedRoom])
-  const furnitureConflicts = useMemo(() => furnitureDoorConflicts(plan.furniture, plan.openings), [plan.furniture, plan.openings])
+  const furnitureConflicts = useMemo(() => furnitureDoorConflicts(plan.furniture, plan.openings, site), [plan.furniture, plan.openings, site])
   const furnitureItem = useMemo(() => plan.furniture.find((item) => item.id === selectedFurniture), [plan.furniture, selectedFurniture])
   const climateResult = useMemo<AnalysisResult>(
     () => analyze({ plan, location: locations[location as keyof typeof locations] }),
     [plan, location],
   )
-  const carbon = useMemo(() => estimateEmbodiedCarbon(plan), [plan])
+  const carbon = useMemo(() => estimateApartmentCarbon(plan), [plan])
   const overlaps = useMemo(() => roomOverlaps(plan.rooms), [plan.rooms])
+  // Per-plan site + scale (the adjustable 1×1 grid cell). Falls back to the
+  // legacy 14×10 default for plans authored before `site` existed.
+  const interior = useMemo(() => interiorBoq(plan, site), [plan, site])
+  const [isTracing, setIsTracing] = useState(false)
+  const [traceNote, setTraceNote] = useState<string | null>(null)
+  const isEmpty = plan.rooms.length === 0
+
+  const journey = useMemo(
+    () =>
+      evaluateJourney({
+        plan,
+        areaM2: budget.area,
+        hasConcept: conceptImages.length > 0,
+        visited: visitedStages,
+        mode,
+        view,
+      }),
+    [budget.area, conceptImages.length, mode, plan, view, visitedStages],
+  )
+
+  const markVisited = useCallback((stageId: JourneyStageId) => {
+    setVisitedStages((current) => {
+      if (current.has(stageId)) return current
+      const next = new Set(current)
+      next.add(stageId)
+      writeVisited(next)
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    markVisited(stageFromVisit(mode, view))
+    setCoachDismissed(false)
+  }, [markVisited, mode, view])
+
+  const prevDoneRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (prevDoneRef.current === null) {
+      prevDoneRef.current = journey.doneCount
+      return
+    }
+    if (journey.doneCount > prevDoneRef.current) {
+      const completed = journey.stages.filter((s) => s.complete)
+      const justDone = completed[completed.length - 1]
+      if (justDone) {
+        setToast(`${justDone.def.label} locked in · ${journey.doneCount}/${journey.stages.length}`)
+      }
+    }
+    prevDoneRef.current = journey.doneCount
+  }, [journey.doneCount, journey.stages])
+
+  const goToStage = useCallback((nav: StageNav) => {
+    if (nav.inspector !== undefined) setInspectorOpen(nav.inspector)
+    setSettingsOpen(false)
+    if (nav.mode) setMode(nav.mode)
+    if (nav.view) setView(nav.view)
+    if (nav.tool) setActiveTool(nav.tool)
+    setCoachDismissed(false)
+  }, [])
 
   const commitSnapshot = useCallback((snapshot: PlanState) => {
     setPast((items) => [...items.slice(-29), snapshot])
@@ -128,14 +233,14 @@ function App() {
   useEffect(() => {
     setLastSaved('Saving…')
     const timeout = window.setTimeout(() => {
-      localStorage.setItem(COMPLETE_PROJECT_KEY, JSON.stringify(plan))
+      localStorage.setItem(CHINA_PROJECT_KEY, JSON.stringify(plan))
       setLastSaved('Saved locally')
     }, 300)
     return () => window.clearTimeout(timeout)
   }, [plan])
 
   useEffect(() => {
-    localStorage.setItem('luma-style-keywords', styleKeywords)
+    localStorage.setItem('luma-style-keywords:shanghai-50', styleKeywords)
   }, [styleKeywords])
 
   useEffect(() => {
@@ -223,11 +328,11 @@ function App() {
       const sketched: Room = { id, name: 'Sketched room', kind: 'studio', ...rect }
       commit((current) => ({ ...current, rooms: [...current.rooms, sketched] }))
       setSelectedRoom(id)
-      setToast(`Room snapped to scale · ${roomArea(sketched).toFixed(1)} m²`)
+      setToast(`Room snapped to scale · ${roomAreaFor(sketched, site).toFixed(1)} m²`)
       return
     }
     onViewportPointerUp(event)
-  }, [commit, onViewportPointerUp])
+  }, [commit, onViewportPointerUp, site])
 
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (panMovedRef.current || isGesturing()) return
@@ -281,8 +386,8 @@ function App() {
 
   const addFurniture = useCallback((kind: FurnitureKind) => {
     const spec = furnitureCatalog[kind]
-    const w = (spec.w / SITE_WIDTH_METERS) * 100
-    const h = (spec.d / SITE_HEIGHT_METERS) * 100
+    const w = (spec.w / site.w) * 100
+    const h = (spec.d / site.h) * 100
     const id = `f-${Date.now()}`
     commit((current) => ({
       ...current,
@@ -291,7 +396,7 @@ function App() {
     setSelectedFurniture(id)
     setFurnitureTrayOpen(false)
     setToast(`${spec.label} placed at real size — drag it into a room`)
-  }, [commit])
+  }, [commit, site.h, site.w])
 
   const rotateFurniture = useCallback(() => {
     if (!selectedFurniture) return
@@ -301,12 +406,12 @@ function App() {
         if (item.id !== selectedFurniture) return item
         const spec = furnitureCatalog[item.kind]
         const rotated = !item.rotated
-        const w = ((rotated ? spec.d : spec.w) / SITE_WIDTH_METERS) * 100
-        const h = ((rotated ? spec.w : spec.d) / SITE_HEIGHT_METERS) * 100
+        const w = ((rotated ? spec.d : spec.w) / site.w) * 100
+        const h = ((rotated ? spec.w : spec.d) / site.h) * 100
         return { ...item, rotated, x: Math.min(item.x, 100 - w), y: Math.min(item.y, 100 - h) }
       }),
     }))
-  }, [commit, selectedFurniture])
+  }, [commit, selectedFurniture, site.h, site.w])
 
   const deleteFurniture = useCallback(() => {
     if (!selectedFurniture) return
@@ -421,7 +526,7 @@ function App() {
             ...current,
             furniture: current.furniture.map((item) => {
               if (item.id !== selectedFurniture) return item
-              const rect = furnitureRect(item)
+              const rect = furnitureRectFor(item, site)
               return {
                 ...item,
                 x: Math.max(0, Math.min(100 - rect.w, item.x + dx)),
@@ -434,7 +539,7 @@ function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [commit, deleteFurniture, deleteOpening, deleteRoom, redo, selectedFurniture, selectedOpening, selectedRoom, undo])
+  }, [commit, deleteFurniture, deleteOpening, deleteRoom, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo])
 
   const handleSketch = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -448,8 +553,8 @@ function App() {
   }, [])
 
   const applyVariant = useCallback((index: number) => {
-    commit((current) => ({ ...current, rooms: completeHouseVariants[index].rooms.map((item) => ({ ...item })) }))
-    setToast(`${completeHouseVariants[index].name} applied`)
+    commit((current) => ({ ...current, rooms: chinaApartmentVariants[index].rooms.map((item) => ({ ...item })) }))
+    setToast(`${chinaApartmentVariants[index].name} applied`)
   }, [commit])
 
   const applySuggestion = useCallback((suggestion: Suggestion) => {
@@ -467,12 +572,61 @@ function App() {
   }, [commit, plan.rooms])
 
   const resetPlan = useCallback(() => {
-    commit(completeHousePlan)
+    commit(chinaApartmentPlan)
     setSelectedRoom('living')
     setSelectedOpening(null)
     resetView()
-    setToast('Complete 100 m² house restored')
+    setToast('Shanghai 50 m² apartment restored')
   }, [commit, resetView])
+
+  // Start from a truly blank napkin — empty dotted canvas.
+  const startBlank = useCallback(() => {
+    commit(blankPlan())
+    setSelectedRoom(null)
+    setSelectedOpening(null)
+    setSelectedFurniture(null)
+    setActiveTool('draw')
+    resetView()
+    setTraceNote(null)
+    setToast('Blank canvas — draw a room or upload a plan to trace')
+  }, [commit, resetView])
+
+  // Adjustable scale: change the meters represented by one grid cell.
+  const setSiteScale = useCallback((unit: number) => {
+    const safe = Math.max(0.1, Math.min(Math.min(site.w, site.h), unit))
+    commit((current) => ({ ...current, site: { ...siteOf(current), unit: safe } }))
+    setToast(`Grid scale set to ${safe} m / cell`)
+  }, [commit, site])
+
+  // AI trace: read a plan from an uploaded image via the Gemini vision worker.
+  const traceFileInputRef = useRef<HTMLInputElement>(null)
+  const runTrace = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (quotaLeft <= 0) {
+      setToast('Daily AI limit reached (3/day)')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const imageDataUrl = String(reader.result)
+      setSketchUrl(imageDataUrl) // show it as the underlay while tracing
+      setIsTracing(true)
+      try {
+        const result = await tracePlanFromImage({ imageDataUrl, siteW: site.w, siteH: site.h })
+        commit(result.plan)
+        setSelectedRoom(result.plan.rooms[0]?.id ?? null)
+        setTraceNote(result.note)
+        setToast(`AI read ${result.plan.rooms.length} rooms — verify before costing`)
+      } catch (error) {
+        setToast(error instanceof Error ? error.message : 'Plan trace failed')
+      } finally {
+        setIsTracing(false)
+      }
+    }
+    reader.readAsDataURL(file)
+  }, [commit, quotaLeft, site.h, site.w])
 
   const runConceptRender = useCallback(async () => {
     if (isRendering) return
@@ -507,7 +661,7 @@ function App() {
       // the analysis actually credits it — a window off every wall is a lie.
       const target =
         plan.rooms.find((item) => item.id === selectedRoom) ??
-        [...plan.rooms].sort((a, b) => roomArea(b) - roomArea(a))[0]
+        [...plan.rooms].sort((a, b) => roomAreaFor(b, site) - roomAreaFor(a, site))[0]
       if (!target) return
       commit((current) => ({
         ...current,
@@ -534,18 +688,18 @@ function App() {
       setToast('Quick actions: “brighter”, “add room”, “budget”, “energy”, or “concept photo”')
     }
     setAssistantText('')
-  }, [addRoom, assistantText, commit, plan.rooms, runConceptRender, selectedRoom])
+  }, [addRoom, assistantText, commit, plan.rooms, runConceptRender, selectedRoom, site])
 
   const exportPlan = useCallback(() => {
-    const blob = new Blob([JSON.stringify({ project: COMPLETE_PROJECT_NAME, exportedAt: new Date().toISOString(), plan, budget, carbon, lightingChannels }, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify({ project: CHINA_PROJECT_NAME, location: locations[location as keyof typeof locations], orientation: 'Due south', exportedAt: new Date().toISOString(), plan, budget, carbon, lightingChannels: chinaLightingChannels }, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = 'lantern-courtyard-100.json'
+    anchor.download = 'south-light-shanghai-50.json'
     anchor.click()
     URL.revokeObjectURL(url)
     setToast('Project file exported')
-  }, [budget, carbon, plan])
+  }, [budget, carbon, location, plan])
 
   const viewportStyle = useMemo(() => ({
     transform: `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`,
@@ -555,7 +709,7 @@ function App() {
   return (
     <div className={`app-shell ${inspectorOpen ? '' : 'inspector-collapsed'}`}>
       <TopBar
-        projectName={COMPLETE_PROJECT_NAME}
+        projectName={CHINA_PROJECT_NAME}
         lastSaved={lastSaved}
         setMobileNavOpen={setMobileNavOpen}
         exportPlan={exportPlan}
@@ -563,20 +717,20 @@ function App() {
       />
 
       <div className="workspace">
-        <SideNav 
-          mode={mode} 
-          setMode={setMode} 
-          mobileNavOpen={mobileNavOpen} 
-          setMobileNavOpen={setMobileNavOpen} 
-          settingsOpen={settingsOpen} 
-          setSettingsOpen={setSettingsOpen} 
+        <SideNav
+          mode={mode}
+          setMode={setMode}
+          mobileNavOpen={mobileNavOpen}
+          setMobileNavOpen={setMobileNavOpen}
+          settingsOpen={settingsOpen}
+          setSettingsOpen={setSettingsOpen}
         />
 
         <main className="design-stage">
           <div className="stage-head">
             <div>
-              <p className="eyebrow">Complete house <span>•</span> 100 m² residential</p>
-              <h1>{COMPLETE_PROJECT_NAME}</h1>
+              <p className="eyebrow">Decision sequence <span>•</span> Shanghai · due south · 50 m²</p>
+              <h1>{CHINA_PROJECT_NAME}</h1>
             </div>
             <div className="stage-meta">
               <span><MapPin /> {locations[location as keyof typeof locations].label}</span>
@@ -584,14 +738,15 @@ function App() {
             </div>
           </div>
 
-          <div className="deliverable-rail" aria-label="Design journey">
-            <button type="button" className={mode === 'plan' && view === 'plan' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('plan'); setView('plan'); setActiveTool('draw') }}><small>01</small><span>Draw<strong>{budget.area.toFixed(0)} m²</strong></span></button>
-            <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('plan'); setView('spatial') }}><small>02</small><span>Model<strong>{plan.rooms.length} volumes</strong></span></button>
-            <button type="button" className={mode === 'light' && view === 'plan' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('light'); setView('plan') }}><small>03</small><span>Sun<strong>{sun.altitude.toFixed(0)}° now</strong></span></button>
-            <button type="button" className={mode === 'climate' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('climate'); setView('plan') }}><small>04</small><span>Advice<strong>{climateResult.scores.overall}/100</strong></span></button>
-            <button type="button" className={mode === 'budget' ? 'active' : ''} onClick={() => { setInspectorOpen(true); setSettingsOpen(false); setMode('budget'); setView('plan') }}><small>05</small><span>Cost<strong>BOQ</strong></span></button>
-            <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setSettingsOpen(false); setInspectorOpen(false); setView('renders') }}><small>06</small><span>Picture<strong>{conceptImages.length ? `${conceptImages.length} photo` : 'Massing'}</strong></span></button>
-          </div>
+          <JourneyRail
+            stages={journey.stages}
+            progress={journey.progress}
+            headline={journey.headline}
+            onGo={(nav, stageId) => {
+              markVisited(stageId as JourneyStageId)
+              goToStage(nav)
+            }}
+          />
 
           <div className="canvas-toolbar" aria-label="Plan tools">
             <div className="tool-group">
@@ -630,6 +785,8 @@ function App() {
                 sunAngle={sun.azimuth}
                 sunPatchList={mode === 'light' ? patches : []}
                 showGrid={showGrid}
+                gridCellX={(site.unit / site.w) * 100}
+                gridCellY={(site.unit / site.h) * 100}
                 viewportStyle={viewportStyle}
                 onRoomPointerDown={onRoomPointerDown}
                 onOpeningPointerDown={onOpeningPointerDown}
@@ -652,6 +809,9 @@ function App() {
                     selectedRoom={selectedRoom}
                     onSelectRoom={setSelectedRoom}
                     onSetWallHeight={setWallHeight}
+                    hour={hour}
+                    day={day}
+                    locationLabel={locations[location as keyof typeof locations].label}
                   />
                 </Suspense>
                 {(conceptImages.length > 0 || isRendering) && (
@@ -675,6 +835,65 @@ function App() {
                 isRendering={isRendering}
                 quotaLeft={quotaLeft}
               />
+            )}
+            {view !== 'renders' && !isEmpty && (
+              mode === 'light' || view === 'spatial' ? (
+                <ScienceDock
+                  heat={heatFlow}
+                  directSunM2={directSunM2}
+                  floorAreaM2={budget.area}
+                  hour={hour}
+                  setHour={setHour}
+                  day={day}
+                  setDay={setDay}
+                  outsideC={outsideC}
+                  setOutsideC={setOutsideC}
+                />
+              ) : (
+                <button className="science-preview" type="button" onClick={() => setMode('light')}>
+                  <span className="science-live" />
+                  <span><small>Live sun + heat</small><strong>{Math.abs(heatFlow.netW) >= 1000 ? `${(Math.abs(heatFlow.netW) / 1000).toFixed(1)} kW` : `${Math.round(Math.abs(heatFlow.netW))} W`} {heatFlow.mode === 'heat-out' ? 'leaving' : 'entering'}</strong></span>
+                  <Sun />
+                </button>
+              )
+            )}
+            {view === 'plan' && (
+              <div className="scale-chip" title="Grid scale — meters per cell">
+                <Ruler />
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0.1"
+                  max={Math.min(site.w, site.h)}
+                  value={site.unit}
+                  onChange={(e) => setSiteScale(Number(e.target.value))}
+                  aria-label="Grid cell size in meters"
+                />
+                <small>m / cell</small>
+                <span>·</span>
+                <small>{site.w.toFixed(1)} × {site.h.toFixed(1)} m site</small>
+              </div>
+            )}
+            {view === 'plan' && isEmpty && !draftStroke && (
+              <div className="canvas-empty">
+                <Pencil />
+                <h3>Draw your first room</h3>
+                <p>Sketch a rough rectangle with one finger — it snaps straight, to scale. Or upload an existing plan and let AI trace it.</p>
+                <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <button className="button primary small" type="button" onClick={() => setActiveTool('draw')}>Draw a room</button>
+                  <button className="button secondary small" type="button" onClick={() => traceFileInputRef.current?.click()} disabled={isTracing || quotaLeft <= 0}>
+                    {isTracing ? 'Tracing…' : 'Upload plan → trace with AI'}
+                  </button>
+                  <button className="button secondary small" type="button" onClick={resetPlan}>Load sample</button>
+                </div>
+                <input ref={traceFileInputRef} type="file" accept="image/*" onChange={runTrace} hidden />
+              </div>
+            )}
+            {view === 'plan' && traceNote && (
+              <div className="trace-note" role="status">
+                {isTracing ? 'AI reading plan…' : traceNote}
+                {!isTracing && <button className="text-button" style={{ marginLeft: 8 }} type="button" onClick={() => setTraceNote(null)}>Dismiss</button>}
+              </div>
             )}
             {mode === 'light' && view === 'plan' && (
               <div className="sun-status">
@@ -734,10 +953,18 @@ function App() {
             )}
           </section>
 
-          <AssistantBar 
-            assistantText={assistantText} 
-            setAssistantText={setAssistantText} 
-            runQuickAction={runQuickAction} 
+          <JourneyCoach
+            coach={journey.coach}
+            dismissed={coachDismissed || welcomeOpen}
+            onAction={() => goToStage(journey.coach.nav)}
+            onDismiss={() => setCoachDismissed(true)}
+          />
+
+          <AssistantBar
+            assistantText={assistantText}
+            setAssistantText={setAssistantText}
+            runQuickAction={runQuickAction}
+            hint={journey.coach.cta}
           />
         </main>
 
@@ -776,7 +1003,7 @@ function App() {
           carbon={carbon}
           importProject={importProject}
           exportPlan={exportPlan}
-          variants={completeHouseVariants}
+          variants={chinaApartmentVariants}
           snapGrid={snapGrid}
           setSnapGrid={setSnapGrid}
           showGrid={showGrid}
@@ -785,6 +1012,12 @@ function App() {
           applySuggestion={applySuggestion}
           styleKeywords={styleKeywords}
           setStyleKeywords={setStyleKeywords}
+          site={site}
+          interior={interior}
+          startBlank={startBlank}
+          runTrace={runTrace}
+          traceFileInputRef={traceFileInputRef}
+          isTracing={isTracing}
         />
 
         {!inspectorOpen && (
@@ -793,6 +1026,20 @@ function App() {
           </button>
         )}
       </div>
+      <WelcomeGate
+        open={welcomeOpen}
+        onStart={() => {
+          writeWelcomeDismissed()
+          setWelcomeOpen(false)
+          startBlank()
+          goToStage({ mode: 'plan', view: 'plan', tool: 'draw', inspector: true })
+          setToast('Blank page ready — draw one room with your finger or mouse')
+        }}
+        onSkip={() => {
+          writeWelcomeDismissed()
+          setWelcomeOpen(false)
+        }}
+      />
       {toast && <div className="toast" role="status"><Check /> {toast}</div>}
     </div>
   )

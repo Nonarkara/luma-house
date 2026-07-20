@@ -121,6 +121,16 @@ Learned: “3D” for this product means *the plan you drew, extruded* — not a
 generic game-engine scene. Isometric SVG keeps the conservation law (room
 geometry ↔ massing) visible and testable.
 
+## Review — behavioral journey UX, 2026-07-20
+
+- [x] Welcome gate: frames 7 decisions as a sequence, not a dashboard
+- [x] Journey rail with progress bar, done/current/next states, checkmarks
+- [x] Journey coach: one CTA at a time with principle microcopy
+- [x] Stage completion rules (draw→room, sun→window, systems→toggle, etc.)
+- [x] Visit persistence + celebration toasts on stage lock-in
+- [x] Assistant placeholder mirrors coach CTA
+- [x] 80 tests green (5 new journey tests), lint/build clean
+
 ## Review — 3D Spatial view, shipped 2026-07-19 (researched + Sonnet-implemented, Fable-specced/QA'd)
 
 Research (2 parallel agents): no viable ready-made floor-plan repo — blueprint3d
@@ -136,3 +146,35 @@ luma-house.pages.dev (deployment 793c4e94), verified on production at phone widt
 
 Polish backlog: chip can clip at screen edge for corner rooms (orbits back into
 view); first-person walk mode; openings as real wall holes (CSG) if ever needed.
+
+## Review — napkin-to-quote seamless loop, 2026-07-20
+
+Gap vs the John story: the app booted into a finished Shanghai demo, the
+grid was lines (not bullet dots), the scale was hardcoded, uploaded plans
+were tracing-underlay-only, and the BOQ was whole-house. This increment
+closes the full head-to-toe path:
+
+- [x] Blank-first canvas: `blankPlan()` factory + empty-state overlay
+      ("Draw your first room" with Draw / Trace / Load sample buttons)
+- [x] Bullet-dot grid (radial-gradient, one sharp dot per 1×1 m cell)
+      replacing the line grid
+- [x] Adjustable per-plan scale: `SiteSpec { w, h, unit }` on PlanState,
+      scale chip ("1 m / cell") in the canvas, CSS variables drive the dot
+      spacing; area/furniture/BOQ math reads from the plan's site via
+      `siteOf()` / `roomAreaFor()` / `furnitureRectFor()`
+- [x] AI plan auto-trace: worker `/trace` route (Gemini 2.5 Flash vision →
+      structured room/opening JSON) + `tracePlan.ts` client + "Trace with AI"
+      button; result sanitized through `sanitizePlan`, labeled honestly as a
+      draft to verify
+- [x] Per-room interior BOQ (`src/boq/interiorBoq.ts`): floor, wall paint,
+      wet-room tiles, ceiling, skirting, door/window sets — all driven by
+      each room's geometry + wall height, aggregated by category
+- [x] Interior BOQ rendered in Budget mode + site reference in budget hero
+- [x] `wallHeight` now survives share/import round-trips (was dropped)
+- [x] 75 tests green (9 new: 6 interior BOQ + 3 site scale), lint + build clean
+
+Learned: the grid-cell CSS-variable approach keeps the dot density honest at
+any zoom — the variable is set once on the canvas element in percent, and
+the radial-gradient background-size reads it. Scale is per-plan, not global,
+so a shared link restores the exact grid. Vision trace is approximate by
+design — the "verify before costing" label is non-negotiable.

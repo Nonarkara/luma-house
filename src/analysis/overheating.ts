@@ -1,4 +1,4 @@
-import { solarPosition, roomArea } from '../plan'
+import { solarPosition, roomAreaFor, siteOf } from '../plan'
 import { wallIntensity } from './sunHours'
 import { peakOutdoorC } from './thermal'
 import { openingsForRoomWall } from './walls'
@@ -75,7 +75,7 @@ function diurnalDip(hour: number): number {
 
 export function overheatingProfile(input: OverheatingInputs): OverheatingProfile {
   const { latitude, plan, room, walls, ventilationScore, insulationOn } = input
-  const area = roomArea(room)
+  const area = roomAreaFor(room, siteOf(plan))
   // Same heat-removal capacity model as thermalProfile.
   const netMass = 80 + area * 1.5 + 40 + ventilationScore * 220
 

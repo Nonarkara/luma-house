@@ -1,4 +1,4 @@
-import { roomArea } from '../plan'
+import { roomAreaFor, siteOf, totalAreaFor } from '../plan'
 import type { PlanState } from '../types'
 
 export interface RenderContext {
@@ -10,8 +10,9 @@ export interface RenderContext {
 }
 
 export function buildRenderPrompt({ plan, locationLabel, hour, projectName = 'River Courtyard House', styleKeywords }: RenderContext): string {
+  const site = siteOf(plan)
   const rooms = plan.rooms
-    .map((room) => `${room.name} (${roomArea(room).toFixed(1)} m²)`)
+    .map((room) => `${room.name} (${roomAreaFor(room, site).toFixed(1)} m²)`)
     .join(', ')
   const windows = plan.openings.filter((item) => item.type === 'window').length
   const doors = plan.openings.filter((item) => item.type === 'door').length
@@ -38,6 +39,6 @@ export function buildRenderSummary(plan: PlanState) {
     windowCount: plan.openings.filter((item) => item.type === 'window').length,
     doorCount: plan.openings.filter((item) => item.type === 'door').length,
     systems: plan.systems,
-    totalArea: plan.rooms.reduce((sum, room) => sum + roomArea(room), 0),
+    totalArea: totalAreaFor(plan.rooms, siteOf(plan)),
   }
 }

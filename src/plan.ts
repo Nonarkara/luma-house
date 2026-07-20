@@ -1,9 +1,42 @@
-import type { Furniture, FurnitureKind, Opening, PlanState, Room } from './types'
+import type { Furniture, FurnitureKind, Opening, PlanState, Room, SiteSpec } from './types'
 
+// Legacy defaults — kept as the fallback for plans authored before per-plan
+// `site` existed. New code should resolve scale via `siteOf(plan)`.
 export const SITE_WIDTH_METERS = 14
 export const SITE_HEIGHT_METERS = 10
+export const DEFAULT_SITE_UNIT = 1
+
+export const DEFAULT_SITE: SiteSpec = {
+  w: SITE_WIDTH_METERS,
+  h: SITE_HEIGHT_METERS,
+  unit: DEFAULT_SITE_UNIT,
+}
+
+export function defaultSite(): SiteSpec {
+  return { ...DEFAULT_SITE }
+}
+
+/** Resolve a plan's effective site, falling back to the legacy 14×10 default. */
+export function siteOf(plan: { site?: SiteSpec } | undefined | null): SiteSpec {
+  const s = plan?.site
+  if (!s || s.w > 0 && s.h > 0 && s.unit > 0) {
+    return s ?? DEFAULT_SITE
+  }
+  return DEFAULT_SITE
+}
+
+/** Coerce untrusted JSON into a usable site spec, or return the default. */
+export function sanitizeSite(raw: unknown): SiteSpec {
+  if (typeof raw !== 'object' || raw === null) return defaultSite()
+  const c = raw as Record<string, unknown>
+  const w = typeof c.w === 'number' && c.w > 0 && c.w < 1000 ? c.w : SITE_WIDTH_METERS
+  const h = typeof c.h === 'number' && c.h > 0 && c.h < 1000 ? c.h : SITE_HEIGHT_METERS
+  const unit = typeof c.unit === 'number' && c.unit > 0 && c.unit <= Math.min(w, h) ? c.unit : DEFAULT_SITE_UNIT
+  return { w, h, unit }
+}
 
 export const locations = {
+  Shanghai: { latitude: 31.2304, label: 'Shanghai, CN · 31.23°N' },
   Bangkok: { latitude: 13.7563, label: 'Bangkok, TH' },
   'Chiang Mai': { latitude: 18.7883, label: 'Chiang Mai, TH' },
   Phuket: { latitude: 7.8804, label: 'Phuket, TH' },
@@ -48,33 +81,37 @@ export const furnitureCatalog: Record<FurnitureKind, { label: string; w: number;
   desk: { label: 'Desk', w: 1.4, d: 0.7 },
 }
 
-export function furnitureRect(item: Furniture): { x: number; y: number; w: number; h: number } {
+export function furnitureRectFor(item: Furniture, site: SiteSpec): { x: number; y: number; w: number; h: number } {
   const spec = furnitureCatalog[item.kind]
   const widthMeters = item.rotated ? spec.d : spec.w
   const depthMeters = item.rotated ? spec.w : spec.d
   return {
     x: item.x,
     y: item.y,
-    w: (widthMeters / SITE_WIDTH_METERS) * 100,
-    h: (depthMeters / SITE_HEIGHT_METERS) * 100,
+    w: (widthMeters / site.w) * 100,
+    h: (depthMeters / site.h) * 100,
   }
+}
+
+export function furnitureRect(item: Furniture): { x: number; y: number; w: number; h: number } {
+  return furnitureRectFor(item, DEFAULT_SITE)
 }
 
 export const DOOR_CLEARANCE_METERS = 0.9
 
 // A door needs its swing radius free; furniture inside that arc gets flagged.
-export function furnitureDoorConflicts(furniture: Furniture[], openings: Opening[]): Set<string> {
+export function furnitureDoorConflicts(furniture: Furniture[], openings: Opening[], site: SiteSpec = DEFAULT_SITE): Set<string> {
   const doors = openings.filter((opening) => opening.type === 'door')
   const conflicts = new Set<string>()
   for (const item of furniture) {
-    const rect = furnitureRect(item)
-    const left = (rect.x / 100) * SITE_WIDTH_METERS
-    const top = (rect.y / 100) * SITE_HEIGHT_METERS
-    const right = ((rect.x + rect.w) / 100) * SITE_WIDTH_METERS
-    const bottom = ((rect.y + rect.h) / 100) * SITE_HEIGHT_METERS
+    const rect = furnitureRectFor(item, site)
+    const left = (rect.x / 100) * site.w
+    const top = (rect.y / 100) * site.h
+    const right = ((rect.x + rect.w) / 100) * site.w
+    const bottom = ((rect.y + rect.h) / 100) * site.h
     for (const door of doors) {
-      const doorX = (door.x / 100) * SITE_WIDTH_METERS
-      const doorY = (door.y / 100) * SITE_HEIGHT_METERS
+      const doorX = (door.x / 100) * site.w
+      const doorY = (door.y / 100) * site.h
       const nearestX = Math.max(left, Math.min(doorX, right))
       const nearestY = Math.max(top, Math.min(doorY, bottom))
       if (Math.hypot(doorX - nearestX, doorY - nearestY) < DOOR_CLEARANCE_METERS) {
@@ -117,12 +154,20 @@ export const variants: Array<{ name: string; note: string; rooms: Room[] }> = [
   },
 ]
 
+export function roomAreaFor(room: Room, site: SiteSpec): number {
+  return (room.w / 100) * site.w * (room.h / 100) * site.h
+}
+
 export function roomArea(room: Room): number {
-  return (room.w / 100) * SITE_WIDTH_METERS * (room.h / 100) * SITE_HEIGHT_METERS
+  return roomAreaFor(room, DEFAULT_SITE)
+}
+
+export function totalAreaFor(rooms: Room[], site: SiteSpec): number {
+  return rooms.reduce((sum, room) => sum + roomAreaFor(room, site), 0)
 }
 
 export function totalArea(rooms: Room[]): number {
-  return rooms.reduce((sum, room) => sum + roomArea(room), 0)
+  return totalAreaFor(rooms, DEFAULT_SITE)
 }
 
 /**
@@ -148,23 +193,27 @@ export function roomOverlaps(rooms: Room[]): Set<string> {
 }
 
 export function formatTHB(value: number): string {
+  return formatCurrency(value, 'THB')
+}
+
+export function formatCurrency(value: number, currency: string): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'THB',
+    currency,
     maximumFractionDigits: 0,
   }).format(value)
 }
 
 export function calculateBudget(plan: PlanState, styleKeywords: string = '') {
-  const area = totalArea(plan.rooms)
-  
+  const area = totalAreaFor(plan.rooms, siteOf(plan))
+
   // Keyword-based finish / systems multipliers for concept BOQ
   const keywords = styleKeywords.toLowerCase()
   let finishMultiplier = 1.0
   let structureMultiplier = 1.0
   let systemsMultiplier = 1.0
   let playfulAddition = 0
-  
+
   if (keywords.includes('luxury') || keywords.includes('gold') || keywords.includes('marble') || keywords.includes('premium') || keywords.includes('designer')) {
     finishMultiplier = 1.8
     structureMultiplier = 1.3
@@ -202,7 +251,7 @@ export function calculateBudget(plan: PlanState, styleKeywords: string = '') {
   }
 
   const subtotal = items.reduce((sum, item) => sum + item.amount, 0)
-  return { area, items, subtotal, total: subtotal * 1.1 }
+  return { area, currency: 'THB' as const, items, subtotal, contingencyRate: 0.1, total: subtotal * 1.1 }
 }
 
 // ---------------------------------------------------------------------------
@@ -217,7 +266,7 @@ export interface CarbonLine {
 }
 
 export function estimateEmbodiedCarbon(plan: PlanState): { lines: CarbonLine[]; totalKg: number; kgPerM2: number } {
-  const area = totalArea(plan.rooms)
+  const area = totalAreaFor(plan.rooms, siteOf(plan))
   const lines: CarbonLine[] = [
     { label: 'Structure & slab', basis: `${area.toFixed(1)} m² × 280 kg`, kgCO2e: area * 280 },
     { label: 'Roof & envelope', basis: `${area.toFixed(1)} m² × 65 kg`, kgCO2e: area * 65 },
@@ -255,9 +304,9 @@ export function estimateEnergySavings(systems: PlanState['systems']): number {
   return Math.min(
     68,
     (systems.solar ? 26 : 0) +
-      (systems.insulation ? 18 : 0) +
-      (systems.climate ? 13 : 0) +
-      (systems.lighting ? 7 : 0),
+    (systems.insulation ? 18 : 0) +
+    (systems.climate ? 13 : 0) +
+    (systems.lighting ? 7 : 0),
   )
 }
 
@@ -292,6 +341,7 @@ export interface SunPatch {
 
 export function sunPatches(plan: PlanState, azimuthDeg: number, altitudeDeg: number): SunPatch[] {
   if (altitudeDeg <= 2) return []
+  const site = siteOf(plan)
   const radians = Math.PI / 180
   const azimuthRad = azimuthDeg * radians
   const altitudeRad = altitudeDeg * radians
@@ -301,8 +351,8 @@ export function sunPatches(plan: PlanState, azimuthDeg: number, altitudeDeg: num
   const patches: SunPatch[] = []
   for (const opening of plan.openings) {
     if (opening.type !== 'window') continue
-    const centerX = (opening.x / 100) * SITE_WIDTH_METERS
-    const centerY = (opening.y / 100) * SITE_HEIGHT_METERS
+    const centerX = (opening.x / 100) * site.w
+    const centerY = (opening.y / 100) * site.h
     const axisX = opening.rotation === 0 ? 1 : 0
     const axisY = opening.rotation === 0 ? 0 : 1
     const w1 = { x: centerX - 0.8 * axisX, y: centerY - 0.8 * axisY }
@@ -311,8 +361,8 @@ export function sunPatches(plan: PlanState, azimuthDeg: number, altitudeDeg: num
     const w3 = { x: w2.x + offset.x, y: w2.y + offset.y }
     const w4 = { x: w1.x + offset.x, y: w1.y + offset.y }
 
-    const probeX = ((centerX + 0.5 * direction.x) / SITE_WIDTH_METERS) * 100
-    const probeY = ((centerY + 0.5 * direction.y) / SITE_HEIGHT_METERS) * 100
+    const probeX = ((centerX + 0.5 * direction.x) / site.w) * 100
+    const probeY = ((centerY + 0.5 * direction.y) / site.h) * 100
     const room = plan.rooms.find(
       (item) => probeX >= item.x && probeX <= item.x + item.w && probeY >= item.y && probeY <= item.y + item.h,
     )
@@ -323,8 +373,8 @@ export function sunPatches(plan: PlanState, azimuthDeg: number, altitudeDeg: num
       windowId: opening.id,
       roomId: room.id,
       polygon: [w1, w2, w3, w4].map((point) => ({
-        x: (point.x / SITE_WIDTH_METERS) * 100,
-        y: (point.y / SITE_HEIGHT_METERS) * 100,
+        x: (point.x / site.w) * 100,
+        y: (point.y / site.h) * 100,
       })),
       areaM2: 1.6 * depth * f,
     })

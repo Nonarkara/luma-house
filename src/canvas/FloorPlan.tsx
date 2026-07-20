@@ -1,16 +1,16 @@
 import { ArrowRight } from 'lucide-react'
 import React, { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
-import { furnitureCatalog, furnitureRect, roomArea } from '../plan'
+import { furnitureCatalog, furnitureRectFor, roomAreaFor, siteOf } from '../plan'
 import type { SunPatch } from '../plan'
 import type { Furniture, Opening, PlanState, PlanTool, Room, RoomKind } from '../types'
 import type { ResizeHandle, StrokePoint } from './geometry'
 
 const roomColors: Record<RoomKind, string> = {
-  living: 'rgba(163, 255, 0, 0.06)',
-  kitchen: 'rgba(56, 189, 248, 0.06)',
-  bedroom: 'rgba(232, 121, 249, 0.06)',
-  bathroom: 'rgba(45, 212, 191, 0.06)',
-  studio: 'rgba(251, 146, 60, 0.06)',
+  living: 'rgba(245, 158, 11, 0.07)',
+  kitchen: 'rgba(245, 158, 11, 0.055)',
+  bedroom: 'rgba(245, 158, 11, 0.04)',
+  bathroom: 'rgba(245, 158, 11, 0.025)',
+  studio: 'rgba(245, 158, 11, 0.045)',
   terrace: 'transparent',
 }
 
@@ -30,6 +30,8 @@ export const FloorPlan = React.memo(function FloorPlan({
   sunAngle,
   sunPatchList,
   showGrid,
+  gridCellX,
+  gridCellY,
   viewportStyle,
   onRoomPointerDown,
   onOpeningPointerDown,
@@ -55,6 +57,8 @@ export const FloorPlan = React.memo(function FloorPlan({
   sunAngle: number
   sunPatchList: SunPatch[]
   showGrid: boolean
+  gridCellX: number
+  gridCellY: number
   viewportStyle: CSSProperties
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
   onOpeningPointerDown: (event: ReactPointerEvent, opening: Opening) => void
@@ -67,6 +71,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   onCanvasClick: (event: React.MouseEvent<HTMLDivElement>) => void
   stageRef: RefObject<HTMLDivElement>
 }) {
+  const site = siteOf(plan)
   const rayX = Math.max(1, Math.min(99, 50 + 72 * Math.sin((sunAngle * Math.PI) / 180)))
   const rayY = Math.max(1, Math.min(99, 50 - 72 * Math.cos((sunAngle * Math.PI) / 180)))
 
@@ -90,10 +95,14 @@ export const FloorPlan = React.memo(function FloorPlan({
       data-testid="plan-canvas"
     >
       <div className="plan-stage" style={viewportStyle}>
-        <div ref={stageRef} className={`plan-canvas ${showGrid ? 'show-grid' : 'hide-grid'}`}>
+        <div
+          ref={stageRef}
+          className={`plan-canvas ${showGrid ? 'show-grid' : 'hide-grid'}`}
+          style={{ '--grid-cell-x': `${gridCellX}%`, '--grid-cell-y': `${gridCellY}%` } as CSSProperties}
+        >
           {sketchUrl && <img className="sketch-underlay" src={sketchUrl} alt="Uploaded sketch tracing layer" />}
           <div className="north-mark" aria-label="North points upward"><ArrowRight /> <span>N</span></div>
-          <div className="scale-label">1:100 <span>•</span> 14 × 10 m site</div>
+          <div className="scale-label">{site.unit} m grid <span>•</span> {site.w.toFixed(1)} × {site.h.toFixed(1)} m field</div>
           {showSun && (
             <svg className="sun-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" aria-hidden="true">
               {Array.from(new Set(sunPatchList.map((patch) => patch.roomId))).map((roomId) => {
@@ -126,10 +135,10 @@ export const FloorPlan = React.memo(function FloorPlan({
               style={{ left: `${room.x}%`, top: `${room.y}%`, width: `${room.w}%`, height: `${room.h}%`, background: roomColors[room.kind] }}
               onPointerDown={(event) => onRoomPointerDown(event, room)}
               onClick={(event) => event.stopPropagation()}
-              aria-label={`${room.name}, ${roomArea(room).toFixed(1)} square meters`}
+              aria-label={`${room.name}, ${roomAreaFor(room, site).toFixed(1)} square meters`}
             >
               <span className="room-name">{room.name}</span>
-              <span className="room-area">{roomArea(room).toFixed(1)} m²</span>
+              <span className="room-area">{roomAreaFor(room, site).toFixed(1)} m²</span>
               {selectedRoom === room.id && HANDLES.map((handle) => (
                 <span
                   key={handle}
@@ -141,7 +150,7 @@ export const FloorPlan = React.memo(function FloorPlan({
             </button>
           ))}
           {plan.furniture.map((item) => {
-            const rect = furnitureRect(item)
+            const rect = furnitureRectFor(item, site)
             const spec = furnitureCatalog[item.kind]
             return (
               <button
@@ -185,8 +194,8 @@ export const FloorPlan = React.memo(function FloorPlan({
               />
             </svg>
           )}
-          <div className="dimension dimension-x"><span>14,000</span></div>
-          <div className="dimension dimension-y"><span>10,000</span></div>
+          <div className="dimension dimension-x"><span>{Math.round(site.w * 1000).toLocaleString()}</span></div>
+          <div className="dimension dimension-y"><span>{Math.round(site.h * 1000).toLocaleString()}</span></div>
         </div>
       </div>
     </div>

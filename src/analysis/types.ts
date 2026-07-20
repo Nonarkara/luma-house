@@ -9,7 +9,7 @@ export interface WallSegment {
   compass: Compass
   /** wall length as percentage of site (0–100) */
   lengthPct: number
-  /** wall length in meters (relative to SITE_WIDTH_METERS / SITE_HEIGHT_METERS per axis) */
+  /** wall length in meters, resolved from the plan's calibrated site dimensions */
   lengthMeters: number
 }
 

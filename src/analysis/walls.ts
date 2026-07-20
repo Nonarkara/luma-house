@@ -1,4 +1,4 @@
-import { SITE_HEIGHT_METERS, SITE_WIDTH_METERS } from '../plan'
+import { siteOf } from '../plan'
 import type { PlanState, Room } from '../types'
 import type { Compass, WallSegment } from './types'
 
@@ -18,13 +18,6 @@ function planBounds(rooms: Room[]): { minX: number; minY: number; maxX: number; 
   )
 }
 
-function pctToMetersX(pct: number): number {
-  return (pct / 100) * SITE_WIDTH_METERS
-}
-function pctToMetersY(pct: number): number {
-  return (pct / 100) * SITE_HEIGHT_METERS
-}
-
 /**
  * For each room, find which of its four walls are exterior (not shared with
  * another room) and return their compass direction + length.
@@ -34,6 +27,7 @@ function pctToMetersY(pct: number): number {
 export function exteriorWalls(plan: PlanState): WallSegment[] {
   const walls: WallSegment[] = []
   const bounds = planBounds(plan.rooms)
+  const site = siteOf(plan)
 
   for (const room of plan.rooms) {
     const left = room.x
@@ -80,16 +74,16 @@ export function exteriorWalls(plan: PlanState): WallSegment[] {
     const touchesRight = right >= bounds.maxX - EPS
 
     if (!topShared || touchesTop) {
-      walls.push({ roomId: room.id, compass: 'N', lengthPct: room.w, lengthMeters: pctToMetersX(room.w) })
+      walls.push({ roomId: room.id, compass: 'N', lengthPct: room.w, lengthMeters: (room.w / 100) * site.w })
     }
     if (!bottomShared || touchesBottom) {
-      walls.push({ roomId: room.id, compass: 'S', lengthPct: room.w, lengthMeters: pctToMetersX(room.w) })
+      walls.push({ roomId: room.id, compass: 'S', lengthPct: room.w, lengthMeters: (room.w / 100) * site.w })
     }
     if (!leftShared || touchesLeft) {
-      walls.push({ roomId: room.id, compass: 'W', lengthPct: room.h, lengthMeters: pctToMetersY(room.h) })
+      walls.push({ roomId: room.id, compass: 'W', lengthPct: room.h, lengthMeters: (room.h / 100) * site.h })
     }
     if (!rightShared || touchesRight) {
-      walls.push({ roomId: room.id, compass: 'E', lengthPct: room.h, lengthMeters: pctToMetersY(room.h) })
+      walls.push({ roomId: room.id, compass: 'E', lengthPct: room.h, lengthMeters: (room.h / 100) * site.h })
     }
   }
 

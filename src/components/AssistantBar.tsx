@@ -6,12 +6,14 @@ interface AssistantBarProps {
   assistantText: string
   setAssistantText: (text: string) => void
   runQuickAction: () => void
+  hint?: string
 }
 
 export const AssistantBar = React.memo(function AssistantBar({
   assistantText,
   setAssistantText,
   runQuickAction,
+  hint,
 }: AssistantBarProps) {
   return (
     <div className="assistant-bar">
@@ -22,10 +24,10 @@ export const AssistantBar = React.memo(function AssistantBar({
         value={assistantText}
         onChange={(event) => setAssistantText(event.target.value)}
         onKeyDown={(event) => event.key === 'Enter' && runQuickAction()}
-        placeholder="Quick actions: brighter, add room, budget, concept photo…"
+        placeholder={hint ? `Next: ${hint} — or type brighter / budget / photo` : 'Quick actions: brighter, add room, budget, concept photo…'}
         aria-label="Quick plan actions"
       />
-      <span className="assistant-example">Keyword shortcuts — not a live model</span>
+      <span className="assistant-example">{hint ? 'Coach + shortcuts' : 'Keyword shortcuts — not a live model'}</span>
       <IconButton label="Run quick action" onClick={runQuickAction}>
         <Send />
       </IconButton>

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Camera, ChevronLeft, ChevronRight, ImagePlus, Layers3, Sun } from 'lucide-react'
+import { Camera, ChevronLeft, ChevronRight, LampDesk, Layers3, Moon, PanelsTopLeft, Sun } from 'lucide-react'
 import type { PlanState, RoomKind } from '../types'
 import {
   buildMassing,
@@ -19,7 +19,7 @@ const roofFill: Record<RoomKind, string> = {
   terrace: '#6b7a6e',
 }
 
-type ViewId = 'massing' | 'sunlit' | 'concept'
+type ViewId = 'interior' | 'joinery' | 'massing' | 'sunlit' | 'night'
 
 function MassingFrame({
   plan,
@@ -93,9 +93,6 @@ export const RenderGallery = React.memo(function RenderGallery({
   plan,
   sun,
   conceptImages,
-  onRequestConcept,
-  isRendering,
-  quotaLeft,
 }: {
   plan: PlanState
   sun: { altitude: number; azimuth: number }
@@ -105,9 +102,11 @@ export const RenderGallery = React.memo(function RenderGallery({
   quotaLeft: number
 }) {
   const views: Array<{ id: ViewId; title: string; note: string; icon: typeof Layers3 }> = [
-    { id: 'massing', title: 'Your massing', note: 'From live plan', icon: Layers3 },
-    { id: 'sunlit', title: 'Sun study', note: `${sun.altitude.toFixed(0)}° altitude`, icon: Sun },
-    { id: 'concept', title: 'Concept photo', note: conceptImages[0] ? 'Gemini visualize' : 'Generate when ready', icon: ImagePlus },
+    { id: 'interior', title: 'South living room', note: 'Custom elm · winter 10:00', icon: PanelsTopLeft },
+    { id: 'joinery', title: 'Joinery detail', note: 'Made-to-measure, not flat-pack', icon: LampDesk },
+    { id: 'massing', title: 'Live 3D massing', note: 'Exact to the 50 m² plan', icon: Layers3 },
+    { id: 'sunlit', title: 'Solar volume', note: `${sun.altitude.toFixed(0)}° altitude`, icon: Sun },
+    { id: 'night', title: 'Tea scene', note: '2700 K · L05 at 78%', icon: Moon },
   ]
   const [activeIndex, setActiveIndex] = useState(0)
   const active = views[activeIndex]
@@ -122,24 +121,12 @@ export const RenderGallery = React.memo(function RenderGallery({
       <div className="render-stage">
         {active.id === 'massing' && <MassingFrame plan={plan} sun={sun} />}
         {active.id === 'sunlit' && <MassingFrame plan={plan} sun={sun} warm />}
-        {active.id === 'concept' && (
-          conceptImages[0] ? (
-            <img className="concept-hero" src={conceptImages[0]} alt="Latest concept visualization" />
-          ) : (
-            <div className="concept-empty">
-              <ImagePlus />
-              <strong>No concept photo yet</strong>
-              <p>Massing above is exact to your plan. Concept photos are AI visualizations — labeled honestly, limited to 3/day.</p>
-              <button
-                type="button"
-                className="button primary"
-                onClick={onRequestConcept}
-                disabled={isRendering || quotaLeft <= 0}
-              >
-                {isRendering ? 'Rendering…' : `Generate concept · ${quotaLeft} left`}
-              </button>
-            </div>
-          )
+        {(active.id === 'interior' || active.id === 'joinery' || active.id === 'night') && (
+          <img
+            className={`concept-hero authored-interior ${active.id}`}
+            src={conceptImages[0] ?? '/assets/shanghai-apartment-concept.png'}
+            alt={`${active.title} architectural concept visualization`}
+          />
         )}
         <div className="render-meta">
           <span><ActiveIcon /></span>
@@ -166,7 +153,7 @@ export const RenderGallery = React.memo(function RenderGallery({
         })}
       </div>
       <div className="render-disclaimer">
-        <Camera /> Massing matches your plan · Concept photos are visualizations, not construction documents
+        <Camera /> 3D massing matches the plan · Photoreal views are authored concept visualizations, not construction documents
       </div>
     </div>
   )

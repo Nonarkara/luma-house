@@ -2,8 +2,10 @@ import { useCallback, useMemo, useRef } from 'react'
 import { Canvas, type ThreeEvent } from '@react-three/fiber'
 import { Grid, Html, OrbitControls, PivotControls } from '@react-three/drei'
 import type * as THREE from 'three'
-import { SITE_HEIGHT_METERS, SITE_WIDTH_METERS, furnitureRect, roomHeight, sunVector } from '../plan'
-import type { Furniture, FurnitureKind, Opening, PlanState, Room } from '../types'
+import { furnitureRectFor, roomHeight, siteOf, sunVector } from '../plan'
+import type { Furniture, FurnitureKind, Opening, PlanState, Room, SiteSpec } from '../types'
+import { openingsForRoomWall } from '../analysis/walls'
+import type { Compass } from '../analysis'
 
 const HEIGHT_MIN = 2.2
 const HEIGHT_MAX = 4.5
@@ -23,16 +25,16 @@ const FURNITURE_HEIGHTS: Record<FurnitureKind, number> = {
 }
 
 // Percent plan coords → meters, centered at the scene origin. Y is up.
-function toMeters(xPct: number, yPct: number): { mx: number; mz: number } {
+function toMeters(xPct: number, yPct: number, site: SiteSpec): { mx: number; mz: number } {
   return {
-    mx: (xPct / 100) * SITE_WIDTH_METERS - SITE_WIDTH_METERS / 2,
-    mz: (yPct / 100) * SITE_HEIGHT_METERS - SITE_HEIGHT_METERS / 2,
+    mx: (xPct / 100) * site.w - site.w / 2,
+    mz: (yPct / 100) * site.h - site.h / 2,
   }
 }
 
-function roomFootprint(room: Room) {
-  const nw = toMeters(room.x, room.y)
-  const se = toMeters(room.x + room.w, room.y + room.h)
+function roomFootprint(room: Room, site: SiteSpec) {
+  const nw = toMeters(room.x, room.y, site)
+  const se = toMeters(room.x + room.w, room.y + room.h, site)
   return {
     cx: (nw.mx + se.mx) / 2,
     cz: (nw.mz + se.mz) / 2,
@@ -68,23 +70,104 @@ function Wall({
         color="#dfe0da"
         roughness={0.9}
         metalness={0}
-        emissive="#a3ff00"
+        emissive="#f59e0b"
         emissiveIntensity={emissiveIntensity}
       />
     </mesh>
   )
 }
 
+type Footprint = ReturnType<typeof roomFootprint>
+
+function SegmentedWall({
+  compass,
+  footprint,
+  height,
+  openings,
+  site,
+  emissiveIntensity,
+  onClick,
+}: {
+  compass: Compass
+  footprint: Footprint
+  height: number
+  openings: Opening[]
+  site: SiteSpec
+  emissiveIntensity: number
+  onClick: (event: ThreeEvent<MouseEvent>) => void
+}) {
+  const horizontal = compass === 'N' || compass === 'S'
+  const wallStart = horizontal ? footprint.minX : footprint.minZ
+  const wallEnd = horizontal ? footprint.maxX : footprint.maxZ
+  const fixed = horizontal
+    ? (compass === 'N' ? footprint.minZ : footprint.maxZ)
+    : (compass === 'W' ? footprint.minX : footprint.maxX)
+
+  const cuts = openings
+    .map((opening) => {
+      const center = toMeters(opening.x, opening.y, site)
+      const centerAxis = horizontal ? center.mx : center.mz
+      const width = opening.type === 'window' ? 1.6 : 0.9
+      return {
+        opening,
+        start: Math.max(wallStart, centerAxis - width / 2),
+        end: Math.min(wallEnd, centerAxis + width / 2),
+      }
+    })
+    .filter((cut) => cut.end - cut.start > 0.05)
+    .sort((a, b) => a.start - b.start)
+
+  const pieces: Array<{ key: string; start: number; length: number; y: number; h: number }> = []
+  let cursor = wallStart
+  cuts.forEach((cut, index) => {
+    if (cut.start > cursor) {
+      pieces.push({ key: `pier-${index}`, start: cursor, length: cut.start - cursor, y: 0, h: height })
+    }
+    const sill = cut.opening.type === 'window' ? 0.9 : 0
+    const openingHeight = cut.opening.type === 'window' ? 1.2 : 2.1
+    const width = cut.end - cut.start
+    if (sill > 0) pieces.push({ key: `sill-${cut.opening.id}`, start: cut.start, length: width, y: 0, h: sill })
+    const headStart = Math.min(height, sill + openingHeight)
+    if (height > headStart) pieces.push({ key: `head-${cut.opening.id}`, start: cut.start, length: width, y: headStart, h: height - headStart })
+    cursor = Math.max(cursor, cut.end)
+  })
+  if (cursor < wallEnd) pieces.push({ key: 'pier-end', start: cursor, length: wallEnd - cursor, y: 0, h: height })
+
+  if (pieces.length === 0) {
+    pieces.push({ key: 'whole', start: wallStart, length: wallEnd - wallStart, y: 0, h: height })
+  }
+
+  return (
+    <group>
+      {pieces.map((piece) => (
+        <Wall
+          key={piece.key}
+          position={horizontal
+            ? [piece.start + piece.length / 2, FLOOR_THICKNESS + piece.y + piece.h / 2, fixed]
+            : [fixed, FLOOR_THICKNESS + piece.y + piece.h / 2, piece.start + piece.length / 2]}
+          size={horizontal ? [piece.length, piece.h, WALL_THICKNESS] : [WALL_THICKNESS, piece.h, piece.length]}
+          emissiveIntensity={emissiveIntensity}
+          onClick={onClick}
+        />
+      ))}
+    </group>
+  )
+}
+
 function RoomVolume({
   room,
+  plan,
+  site,
   isSelected,
   onSelectRoom,
 }: {
   room: Room
+  plan: PlanState
+  site: SiteSpec
   isSelected: boolean
   onSelectRoom: (id: string | null) => void
 }) {
-  const footprint = useMemo(() => roomFootprint(room), [room])
+  const footprint = useMemo(() => roomFootprint(room, site), [room, site])
   const height = roomHeight(room)
 
   const handleSelect = useCallback(
@@ -108,7 +191,6 @@ function RoomVolume({
     )
   }
 
-  const wallY = FLOOR_THICKNESS + height / 2
   const emissiveIntensity = isSelected ? 0.12 : 0
 
   return (
@@ -121,43 +203,31 @@ function RoomVolume({
         <boxGeometry args={[footprint.width, FLOOR_THICKNESS, footprint.depth]} />
         <meshStandardMaterial color="#1b1e24" roughness={0.9} metalness={0} />
       </mesh>
-      <Wall
-        position={[footprint.cx, wallY, footprint.minZ]}
-        size={[footprint.width, height, WALL_THICKNESS]}
-        emissiveIntensity={emissiveIntensity}
-        onClick={handleSelect}
-      />
-      <Wall
-        position={[footprint.cx, wallY, footprint.maxZ]}
-        size={[footprint.width, height, WALL_THICKNESS]}
-        emissiveIntensity={emissiveIntensity}
-        onClick={handleSelect}
-      />
-      <Wall
-        position={[footprint.minX, wallY, footprint.cz]}
-        size={[WALL_THICKNESS, height, footprint.depth]}
-        emissiveIntensity={emissiveIntensity}
-        onClick={handleSelect}
-      />
-      <Wall
-        position={[footprint.maxX, wallY, footprint.cz]}
-        size={[WALL_THICKNESS, height, footprint.depth]}
-        emissiveIntensity={emissiveIntensity}
-        onClick={handleSelect}
-      />
+      {(['N', 'S', 'W', 'E'] as Compass[]).map((compass) => (
+        <SegmentedWall
+          key={compass}
+          compass={compass}
+          footprint={footprint}
+          height={height}
+          openings={openingsForRoomWall(plan, room.id, compass)}
+          site={site}
+          emissiveIntensity={emissiveIntensity}
+          onClick={handleSelect}
+        />
+      ))}
     </group>
   )
 }
 
-function OpeningPanel({ opening }: { opening: Opening }) {
-  const { mx, mz } = toMeters(opening.x, opening.y)
+function OpeningPanel({ opening, site }: { opening: Opening; site: SiteSpec }) {
+  const { mx, mz } = toMeters(opening.x, opening.y, site)
   const isWindow = opening.type === 'window'
   const width = isWindow ? 1.6 : 0.9
   const height = isWindow ? 1.2 : 2.1
   const y = isWindow ? FLOOR_THICKNESS + 0.9 + height / 2 : FLOOR_THICKNESS + height / 2
   const size: [number, number, number] =
     opening.rotation === 0 ? [width, height, WALL_THICKNESS] : [WALL_THICKNESS, height, width]
-  const color = isWindow ? '#58a6ff' : '#fb923c'
+  const color = isWindow ? '#38444d' : '#f59e0b'
 
   return (
     <mesh position={[mx, y, mz]}>
@@ -166,18 +236,20 @@ function OpeningPanel({ opening }: { opening: Opening }) {
         color={color}
         roughness={0.9}
         metalness={0}
-        emissive={isWindow ? color : '#000000'}
-        emissiveIntensity={isWindow ? 0.25 : 0}
+        transparent={isWindow}
+        opacity={isWindow ? 0.42 : 1}
+        emissive={isWindow ? '#f59e0b' : '#000000'}
+        emissiveIntensity={isWindow ? 0.06 : 0}
       />
     </mesh>
   )
 }
 
-function FurniturePiece({ item }: { item: Furniture }) {
-  const rect = useMemo(() => furnitureRect(item), [item])
-  const widthM = (rect.w / 100) * SITE_WIDTH_METERS
-  const depthM = (rect.h / 100) * SITE_HEIGHT_METERS
-  const { mx, mz } = toMeters(rect.x + rect.w / 2, rect.y + rect.h / 2)
+function FurniturePiece({ item, site }: { item: Furniture; site: SiteSpec }) {
+  const rect = useMemo(() => furnitureRectFor(item, site), [item, site])
+  const widthM = (rect.w / 100) * site.w
+  const depthM = (rect.h / 100) * site.h
+  const { mx, mz } = toMeters(rect.x + rect.w / 2, rect.y + rect.h / 2, site)
   const height = FURNITURE_HEIGHTS[item.kind]
 
   return (
@@ -212,12 +284,14 @@ function SunLight({ azimuth, altitude }: { azimuth: number; altitude: number }) 
 
 function HeightHandle({
   room,
+  site,
   onSetWallHeight,
 }: {
   room: Room
+  site: SiteSpec
   onSetWallHeight: (roomId: string, height: number) => void
 }) {
-  const footprint = useMemo(() => roomFootprint(room), [room])
+  const footprint = useMemo(() => roomFootprint(room, site), [room, site])
   const height = roomHeight(room)
   const startHeightRef = useRef(height)
 
@@ -272,6 +346,9 @@ export default function Spatial3D({
   selectedRoom,
   onSelectRoom,
   onSetWallHeight,
+  hour,
+  day,
+  locationLabel,
 }: {
   plan: PlanState
   sunAzimuth: number
@@ -279,7 +356,11 @@ export default function Spatial3D({
   selectedRoom: string | null
   onSelectRoom: (id: string | null) => void
   onSetWallHeight: (roomId: string, height: number) => void
+  hour: number
+  day: number
+  locationLabel: string
 }) {
+  const site = useMemo(() => siteOf(plan), [plan])
   const selected = useMemo(
     () => plan.rooms.find((room) => room.id === selectedRoom) ?? null,
     [plan.rooms, selectedRoom],
@@ -294,6 +375,7 @@ export default function Spatial3D({
   )
 
   return (
+    <div className="spatial3d-shell">
     <Canvas
       shadows
       dpr={[1, 2]}
@@ -312,12 +394,12 @@ export default function Spatial3D({
       />
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={handleGroundClick}>
-        <planeGeometry args={[20, 16]} />
+        <planeGeometry args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]} />
         <meshStandardMaterial color="#14161b" roughness={0.95} metalness={0} />
       </mesh>
       <Grid
         position={[0, 0.005, 0]}
-        args={[20, 16]}
+        args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]}
         cellColor="#1f232b"
         sectionColor="#2a2f3a"
         fadeDistance={30}
@@ -325,20 +407,30 @@ export default function Spatial3D({
       />
 
       {plan.rooms.map((room) => (
-        <RoomVolume key={room.id} room={room} isSelected={room.id === selectedRoom} onSelectRoom={onSelectRoom} />
+        <RoomVolume key={room.id} room={room} plan={plan} site={site} isSelected={room.id === selectedRoom} onSelectRoom={onSelectRoom} />
       ))}
       {plan.openings.map((opening) => (
-        <OpeningPanel key={opening.id} opening={opening} />
+        <OpeningPanel key={opening.id} opening={opening} site={site} />
       ))}
       {plan.furniture.map((item) => (
-        <FurniturePiece key={item.id} item={item} />
+        <FurniturePiece key={item.id} item={item} site={site} />
       ))}
 
-      {selected && <HeightHandle room={selected} onSetWallHeight={onSetWallHeight} />}
+      {selected && <HeightHandle room={selected} site={site} onSetWallHeight={onSetWallHeight} />}
 
       <Html position={[0, 0.1, -6]} center>
         <span className="spatial-north-label">N</span>
       </Html>
     </Canvas>
+      <div className="spatial-sun-hud" aria-live="polite">
+        <span className="sun-orb" />
+        <div>
+          <small>Live solar model · day {day}</small>
+          <strong>{hour}:00 · {sunAltitude.toFixed(1)}° altitude</strong>
+          <em>{sunAzimuth.toFixed(1)}° azimuth · {locationLabel}</em>
+        </div>
+      </div>
+      <div className="spatial-orbit-note">Drag to orbit · scroll to zoom · select a room to edit height</div>
+    </div>
   )
 }

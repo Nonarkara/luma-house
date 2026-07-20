@@ -36,13 +36,24 @@ export interface HouseSystems {
   lighting: boolean
 }
 
+export interface SiteSpec {
+  /** Site width in meters (was a hardcoded global; now per-plan). */
+  w: number
+  /** Site height/depth in meters. */
+  h: number
+  /** Meters represented by one grid cell — the adjustable "1×1" scale. */
+  unit: number
+}
+
 export interface PlanState {
   rooms: Room[]
   openings: Opening[]
   furniture: Furniture[]
   systems: HouseSystems
+  /** Per-plan site + scale. Omitted on legacy plans = default 14×10, 1 m/cell. */
+  site?: SiteSpec
 }
 
 export type PlanTool = 'select' | 'draw' | 'window' | 'door'
-export type WorkspaceMode = 'plan' | 'light' | 'climate' | 'systems' | 'budget'
+export type WorkspaceMode = 'plan' | 'light' | 'wellbeing' | 'climate' | 'systems' | 'budget'
 export type CanvasView = 'plan' | 'spatial' | 'renders'

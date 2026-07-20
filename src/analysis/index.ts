@@ -15,6 +15,8 @@ export { generateSuggestions } from './suggestions'
 export { overheatingProfile, OVERHEAT_THRESHOLD_C } from './overheating'
 export { buildDesignBrief } from './designBrief'
 export type { DesignBrief, BriefItem } from './designBrief'
+export { heatFlowSnapshot, ENVELOPE_ASSUMPTIONS } from './heatFlow'
+export type { HeatFlowSnapshot } from './heatFlow'
 
 const SCAN_DAY_DEFAULT = 172 // ~summer solstice (June 21 in northern hemisphere)
 

@@ -1,7 +1,7 @@
 import type { PlanState, Room } from '../types'
 import { openingsForRoomWall } from './walls'
 import type { WallSun } from './types'
-import { roomArea } from '../plan'
+import { roomAreaFor, siteOf } from '../plan'
 import type { Compass } from './types'
 
 /**
@@ -70,7 +70,7 @@ export function thermalProfile(input: ThermalInputs): ThermalVerdict {
   if (insulationOn) totalHeat *= 0.55
 
   // Thermal mass + ventilation heat removal (Wh/°C)
-  const area = roomArea(room)
+  const area = roomAreaFor(room, siteOf(plan))
   const mass = 80 + area * 1.5
   const vent = 40 + ventilationScore * 220
   const netMass = mass + vent
