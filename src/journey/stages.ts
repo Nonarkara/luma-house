@@ -150,7 +150,9 @@ export const STAGES: StageDef[] = [
     principle: 'checklist',
     nav: { mode: 'wellbeing', view: 'plan', inspector: true },
     metric: () => '10 checks',
-    isComplete: (ctx) => ctx.visited.has('living'),
+    // A visit only "locks" the stage when there is a real plan to check —
+    // otherwise the rail claims progress while the canvas is still empty.
+    isComplete: (ctx) => ctx.visited.has('living') && ctx.plan.rooms.length >= 1,
     coach: () => ({
       title: 'Finish the living checklist',
       body: 'Tick what already works. Incomplete checks are not guilt — they are the next cheap move before you buy systems.',
@@ -198,7 +200,7 @@ export const STAGES: StageDef[] = [
     principle: 'anchoring',
     nav: { mode: 'budget', view: 'plan', inspector: true },
     metric: (ctx) => `${ctx.areaM2.toFixed(0)} m² BOQ`,
-    isComplete: (ctx) => ctx.visited.has('cost'),
+    isComplete: (ctx) => ctx.visited.has('cost') && ctx.plan.rooms.length >= 1,
     coach: () => ({
       title: 'Anchor the number, then dream',
       body: 'Scan the BOQ once. Then open interiors — people remember the last beautiful frame more than the middle spreadsheet.',

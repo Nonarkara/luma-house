@@ -12,10 +12,7 @@
     "deploy:pages": "npm run build && wrangler pages deploy dist --project-name=luma-house --commit-dirty=true"
   },
   "dependencies": {
-    "@fontsource/inter": "^5.2.6",
     "@fontsource/jetbrains-mono": "^5.3.0",
-    "@fontsource/josefin-sans": "^5.3.0",
-    "@fontsource/manrope": "^5.2.6",
     "@fontsource/source-sans-3": "^5.3.0",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",

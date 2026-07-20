@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { Canvas, type ThreeEvent } from '@react-three/fiber'
-import { Grid, Html, OrbitControls, PivotControls } from '@react-three/drei'
+import { Edges, Grid, Html, OrbitControls, PivotControls } from '@react-three/drei'
 import type * as THREE from 'three'
 import { furnitureRectFor, roomHeight, siteOf, sunVector } from '../plan'
 import type { Furniture, FurnitureKind, Opening, PlanState, Room, SiteSpec } from '../types'
@@ -349,6 +349,7 @@ export default function Spatial3D({
   hour,
   day,
   locationLabel,
+  ghost = false,
 }: {
   plan: PlanState
   sunAzimuth: number
@@ -359,11 +360,13 @@ export default function Spatial3D({
   hour: number
   day: number
   locationLabel: string
+  /** Render the plan as a translucent demo massing — no selection, no editing. */
+  ghost?: boolean
 }) {
   const site = useMemo(() => siteOf(plan), [plan])
   const selected = useMemo(
-    () => plan.rooms.find((room) => room.id === selectedRoom) ?? null,
-    [plan.rooms, selectedRoom],
+    () => (ghost ? null : plan.rooms.find((room) => room.id === selectedRoom) ?? null),
+    [ghost, plan.rooms, selectedRoom],
   )
 
   const handleGroundClick = useCallback(
@@ -406,13 +409,25 @@ export default function Spatial3D({
         infiniteGrid={false}
       />
 
-      {plan.rooms.map((room) => (
-        <RoomVolume key={room.id} room={room} plan={plan} site={site} isSelected={room.id === selectedRoom} onSelectRoom={onSelectRoom} />
-      ))}
-      {plan.openings.map((opening) => (
+      {ghost
+        ? plan.rooms.map((room) => {
+            const fp = roomFootprint(room, site)
+            const h = roomHeight(room)
+            return (
+              <mesh key={room.id} position={[fp.cx, h / 2, fp.cz]}>
+                <boxGeometry args={[fp.width, h, fp.depth]} />
+                <meshStandardMaterial color="#9aa3ad" transparent opacity={0.14} roughness={0.9} metalness={0} depthWrite={false} />
+                <Edges color="#a3ff00" />
+              </mesh>
+            )
+          })
+        : plan.rooms.map((room) => (
+            <RoomVolume key={room.id} room={room} plan={plan} site={site} isSelected={room.id === selectedRoom} onSelectRoom={onSelectRoom} />
+          ))}
+      {!ghost && plan.openings.map((opening) => (
         <OpeningPanel key={opening.id} opening={opening} site={site} />
       ))}
-      {plan.furniture.map((item) => (
+      {!ghost && plan.furniture.map((item) => (
         <FurniturePiece key={item.id} item={item} site={site} />
       ))}
 

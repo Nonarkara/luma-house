@@ -21,7 +21,7 @@
   --glass-bg: rgba(20, 20, 22, 0.65);
   --glass-border: rgba(255, 255, 255, 0.06);
   color: var(--text-primary);
-  font-family: Inter, sans-serif;
+  font-family: 'Source Sans 3', sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   color-scheme: dark;
@@ -105,7 +105,7 @@ button:active {
   display: flex;
   align-items: center;
   gap: 10px;
-  font: 800 19px Manrope, sans-serif;
+  font: 800 19px 'Source Sans 3', sans-serif;
   letter-spacing: -.7px;
   white-space: nowrap;
 }
@@ -319,69 +319,11 @@ button:active {
   cursor: not-allowed;
 }
 
-.mobile-menu {
-  display: none;
-}
 
 .workspace {
   height: calc(100vh - 72px);
   display: grid;
-  grid-template-columns: 82px minmax(540px, 1fr) 344px;
-}
-
-.side-nav {
-  border-right: 1px solid var(--glass-border);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 20px 10px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  position: relative;
-  z-index: 10;
-}
-
-.nav-primary,
-.nav-secondary {
-  display: grid;
-  gap: 8px;
-}
-
-.side-nav button {
-  width: 60px;
-  min-height: 56px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 6px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 10px;
-  font-weight: 600;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.side-nav button svg {
-  width: 18px;
-  height: 18px;
-  stroke-width: 1.7;
-  transition: 0.2s ease;
-}
-
-.side-nav button:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.05);
-  transform: scale(1.05);
-}
-
-.side-nav button.active {
-  color: var(--accent-primary);
-  background: rgba(163, 255, 0, 0.1);
-  box-shadow: inset 3px 0 0 var(--accent-primary);
+  grid-template-columns: minmax(540px, 1fr) auto;
 }
 
 .design-stage {
@@ -415,7 +357,7 @@ button:active {
 
 .stage-head h1 {
   margin: 0;
-  font: 700 clamp(20px, 2.1vw, 29px)/1.1 Manrope, sans-serif;
+  font: 700 clamp(20px, 2.1vw, 29px)/1.1 'Source Sans 3', sans-serif;
   letter-spacing: -1px;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
@@ -524,7 +466,7 @@ button:active {
 .deliverable-rail button>small,
 .journey-rail button>small {
   color: var(--text-tertiary);
-  font: 700 8px/1 Manrope, sans-serif;
+  font: 700 8px/1 'Source Sans 3', sans-serif;
   display: grid;
   place-items: center;
   min-height: 14px;
@@ -553,86 +495,6 @@ button:active {
   letter-spacing: 0;
 }
 
-.journey-coach {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  padding: 12px 14px;
-  border: 1px solid rgba(163, 255, 0, 0.28);
-  background: rgba(163, 255, 0, 0.06);
-  min-height: 72px;
-}
-
-.journey-coach-icon {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(163, 255, 0, 0.3);
-  background: rgba(163, 255, 0, 0.1);
-  color: var(--accent-primary);
-}
-
-.journey-coach-icon svg {
-  width: 16px;
-  height: 16px;
-}
-
-.journey-coach-copy {
-  min-width: 0;
-  display: grid;
-  gap: 3px;
-}
-
-.journey-coach-copy .eyebrow {
-  margin: 0;
-  color: rgba(163, 255, 0, 0.75);
-}
-
-.journey-coach-copy strong {
-  font: 700 13px/1.25 Manrope, sans-serif;
-  color: #fff;
-}
-
-.journey-coach-copy p {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text-secondary);
-}
-
-.journey-coach-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.journey-coach-actions .button {
-  white-space: nowrap;
-  min-height: 44px;
-}
-
-.journey-coach-dismiss {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
-}
-
-.journey-coach-dismiss:hover {
-  color: #fff;
-  border-color: var(--glass-border);
-}
-
-.journey-coach-dismiss svg {
-  width: 16px;
-  height: 16px;
-}
 
 .welcome-gate {
   position: fixed;
@@ -656,7 +518,7 @@ button:active {
 
 .welcome-card h2 {
   margin: 0;
-  font: 700 clamp(22px, 4vw, 28px)/1.15 Manrope, sans-serif;
+  font: 700 clamp(22px, 4vw, 28px)/1.15 'Source Sans 3', sans-serif;
   letter-spacing: -0.03em;
   color: #fff;
   text-wrap: balance;
@@ -838,7 +700,7 @@ button:active {
 }
 
 .furniture span {
-  font: 600 8px/1 Manrope, sans-serif;
+  font: 600 8px/1 'Source Sans 3', sans-serif;
   pointer-events: none;
   white-space: nowrap;
   overflow: hidden;
@@ -1041,7 +903,7 @@ button:active {
 }
 
 .room-name {
-  font: 700 clamp(9px, .9vw, 12px)/1.2 Manrope, sans-serif;
+  font: 700 clamp(9px, .9vw, 12px)/1.2 'Source Sans 3', sans-serif;
   pointer-events: none;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
@@ -1410,6 +1272,39 @@ button:active {
   inset: 0;
 }
 
+.spatial-ghost-note {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid var(--glass-border);
+  background: rgba(14, 14, 14, 0.88);
+  backdrop-filter: blur(12px);
+  white-space: nowrap;
+}
+
+.spatial-ghost-note p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 640px) {
+  .spatial-ghost-note {
+    bottom: 52px;
+    white-space: normal;
+    text-align: center;
+    flex-direction: column;
+    gap: 8px;
+    width: min(78vw, 300px);
+  }
+}
+
 .spatial3d-shell {
   position: absolute;
   inset: 0;
@@ -1459,7 +1354,7 @@ button:active {
 
 .spatial-sun-hud strong {
   color: #fff;
-  font: 700 11px Manrope, sans-serif;
+  font: 700 11px 'Source Sans 3', sans-serif;
 }
 
 .spatial-sun-hud em {
@@ -1564,7 +1459,7 @@ button:active {
 
 .render-meta strong {
   color: #fff;
-  font: 700 11px Manrope, sans-serif;
+  font: 700 11px 'Source Sans 3', sans-serif;
 }
 
 .render-meta em {
@@ -1751,33 +1646,6 @@ button:active {
   height: 160px;
 }
 
-.inspector-reopen {
-  position: fixed;
-  right: 16px;
-  bottom: 20px;
-  z-index: 40;
-  min-height: 48px;
-  padding: 0 20px;
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  border-radius: 24px;
-  box-shadow: var(--shadow-md);
-  transition: 0.2s ease;
-}
-
-.inspector-reopen:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  transform: translateY(-2px);
-}
-
-.app-shell.inspector-collapsed .workspace {
-  grid-template-columns: 82px 1fr;
-}
 
 .sun-status {
   position: absolute;
@@ -1858,7 +1726,7 @@ button:active {
 
 .massing-label {
   fill: #fff;
-  font: 700 7px Manrope, sans-serif;
+  font: 700 7px 'Source Sans 3', sans-serif;
   text-anchor: middle;
   pointer-events: none;
 }
@@ -1903,7 +1771,7 @@ button:active {
   padding: 5px 8px;
   border: 1px solid rgba(163, 255, 0, 0.35);
   background: rgba(163, 255, 0, 0.1);
-  font: 700 9px/1 Manrope, sans-serif;
+  font: 700 9px/1 'Source Sans 3', sans-serif;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--accent-primary);
@@ -2042,7 +1910,7 @@ button:active {
 
 .sun-chart-cardinal {
   fill: var(--text-tertiary);
-  font: 700 8px Manrope, sans-serif;
+  font: 700 8px 'Source Sans 3', sans-serif;
   text-anchor: middle;
 }
 
@@ -2090,7 +1958,7 @@ button:active {
 
 .design-brief h3 {
   margin: 0;
-  font: 700 15px Manrope, sans-serif;
+  font: 700 15px 'Source Sans 3', sans-serif;
   color: #fff;
 }
 
@@ -2197,7 +2065,7 @@ button:active {
 }
 
 .concept-empty strong {
-  font: 700 14px Manrope, sans-serif;
+  font: 700 14px 'Source Sans 3', sans-serif;
 }
 
 .concept-empty p {
@@ -2266,7 +2134,28 @@ button:active {
   white-space: nowrap;
 }
 
+.assistant-cta {
+  flex-shrink: 0;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.assistant-cta svg {
+  width: 13px;
+  height: 13px;
+}
+
+@media (max-width: 640px) {
+  .assistant-cta {
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+}
+
 .inspector {
+  width: 344px;
   border-left: 1px solid var(--glass-border);
   background: var(--glass-bg);
   backdrop-filter: blur(24px);
@@ -2298,7 +2187,7 @@ button:active {
 
 .inspector-head h2 {
   margin: 0;
-  font: 700 18px Manrope, sans-serif;
+  font: 700 18px 'Source Sans 3', sans-serif;
   letter-spacing: -.4px;
   text-transform: capitalize;
   color: #fff;
@@ -2353,7 +2242,7 @@ button:active {
 .upload-card h3,
 .panel-section h3 {
   margin: 0 0 6px;
-  font: 700 14px Manrope, sans-serif;
+  font: 700 14px 'Source Sans 3', sans-serif;
   color: #fff;
 }
 
@@ -2445,7 +2334,7 @@ select {
 }
 
 .room-stat strong {
-  font: 700 14px Manrope;
+  font: 700 14px 'Source Sans 3', sans-serif;
   color: #fff;
 }
 
@@ -2584,7 +2473,7 @@ select {
 }
 
 .score-ring strong {
-  font: 800 28px/1 Manrope;
+  font: 800 28px/1 'Source Sans 3', sans-serif;
   color: #fff;
 }
 
@@ -2595,7 +2484,7 @@ select {
 
 .score-card h3 {
   margin: 0 0 4px;
-  font: 700 15px Manrope;
+  font: 700 15px 'Source Sans 3', sans-serif;
   color: #fff;
 }
 
@@ -2752,7 +2641,7 @@ select {
 }
 
 .energy-hero strong {
-  font: 800 42px/.95 Manrope;
+  font: 800 42px/.95 'Source Sans 3', sans-serif;
   letter-spacing: -2px;
   color: var(--accent-primary);
   text-shadow: 0 0 20px rgba(163, 255, 0, 0.3);
@@ -2901,7 +2790,7 @@ select {
 }
 
 .budget-hero strong {
-  font: 800 34px/1.15 Manrope;
+  font: 800 34px/1.15 'Source Sans 3', sans-serif;
   letter-spacing: -1.2px;
   color: #fff;
 }
@@ -3054,7 +2943,7 @@ select {
 
 .channel-code {
   color: var(--accent-primary);
-  font: 700 8px Manrope, sans-serif;
+  font: 700 8px 'Source Sans 3', sans-serif;
 }
 
 .channel-row>span:nth-child(2) {
@@ -3104,7 +2993,7 @@ select {
 
 .system-metrics strong {
   color: #fff;
-  font: 700 13px Manrope, sans-serif;
+  font: 700 13px 'Source Sans 3', sans-serif;
 }
 
 .system-metrics small {
@@ -3206,7 +3095,7 @@ select {
 .wellbeing-hero h3 {
   margin: 0 0 5px;
   color: #fff;
-  font: 700 14px Manrope, sans-serif;
+  font: 700 14px 'Source Sans 3', sans-serif;
 }
 
 .wellbeing-hero p:last-child {
@@ -3277,7 +3166,7 @@ select {
 
 .interior-schedule article>span {
   color: var(--accent-primary);
-  font: 700 8px Manrope, sans-serif;
+  font: 700 8px 'Source Sans 3', sans-serif;
   text-transform: uppercase;
   letter-spacing: .5px;
 }
@@ -3314,7 +3203,7 @@ select {
 
 .apartment-system-list>div>span {
   color: var(--accent-primary);
-  font: 700 8px Manrope, sans-serif;
+  font: 700 8px 'Source Sans 3', sans-serif;
 }
 
 .apartment-system-list p {
@@ -3380,15 +3269,15 @@ select {
 
 @media (max-width: 1180px) {
   .workspace {
-    grid-template-columns: 82px minmax(500px, 1fr) 310px;
+    grid-template-columns: minmax(500px, 1fr) auto;
+  }
+
+  .inspector {
+    width: 310px;
   }
 
   .design-stage {
     padding-inline: 24px;
-  }
-
-  .side-nav button {
-    width: 50px;
   }
 
   .assistant-example {
@@ -3416,10 +3305,6 @@ select {
     padding-inline: 16px;
   }
 
-  .mobile-menu {
-    display: grid;
-  }
-
   .brand {
     display: none;
   }
@@ -3433,32 +3318,6 @@ select {
     display: none;
   }
 
-  .side-nav {
-    position: fixed;
-    left: 0;
-    top: 64px;
-    bottom: 0;
-    width: 240px;
-    transform: translateX(-100%);
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: var(--shadow-md);
-    padding: 24px 16px;
-    z-index: 30;
-  }
-
-  .side-nav.is-open {
-    transform: translateX(0);
-  }
-
-  .side-nav button {
-    width: 100%;
-    min-height: 50px;
-    grid-template-columns: 28px 1fr;
-    justify-items: start;
-    padding-inline: 16px;
-    font-size: 13px;
-  }
-
   .design-stage {
     min-height: 680px;
     padding: 24px 20px 20px;
@@ -3466,14 +3325,18 @@ select {
     overflow: visible;
   }
 
+  /* Phone: the panel is a full-screen overlay, never inline page content. */
   .inspector {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    z-index: 60;
     border-left: 0;
-    border-top: 1px solid var(--glass-border);
-    overflow: visible;
+    background: rgba(11, 11, 11, 0.98);
   }
 
   .inspector-head {
-    position: relative;
+    position: sticky;
   }
 
   .inspector-content {
@@ -3553,27 +3416,6 @@ select {
     grid-template-columns: repeat(7, 112px);
   }
 
-  .journey-coach {
-    grid-template-columns: 36px 1fr;
-    gap: 10px;
-  }
-
-  .journey-coach-actions {
-    grid-column: 1 / -1;
-    width: 100%;
-  }
-
-  .journey-coach-actions .button {
-    flex: 1;
-  }
-
-  .journey-coach-copy p {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
   .plan-canvas {
     width: auto;
     height: calc(100% - 76px);
@@ -3600,9 +3442,6 @@ select {
     grid-auto-columns: minmax(110px, 1fr);
   }
 
-  .app-shell.inspector-collapsed .workspace {
-    grid-template-columns: 1fr;
-  }
 
   .assistant-bar {
     min-height: 48px;
@@ -3994,7 +3833,6 @@ input,
 select,
 textarea,
 .topbar,
-.side-nav,
 .canvas-frame,
 .tool-group,
 .view-switch,
@@ -4003,7 +3841,6 @@ textarea,
 .panel-section,
 .insight-card,
 .score-card,
-.journey-coach,
 .toast,
 .scale-chip,
 .draw-hint,
@@ -4027,9 +3864,8 @@ h2,
 h3,
 .brand,
 .stage-head h1,
-.welcome-card h2,
-.journey-coach-copy strong {
-  font-family: 'Josefin Sans', sans-serif !important;
+.welcome-card h2 {
+  font-family: 'JetBrains Mono', monospace !important;
   letter-spacing: -0.02em;
 }
 
@@ -4077,10 +3913,8 @@ summary:focus-visible {
 }
 
 .icon-button.active,
-.side-nav button.active,
 .journey-rail button.is-current,
 .journey-rail button.is-next,
-.journey-coach,
 .draw-hint {
   color: var(--accent-primary);
   border-color: rgba(163, 255, 0, 0.45);
@@ -4155,7 +3989,7 @@ summary:focus-visible {
 }
 
 .welcome-steps li b {
-  font: 700 15px/1 'Josefin Sans', sans-serif;
+  font: 700 15px/1 'JetBrains Mono', monospace;
 }
 
 .welcome-steps li small {
@@ -4629,7 +4463,7 @@ summary:focus-visible {
   pointer-events: none;
 }
 .canvas-empty svg { width: 34px; color: var(--accent-primary); filter: drop-shadow(0 0 12px rgba(163, 255, 0, 0.4)); }
-.canvas-empty h3 { margin: 0; font: 700 16px/1.3 Manrope, sans-serif; color: #fff; }
+.canvas-empty h3 { margin: 0; font: 700 16px/1.3 'Source Sans 3', sans-serif; color: #fff; }
 .canvas-empty p { margin: 0; max-width: 320px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); }
 
 /* ── AI trace result note ────────────────────────────── */
@@ -4694,7 +4528,6 @@ summary:focus-visible {
 
 /* Final token enforcement: later legacy component rules must not reintroduce
    the old lime accent, rounded cards, or decorative shadows. */
-.journey-coach-copy .eyebrow,
 .canvas-empty svg,
 .scale-chip svg,
 .scale-chip input,
@@ -4705,7 +4538,6 @@ summary:focus-visible {
   color: var(--accent-primary);
 }
 
-.journey-coach,
 .scale-calibration,
 .interior-boq-room-head,
 .interior-boq-summary {

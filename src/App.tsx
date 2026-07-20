@@ -37,10 +37,8 @@ import { analyze, heatFlowSnapshot } from './analysis'
 import type { AnalysisResult, Suggestion } from './analysis'
 import type { CanvasView, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
 import { TopBar } from './components/TopBar'
-import { SideNav } from './components/SideNav'
 import { AssistantBar } from './components/AssistantBar'
 import { Inspector } from './components/Inspector'
-import { JourneyCoach } from './components/JourneyCoach'
 import { JourneyRail } from './components/JourneyRail'
 import { WelcomeGate } from './components/WelcomeGate'
 import { ScienceDock } from './components/ScienceDock'
@@ -93,8 +91,7 @@ function App() {
   const [sketchUrl, setSketchUrl] = useState<string | null>(null)
   const [assistantText, setAssistantText] = useState('')
   const [toast, setToast] = useState<string | null>(null)
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const [inspectorOpen, setInspectorOpen] = useState(true)
+  const [inspectorOpen, setInspectorOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [snapGrid, setSnapGrid] = useState(true)
   const [showGrid, setShowGrid] = useState(true)
@@ -104,7 +101,6 @@ function App() {
   const [isRendering, setIsRendering] = useState(false)
   const [visitedStages, setVisitedStages] = useState<Set<JourneyStageId>>(() => readVisited())
   const [welcomeOpen, setWelcomeOpen] = useState(() => !readWelcomeDismissed())
-  const [coachDismissed, setCoachDismissed] = useState(false)
   const frameRef = useRef<HTMLDivElement>(null!)
   const stageRef = useRef<HTMLDivElement>(null!)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -177,7 +173,6 @@ function App() {
 
   useEffect(() => {
     markVisited(stageFromVisit(mode, view))
-    setCoachDismissed(false)
   }, [markVisited, mode, view])
 
   const prevDoneRef = useRef<number | null>(null)
@@ -202,7 +197,6 @@ function App() {
     if (nav.mode) setMode(nav.mode)
     if (nav.view) setView(nav.view)
     if (nav.tool) setActiveTool(nav.tool)
-    setCoachDismissed(false)
   }, [])
 
   const commitSnapshot = useCallback((snapshot: PlanState) => {
@@ -707,25 +701,21 @@ function App() {
   }), [viewport.panX, viewport.panY, viewport.zoom])
 
   return (
-    <div className={`app-shell ${inspectorOpen ? '' : 'inspector-collapsed'}`}>
+    <div className="app-shell">
       <TopBar
         projectName={CHINA_PROJECT_NAME}
         lastSaved={lastSaved}
-        setMobileNavOpen={setMobileNavOpen}
+        inspectorOpen={inspectorOpen}
+        onToggleInspector={() => setInspectorOpen((open) => !open)}
+        onOpenSettings={() => {
+          setSettingsOpen(true)
+          setInspectorOpen(true)
+        }}
         exportPlan={exportPlan}
         sharePlan={shareProject}
       />
 
       <div className="workspace">
-        <SideNav
-          mode={mode}
-          setMode={setMode}
-          mobileNavOpen={mobileNavOpen}
-          setMobileNavOpen={setMobileNavOpen}
-          settingsOpen={settingsOpen}
-          setSettingsOpen={setSettingsOpen}
-        />
-
         <main className="design-stage">
           <div className="stage-head">
             <div>
@@ -803,7 +793,7 @@ function App() {
               <div className="spatial-wrap">
                 <Suspense fallback={<div className="spatial-note">Loading 3D…</div>}>
                   <Spatial3D
-                    plan={plan}
+                    plan={isEmpty ? chinaApartmentPlan : plan}
                     sunAzimuth={sun.azimuth}
                     sunAltitude={sun.altitude}
                     selectedRoom={selectedRoom}
@@ -812,8 +802,21 @@ function App() {
                     hour={hour}
                     day={day}
                     locationLabel={locations[location as keyof typeof locations].label}
+                    ghost={isEmpty}
                   />
                 </Suspense>
+                {isEmpty && (
+                  <div className="spatial-ghost-note" role="status">
+                    <p>Draw a room in Plan to see it in 3D</p>
+                    <button
+                      className="button primary small"
+                      type="button"
+                      onClick={() => goToStage({ mode: 'plan', view: 'plan', tool: 'draw' })}
+                    >
+                      Go to Plan
+                    </button>
+                  </div>
+                )}
                 {(conceptImages.length > 0 || isRendering) && (
                   <div className="concept-strip" aria-live="polite">
                     {isRendering && <div className="concept-loading"><RotateCcw className="spin" /> Rendering concept…</div>}
@@ -953,18 +956,13 @@ function App() {
             )}
           </section>
 
-          <JourneyCoach
-            coach={journey.coach}
-            dismissed={coachDismissed || welcomeOpen}
-            onAction={() => goToStage(journey.coach.nav)}
-            onDismiss={() => setCoachDismissed(true)}
-          />
-
           <AssistantBar
             assistantText={assistantText}
             setAssistantText={setAssistantText}
             runQuickAction={runQuickAction}
             hint={journey.coach.cta}
+            cta={welcomeOpen ? undefined : journey.coach.cta}
+            onCta={() => goToStage(journey.coach.nav)}
           />
         </main>
 
@@ -1019,12 +1017,6 @@ function App() {
           traceFileInputRef={traceFileInputRef}
           isTracing={isTracing}
         />
-
-        {!inspectorOpen && (
-          <button className="inspector-reopen" type="button" onClick={() => setInspectorOpen(true)}>
-            Plan panel
-          </button>
-        )}
       </div>
       <WelcomeGate
         open={welcomeOpen}
@@ -1032,7 +1024,7 @@ function App() {
           writeWelcomeDismissed()
           setWelcomeOpen(false)
           startBlank()
-          goToStage({ mode: 'plan', view: 'plan', tool: 'draw', inspector: true })
+          goToStage({ mode: 'plan', view: 'plan', tool: 'draw', inspector: false })
           setToast('Blank page ready — draw one room with your finger or mouse')
         }}
         onSkip={() => {

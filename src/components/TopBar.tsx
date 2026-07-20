@@ -1,22 +1,29 @@
 import React from 'react'
-import { ChevronDown, Copy, Download, Menu } from 'lucide-react'
+import { ChevronDown, Copy, Download, PanelRight, Settings2 } from 'lucide-react'
 import { Logo, IconButton } from './ui'
 
 interface TopBarProps {
   projectName: string
   lastSaved: string
-  setMobileNavOpen: React.Dispatch<React.SetStateAction<boolean>>
+  inspectorOpen: boolean
+  onToggleInspector: () => void
+  onOpenSettings: () => void
   exportPlan: () => void
   sharePlan: () => void
 }
 
-export const TopBar = React.memo(function TopBar({ projectName, lastSaved, setMobileNavOpen, exportPlan, sharePlan }: TopBarProps) {
+export const TopBar = React.memo(function TopBar({
+  projectName,
+  lastSaved,
+  inspectorOpen,
+  onToggleInspector,
+  onOpenSettings,
+  exportPlan,
+  sharePlan,
+}: TopBarProps) {
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <IconButton label="Open navigation" className="mobile-menu" onClick={() => setMobileNavOpen((open) => !open)}>
-          <Menu />
-        </IconButton>
         <Logo />
         <span className="top-divider" />
         <button className="project-picker" type="button">
@@ -25,6 +32,16 @@ export const TopBar = React.memo(function TopBar({ projectName, lastSaved, setMo
         </button>
       </div>
       <div className="top-actions">
+        <IconButton label="Workspace settings" onClick={onOpenSettings}>
+          <Settings2 />
+        </IconButton>
+        <IconButton
+          label={inspectorOpen ? 'Close panel' : 'Open panel'}
+          className={inspectorOpen ? 'active' : ''}
+          onClick={onToggleInspector}
+        >
+          <PanelRight />
+        </IconButton>
         <button
           className="button secondary"
           type="button"
