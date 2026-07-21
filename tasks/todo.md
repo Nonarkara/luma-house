@@ -236,3 +236,31 @@ Learned: ghost state reuses `chinaApartmentPlan` read-only with a `ghost` prop
 on Spatial3D (skips RoomVolume/openings/furniture/selection) — no demo-plan
 duplication. Stage nav (`inspector: true` in StageNav) is how mode content is
 reached, so chips still open the panel on tap; only the DEFAULT changed.
+
+## Audit + perfect — Kimi K3 subtraction pass, 2026-07-21 (Opus)
+
+Independent verification of Kimi's subtraction redesign (a7c38b9, b428969).
+Every claim checked against code + live site, not the report:
+
+- [x] SideNav + JourneyCoach deleted cleanly — 0 orphan refs (one doc comment only)
+- [x] Fonts genuinely down to 2 packages; NO dangling Josefin/Manrope/Inter refs
+      in CSS; main.tsx imports match package.json deps
+- [x] Gates real: 83/83 tests, lint clean, build clean (re-ran, not trusted)
+- [x] Live site == committed code (bundle hash match), citron intact, ghost
+      empty-state copy present in shipped JS
+- [x] Progress-truth fix real: isComplete requires a real plan for model/living/cost
+- [x] Pushed a7c38b9+b428969 to GitHub (were deployed but local-only — repo/Pages
+      were out of sync; now 0/0)
+
+Improvement found + shipped (9b88537):
+- [x] The picture stage still completed on visit/concept alone over an EMPTY plan
+      — the one place Kimi's "no checkmark over an empty canvas" rule leaked.
+      Fixed to require rooms.length>=1, and added a test asserting NO stage
+      completes over an empty plan even when all 7 are visited + concept faked.
+      84 tests green. Deployed + curl-verified live (index-BPNgpolC.js).
+
+Verdict: Kimi's pass is excellent and honest. Left deferred (correctly): the
+duplicate .welcome-* CSS blocks (v1 lines 499-556 + v2 3839-4006) are
+intertwined cascade — the component still uses .welcome-note and .welcome-steps b
+from the v1 block — so merging needs in-browser visual QA, which was unavailable
+this session (browser tool policy check down). Do it with eyes on the page.
