@@ -216,7 +216,9 @@ export const STAGES: StageDef[] = [
     principle: 'peak-end',
     nav: { view: 'renders', inspector: false },
     metric: (ctx) => (ctx.hasConcept ? 'Concept ready' : '5 views'),
-    isComplete: (ctx) => ctx.visited.has('picture') || ctx.hasConcept,
+    // Like every other stage, "picture" cannot claim completion over an empty
+    // canvas — there is nothing to picture until a room exists.
+    isComplete: (ctx) => (ctx.visited.has('picture') || ctx.hasConcept) && ctx.plan.rooms.length >= 1,
     coach: () => ({
       title: 'Close on a picture you can share',
       body: 'Pick a view or generate a concept photo. The walkthrough ends when you can show someone else what you decided.',

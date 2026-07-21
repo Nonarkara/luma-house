@@ -76,6 +76,22 @@ describe('journey stages', () => {
     expect(complete.stages.find((s) => s.def.id === 'sun')?.complete).toBe(true)
   })
 
+  it('never marks any stage complete over an empty plan, even when all are visited', () => {
+    // The single progress-truth invariant: rail checkmarks can never claim
+    // progress the canvas has not earned. Visit every stage AND fake a concept —
+    // an empty plan must still show zero completions.
+    const result = evaluateJourney(
+      ctx({
+        plan: emptyPlan,
+        hasConcept: true,
+        visited: new Set(['draw', 'model', 'sun', 'living', 'systems', 'cost', 'picture']),
+      }),
+    )
+    expect(result.doneCount).toBe(0)
+    expect(result.stages.every((s) => !s.complete)).toBe(true)
+    expect(result.nextId).toBe('draw')
+  })
+
   it('keeps seven stages in the decision sequence', () => {
     expect(STAGES).toHaveLength(7)
     expect(STAGES.map((s) => s.id)).toEqual([
