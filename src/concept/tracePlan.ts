@@ -1,6 +1,6 @@
 import type { PlanState } from '../types'
 import { sanitizePlan } from '../sharePlan'
-import { canGenerateConcept, getQuotaRemaining } from '../concept/renderQuota'
+import { canGenerateConcept, getQuotaRemaining, recordAiTrace } from '../concept/renderQuota'
 
 const DEFAULT_API =
     (import.meta.env.VITE_CONCEPT_API_URL as string | undefined) ||
@@ -11,6 +11,7 @@ export interface TraceResult {
     /** Whether the model reported low confidence (hand-drawn, partial, etc.). */
     draft: boolean
     note: string
+    remaining: number
 }
 
 /**
@@ -54,5 +55,6 @@ export async function tracePlanFromImage(options: {
         plan: sanitized,
         draft: payload.draft !== false,
         note: payload.note || 'AI-read draft — verify walls and openings before costing.',
+        remaining: recordAiTrace(),
     }
 }

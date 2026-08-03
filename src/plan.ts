@@ -35,6 +35,32 @@ export function sanitizeSite(raw: unknown): SiteSpec {
   return { w, h, unit }
 }
 
+/**
+ * Calibrate the whole drawing from one known room dimension while preserving
+ * every room's proportions: field dimension = known dimension / room share.
+ */
+export function calibrateSiteFromRoom(
+  site: SiteSpec,
+  room: Pick<Room, 'w' | 'h'>,
+  axis: 'w' | 'h',
+  knownMeters: number,
+): SiteSpec {
+  if (!Number.isFinite(knownMeters) || knownMeters <= 0) return site
+  const share = (axis === 'w' ? room.w : room.h) / 100
+  if (share <= 0) return site
+  const currentAxis = axis === 'w' ? site.w : site.h
+  const requestedScale = (knownMeters / share) / currentAxis
+  const minimumScale = Math.max(1 / site.w, 1 / site.h)
+  const maximumScale = Math.min(200 / site.w, 200 / site.h)
+  const scale = Math.max(minimumScale, Math.min(maximumScale, requestedScale))
+  const next = {
+    ...site,
+    w: Math.round(site.w * scale * 100) / 100,
+    h: Math.round(site.h * scale * 100) / 100,
+  }
+  return { ...next, unit: Math.min(next.unit, next.w, next.h) }
+}
+
 export const locations = {
   Shanghai: { latitude: 31.2304, label: 'Shanghai, CN · 31.23°N' },
   Bangkok: { latitude: 13.7563, label: 'Bangkok, TH' },

@@ -31,6 +31,17 @@ describe('exteriorWalls', () => {
     expect(aWalls).toEqual(['N', 'S', 'W'])
     expect(bWalls).toEqual(['E', 'N', 'S'])
   })
+
+  it('subtracts only the shared portion of a partially adjacent wall', () => {
+    const rooms: Room[] = [
+      { id: 'a', name: 'A', kind: 'studio', x: 10, y: 10, w: 40, h: 40 },
+      { id: 'b', name: 'B', kind: 'studio', x: 50, y: 20, w: 20, h: 20 },
+    ]
+    const walls = exteriorWalls({ rooms, openings: [], furniture: [], systems: { solar: false, insulation: false, climate: false, lighting: false }, site: { w: 10, h: 10, unit: 1 } })
+    const eastA = walls.find((wall) => wall.roomId === 'a' && wall.compass === 'E')
+    expect(eastA?.lengthPct).toBeCloseTo(20)
+    expect(eastA?.lengthMeters).toBeCloseTo(2)
+  })
 })
 
 describe('wallSunForDay', () => {

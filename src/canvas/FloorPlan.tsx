@@ -3,6 +3,10 @@ import React, { type CSSProperties, type PointerEvent as ReactPointerEvent, type
 import { furnitureCatalog, furnitureRectFor, roomAreaFor, siteOf } from '../plan'
 import type { SunPatch } from '../plan'
 import type { Furniture, Opening, PlanState, PlanTool, Room, RoomKind } from '../types'
+import type { DaylightBand, RoomEgressRoute, RoomWindPotential } from '../analysis'
+import { exteriorWalls } from '../analysis'
+import type { ValueLensMode } from '../components/ValueLens'
+import type { Compass } from '../analysis'
 import type { ResizeHandle, StrokePoint } from './geometry'
 
 const roomColors: Record<RoomKind, string> = {
@@ -15,6 +19,13 @@ const roomColors: Record<RoomKind, string> = {
 }
 
 const HANDLES: ResizeHandle[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
+
+function wallPoint(room: Room, compass: Compass): { x: number; y: number } {
+  if (compass === 'N') return { x: room.x + room.w / 2, y: room.y }
+  if (compass === 'S') return { x: room.x + room.w / 2, y: room.y + room.h }
+  if (compass === 'W') return { x: room.x, y: room.y + room.h / 2 }
+  return { x: room.x + room.w, y: room.y + room.h / 2 }
+}
 
 export const FloorPlan = React.memo(function FloorPlan({
   plan,
@@ -29,6 +40,10 @@ export const FloorPlan = React.memo(function FloorPlan({
   showSun,
   sunAngle,
   sunPatchList,
+  valueLens,
+  daylightBands,
+  windRooms,
+  egressRooms,
   showGrid,
   gridCellX,
   gridCellY,
@@ -56,6 +71,10 @@ export const FloorPlan = React.memo(function FloorPlan({
   showSun: boolean
   sunAngle: number
   sunPatchList: SunPatch[]
+  valueLens: ValueLensMode
+  daylightBands: DaylightBand[]
+  windRooms: RoomWindPotential[]
+  egressRooms: RoomEgressRoute[]
   showGrid: boolean
   gridCellX: number
   gridCellY: number
@@ -134,7 +153,9 @@ export const FloorPlan = React.memo(function FloorPlan({
               className={`room room-${room.kind} ${selectedRoom === room.id ? 'is-selected' : ''} ${overlaps.has(room.id) ? 'is-overlap' : ''}`}
               style={{ left: `${room.x}%`, top: `${room.y}%`, width: `${room.w}%`, height: `${room.h}%`, background: roomColors[room.kind] }}
               onPointerDown={(event) => onRoomPointerDown(event, room)}
-              onClick={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                if (activeTool === 'select') event.stopPropagation()
+              }}
               aria-label={`${room.name}, ${roomAreaFor(room, site).toFixed(1)} square meters`}
             >
               <span className="room-name">{room.name}</span>
@@ -149,6 +170,78 @@ export const FloorPlan = React.memo(function FloorPlan({
               ))}
             </button>
           ))}
+          {valueLens !== 'off' && valueLens !== 'shade' && (
+            <svg className={`value-plan-overlay is-${valueLens}`} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <marker id="value-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-primary)" />
+                </marker>
+                <pattern id="no-route-hatch" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                  <line x1="0" y1="0" x2="0" y2="3" stroke="var(--accent-primary)" strokeWidth="0.5" opacity="0.34" />
+                </pattern>
+              </defs>
+              {valueLens === 'daylight' && daylightBands.map((band) => {
+                const room = plan.rooms.find((item) => item.id === band.roomId)
+                if (!room) return null
+                const fraction = band.reachPct / 100
+                const spread = band.spreadPct / 100
+                const offset = band.offsetPct / 100
+                const alongStart = Math.max(0, Math.min(1 - spread, offset - spread / 2))
+                const rect = band.compass === 'N'
+                  ? { x: room.x + room.w * alongStart, y: room.y, w: room.w * spread, h: room.h * fraction }
+                  : band.compass === 'S'
+                    ? { x: room.x + room.w * alongStart, y: room.y + room.h * (1 - fraction), w: room.w * spread, h: room.h * fraction }
+                    : band.compass === 'W'
+                      ? { x: room.x, y: room.y + room.h * alongStart, w: room.w * fraction, h: room.h * spread }
+                      : { x: room.x + room.w * (1 - fraction), y: room.y + room.h * alongStart, w: room.w * fraction, h: room.h * spread }
+                return <rect key={`${band.roomId}-${band.openingId}`} x={rect.x} y={rect.y} width={rect.w} height={rect.h} className="daylight-reach" />
+              })}
+              {valueLens === 'air' && windRooms.map((item) => {
+                const room = item.room
+                const inlet = item.inlet ? wallPoint(room, item.inlet) : null
+                const outlet = item.outlet ? wallPoint(room, item.outlet) : null
+                return (
+                  <g key={room.id}>
+                    <rect x={room.x} y={room.y} width={room.w} height={room.h} className={`wind-room is-${item.mode}`} />
+                    {inlet && outlet && <line x1={inlet.x} y1={inlet.y} x2={outlet.x} y2={outlet.y} className="wind-path" markerEnd="url(#value-arrow)" />}
+                    <text x={room.x + room.w / 2} y={room.y + room.h - 2.2} className="value-overlay-label">
+                      {item.inlet && item.outlet ? `${item.inlet} → ${item.outlet}` : item.mode.replace('-', ' ')}
+                    </text>
+                  </g>
+                )
+              })}
+              {valueLens === 'escape' && egressRooms.map((item) => (
+                <g key={item.room.id}>
+                  {!item.connected && <rect x={item.room.x} y={item.room.y} width={item.room.w} height={item.room.h} fill="url(#no-route-hatch)" className="egress-missing" />}
+                  {item.connected && item.points.length > 1 && (
+                    <polyline points={item.points.map((point) => `${point.x},${point.y}`).join(' ')} className="egress-path" markerEnd="url(#value-arrow)" />
+                  )}
+                  <text x={item.room.x + item.room.w / 2} y={item.room.y + item.room.h - 2.2} className={`value-overlay-label ${item.connected ? '' : 'is-alert'}`}>
+                    {item.connected ? `~${item.distanceM?.toFixed(1)} m out` : 'no modeled exit'}
+                  </text>
+                </g>
+              ))}
+              {valueLens === 'shell' && exteriorWalls(plan).map((wall, index) => {
+                const room = plan.rooms.find((item) => item.id === wall.roomId)
+                if (!room) return null
+                const start = wall.compass === 'N'
+                  ? { x: room.x, y: room.y }
+                  : wall.compass === 'S'
+                    ? { x: room.x, y: room.y + room.h }
+                    : wall.compass === 'W'
+                      ? { x: room.x, y: room.y }
+                      : { x: room.x + room.w, y: room.y }
+                const end = wall.compass === 'N'
+                  ? { x: room.x + room.w, y: room.y }
+                  : wall.compass === 'S'
+                    ? { x: room.x + room.w, y: room.y + room.h }
+                    : wall.compass === 'W'
+                      ? { x: room.x, y: room.y + room.h }
+                      : { x: room.x + room.w, y: room.y + room.h }
+                return <line key={`${wall.roomId}-${wall.compass}-${index}`} x1={start.x} y1={start.y} x2={end.x} y2={end.y} className="envelope-wall" />
+              })}
+            </svg>
+          )}
           {plan.furniture.map((item) => {
             const rect = furnitureRectFor(item, site)
             const spec = furnitureCatalog[item.kind]
@@ -166,20 +259,31 @@ export const FloorPlan = React.memo(function FloorPlan({
               </button>
             )
           })}
-          {plan.openings.map((opening) => (
-            <button
-              key={opening.id}
-              type="button"
-              className={`opening opening-${opening.type} rotate-${opening.rotation} ${selectedOpening === opening.id ? 'is-selected' : ''}`}
-              style={{ left: `${opening.x}%`, top: `${opening.y}%` }}
-              title={opening.type}
-              aria-label={`${opening.type} opening`}
-              onPointerDown={(event) => onOpeningPointerDown(event, opening)}
-              onClick={(event) => event.stopPropagation()}
-            >
-              {opening.type === 'door' && <i />}
-            </button>
-          ))}
+          {plan.openings.map((opening) => {
+            const w = opening.widthM ?? (opening.type === 'window' ? 1.6 : 0.9)
+            const h = opening.heightM ?? (opening.type === 'window' ? 1.2 : 2.1)
+            const isSel = selectedOpening === opening.id
+            return (
+              <button
+                key={opening.id}
+                type="button"
+                className={`opening opening-${opening.type} rotate-${opening.rotation} ${isSel ? 'is-selected' : ''}`}
+                style={{ left: `${opening.x}%`, top: `${opening.y}%` }}
+                title={`${opening.type} (${w.toFixed(1)}m × ${h.toFixed(1)}m)`}
+                aria-label={`${opening.type} opening ${w.toFixed(1)} by ${h.toFixed(1)} meters`}
+                onPointerDown={(event) => onOpeningPointerDown(event, opening)}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {opening.type === 'door' && <i />}
+                {isSel && (
+                  <span className="opening-dim-badge">
+                    {w.toFixed(1)}×{h.toFixed(1)}m
+                  </span>
+                )}
+              </button>
+            )
+          })}
+
           {draftStroke && draftStroke.length > 1 && (
             <svg className="draw-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
               <polyline

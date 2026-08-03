@@ -1,5 +1,5 @@
 import React from 'react'
-import { ChevronDown, Copy, Download, PanelRight, Settings2 } from 'lucide-react'
+import { Copy, Download, HelpCircle, PanelRight, Settings2 } from 'lucide-react'
 import { Logo, IconButton } from './ui'
 
 interface TopBarProps {
@@ -10,6 +10,7 @@ interface TopBarProps {
   onOpenSettings: () => void
   exportPlan: () => void
   sharePlan: () => void
+  onOpenShortcuts?: () => void
 }
 
 export const TopBar = React.memo(function TopBar({
@@ -20,21 +21,29 @@ export const TopBar = React.memo(function TopBar({
   onOpenSettings,
   exportPlan,
   sharePlan,
+  onOpenShortcuts,
 }: TopBarProps) {
   return (
     <header className="topbar">
       <div className="topbar-left">
         <Logo />
         <span className="top-divider" />
-        <button className="project-picker" type="button">
+        <div className="project-picker">
           <span><strong>{projectName}</strong><small>{lastSaved}</small></span>
-          <ChevronDown />
-        </button>
+        </div>
       </div>
+
       <div className="top-actions">
+        {onOpenShortcuts && (
+          <IconButton label="Keyboard shortcuts & visual legend (?)" onClick={onOpenShortcuts}>
+            <HelpCircle className="w-4 h-4" />
+          </IconButton>
+        )}
+
         <IconButton label="Workspace settings" onClick={onOpenSettings}>
           <Settings2 />
         </IconButton>
+
         <IconButton
           label={inspectorOpen ? 'Close panel' : 'Open panel'}
           className={inspectorOpen ? 'active' : ''}
@@ -42,6 +51,7 @@ export const TopBar = React.memo(function TopBar({
         >
           <PanelRight />
         </IconButton>
+
         <button
           className="button secondary"
           type="button"
@@ -49,6 +59,7 @@ export const TopBar = React.memo(function TopBar({
         >
           <Copy /> Share
         </button>
+
         <button className="button primary" type="button" onClick={exportPlan}>
           <Download /> Export
         </button>

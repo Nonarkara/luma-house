@@ -140,21 +140,27 @@ export interface ApartmentBudget {
 
 export function calculateChinaApartmentBudget(plan: PlanState): ApartmentBudget {
   const area = totalAreaFor(plan.rooms, siteOf(plan))
+  const scale = area / 50
+  if (area <= 0) return { area: 0, currency: 'CNY', items: [], subtotal: 0, contingencyRate: 0.08, total: 0 }
   const items = [
     { label: 'Preliminaries, survey & protection', quantity: 1, unit: 'lot', rate: 12_000, amount: 12_000 },
     { label: 'Selective demolition & waste', quantity: area, unit: 'm²', rate: 180, amount: area * 180 },
-    { label: 'Partitions, linings & ceilings', quantity: 85, unit: 'm²', rate: 260, amount: 22_100 },
-    { label: 'Waterproofing & flood test', quantity: 18, unit: 'm²', rate: 260, amount: 4_680 },
-    { label: 'Floor, wall & ceiling finishes', quantity: 145, unit: 'm²', rate: 280, amount: 40_600 },
-    { label: 'Bespoke elm / lacquer joinery', quantity: 22, unit: 'lin.m', rate: 3_200, amount: 70_400 },
-    { label: 'Internal doors & secondary glazing', quantity: 7, unit: 'units', rate: 3_500, amount: 24_500 },
-    { label: 'Plumbing, sanitaryware & drainage', quantity: 1, unit: 'lot', rate: 48_000, amount: 48_000 },
-    { label: 'Electrical & six-channel lighting', quantity: 1, unit: 'lot', rate: 38_000, amount: 38_000 },
-    { label: 'ERV, filtration & air-quality sensors', quantity: 1, unit: 'system', rate: 36_000, amount: 36_000 },
-    { label: 'Two-zone HVAC & thermal upgrades', quantity: 1, unit: 'system', rate: 42_000, amount: 42_000 },
-    { label: 'Appliance allowance', quantity: 1, unit: 'allowance', rate: 55_000, amount: 55_000 },
-    { label: 'Digital controls & commissioning', quantity: 1, unit: 'system', rate: 28_000, amount: 28_000 },
+    { label: 'Partitions, linings & ceilings', quantity: area, unit: 'm² floor', rate: 442, amount: 22_100 * scale },
+    { label: 'Waterproofing & flood test', quantity: area, unit: 'm² floor', rate: 93.6, amount: 4_680 * scale },
+    { label: 'Floor, wall & ceiling finishes', quantity: area, unit: 'm² floor', rate: 812, amount: 40_600 * scale },
+    { label: 'Joinery allowance', quantity: area, unit: 'm² floor', rate: 1_408, amount: 70_400 * scale },
+    { label: 'Modeled windows & doors', quantity: plan.openings.length, unit: 'units', rate: 2_450, amount: plan.openings.length * 2_450 },
+    { label: 'Plumbing, sanitaryware & drainage', quantity: area, unit: 'm² floor', rate: 960, amount: 48_000 * scale },
+    { label: 'Electrical base', quantity: area, unit: 'm² floor', rate: 760, amount: 38_000 * scale },
+    { label: 'Appliance allowance', quantity: area, unit: 'm² floor', rate: 1_100, amount: 55_000 * scale },
   ]
+  if (plan.systems.lighting) items.push({ label: 'Lighting controls & commissioning', quantity: area, unit: 'm² floor', rate: 560, amount: 28_000 * scale })
+  if (plan.systems.climate) {
+    items.push({ label: 'ERV, filtration & air-quality sensors', quantity: area, unit: 'm² floor', rate: 720, amount: 36_000 * scale })
+    items.push({ label: 'Two-zone HVAC allowance', quantity: area, unit: 'm² floor', rate: 480, amount: 24_000 * scale })
+  }
+  if (plan.systems.insulation) items.push({ label: 'Thermal and air-sealing upgrade', quantity: area, unit: 'm² floor', rate: 360, amount: 18_000 * scale })
+  if (plan.systems.solar) items.push({ label: 'Allocated common-roof PV', quantity: area, unit: 'm² floor', rate: 580, amount: 29_000 * scale })
   const subtotal = items.reduce((sum, item) => sum + item.amount, 0)
   const contingencyRate = 0.08
   return { area, currency: 'CNY', items, subtotal, contingencyRate, total: subtotal * (1 + contingencyRate) }

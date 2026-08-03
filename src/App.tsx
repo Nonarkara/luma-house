@@ -7,7 +7,7 @@ import { useRoomGestures } from './canvas/useRoomGestures'
 import { clientToPercent, moveOpening, moveRoom, strokeToRoomRect, type StrokePoint } from './canvas/geometry'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
-import { defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureRectFor, roomAreaFor, roomOverlaps, siteOf, solarPosition, sunPatches, locations } from './plan'
+import { calibrateSiteFromRoom, defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureRectFor, roomAreaFor, roomOverlaps, siteOf, solarPosition, sunPatches, locations } from './plan'
 import { interiorBoq } from './boq/interiorBoq'
 import { tracePlanFromImage } from './concept/tracePlan'
 import type { SiteSpec } from './types'
@@ -33,7 +33,7 @@ import {
   estimateApartmentCarbon,
 } from './mockups/chinaApartment'
 import { buildShareUrl, decodePlanFromHash, sanitizePlan } from './sharePlan'
-import { analyze, heatFlowSnapshot } from './analysis'
+import { analyze, daylightPotential, egressRoutes, heatFlowSnapshot, windFlowPotential } from './analysis'
 import type { AnalysisResult, Suggestion } from './analysis'
 import type { CanvasView, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
 import { TopBar } from './components/TopBar'
@@ -42,6 +42,7 @@ import { Inspector } from './components/Inspector'
 import { JourneyRail } from './components/JourneyRail'
 import { WelcomeGate } from './components/WelcomeGate'
 import { ScienceDock } from './components/ScienceDock'
+import { ValueLens, type ValueLensMode } from './components/ValueLens'
 import { IconButton } from './components/ui'
 import { evaluateJourney } from './journey/evaluateJourney'
 import {
@@ -55,6 +56,17 @@ import {
 } from './journey/stages'
 
 const Spatial3D = lazy(() => import('./canvas/Spatial3D'))
+const SAMPLE_STYLE_KEYWORDS = 'contemporary Shanghai, custom elm joinery, mineral plaster, linen screens, quiet craftsmanship'
+
+import { createGuidedTour } from './tour/guidedTour'
+import { CLIMATE_SCENARIOS } from './scenarios/climateScenarios'
+import { GuidedTourOverlay } from './components/GuidedTourOverlay'
+import { ScenarioPickerModal } from './components/ScenarioPickerModal'
+import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal'
+import { comparePlans } from './analysis/abComparison'
+import { ABComparisonModal } from './components/ABComparisonModal'
+import type { ABComparisonState, CurrencyCode, Opening } from './types'
+
 
 function readSavedPlan(): PlanState {
   // Priority: share link in the URL hash, then the local draft, then the demo plan.
@@ -84,10 +96,13 @@ function App() {
   const [furnitureTrayOpen, setFurnitureTrayOpen] = useState(false)
   const [draftStroke, setDraftStroke] = useState<StrokePoint[] | null>(null)
   const [location, setLocation] = useState<string>(CHINA_PROJECT_LOCATION)
-  const [styleKeywords, setStyleKeywords] = useState<string>(() => localStorage.getItem('luma-style-keywords:shanghai-50') || 'contemporary Shanghai, custom elm joinery, mineral plaster, linen screens, quiet craftsmanship')
+  const [styleKeywords, setStyleKeywords] = useState<string>(() => localStorage.getItem('luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
   const [hour, setHour] = useState(10)
   const [day, setDay] = useState(355)
   const [outsideC, setOutsideC] = useState(34)
+  const [valueLens, setValueLens] = useState<ValueLensMode>('off')
+  const [windFrom, setWindFrom] = useState(180)
+  const [windSpeed, setWindSpeed] = useState(3)
   const [sketchUrl, setSketchUrl] = useState<string | null>(null)
   const [assistantText, setAssistantText] = useState('')
   const [toast, setToast] = useState<string | null>(null)
@@ -101,7 +116,16 @@ function App() {
   const [isRendering, setIsRendering] = useState(false)
   const [visitedStages, setVisitedStages] = useState<Set<JourneyStageId>>(() => readVisited())
   const [welcomeOpen, setWelcomeOpen] = useState(() => !readWelcomeDismissed())
+  const [tourChapterIndex, setTourChapterIndex] = useState<number | null>(null)
+  const [scenariosOpen, setScenariosOpen] = useState(false)
+  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
+  const [walkMode, setWalkMode] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [currency, setCurrency] = useState<CurrencyCode>('CNY')
+  const [pinnedBaseline, setPinnedBaseline] = useState<ABComparisonState | null>(null)
+  const [abComparisonModalOpen, setABComparisonModalOpen] = useState(false)
   const frameRef = useRef<HTMLDivElement>(null!)
+
   const stageRef = useRef<HTMLDivElement>(null!)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const panMovedRef = useRef(false)
@@ -132,6 +156,46 @@ function App() {
     () => heatFlowSnapshot({ plan, sunAzimuth: sun.azimuth, sunAltitude: sun.altitude, outsideC }),
     [outsideC, plan, sun.altitude, sun.azimuth],
   )
+  const baselineHeatFlow = useMemo(
+    () => heatFlowSnapshot({ plan: { ...plan, systems: { ...plan.systems, insulation: false } }, sunAzimuth: sun.azimuth, sunAltitude: sun.altitude, outsideC }),
+    [outsideC, plan, sun.altitude, sun.azimuth],
+  )
+  const upgradedHeatFlow = useMemo(
+    () => heatFlowSnapshot({ plan: { ...plan, systems: { ...plan.systems, insulation: true } }, sunAzimuth: sun.azimuth, sunAltitude: sun.altitude, outsideC }),
+    [outsideC, plan, sun.altitude, sun.azimuth],
+  )
+  const decisionAllowances = useMemo(() => {
+    const baseline = calculateChinaApartmentBudget({ ...plan, systems: { ...plan.systems, insulation: false } })
+    const envelope = calculateChinaApartmentBudget({ ...plan, systems: { ...plan.systems, insulation: true } })
+    const withOpening = calculateChinaApartmentBudget({
+      ...plan,
+      openings: [...plan.openings, { id: '__allowance__', type: 'window' as const, x: -100, y: -100, rotation: 0 as const }],
+    })
+    return {
+      opening: Math.max(0, withOpening.total - budget.total),
+      envelope: Math.max(0, envelope.total - baseline.total),
+    }
+  }, [budget.total, plan])
+  const daylight = useMemo(() => daylightPotential(plan), [plan])
+  const daylightBandList = useMemo(() => daylight.flatMap((item) => item.bands), [daylight])
+  const windRooms = useMemo(() => windFlowPotential(plan, windFrom, windSpeed), [plan, windFrom, windSpeed])
+  const egressRooms = useMemo(() => egressRoutes(plan), [plan])
+  const tourChapters = useMemo(
+    () => createGuidedTour(plan, { sunAzimuth: sun.azimuth, sunAltitude: sun.altitude, outsideC, windFrom, windSpeed }),
+    [outsideC, plan, sun.altitude, sun.azimuth, windFrom, windSpeed],
+  )
+  useEffect(() => {
+    if (!activeScenarioId) return
+    const active = CLIMATE_SCENARIOS.find((scenario) => scenario.id === activeScenarioId)
+    if (!active) {
+      setActiveScenarioId(null)
+      return
+    }
+    const params = active.params
+    if (day !== params.day || hour !== params.hour || outsideC !== params.outsideC || windFrom !== params.windFrom || windSpeed !== params.windSpeed) {
+      setActiveScenarioId(null)
+    }
+  }, [activeScenarioId, day, hour, outsideC, windFrom, windSpeed])
   const room = useMemo(() => plan.rooms.find((item) => item.id === selectedRoom), [plan.rooms, selectedRoom])
   const furnitureConflicts = useMemo(() => furnitureDoorConflicts(plan.furniture, plan.openings, site), [plan.furniture, plan.openings, site])
   const furnitureItem = useMemo(() => plan.furniture.find((item) => item.id === selectedFurniture), [plan.furniture, selectedFurniture])
@@ -141,12 +205,55 @@ function App() {
   )
   const carbon = useMemo(() => estimateApartmentCarbon(plan), [plan])
   const overlaps = useMemo(() => roomOverlaps(plan.rooms), [plan.rooms])
-  // Per-plan site + scale (the adjustable 1×1 grid cell). Falls back to the
-  // legacy 14×10 default for plans authored before `site` existed.
-  const interior = useMemo(() => interiorBoq(plan, site), [plan, site])
+  const interior = useMemo(() => interiorBoq(plan, site, currency), [plan, site, currency])
   const [isTracing, setIsTracing] = useState(false)
   const [traceNote, setTraceNote] = useState<string | null>(null)
   const isEmpty = plan.rooms.length === 0
+  const isAuthoredSample = plan.rooms.length > 0 && plan.rooms.every((room) => chinaApartmentPlan.rooms.some((sampleRoom) => sampleRoom.id === room.id))
+  const projectTitle = isAuthoredSample ? CHINA_PROJECT_NAME : 'Untitled sketch'
+
+  const commit = useCallback((next: PlanState | ((current: PlanState) => PlanState)) => {
+    setPast((items) => [...items.slice(-29), plan])
+    setPlan((current) => (typeof next === 'function' ? next(current) : next))
+    setFuture([])
+  }, [plan])
+
+  const updateOpening = useCallback((id: string, updates: Partial<Opening>) => {
+    commit((current) => ({
+      ...current,
+      openings: current.openings.map((o) => (o.id === id ? { ...o, ...updates } : o)),
+    }))
+  }, [commit])
+
+  const handlePinBaseline = useCallback(() => {
+    setPinnedBaseline({
+      baselinePlan: plan,
+      baselineName: 'Pinned Baseline (Plan A)',
+      pinnedAt: new Date().toLocaleTimeString(),
+    })
+    setToast('Plan A pinned as baseline! Modify your drawing to compare Plan B side-by-side.')
+  }, [plan])
+
+  const handleOpenABComparison = useCallback(() => {
+    if (!pinnedBaseline) return
+    setABComparisonModalOpen(true)
+  }, [pinnedBaseline])
+
+  const handleApplyProposedAsBaseline = useCallback(() => {
+    if (!pinnedBaseline) return
+    setPinnedBaseline({
+      baselinePlan: plan,
+      baselineName: 'Pinned Baseline (Plan A)',
+      pinnedAt: new Date().toLocaleTimeString(),
+    })
+    setToast('Plan B promoted to new baseline Plan A!')
+  }, [plan, pinnedBaseline])
+
+  const abComparisonResult = useMemo(() => {
+    if (!pinnedBaseline) return null
+    return comparePlans(pinnedBaseline.baselinePlan, plan)
+  }, [pinnedBaseline, plan])
+
 
   const journey = useMemo(
     () =>
@@ -243,12 +350,6 @@ function App() {
     return () => window.clearTimeout(timeout)
   }, [toast])
 
-  const commit = useCallback((next: PlanState | ((current: PlanState) => PlanState)) => {
-    setPast((items) => [...items.slice(-29), plan])
-    setPlan((current) => (typeof next === 'function' ? next(current) : next))
-    setFuture([])
-  }, [plan])
-
   const undo = useCallback(() => {
     const previous = past[past.length - 1]
     if (!previous) return
@@ -322,11 +423,15 @@ function App() {
       const sketched: Room = { id, name: 'Sketched room', kind: 'studio', ...rect }
       commit((current) => ({ ...current, rooms: [...current.rooms, sketched] }))
       setSelectedRoom(id)
-      setToast(`Room snapped to scale · ${roomAreaFor(sketched, site).toFixed(1)} m²`)
+      setMode('plan')
+      setActiveTool('select')
+      setSettingsOpen(false)
+      setInspectorOpen(true)
+      setToast(`Room drawn · enter one known dimension to calibrate the whole sketch`)
       return
     }
     onViewportPointerUp(event)
-  }, [commit, onViewportPointerUp, site])
+  }, [commit, onViewportPointerUp])
 
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (panMovedRef.current || isGesturing()) return
@@ -487,6 +592,38 @@ function App() {
         setSelectedFurniture(null)
         setActiveTool('select')
         setFurnitureTrayOpen(false)
+        setTourChapterIndex(null)
+        setScenariosOpen(false)
+        setShortcutsOpen(false)
+        setWalkMode(false)
+        return
+      }
+      if (event.key.toLowerCase() === 't') {
+        event.preventDefault()
+        if (plan.rooms.length === 0) {
+          setToast('Draw a room before starting the 3D tour')
+          return
+        }
+        setView('spatial')
+        setTourChapterIndex(0)
+        setSelectedRoom(null)
+        setWalkMode(false)
+        setToast('Guided 3D Tour started — Chapter 1')
+        return
+      }
+      if (event.key.toLowerCase() === 'g') {
+        event.preventDefault()
+        if (plan.rooms.length === 0) {
+          setToast('Draw a room before entering walk mode')
+          return
+        }
+        setView('spatial')
+        setWalkMode((prev) => !prev)
+        return
+      }
+      if (event.key === '?' || (event.shiftKey && event.key === '/')) {
+        event.preventDefault()
+        setShortcutsOpen((prev) => !prev)
         return
       }
       if (event.key === 'Delete' || event.key === 'Backspace') {
@@ -533,7 +670,7 @@ function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [commit, deleteFurniture, deleteOpening, deleteRoom, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo])
+  }, [commit, deleteFurniture, deleteOpening, deleteRoom, plan.rooms.length, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo])
 
   const handleSketch = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -547,8 +684,10 @@ function App() {
   }, [])
 
   const applyVariant = useCallback((index: number) => {
-    commit((current) => ({ ...current, rooms: chinaApartmentVariants[index].rooms.map((item) => ({ ...item })) }))
-    setToast(`${chinaApartmentVariants[index].name} applied`)
+    const variant = chinaApartmentVariants[index]
+    if (!variant) return
+    commit((current) => ({ ...current, rooms: variant.rooms.map((item) => ({ ...item })) }))
+    setToast(`${variant.name} applied`)
   }, [commit])
 
   const applySuggestion = useCallback((suggestion: Suggestion) => {
@@ -570,6 +709,7 @@ function App() {
     setSelectedRoom('living')
     setSelectedOpening(null)
     resetView()
+    setStyleKeywords(SAMPLE_STYLE_KEYWORDS)
     setToast('Shanghai 50 m² apartment restored')
   }, [commit, resetView])
 
@@ -582,6 +722,7 @@ function App() {
     setActiveTool('draw')
     resetView()
     setTraceNote(null)
+    setStyleKeywords('')
     setToast('Blank canvas — draw a room or upload a plan to trace')
   }, [commit, resetView])
 
@@ -591,6 +732,17 @@ function App() {
     commit((current) => ({ ...current, site: { ...siteOf(current), unit: safe } }))
     setToast(`Grid scale set to ${safe} m / cell`)
   }, [commit, site])
+
+  const calibrateRoomFromDimension = useCallback((axis: 'w' | 'h', knownMeters: number) => {
+    if (!selectedRoom || !Number.isFinite(knownMeters) || knownMeters <= 0) return
+    const selected = plan.rooms.find((item) => item.id === selectedRoom)
+    if (!selected) return
+    commit((current) => ({
+      ...current,
+      site: calibrateSiteFromRoom(siteOf(current), selected, axis, knownMeters),
+    }))
+    setToast(`Whole drawing calibrated from ${knownMeters.toFixed(1)} m ${axis === 'w' ? 'width' : 'depth'}`)
+  }, [commit, plan.rooms, selectedRoom])
 
   // AI trace: read a plan from an uploaded image via the Gemini vision worker.
   const traceFileInputRef = useRef<HTMLInputElement>(null)
@@ -611,8 +763,13 @@ function App() {
         const result = await tracePlanFromImage({ imageDataUrl, siteW: site.w, siteH: site.h })
         commit(result.plan)
         setSelectedRoom(result.plan.rooms[0]?.id ?? null)
-        setTraceNote(result.note)
-        setToast(`AI read ${result.plan.rooms.length} rooms — verify before costing`)
+        setMode('plan')
+        setSettingsOpen(false)
+        setInspectorOpen(true)
+        setStyleKeywords('')
+        setQuotaLeft(result.remaining)
+        setTraceNote(`${result.note} Scale is assumed until you enter one known room dimension.`)
+        setToast(`AI found ${result.plan.rooms.length} rooms · ${result.remaining} AI use${result.remaining === 1 ? '' : 's'} left today`)
       } catch (error) {
         setToast(error instanceof Error ? error.message : 'Plan trace failed')
       } finally {
@@ -625,7 +782,7 @@ function App() {
   const runConceptRender = useCallback(async () => {
     if (isRendering) return
     if (quotaLeft <= 0) {
-      setToast('Daily concept limit reached (3/day)')
+      setToast('Daily AI limit reached (3/day)')
       return
     }
     setIsRendering(true)
@@ -685,15 +842,15 @@ function App() {
   }, [addRoom, assistantText, commit, plan.rooms, runConceptRender, selectedRoom, site])
 
   const exportPlan = useCallback(() => {
-    const blob = new Blob([JSON.stringify({ project: CHINA_PROJECT_NAME, location: locations[location as keyof typeof locations], orientation: 'Due south', exportedAt: new Date().toISOString(), plan, budget, carbon, lightingChannels: chinaLightingChannels }, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify({ project: projectTitle, location: locations[location as keyof typeof locations], orientation: 'North up', exportedAt: new Date().toISOString(), plan, budget, carbon, lightingChannels: chinaLightingChannels }, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = 'south-light-shanghai-50.json'
+    anchor.download = isAuthoredSample ? 'south-light-shanghai-50.json' : 'luma-house-sketch.json'
     anchor.click()
     URL.revokeObjectURL(url)
     setToast('Project file exported')
-  }, [budget, carbon, location, plan])
+  }, [budget, carbon, isAuthoredSample, location, plan, projectTitle])
 
   const viewportStyle = useMemo(() => ({
     transform: `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`,
@@ -703,7 +860,7 @@ function App() {
   return (
     <div className="app-shell">
       <TopBar
-        projectName={CHINA_PROJECT_NAME}
+        projectName={projectTitle}
         lastSaved={lastSaved}
         inspectorOpen={inspectorOpen}
         onToggleInspector={() => setInspectorOpen((open) => !open)}
@@ -713,14 +870,15 @@ function App() {
         }}
         exportPlan={exportPlan}
         sharePlan={shareProject}
+        onOpenShortcuts={() => setShortcutsOpen((prev) => !prev)}
       />
 
       <div className="workspace">
         <main className="design-stage">
           <div className="stage-head">
             <div>
-              <p className="eyebrow">Decision sequence <span>•</span> Shanghai · due south · 50 m²</p>
-              <h1>{CHINA_PROJECT_NAME}</h1>
+              <p className="eyebrow">Decision sequence <span>•</span> {location} · north up</p>
+              <h1>{projectTitle}</h1>
             </div>
             <div className="stage-meta">
               <span><MapPin /> {locations[location as keyof typeof locations].label}</span>
@@ -771,9 +929,13 @@ function App() {
                 draftStroke={draftStroke}
                 activeTool={activeTool}
                 sketchUrl={sketchUrl}
-                showSun={mode === 'light'}
+                showSun={mode === 'light' || valueLens === 'shade'}
                 sunAngle={sun.azimuth}
-                sunPatchList={mode === 'light' ? patches : []}
+                sunPatchList={mode === 'light' || valueLens === 'shade' ? patches : []}
+                valueLens={valueLens}
+                daylightBands={daylightBandList}
+                windRooms={windRooms}
+                egressRooms={egressRooms}
                 showGrid={showGrid}
                 gridCellX={(site.unit / site.w) * 100}
                 gridCellY={(site.unit / site.h) * 100}
@@ -803,6 +965,13 @@ function App() {
                     day={day}
                     locationLabel={locations[location as keyof typeof locations].label}
                     ghost={isEmpty}
+                    tourWaypoint={tourChapterIndex !== null ? tourChapters[tourChapterIndex]?.camera : null}
+                    walkMode={walkMode}
+                    onToggleWalkMode={() => setWalkMode((prev) => !prev)}
+                    onStartTour={() => { setTourChapterIndex(0); setSelectedRoom(null); setWalkMode(false); setToast('Your drawing in 3D · 1 of 4') }}
+                    onOpenScenarios={() => { setSelectedRoom(null); setScenariosOpen(true) }}
+                    windFrom={windFrom}
+                    windSpeed={windSpeed}
                   />
                 </Suspense>
                 {isEmpty && (
@@ -840,7 +1009,7 @@ function App() {
               />
             )}
             {view !== 'renders' && !isEmpty && (
-              mode === 'light' || view === 'spatial' ? (
+              view === 'spatial' || (mode === 'light' && valueLens === 'off') ? (
                 <ScienceDock
                   heat={heatFlow}
                   directSunM2={directSunM2}
@@ -852,13 +1021,35 @@ function App() {
                   outsideC={outsideC}
                   setOutsideC={setOutsideC}
                 />
-              ) : (
+              ) : valueLens === 'off' ? (
                 <button className="science-preview" type="button" onClick={() => setMode('light')}>
                   <span className="science-live" />
                   <span><small>Live sun + heat</small><strong>{Math.abs(heatFlow.netW) >= 1000 ? `${(Math.abs(heatFlow.netW) / 1000).toFixed(1)} kW` : `${Math.round(Math.abs(heatFlow.netW))} W`} {heatFlow.mode === 'heat-out' ? 'leaving' : 'entering'}</strong></span>
                   <Sun />
                 </button>
-              )
+              ) : null
+            )}
+            {view === 'plan' && !isEmpty && (
+              <ValueLens
+                active={valueLens}
+                setActive={setValueLens}
+                daylight={daylight}
+                wind={windRooms}
+                egress={egressRooms}
+                currentHeat={heatFlow}
+                baseHeat={baselineHeatFlow}
+                upgradedHeat={upgradedHeatFlow}
+                directSunM2={directSunM2}
+                windFrom={windFrom}
+                setWindFrom={setWindFrom}
+                windSpeed={windSpeed}
+                setWindSpeed={setWindSpeed}
+                currency={budget.currency}
+                openingAllowance={decisionAllowances.opening}
+                envelopeAllowance={decisionAllowances.envelope}
+                envelopeApplied={plan.systems.insulation}
+                onToggleEnvelope={() => commit((current) => ({ ...current, systems: { ...current.systems, insulation: !current.systems.insulation } }))}
+              />
             )}
             {view === 'plan' && (
               <div className="scale-chip" title="Grid scale — meters per cell">
@@ -986,6 +1177,7 @@ function App() {
           room={room}
           deleteRoom={deleteRoom}
           updateRoom={updateRoom}
+          calibrateRoomFromDimension={calibrateRoomFromDimension}
           applyVariant={applyVariant}
           patches={patches}
           directSunM2={directSunM2}
@@ -1001,7 +1193,7 @@ function App() {
           carbon={carbon}
           importProject={importProject}
           exportPlan={exportPlan}
-          variants={chinaApartmentVariants}
+          variants={isAuthoredSample ? chinaApartmentVariants : []}
           snapGrid={snapGrid}
           setSnapGrid={setSnapGrid}
           showGrid={showGrid}
@@ -1016,6 +1208,14 @@ function App() {
           runTrace={runTrace}
           traceFileInputRef={traceFileInputRef}
           isTracing={isTracing}
+          selectedOpeningId={selectedOpening}
+          updateOpening={updateOpening}
+          deleteOpening={deleteOpening}
+          currency={currency}
+          setCurrency={setCurrency}
+          onPinBaseline={handlePinBaseline}
+          onOpenABComparison={handleOpenABComparison}
+          hasBaselinePin={!!pinnedBaseline}
         />
       </div>
       <WelcomeGate
@@ -1032,9 +1232,64 @@ function App() {
           setWelcomeOpen(false)
         }}
       />
+      {tourChapterIndex !== null && (
+        <GuidedTourOverlay
+          chapter={tourChapters[tourChapterIndex]}
+          totalChapters={tourChapters.length}
+          onPrev={() => setTourChapterIndex((idx) => (idx !== null && idx > 0 ? idx - 1 : idx))}
+          onNext={() => {
+            if (tourChapterIndex + 1 < tourChapters.length) {
+              setTourChapterIndex(tourChapterIndex + 1)
+            } else {
+              setTourChapterIndex(null)
+              setToast('Guided 3D Tour finished!')
+            }
+          }}
+          onExit={() => setTourChapterIndex(null)}
+          onFocusRoom={(roomId) => setSelectedRoom(roomId)}
+        />
+      )}
+
+      {scenariosOpen && (
+        <ScenarioPickerModal
+          scenarios={CLIMATE_SCENARIOS}
+          activeScenarioId={activeScenarioId}
+          plan={plan}
+          latitude={locations[location as keyof typeof locations].latitude}
+          locationLabel={locations[location as keyof typeof locations].label}
+          onSelectScenario={(scenario) => {
+            setActiveScenarioId(scenario.id)
+            setDay(scenario.params.day)
+            setHour(scenario.params.hour)
+            setOutsideC(scenario.params.outsideC)
+            setWindFrom(scenario.params.windFrom)
+            setWindSpeed(scenario.params.windSpeed)
+            setView('spatial')
+            setScenariosOpen(false)
+            setToast(`Scenario active: ${scenario.name}`)
+          }}
+          onClose={() => setScenariosOpen(false)}
+        />
+      )}
+
+      {shortcutsOpen && (
+        <KeyboardShortcutsModal onClose={() => setShortcutsOpen(false)} />
+      )}
+
+      {abComparisonModalOpen && abComparisonResult && pinnedBaseline && (
+        <ABComparisonModal
+          result={abComparisonResult}
+          baselineName={pinnedBaseline.baselineName}
+          proposedName="Proposed Iteration (Plan B)"
+          onClose={() => setABComparisonModalOpen(false)}
+          onApplyProposedAsBaseline={handleApplyProposedAsBaseline}
+        />
+      )}
+
       {toast && <div className="toast" role="status"><Check /> {toast}</div>}
     </div>
   )
 }
+
 
 export default App

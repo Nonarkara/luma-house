@@ -17,6 +17,12 @@ export { buildDesignBrief } from './designBrief'
 export type { DesignBrief, BriefItem } from './designBrief'
 export { heatFlowSnapshot, ENVELOPE_ASSUMPTIONS } from './heatFlow'
 export type { HeatFlowSnapshot } from './heatFlow'
+export { daylightPotential, DAYLIGHT_ASSUMPTIONS } from './daylight'
+export type { DaylightBand, RoomDaylightPotential } from './daylight'
+export { windFlowPotential, facadePressureCoefficient, WIND_ASSUMPTIONS } from './windFlow'
+export type { RoomWindPotential } from './windFlow'
+export { egressRoutes } from './egress'
+export type { RoomEgressRoute, RoutePoint } from './egress'
 
 const SCAN_DAY_DEFAULT = 172 // ~summer solstice (June 21 in northern hemisphere)
 

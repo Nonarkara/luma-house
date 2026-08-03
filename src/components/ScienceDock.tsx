@@ -35,12 +35,21 @@ export const ScienceDock = React.memo(function ScienceDock({
   outsideC: number
   setOutsideC: (temperature: number) => void
 }) {
+  const [mobileExpanded, setMobileExpanded] = React.useState(false)
   const entering = heat.mode !== 'heat-out'
   const HeatIcon = entering ? ArrowDownRight : ArrowUpRight
   const sunPercent = Math.round((directSunM2 / Math.max(1, floorAreaM2)) * 100)
 
   return (
-    <section className="science-dock" aria-label="Live sun and heat snapshot">
+    <section className={`science-dock ${mobileExpanded ? 'is-mobile-expanded' : ''}`} aria-label="Live sun and heat snapshot">
+      <button
+        className="science-mobile-toggle"
+        type="button"
+        aria-expanded={mobileExpanded}
+        onClick={() => setMobileExpanded((expanded) => !expanded)}
+      >
+        {mobileExpanded ? 'Done' : 'Adjust'}
+      </button>
       <div className="science-dock-summary">
         <div className="science-kicker">
           <span className="science-live" />

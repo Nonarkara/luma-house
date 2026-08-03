@@ -1,44 +1,57 @@
 # Luma House
 
-Luma House is a local-first home design prototype that turns a rough plan into an interactive conversation about space, daylight, intelligent systems, and cost. Users can move rooms, place windows and doors, trace an uploaded sketch, test the sun by place and time, compare plan directions, select energy systems, and export a live concept BOQ.
+Luma House is a local-first sketch-to-decision prototype. Draw a room with a mouse or finger, enter one real room measurement, and the entire plan receives a shared scale. The same geometry then drives the 3D massing, window and door positions, furniture footprints, sun and heat comparisons, ventilation paths, escape connectivity, quantities, and a concept BOQ.
 
-The default project, **Lantern Courtyard 100**, is a complete 100.0 m² demonstration package: eight measured rooms, coordinated furniture and openings, daylight and climate analysis, six lighting-control channels with four scenes, solar/battery/climate automation, nine priced BOQ packages, a section axonometric, and three deterministic architectural render views.
+The product deliberately uses progressive fidelity:
 
-## Deploy (Cloudflare Pages)
+- **Instant:** drawing, uniform scale calibration, 3D massing, daylight reach, door connectivity, steady-state envelope heat, wind-pressure paths, and cost allowances.
+- **Optional cloud:** AI plan trace and concept imagery, both labeled as drafts and sharing a three-use daily quota.
+- **Professional bridge:** structure, jurisdictional compliance, final energy loads, moisture, CFD, quotations, and procurement still require verified inputs and qualified review.
 
-```bash
-npm run deploy:pages
-```
+The included **South Light 50 · 向阳之家** sample is a 50.0 m² Shanghai apartment. Starting blank or tracing a plan creates an **Untitled sketch** and does not inherit the sample’s variants or style language.
 
-Live: **https://luma-house.pages.dev**
-
-GitHub: **https://github.com/Nonarkara/luma-house**
+## Run and verify
 
 ```bash
-npm test
+npm install
+npm run dev
+npm test -- --run
 npm run lint
 npm run build
-npm run preview
 ```
 
-## What is real in this prototype
+## Implemented journey
 
-- Pan / zoom canvas with wheel, pinch, and working zoom controls
-- Drag rooms in any direction; corner + edge resize; pinch-to-scale a room
-- Draggable doors and windows that snap onto the nearest room wall
-- Keyboard operation: Delete removes selection, Ctrl/Cmd+Z history, Esc deselects, arrows nudge
-- Room-overlap detection with an explicit double-counted-area warning
-- Undo/redo, local browser persistence, JSON export **and import**
-- Share links that embed the full plan in the URL hash (`#plan=…`)
-- Solar altitude and azimuth from latitude, day, and hour
-- Live area, systems, energy, construction-cost, and embodied-carbon calculations
-- Per-room annual overheating-hours estimate (directional monthly sampling)
-- Sketch underlay (honest tracing layer — not auto-traced walls)
-- Limited Gemini concept photos via Cloudflare Worker (`workers/concept-render`)
+1. Draw a rough room or upload a plan image.
+2. Calibrate the whole sketch from one known width or depth.
+3. Orbit the resulting geometry, take a guided data-derived tour, or walk it at eye level with WASD.
+4. Place and move windows and doors; the plan updates daylight reach, wind paths, and escape routes immediately.
+5. Scrub sun/time/outdoor temperature or apply explicit what-if condition inputs.
+6. Compare envelope transmission and its area-scaled concept allowance.
+7. Continue into living checks, systems, detailed fit-out quantities, export, share, and optional concept imagery.
 
-Concept photos are labeled as design visualizations, not photographs of finished buildings. Structural, code, cost, and procurement decisions must be checked by local professionals.
+## Science boundaries
 
-## Concept photo setup
+The Value Lens keeps four things together: a spatial consequence, a plain-language verdict, lived/technical/expense value, and an expandable method disclosure.
+
+- Daylight is a window-centered reference reach zone—not lux or glare simulation.
+- Ventilation requires two real exterior pressure faces connected by modeled open doors—not merely two opening symbols.
+- Escape is geometry-only door-graph connectivity—not a fire or accessibility approval.
+- Envelope heat is a current steady-state walls-and-openings comparison—not an annual load or AC sizing result.
+- Cost is an area/opening/system-responsive CNY concept allowance—not a quote or payback claim.
+
+See [the building-science usability audit](./docs/BUILDING_SCIENCE_USABILITY_AUDIT.md) and [the reported-work implementation audit](./docs/GROK_45_IMPLEMENTATION_AUDIT.md).
+
+## Architecture and performance
+
+- Vite, React, strict TypeScript, React Three Fiber, and Vitest
+- Browser `localStorage` for zero-setup persistence
+- 3D remains lazy-loaded so drawing does not download it up front
+- No new runtime package was added for the decision models
+
+Current production build: approximately **314 kB / 101 kB gzip** for the main JavaScript and **936 kB / 250 kB gzip** for the lazy 3D chunk.
+
+## Optional AI worker
 
 ```bash
 cd workers/concept-render
@@ -47,15 +60,15 @@ npx wrangler secret put GEMINI_API_KEY
 npm run deploy
 ```
 
-Put the Worker URL in `.env` as `VITE_CONCEPT_API_URL`, then rebuild the frontend. Browser quota is 3 renders/day.
+Set `VITE_CONCEPT_API_URL` to the worker URL and rebuild. Successful AI traces and concept images share the browser-visible three-use daily quota.
 
-## Architecture
+## Deployment
 
-- Vite + React + strict TypeScript
-- Tailwind foundation plus project-specific CSS design tokens
-- Vitest for domain calculations
-- Browser `localStorage` for the zero-setup prototype
-- SQLite-compatible schema in `data/schema.sql` for production persistence
-- GitHub Pages and Render static deployment configurations
+```bash
+npm run deploy:pages
+```
 
-For production, wire `house_projects` and `pageviews` to Supabase or D1 and sync aggregated analytics to Google Sheets using the placeholders in `.env.example`.
+Live: [luma-house.pages.dev](https://luma-house.pages.dev)<br>
+Repository: [Nonarkara/luma-house](https://github.com/Nonarkara/luma-house)
+
+Deployment is intentionally separate from implementation verification; this working tree is not published automatically.

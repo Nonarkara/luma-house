@@ -1,11 +1,14 @@
-import { useCallback, useMemo, useRef } from 'react'
-import { Canvas, type ThreeEvent } from '@react-three/fiber'
-import { Edges, Grid, Html, OrbitControls, PivotControls } from '@react-three/drei'
-import type * as THREE from 'three'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
+import { Edges, Grid, Html, OrbitControls, PivotControls, PointerLockControls } from '@react-three/drei'
+import * as THREE from 'three'
 import { furnitureRectFor, roomHeight, siteOf, sunVector } from '../plan'
 import type { Furniture, FurnitureKind, Opening, PlanState, Room, SiteSpec } from '../types'
-import { openingsForRoomWall } from '../analysis/walls'
+import { openingsForRoomWall, roomsForOpening } from '../analysis/walls'
+import { windFlowPotential } from '../analysis'
 import type { Compass } from '../analysis'
+import type { CameraWaypoint } from '../tour/guidedTour'
+import { nextWalkPosition } from './walkNavigation'
 
 const HEIGHT_MIN = 2.2
 const HEIGHT_MAX = 4.5
@@ -23,6 +26,8 @@ const FURNITURE_HEIGHTS: Record<FurnitureKind, number> = {
   wardrobe: 2.0,
   desk: 0.75,
 }
+
+export type CameraPreset = 'orbit' | 'axonometric' | 'topdown'
 
 // Percent plan coords → meters, centered at the scene origin. Y is up.
 function toMeters(xPct: number, yPct: number, site: SiteSpec): { mx: number; mz: number } {
@@ -222,9 +227,10 @@ function RoomVolume({
 function OpeningPanel({ opening, site }: { opening: Opening; site: SiteSpec }) {
   const { mx, mz } = toMeters(opening.x, opening.y, site)
   const isWindow = opening.type === 'window'
-  const width = isWindow ? 1.6 : 0.9
-  const height = isWindow ? 1.2 : 2.1
-  const y = isWindow ? FLOOR_THICKNESS + 0.9 + height / 2 : FLOOR_THICKNESS + height / 2
+  const width = opening.widthM ?? (isWindow ? 1.6 : 0.9)
+  const height = opening.heightM ?? (isWindow ? 1.2 : 2.1)
+  const sill = opening.sillHeightM ?? (isWindow ? 0.9 : 0)
+  const y = FLOOR_THICKNESS + sill + height / 2
   const size: [number, number, number] =
     opening.rotation === 0 ? [width, height, WALL_THICKNESS] : [WALL_THICKNESS, height, width]
   const color = isWindow ? '#38444d' : '#f59e0b'
@@ -245,6 +251,7 @@ function OpeningPanel({ opening, site }: { opening: Opening; site: SiteSpec }) {
   )
 }
 
+
 function FurniturePiece({ item, site }: { item: Furniture; site: SiteSpec }) {
   const rect = useMemo(() => furnitureRectFor(item, site), [item, site])
   const widthM = (rect.w / 100) * site.w
@@ -259,6 +266,100 @@ function FurniturePiece({ item, site }: { item: Furniture; site: SiteSpec }) {
     </mesh>
   )
 }
+
+function VectorLine({
+  start,
+  end,
+  color,
+  opacity,
+}: {
+  start: [number, number, number]
+  end: [number, number, number]
+  color: string
+  opacity: number
+}) {
+  const lineObj = useMemo(() => {
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(...start),
+      new THREE.Vector3(...end),
+    ])
+    const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity, linewidth: 2 })
+    return new THREE.Line(geo, mat)
+  }, [start, end, color, opacity])
+
+  useEffect(() => () => {
+    lineObj.geometry.dispose()
+    ;(lineObj.material as THREE.Material).dispose()
+  }, [lineObj])
+
+  return <primitive object={lineObj} />
+}
+
+function SunRayVectors({
+  plan,
+  site,
+  azimuth,
+  altitude,
+}: {
+  plan: PlanState
+  site: SiteSpec
+  azimuth: number
+  altitude: number
+}) {
+  const dir = useMemo(() => sunVector(azimuth, altitude), [azimuth, altitude])
+  if (altitude <= 0) return null
+
+  return (
+    <group>
+      {plan.openings.filter((opening) => opening.type === 'window' && roomsForOpening(plan, opening).length === 1).map((op) => {
+        const { mx, mz } = toMeters(op.x, op.y, site)
+        const y = FLOOR_THICKNESS + 1.5
+
+        const start: [number, number, number] = [mx + dir.x * 6, y + dir.y * 6, mz + dir.z * 6]
+        const end: [number, number, number] = [mx, y, mz]
+
+        return <VectorLine key={op.id} start={start} end={end} color="#f59e0b" opacity={0.65} />
+      })}
+    </group>
+  )
+}
+
+function wallPoint(footprint: Footprint, compass: Compass): [number, number, number] {
+  const y = FLOOR_THICKNESS + 1.2
+  if (compass === 'N') return [footprint.cx, y, footprint.minZ]
+  if (compass === 'S') return [footprint.cx, y, footprint.maxZ]
+  if (compass === 'W') return [footprint.minX, y, footprint.cz]
+  return [footprint.maxX, y, footprint.cz]
+}
+
+function AirflowPathVectors({
+  plan,
+  site,
+  windFrom,
+  windSpeed,
+}: {
+  plan: PlanState
+  site: SiteSpec
+  windFrom: number
+  windSpeed: number
+}) {
+  const paths = useMemo(
+    () => windFlowPotential(plan, windFrom, windSpeed).filter((room) => room.mode === 'through-flow' && room.inlet && room.outlet),
+    [plan, windFrom, windSpeed],
+  )
+
+  return (
+    <group>
+      {paths.map((path) => {
+        const footprint = roomFootprint(path.room, site)
+        const start = wallPoint(footprint, path.inlet!)
+        const end = wallPoint(footprint, path.outlet!)
+        return <VectorLine key={`air-${path.room.id}`} start={start} end={end} color="#f59e0b" opacity={0.9} />
+      })}
+    </group>
+  )
+}
+
 
 function SunLight({ azimuth, altitude }: { azimuth: number; altitude: number }) {
   const direction = useMemo(() => sunVector(azimuth, altitude), [azimuth, altitude])
@@ -339,6 +440,106 @@ function HeightHandle({
   )
 }
 
+function CameraController({
+  preset,
+  waypoint,
+  controlsRef,
+}: {
+  preset: CameraPreset
+  waypoint?: CameraWaypoint | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  controlsRef: React.RefObject<any>
+}) {
+  const { camera } = useThree()
+
+  useFrame(() => {
+    if (waypoint) {
+      const targetPos = new THREE.Vector3(...waypoint.position)
+      const targetLook = new THREE.Vector3(...waypoint.target)
+      camera.position.lerp(targetPos, 0.08)
+      if (controlsRef.current?.target) {
+        controlsRef.current.target.lerp(targetLook, 0.08)
+        controlsRef.current.update()
+      }
+      if (camera instanceof THREE.PerspectiveCamera) {
+        camera.fov += (waypoint.fov - camera.fov) * 0.08
+        camera.updateProjectionMatrix()
+      }
+    } else if (preset === 'axonometric') {
+      camera.position.lerp(new THREE.Vector3(16, 16, 16), 0.08)
+      if (controlsRef.current?.target) {
+        controlsRef.current.target.lerp(new THREE.Vector3(0, 1, 0), 0.08)
+        controlsRef.current.update()
+      }
+    } else if (preset === 'topdown') {
+      camera.position.lerp(new THREE.Vector3(0, 24, 0.001), 0.08)
+      if (controlsRef.current?.target) {
+        controlsRef.current.target.lerp(new THREE.Vector3(0, 0, 0), 0.08)
+        controlsRef.current.update()
+      }
+    }
+  })
+
+  return null
+}
+
+function WalkController({
+  active,
+  plan,
+  site,
+  selectedRoom,
+}: {
+  active: boolean
+  plan: PlanState
+  site: SiteSpec
+  selectedRoom: string | null
+}) {
+  const { camera } = useThree()
+  const pressed = useRef(new Set<string>())
+  const direction = useRef(new THREE.Vector3())
+
+  useEffect(() => {
+    if (!active) return
+    const activeKeys = pressed.current
+    const room = plan.rooms.find((item) => item.id === selectedRoom) ?? plan.rooms[0]
+    if (room) {
+      const footprint = roomFootprint(room, site)
+      camera.position.set(footprint.cx, 1.6, footprint.cz)
+    } else {
+      camera.position.set(0, 1.6, 0)
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => activeKeys.add(event.code)
+    const onKeyUp = (event: KeyboardEvent) => activeKeys.delete(event.code)
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      activeKeys.clear()
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [active, camera, plan.rooms, selectedRoom, site])
+
+  useFrame((_state, delta) => {
+    if (!active) return
+    camera.getWorldDirection(direction.current)
+    direction.current.y = 0
+    direction.current.normalize()
+    const next = nextWalkPosition(
+      camera.position,
+      direction.current,
+      pressed.current,
+      delta * 2.2,
+      { halfWidth: site.w / 2, halfDepth: site.h / 2 },
+    )
+    camera.position.x = next.x
+    camera.position.z = next.z
+    camera.position.y = 1.6
+  })
+
+  return null
+}
+
 export default function Spatial3D({
   plan,
   sunAzimuth,
@@ -350,6 +551,13 @@ export default function Spatial3D({
   day,
   locationLabel,
   ghost = false,
+  tourWaypoint,
+  walkMode = false,
+  onToggleWalkMode,
+  onStartTour,
+  onOpenScenarios,
+  windFrom = 180,
+  windSpeed = 3,
 }: {
   plan: PlanState
   sunAzimuth: number
@@ -362,12 +570,25 @@ export default function Spatial3D({
   locationLabel: string
   /** Render the plan as a translucent demo massing — no selection, no editing. */
   ghost?: boolean
+  tourWaypoint?: CameraWaypoint | null
+  walkMode?: boolean
+  onToggleWalkMode?: () => void
+  onStartTour?: () => void
+  onOpenScenarios?: () => void
+  windFrom?: number
+  windSpeed?: number
 }) {
   const site = useMemo(() => siteOf(plan), [plan])
   const selected = useMemo(
     () => (ghost ? null : plan.rooms.find((room) => room.id === selectedRoom) ?? null),
     [ghost, plan.rooms, selectedRoom],
   )
+
+  const [preset, setPreset] = useState<CameraPreset>('orbit')
+  const [showSunRays, setShowSunRays] = useState(true)
+  const [showAirPaths, setShowAirPaths] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const controlsRef = useRef<any>(null)
 
   const handleGroundClick = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
@@ -379,64 +600,147 @@ export default function Spatial3D({
 
   return (
     <div className="spatial3d-shell">
-    <Canvas
-      shadows
-      dpr={[1, 2]}
-      camera={{ position: [12, 9, 12], fov: 45 }}
-      onPointerMissed={() => onSelectRoom(null)}
-    >
-      <color attach="background" args={['#0d0f13']} />
-      <SunLight azimuth={sunAzimuth} altitude={sunAltitude} />
-      <OrbitControls
-        makeDefault
-        enableDamping
-        maxPolarAngle={Math.PI * 0.49}
-        minDistance={3}
-        maxDistance={40}
-        target={[0, 1, 0]}
-      />
+      <div className="spatial-toolbar">
+        <div className="preset-group">
+          <button
+            type="button"
+            className={`spatial-tb-btn ${preset === 'orbit' && !walkMode ? 'active' : ''}`}
+            onClick={() => { setPreset('orbit'); if (walkMode && onToggleWalkMode) onToggleWalkMode() }}
+          >
+            3D Orbit
+          </button>
+          <button
+            type="button"
+            className={`spatial-tb-btn ${preset === 'axonometric' ? 'active' : ''}`}
+            onClick={() => { setPreset('axonometric'); if (walkMode && onToggleWalkMode) onToggleWalkMode() }}
+          >
+            Axonometric
+          </button>
+          <button
+            type="button"
+            className={`spatial-tb-btn ${preset === 'topdown' ? 'active' : ''}`}
+            onClick={() => { setPreset('topdown'); if (walkMode && onToggleWalkMode) onToggleWalkMode() }}
+          >
+            Top-Down
+          </button>
+          <button
+            type="button"
+            className={`spatial-tb-btn ${walkMode ? 'active' : ''}`}
+            onClick={onToggleWalkMode}
+          >
+            Walk at 1.6 m
+          </button>
+        </div>
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={handleGroundClick}>
-        <planeGeometry args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]} />
-        <meshStandardMaterial color="#14161b" roughness={0.95} metalness={0} />
-      </mesh>
-      <Grid
-        position={[0, 0.005, 0]}
-        args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]}
-        cellColor="#1f232b"
-        sectionColor="#2a2f3a"
-        fadeDistance={30}
-        infiniteGrid={false}
-      />
+        <div className="vector-group">
+          <button type="button" className="spatial-tb-btn" onClick={onStartTour} disabled={ghost}>
+            Tour
+          </button>
+          <button type="button" className="spatial-tb-btn" onClick={onOpenScenarios} disabled={ghost}>
+            Conditions
+          </button>
+          <button
+            type="button"
+            className={`spatial-tb-btn toggle ${showSunRays ? 'active-layer' : ''}`}
+            onClick={() => setShowSunRays(!showSunRays)}
+          >
+            Sun Rays
+          </button>
+          <button
+            type="button"
+            className={`spatial-tb-btn toggle ${showAirPaths ? 'active-layer' : ''}`}
+            onClick={() => setShowAirPaths(!showAirPaths)}
+          >
+            Air Paths
+          </button>
+        </div>
+      </div>
 
-      {ghost
-        ? plan.rooms.map((room) => {
-            const fp = roomFootprint(room, site)
-            const h = roomHeight(room)
-            return (
-              <mesh key={room.id} position={[fp.cx, h / 2, fp.cz]}>
-                <boxGeometry args={[fp.width, h, fp.depth]} />
-                <meshStandardMaterial color="#9aa3ad" transparent opacity={0.14} roughness={0.9} metalness={0} depthWrite={false} />
-                <Edges color="#a3ff00" />
-              </mesh>
-            )
-          })
-        : plan.rooms.map((room) => (
-            <RoomVolume key={room.id} room={room} plan={plan} site={site} isSelected={room.id === selectedRoom} onSelectRoom={onSelectRoom} />
-          ))}
-      {!ghost && plan.openings.map((opening) => (
-        <OpeningPanel key={opening.id} opening={opening} site={site} />
-      ))}
-      {!ghost && plan.furniture.map((item) => (
-        <FurniturePiece key={item.id} item={item} site={site} />
-      ))}
+      <Canvas
+        shadows="basic"
+        dpr={[1, 2]}
+        camera={{ position: [12, 9, 12], fov: 45 }}
+        onPointerMissed={() => onSelectRoom(null)}
+      >
+        <color attach="background" args={['#0d0f13']} />
+        <SunLight azimuth={sunAzimuth} altitude={sunAltitude} />
+        <CameraController
+          preset={preset}
+          waypoint={tourWaypoint}
+          controlsRef={controlsRef}
+        />
+        <WalkController active={walkMode} plan={plan} site={site} selectedRoom={selectedRoom} />
 
-      {selected && <HeightHandle room={selected} site={site} onSetWallHeight={onSetWallHeight} />}
+        {walkMode ? (
+          <PointerLockControls />
+        ) : (
+          <OrbitControls
+            ref={controlsRef}
+            makeDefault
+            enableDamping
+            maxPolarAngle={Math.PI * 0.49}
+            minDistance={3}
+            maxDistance={40}
+            target={[0, 1, 0]}
+          />
+        )}
 
-      <Html position={[0, 0.1, -6]} center>
-        <span className="spatial-north-label">N</span>
-      </Html>
-    </Canvas>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={handleGroundClick}>
+          <planeGeometry args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]} />
+          <meshStandardMaterial color="#14161b" roughness={0.95} metalness={0} />
+        </mesh>
+        <Grid
+          position={[0, 0.005, 0]}
+          args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]}
+          cellColor="#1f232b"
+          sectionColor="#2a2f3a"
+          fadeDistance={30}
+          infiniteGrid={false}
+        />
+
+        {ghost
+          ? plan.rooms.map((room) => {
+              const fp = roomFootprint(room, site)
+              const h = roomHeight(room)
+              return (
+                <mesh key={room.id} position={[fp.cx, h / 2, fp.cz]}>
+                  <boxGeometry args={[fp.width, h, fp.depth]} />
+                  <meshStandardMaterial color="#9aa3ad" transparent opacity={0.14} roughness={0.9} metalness={0} depthWrite={false} />
+                  <Edges color="#f59e0b" />
+                </mesh>
+              )
+            })
+          : plan.rooms.map((room) => (
+              <RoomVolume
+                key={room.id}
+                room={room}
+                plan={plan}
+                site={site}
+                isSelected={room.id === selectedRoom}
+                onSelectRoom={onSelectRoom}
+              />
+            ))}
+        {!ghost && plan.openings.map((opening) => (
+          <OpeningPanel key={opening.id} opening={opening} site={site} />
+        ))}
+        {!ghost && plan.furniture.map((item) => (
+          <FurniturePiece key={item.id} item={item} site={site} />
+        ))}
+
+        {!ghost && showSunRays && (
+          <SunRayVectors plan={plan} site={site} azimuth={sunAzimuth} altitude={sunAltitude} />
+        )}
+        {!ghost && showAirPaths && (
+          <AirflowPathVectors plan={plan} site={site} windFrom={windFrom} windSpeed={windSpeed} />
+        )}
+
+        {selected && <HeightHandle room={selected} site={site} onSetWallHeight={onSetWallHeight} />}
+
+        <Html position={[0, 0.1, -6]} center>
+          <span className="spatial-north-label">N</span>
+        </Html>
+      </Canvas>
+
       <div className="spatial-sun-hud" aria-live="polite">
         <span className="sun-orb" />
         <div>
@@ -445,7 +749,11 @@ export default function Spatial3D({
           <em>{sunAzimuth.toFixed(1)}° azimuth · {locationLabel}</em>
         </div>
       </div>
-      <div className="spatial-orbit-note">Drag to orbit · scroll to zoom · select a room to edit height</div>
+      <div className="spatial-orbit-note">
+        {walkMode
+          ? 'Eye-level walk · click model to look · WASD moves · Esc exits · concept view has no wall collision'
+          : 'Drag to orbit · scroll to zoom · select a room to edit height'}
+      </div>
     </div>
   )
 }

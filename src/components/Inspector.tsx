@@ -36,7 +36,7 @@ import {
   preferenceChecks,
 } from '../mockups/chinaApartment'
 import { buildDesignBrief, type AnalysisResult, type Suggestion } from '../analysis'
-import type { PlanState, PlanTool, Room, SiteSpec, WorkspaceMode } from '../types'
+import type { CurrencyCode, Opening, PlanState, PlanTool, Room, SiteSpec, WorkspaceMode } from '../types'
 import type { InteriorBoq } from '../boq/interiorBoq'
 import { SunChart } from '../canvas/SunChart'
 
@@ -60,6 +60,7 @@ export interface InspectorProps {
   room?: Room
   deleteRoom: () => void
   updateRoom: (updates: Partial<Room>) => void
+  calibrateRoomFromDimension: (axis: 'w' | 'h', knownMeters: number) => void
   applyVariant: (index: number) => void
   patches: SunPatch[]
   directSunM2: number
@@ -90,7 +91,17 @@ export interface InspectorProps {
   runTrace: (event: React.ChangeEvent<HTMLInputElement>) => void
   traceFileInputRef: React.RefObject<HTMLInputElement>
   isTracing: boolean
+  selectedOpeningId?: string | null
+  updateOpening?: (id: string, updates: Partial<Opening>) => void
+  deleteOpening?: (id: string) => void
+  currency?: CurrencyCode
+  setCurrency?: (code: CurrencyCode) => void
+  onPinBaseline?: () => void
+  onOpenABComparison?: () => void
+  hasBaselinePin?: boolean
 }
+
+
 
 export const Inspector = React.memo(function Inspector({
   mode,
@@ -112,6 +123,7 @@ export const Inspector = React.memo(function Inspector({
   room,
   deleteRoom,
   updateRoom,
+  calibrateRoomFromDimension,
   applyVariant,
   patches,
   directSunM2,
@@ -142,10 +154,32 @@ export const Inspector = React.memo(function Inspector({
   runTrace,
   traceFileInputRef,
   isTracing,
+  selectedOpeningId,
+  updateOpening,
+  deleteOpening,
+  currency = 'CNY',
+  setCurrency,
+  onPinBaseline,
+  onOpenABComparison,
+  hasBaselinePin = false,
 }: InspectorProps) {
+
+
   const [lightingLevels, setLightingLevels] = React.useState<Record<string, number>>(() => ({ ...lightingScenes.Entertain }))
   const [activeLightingScene, setActiveLightingScene] = React.useState('Entertain')
   const importInputRef = React.useRef<HTMLInputElement>(null)
+  const [knownWidth, setKnownWidth] = React.useState('')
+  const [knownDepth, setKnownDepth] = React.useState('')
+
+  React.useEffect(() => {
+    if (!room) {
+      setKnownWidth('')
+      setKnownDepth('')
+      return
+    }
+    setKnownWidth(((room.w / 100) * site.w).toFixed(1))
+    setKnownDepth(((room.h / 100) * site.h).toFixed(1))
+  }, [room, site.h, site.w])
 
   if (!inspectorOpen) return null
 
@@ -315,10 +349,27 @@ export const Inspector = React.memo(function Inspector({
           </section>
 
           {room && (
-            <section className="panel-section">
+            <section className="panel-section room-calibration-section">
               <div className="section-title">
                 <h3>Selected room</h3>
                 <IconButton label="Delete room" onClick={deleteRoom}><Trash2 /></IconButton>
+              </div>
+              <div className="known-dimension-calibration">
+                <div>
+                  <p className="eyebrow">One known measurement</p>
+                  <strong>Scale the whole sketch</strong>
+                  <small>Enter either real dimension. Every room, opening, 3D view, and quantity rescales together.</small>
+                </div>
+                <label>
+                  <span>Width</span>
+                  <span className="dimension-entry"><input aria-label="Known room width in meters" type="number" min="0.5" max="100" step="0.1" value={knownWidth} onChange={(event) => setKnownWidth(event.target.value)} /> m</span>
+                  <button type="button" onClick={() => calibrateRoomFromDimension('w', Number(knownWidth))} disabled={!Number.isFinite(Number(knownWidth)) || Number(knownWidth) <= 0}>Use width</button>
+                </label>
+                <label>
+                  <span>Depth</span>
+                  <span className="dimension-entry"><input aria-label="Known room depth in meters" type="number" min="0.5" max="100" step="0.1" value={knownDepth} onChange={(event) => setKnownDepth(event.target.value)} /> m</span>
+                  <button type="button" onClick={() => calibrateRoomFromDimension('h', Number(knownDepth))} disabled={!Number.isFinite(Number(knownDepth)) || Number(knownDepth) <= 0}>Use depth</button>
+                </label>
               </div>
               <label className="field-label">
                 Name
@@ -338,7 +389,51 @@ export const Inspector = React.memo(function Inspector({
             </section>
           )}
 
-          <section className="panel-section">
+          {selectedOpeningId && (() => {
+            const op = plan.openings.find((o) => o.id === selectedOpeningId)
+            if (!op) return null
+            return (
+              <section className="panel-section">
+                <div className="section-title">
+                  <h3>Selected {op.type === 'window' ? 'Window' : 'Door'}</h3>
+                  <IconButton label="Delete opening" onClick={() => deleteOpening?.(op.id)}><Trash2 /></IconButton>
+                </div>
+                <div className="split-fields">
+                  <label className="field-label">
+                    Width <input type="number" step="0.1" min="0.4" max="6.0" value={op.widthM ?? (op.type === 'window' ? 1.6 : 0.9)} onChange={(e) => updateOpening?.(op.id, { widthM: Number(e.target.value) })} /><span>m</span>
+                  </label>
+                  <label className="field-label">
+                    Height <input type="number" step="0.1" min="0.4" max="3.5" value={op.heightM ?? (op.type === 'window' ? 1.2 : 2.1)} onChange={(e) => updateOpening?.(op.id, { heightM: Number(e.target.value) })} /><span>m</span>
+                  </label>
+                </div>
+                {op.type === 'window' && (
+                  <>
+                    <div className="split-fields">
+                      <label className="field-label">
+                        Sill <input type="number" step="0.1" min="0" max="2.5" value={op.sillHeightM ?? 0.9} onChange={(e) => updateOpening?.(op.id, { sillHeightM: Number(e.target.value) })} /><span>m</span>
+                      </label>
+                      <label className="field-label">
+                        Head <input type="number" step="0.1" min="0.5" max="4.0" value={op.headHeightM ?? 2.1} onChange={(e) => updateOpening?.(op.id, { headHeightM: Number(e.target.value) })} /><span>m</span>
+                      </label>
+                    </div>
+                    <label className="field-label">
+                      Glazing Specs
+                      <select
+                        value={op.shgc ?? 0.65}
+                        onChange={(e) => updateOpening?.(op.id, { shgc: Number(e.target.value), vlt: Number(e.target.value) > 0.5 ? 0.75 : 0.65 })}
+                      >
+                        <option value="0.65">Clear Double Glass (SHGC 0.65, VLT 75%)</option>
+                        <option value="0.35">Low-E Solar Control (SHGC 0.35, VLT 65%)</option>
+                      </select>
+                    </label>
+                  </>
+                )}
+              </section>
+            )
+          })()}
+
+
+          {variants.length > 0 && <section className="panel-section">
             <div className="section-title">
               <div>
                 <p className="eyebrow">Generated directions</p>
@@ -354,7 +449,7 @@ export const Inspector = React.memo(function Inspector({
                 </button>
               ))}
             </div>
-          </section>
+          </section>}
         </div>
       )}
 
@@ -697,6 +792,31 @@ export const Inspector = React.memo(function Inspector({
             <strong>{formatCurrency(budget.total, budget.currency)}</strong>
             <span>{formatCurrency(budget.total / Math.max(1, budget.area), budget.currency)} / m² <b>incl. {Math.round(budget.contingencyRate * 100)}% contingency</b></span>
           </section>
+
+          <section className="panel-section">
+            <div className="section-title">
+              <h3>Regional Rate Card & A/B Study</h3>
+            </div>
+            <label className="field-label" style={{ marginBottom: 10 }}>
+              Pricing Region
+              <select value={currency} onChange={(e) => setCurrency?.(e.target.value as CurrencyCode)}>
+                <option value="CNY">Shanghai / East Asia (RMB ¥)</option>
+                <option value="USD">North America (USD $)</option>
+                <option value="EUR">Western Europe (EUR €)</option>
+              </select>
+            </label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <button type="button" className="button secondary full" onClick={onPinBaseline}>
+                Pin Plan A
+              </button>
+              {hasBaselinePin && (
+                <button type="button" className="button primary full" onClick={onOpenABComparison}>
+                  Compare A vs B
+                </button>
+              )}
+            </div>
+          </section>
+
           <section className="panel-section cost-list">
             <div className="section-title">
               <h3>Bill of quantities</h3>

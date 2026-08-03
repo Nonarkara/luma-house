@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { calculateBudget, DEFAULT_WALL_HEIGHT, estimateEmbodiedCarbon, estimateEnergySavings, furnitureDoorConflicts, furnitureRect, furnitureRectFor, initialPlan, locations, roomArea, roomAreaFor, roomHeight, roomOverlaps, solarPosition, sunPatches, sunVector, totalArea, totalAreaFor } from './plan'
+import { calculateBudget, calibrateSiteFromRoom, DEFAULT_WALL_HEIGHT, estimateEmbodiedCarbon, estimateEnergySavings, furnitureDoorConflicts, furnitureRect, furnitureRectFor, initialPlan, locations, roomArea, roomAreaFor, roomHeight, roomOverlaps, solarPosition, sunPatches, sunVector, totalArea, totalAreaFor } from './plan'
 import type { Opening, PlanState, Room } from './types'
 
 describe('plan calculations', () => {
+  it('calibrates the entire field from one known room dimension', () => {
+    const site = calibrateSiteFromRoom({ w: 14, h: 10, unit: 1 }, { w: 25, h: 40 }, 'w', 4)
+    expect(site.w).toBe(16)
+    expect(site.h).toBeCloseTo(11.4286)
+    expect(0.25 * site.w).toBe(4)
+    expect(site.w / site.h).toBeCloseTo(14 / 10)
+  })
+
   it('converts percentage room dimensions into square meters', () => {
     expect(roomArea({ id: 'a', name: 'Room', kind: 'living', x: 0, y: 0, w: 50, h: 50 })).toBe(35)
   })

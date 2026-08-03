@@ -1,21 +1,24 @@
 import { siteOf } from '../plan'
-import type { PlanState, Room } from '../types'
+import type { Opening, PlanState, Room } from '../types'
 import type { Compass, WallSegment } from './types'
 
 const EPS = 0.5 // percentage tolerance for "touching" / "shared wall"
 
-/** Whole-plan bounds — used to detect which walls are exterior. */
-function planBounds(rooms: Room[]): { minX: number; minY: number; maxX: number; maxY: number } {
-  if (rooms.length === 0) return { minX: 0, minY: 0, maxX: 100, maxY: 100 }
-  return rooms.reduce(
-    (b, r) => ({
-      minX: Math.min(b.minX, r.x),
-      minY: Math.min(b.minY, r.y),
-      maxX: Math.max(b.maxX, r.x + r.w),
-      maxY: Math.max(b.maxY, r.y + r.h),
-    }),
-    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
-  )
+function coveredLength(intervals: Array<[number, number]>): number {
+  const sorted = intervals.filter(([start, end]) => end > start + EPS).sort((a, b) => a[0] - b[0])
+  if (sorted.length === 0) return 0
+  let total = 0
+  let [start, end] = sorted[0]
+  for (let i = 1; i < sorted.length; i += 1) {
+    const [nextStart, nextEnd] = sorted[i]
+    if (nextStart <= end + EPS) {
+      end = Math.max(end, nextEnd)
+    } else {
+      total += end - start
+      ;[start, end] = [nextStart, nextEnd]
+    }
+  }
+  return total + end - start
 }
 
 /**
@@ -26,7 +29,6 @@ function planBounds(rooms: Room[]): { minX: number; minY: number; maxX: number; 
  */
 export function exteriorWalls(plan: PlanState): WallSegment[] {
   const walls: WallSegment[] = []
-  const bounds = planBounds(plan.rooms)
   const site = siteOf(plan)
 
   for (const room of plan.rooms) {
@@ -35,56 +37,22 @@ export function exteriorWalls(plan: PlanState): WallSegment[] {
     const top = room.y
     const bottom = room.y + room.h
 
-    const topShared = plan.rooms.some(
-      (other) =>
-        other.id !== room.id &&
-        other.y + other.h >= top - EPS &&
-        other.y + other.h <= top + EPS &&
-        other.x < right - EPS &&
-        other.x + other.w > left + EPS,
-    )
-    const bottomShared = plan.rooms.some(
-      (other) =>
-        other.id !== room.id &&
-        other.y >= bottom - EPS &&
-        other.y <= bottom + EPS &&
-        other.x < right - EPS &&
-        other.x + other.w > left + EPS,
-    )
-    const leftShared = plan.rooms.some(
-      (other) =>
-        other.id !== room.id &&
-        other.x + other.w >= left - EPS &&
-        other.x + other.w <= left + EPS &&
-        other.y < bottom - EPS &&
-        other.y + other.h > top + EPS,
-    )
-    const rightShared = plan.rooms.some(
-      (other) =>
-        other.id !== room.id &&
-        other.x >= right - EPS &&
-        other.x <= right + EPS &&
-        other.y < bottom - EPS &&
-        other.y + other.h > top + EPS,
-    )
+    const others = plan.rooms.filter((other) => other.id !== room.id)
+    const horizontalOverlap = (other: Room): [number, number] => [Math.max(left, other.x), Math.min(right, other.x + other.w)]
+    const verticalOverlap = (other: Room): [number, number] => [Math.max(top, other.y), Math.min(bottom, other.y + other.h)]
+    const topCovered = coveredLength(others.filter((other) => Math.abs(other.y + other.h - top) <= EPS).map(horizontalOverlap))
+    const bottomCovered = coveredLength(others.filter((other) => Math.abs(other.y - bottom) <= EPS).map(horizontalOverlap))
+    const leftCovered = coveredLength(others.filter((other) => Math.abs(other.x + other.w - left) <= EPS).map(verticalOverlap))
+    const rightCovered = coveredLength(others.filter((other) => Math.abs(other.x - right) <= EPS).map(verticalOverlap))
 
-    const touchesTop = top <= bounds.minY + EPS
-    const touchesBottom = bottom >= bounds.maxY - EPS
-    const touchesLeft = left <= bounds.minX + EPS
-    const touchesRight = right >= bounds.maxX - EPS
-
-    if (!topShared || touchesTop) {
-      walls.push({ roomId: room.id, compass: 'N', lengthPct: room.w, lengthMeters: (room.w / 100) * site.w })
+    const addWall = (compass: Compass, lengthPct: number, siteMeters: number) => {
+      if (lengthPct <= EPS) return
+      walls.push({ roomId: room.id, compass, lengthPct, lengthMeters: (lengthPct / 100) * siteMeters })
     }
-    if (!bottomShared || touchesBottom) {
-      walls.push({ roomId: room.id, compass: 'S', lengthPct: room.w, lengthMeters: (room.w / 100) * site.w })
-    }
-    if (!leftShared || touchesLeft) {
-      walls.push({ roomId: room.id, compass: 'W', lengthPct: room.h, lengthMeters: (room.h / 100) * site.h })
-    }
-    if (!rightShared || touchesRight) {
-      walls.push({ roomId: room.id, compass: 'E', lengthPct: room.h, lengthMeters: (room.h / 100) * site.h })
-    }
+    addWall('N', room.w - topCovered, site.w)
+    addWall('S', room.w - bottomCovered, site.w)
+    addWall('W', room.h - leftCovered, site.h)
+    addWall('E', room.h - rightCovered, site.h)
   }
 
   return walls
@@ -94,7 +62,7 @@ export function exteriorWalls(plan: PlanState): WallSegment[] {
  * Classify an opening as belonging to a room + compass direction.
  * Returns null if the opening is not touching any of this room's walls.
  */
-function classifyOpening(
+export function openingCompassForRoom(
   room: Room,
   opening: { x: number; y: number; rotation: 0 | 90 },
 ): Compass | null {
@@ -111,8 +79,27 @@ function classifyOpening(
   return null
 }
 
+export interface OpeningRoomMatch {
+  room: Room
+  compass: Compass
+}
+
+/** Rooms and wall faces physically touched by an opening marker. */
+export function roomsForOpening(plan: PlanState, opening: Pick<Opening, 'x' | 'y' | 'rotation'>): OpeningRoomMatch[] {
+  return plan.rooms.flatMap((room) => {
+    const compass = openingCompassForRoom(room, opening)
+    return compass ? [{ room, compass }] : []
+  })
+}
+
+/** An opening is exterior only when it touches exactly one modeled room. */
+export function isOpeningExterior(plan: PlanState, roomId: string, opening: Opening): boolean {
+  const matches = roomsForOpening(plan, opening)
+  return matches.length === 1 && matches[0].room.id === roomId
+}
+
 export function openingsForRoomWall(plan: PlanState, roomId: string, compass: Compass) {
   const room = plan.rooms.find((r) => r.id === roomId)
   if (!room) return [] as typeof plan.openings
-  return plan.openings.filter((o) => classifyOpening(room, o) === compass)
+  return plan.openings.filter((o) => openingCompassForRoom(room, o) === compass)
 }

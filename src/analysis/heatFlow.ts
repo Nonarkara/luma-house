@@ -2,7 +2,7 @@ import { roomHeight } from '../plan'
 import type { PlanState } from '../types'
 import { wallIntensity } from './sunHours'
 import type { Compass } from './types'
-import { exteriorWalls, openingsForRoomWall } from './walls'
+import { exteriorWalls, isOpeningExterior, openingsForRoomWall } from './walls'
 
 // Transparent, concept-stage defaults. These are deliberately ordinary values
 // rather than a claim about a specific product or construction assembly.
@@ -59,40 +59,54 @@ export function heatFlowSnapshot({
   const assumptions = ENVELOPE_ASSUMPTIONS
   const deltaC = outsideC - insideC
   const walls = exteriorWalls(plan)
-  const wallU = plan.systems.insulation ? assumptions.wallUInsulated : assumptions.wallUUninsulated
-  const shgc = plan.systems.insulation ? assumptions.windowShgcLowE : assumptions.windowShgcClear
+  const wallU = plan.systems.assemblies?.wallU ?? (plan.systems.insulation ? assumptions.wallUInsulated : assumptions.wallUUninsulated)
+  const defaultShgc = plan.systems.insulation ? assumptions.windowShgcLowE : assumptions.windowShgcClear
+  const windowU = plan.systems.assemblies?.glazingU ?? assumptions.windowU
 
   let exteriorWallM2 = 0
   let windowM2 = 0
   let doorM2 = 0
   let solarW = 0
+  let windowConductionW = 0
+  let doorConductionW = 0
 
   for (const wall of walls) {
     const room = plan.rooms.find((item) => item.id === wall.roomId)
     if (!room) continue
-    const openings = openingsForRoomWall(plan, room.id, wall.compass)
-    const windows = openings.filter((opening) => opening.type === 'window').length
-    const doors = openings.length - windows
+    const openings = openingsForRoomWall(plan, room.id, wall.compass).filter((opening) => isOpeningExterior(plan, room.id, opening))
     const grossM2 = wall.lengthMeters * roomHeight(room)
-    const thisWindowM2 = windows * assumptions.windowAreaM2
-    const thisDoorM2 = doors * assumptions.doorAreaM2
 
-    exteriorWallM2 += Math.max(0, grossM2 - thisWindowM2 - thisDoorM2)
-    windowM2 += thisWindowM2
-    doorM2 += thisDoorM2
+    let thisWallWindowM2 = 0
+    let thisWallDoorM2 = 0
 
-    if (windows > 0 && sunAltitude > 0) {
-      const incidence = wallIntensity(sunAzimuth, sunAltitude, wall.compass as Compass)
-      solarW += assumptions.clearSkyDirectWm2 * thisWindowM2 * shgc * incidence
+    for (const op of openings) {
+      const w = op.widthM ?? (op.type === 'window' ? 1.6 : 0.9)
+      const h = op.heightM ?? (op.type === 'window' ? 1.2 : 2.1)
+      const area = w * h
+      if (op.type === 'window') {
+        thisWallWindowM2 += area
+        windowM2 += area
+        windowConductionW += windowU * area * deltaC
+        if (sunAltitude > 0) {
+          const incidence = wallIntensity(sunAzimuth, sunAltitude, wall.compass as Compass)
+          const windowShgc = op.shgc ?? defaultShgc
+          solarW += assumptions.clearSkyDirectWm2 * area * windowShgc * incidence
+        }
+      } else {
+        thisWallDoorM2 += area
+        doorM2 += area
+        doorConductionW += assumptions.doorU * area * deltaC
+      }
     }
+
+    exteriorWallM2 += Math.max(0, grossM2 - thisWallWindowM2 - thisWallDoorM2)
   }
 
   const wallW = wallU * exteriorWallM2 * deltaC
-  const openingW =
-    assumptions.windowU * windowM2 * deltaC +
-    assumptions.doorU * doorM2 * deltaC
+  const openingW = windowConductionW + doorConductionW
   const netW = wallW + openingW + solarW
   const mode = netW > 50 ? 'heat-in' : netW < -50 ? 'heat-out' : 'balanced'
+
 
   return {
     wallW,

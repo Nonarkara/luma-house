@@ -57,13 +57,21 @@ export function canGenerateConcept(): boolean {
   return getQuotaRemaining() > 0
 }
 
-export function recordConceptImage(dataUrl: string): number {
+function recordConceptUse(dataUrl?: string): number {
   const state = readQuota()
   const next: QuotaState = {
     day: todayKey(),
     count: state.count + 1,
-    images: [dataUrl, ...state.images].slice(0, 12),
+    images: dataUrl ? [dataUrl, ...state.images].slice(0, 12) : state.images,
   }
   writeQuota(next)
   return Math.max(0, DAILY_LIMIT - next.count)
+}
+
+export function recordAiTrace(): number {
+  return recordConceptUse()
+}
+
+export function recordConceptImage(dataUrl: string): number {
+  return recordConceptUse(dataUrl)
 }
