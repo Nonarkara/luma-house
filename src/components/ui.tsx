@@ -2,9 +2,9 @@ import React from 'react'
 
 export function Logo() {
   return (
-    <div className="brand" aria-label="Luma House">
+    <div className="brand" aria-label="designon — Design + Non">
       <span className="brand-mark"><span /></span>
-      <span>Luma<span className="brand-light">/house</span></span>
+      <span>design<span className="brand-light">/on</span></span>
     </div>
   )
 }

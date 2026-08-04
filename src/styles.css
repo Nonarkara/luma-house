@@ -2,7 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Axiom Design Core — designon (Design + Non) application
+ *
+ * The full design system contract is in src/design/AxiomCore.md.
+ * The token values below are the *current Luma* values within the
+ * Core's framework. Future products under Axiom keep the same
+ * token names; the values are the only thing that changes.
+ *
+ * Two layers:
+ *   1. `--axiom-*`      — Core tokens (cross-product)
+ *   2. `--bg-*` etc.    — designon application tokens (this product)
+ *
+ * Application tokens reference Core tokens. If a Core token value
+ * changes, the application changes with it. No hard-coded values
+ * inside component CSS.
+ */
+
 :root {
+  /* === Axiom Design Core: surface === */
+  --axiom-ink: #0e1014;
+  --axiom-paper: #faf7f1;
+  --axiom-mute: #e6e1d6;
+  --axiom-quiet: #8a8478;
+
+  /* === Axiom Design Core: single accent === */
+  --axiom-accent: #a3ff00;
+
+  /* === Axiom Design Core: spacing (4 px rhythm) === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* === Axiom Design Core: type scale === */
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-base: 15px;
+  --fs-md: 18px;
+  --fs-lg: 24px;
+  --fs-xl: 36px;
+  --fs-2xl: 56px;
+
+  /* === designon application tokens (current product) === */
   --bg-primary: #09090b;
   --bg-secondary: #121214;
   --bg-elevated: #1c1c1f;

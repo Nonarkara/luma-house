@@ -1,7 +1,7 @@
 import type { CanvasView, PlanState, PlanTool, WorkspaceMode } from '../types'
 
 /**
- * Behavioral design journey for Luma House.
+ * Behavioral design journey for designon (Design + Non).
  *
  * Principles in play (not decoration — they shape the sequence):
  * 1. Endowment / IKEA effect — drawing first makes the plan “yours”

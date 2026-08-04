@@ -1,8 +1,11 @@
-const PAGEVIEWS_KEY = 'luma-house:pageviews'
+import { readJson, writeJson } from './storage/keys'
+
+const PAGEVIEWS_KEY = 'pageviews'
 
 export function trackPageview() {
   try {
-    const views = JSON.parse(localStorage.getItem(PAGEVIEWS_KEY) ?? '[]') as Array<Record<string, string>>
+    const views =
+      readJson<Array<Record<string, string>>>(PAGEVIEWS_KEY, 'luma-house:pageviews') ?? []
     views.push({
       path: window.location.pathname,
       referrer: document.referrer || 'direct',
@@ -10,7 +13,7 @@ export function trackPageview() {
       userAgent: navigator.userAgent,
       createdAt: new Date().toISOString(),
     })
-    localStorage.setItem(PAGEVIEWS_KEY, JSON.stringify(views.slice(-500)))
+    writeJson(PAGEVIEWS_KEY, views.slice(-500))
   } catch {
     // Analytics must never interrupt the design workspace.
   }

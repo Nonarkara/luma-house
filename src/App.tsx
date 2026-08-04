@@ -66,6 +66,7 @@ import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal'
 import { comparePlans } from './analysis/abComparison'
 import { ABComparisonModal } from './components/ABComparisonModal'
 import type { ABComparisonState, CurrencyCode, Opening } from './types'
+import { readString } from './storage/keys'
 
 
 function readSavedPlan(): PlanState {
@@ -96,7 +97,7 @@ function App() {
   const [furnitureTrayOpen, setFurnitureTrayOpen] = useState(false)
   const [draftStroke, setDraftStroke] = useState<StrokePoint[] | null>(null)
   const [location, setLocation] = useState<string>(CHINA_PROJECT_LOCATION)
-  const [styleKeywords, setStyleKeywords] = useState<string>(() => localStorage.getItem('luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
+  const [styleKeywords, setStyleKeywords] = useState<string>(() => readString('style-keywords:shanghai-50', 'luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
   const [hour, setHour] = useState(10)
   const [day, setDay] = useState(355)
   const [outsideC, setOutsideC] = useState(34)
@@ -341,7 +342,7 @@ function App() {
   }, [plan])
 
   useEffect(() => {
-    localStorage.setItem('luma-style-keywords:shanghai-50', styleKeywords)
+    localStorage.setItem('designon:style-keywords:shanghai-50', styleKeywords)
   }, [styleKeywords])
 
   useEffect(() => {
@@ -550,7 +551,7 @@ function App() {
             : parsed
         const next = sanitizePlan(candidate)
         if (!next) {
-          setToast('That file does not contain a valid Luma House plan')
+          setToast('That file does not contain a valid designon plan')
           return
         }
         commit(next)
@@ -846,7 +847,7 @@ function App() {
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = isAuthoredSample ? 'south-light-shanghai-50.json' : 'luma-house-sketch.json'
+    anchor.download = isAuthoredSample ? 'south-light-shanghai-50.json' : 'designon-sketch.json'
     anchor.click()
     URL.revokeObjectURL(url)
     setToast('Project file exported')

@@ -1,4 +1,9 @@
-# Luma House — live context
+# designon (Design + Non) — live context
+
+The product is named **designon** (Design + Non). It is the first product under
+the Axiom Design Core. The repo URL is kept as `luma-house` for GitHub Pages
+inertia; the product name in the UI, in storage, and in user-facing copy is
+designon.
 
 ## Concept photo API
 
@@ -6,16 +11,17 @@
 - Live Worker URL: `https://luma-concept-render.drnon.workers.dev`
 - Frontend default: same URL (overridable via `VITE_CONCEPT_API_URL`)
 - Deploy: `cd workers/concept-render && npm i --legacy-peer-deps && wrangler secret put GEMINI_API_KEY && npx wrangler deploy`
-- Browser daily quota: 3 renders / day / localStorage key `luma-house:concept-quota`
+- Browser daily quota: 3 renders / day / localStorage key `designon:concept-quota`
+  (legacy `luma-house:concept-quota` is read on first load and migrated)
 - Server IP daily cap: `DAILY_IP_LIMIT` (default 20) when KV `RATE_LIMIT` is bound
 - Latest Worker version (2026-07-15): `190d924e-e8c5-4e9e-b8df-cd61bde029fe`
 
 ## Deploy targets
 
-- **Frontend (primary):** https://luma-house.pages.dev (Cloudflare Pages, project `luma-house`)
-- Latest deployment: https://520d7424.luma-house.pages.dev (commit `3837693` — draw→model→sun→advice→cost journey)
-- Mirror: https://nonarkara.github.io/luma-house/ (GitHub Pages workflow)
+- Frontend: https://nonarkara.github.io/luma-house/ (GitHub Pages workflow; the
+  repo URL is `luma-house` for inertia but the product is designon)
 - Repo: https://github.com/Nonarkara/luma-house
+- Optional static: Render (`render.yaml`)
 - Concept renders: Cloudflare Worker above
 
 ## Deploy commands

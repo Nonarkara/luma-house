@@ -2,7 +2,7 @@ import { siteOf, totalAreaFor, type CarbonLine } from '../plan'
 import type { PlanState, Room } from '../types'
 
 export const CHINA_PROJECT_NAME = 'South Light 50 · 向阳之家'
-export const CHINA_PROJECT_KEY = 'luma-house:south-light-shanghai-50:v4'
+export const CHINA_PROJECT_KEY = 'designon:plan:south-light-shanghai-50:v4'
 export const CHINA_PROJECT_LOCATION = 'Shanghai'
 
 // Net internal apartment envelope: 8.75 m × 5.714 m = exactly 50.0 m²

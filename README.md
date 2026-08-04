@@ -1,6 +1,8 @@
-# Luma House
+# designon (Design + Non)
 
-Luma House is a local-first sketch-to-decision prototype. Draw a room with a mouse or finger, enter one real room measurement, and the entire plan receives a shared scale. The same geometry then drives the 3D massing, window and door positions, furniture footprints, sun and heat comparisons, ventilation paths, escape connectivity, quantities, and a concept BOQ.
+designon is a local-first sketch-to-decision prototype. Draw a room with a mouse or finger, enter one real room measurement, and the entire plan receives a shared scale. The same geometry then drives the 3D massing, window and door positions, furniture footprints, sun and heat comparisons, ventilation paths, escape connectivity, quantities, and a concept BOQ.
+
+The product is built on the **Axiom Design Core** — the design system that governs every product under the Axiom umbrella. See `src/design/AxiomCore.md` for the principles, tokens, and component contract.
 
 The product deliberately uses progressive fidelity:
 
@@ -68,7 +70,7 @@ Set `VITE_CONCEPT_API_URL` to the worker URL and rebuild. Successful AI traces a
 npm run deploy:pages
 ```
 
-Live: [luma-house.pages.dev](https://luma-house.pages.dev)<br>
-Repository: [Nonarkara/luma-house](https://github.com/Nonarkara/luma-house)
+Live: [nonarkara.github.io/luma-house](https://nonarkara.github.io/luma-house/)<br>
+Repository: [Nonarkara/luma-house](https://github.com/Nonarkara/luma-house) (URL kept for GitHub Pages inertia; the product is **designon**).
 
 Deployment is intentionally separate from implementation verification; this working tree is not published automatically.

@@ -1,4 +1,7 @@
-const STORAGE_KEY = 'luma-house:concept-quota'
+import { readJson, writeJson } from '../storage/keys'
+
+const STORAGE_KEY = 'concept-quota'
+const LEGACY_KEY = 'luma-house:concept-quota'
 export const DAILY_LIMIT = 3
 
 interface QuotaState {
@@ -12,18 +15,13 @@ function todayKey() {
 }
 
 function readQuota(): QuotaState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { day: todayKey(), count: 0, images: [] }
-    const parsed = JSON.parse(raw) as QuotaState
-    if (parsed.day !== todayKey()) return { day: todayKey(), count: 0, images: [] }
-    return {
-      day: parsed.day,
-      count: parsed.count ?? 0,
-      images: Array.isArray(parsed.images) ? parsed.images.slice(0, 12) : [],
-    }
-  } catch {
-    return { day: todayKey(), count: 0, images: [] }
+  const parsed = readJson<QuotaState>(STORAGE_KEY, LEGACY_KEY)
+  if (!parsed) return { day: todayKey(), count: 0, images: [] }
+  if (parsed.day !== todayKey()) return { day: todayKey(), count: 0, images: [] }
+  return {
+    day: parsed.day,
+    count: parsed.count ?? 0,
+    images: Array.isArray(parsed.images) ? parsed.images.slice(0, 12) : [],
   }
 }
 
@@ -35,7 +33,7 @@ function writeQuota(state: QuotaState) {
   let images = state.images
   for (;;) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, images }))
+      writeJson(STORAGE_KEY, { ...state, images })
       return
     } catch {
       if (images.length === 0) return
