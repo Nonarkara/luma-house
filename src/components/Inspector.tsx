@@ -37,7 +37,8 @@ import {
   hygieneChecks,
   preferenceChecks,
 } from '../mockups/chinaApartment'
-import { buildDesignBrief, type AnalysisResult, type Suggestion } from '../analysis'
+import { buildDesignBrief, type AnalysisResult, type Suggestion, type ArchitecturalCodeReport, type CodeIssue } from '../analysis'
+import { ArchitecturalIntelligenceCard } from './ArchitecturalIntelligenceCard'
 import type { CurrencyCode, Opening, PlanState, PlanTool, Room, SiteSpec, WorkspaceMode } from '../types'
 import {
   applyClimateResponse as applyClimateResponseFn,
@@ -110,9 +111,9 @@ export interface InspectorProps {
   onPinBaseline?: () => void
   onOpenABComparison?: () => void
   hasBaselinePin?: boolean
+  codeReport?: ArchitecturalCodeReport
+  onAutoFixCodeIssue?: (issue: CodeIssue) => void
 }
-
-
 
 export const Inspector = React.memo(function Inspector({
   mode,
@@ -173,6 +174,8 @@ export const Inspector = React.memo(function Inspector({
   onPinBaseline,
   onOpenABComparison,
   hasBaselinePin = false,
+  codeReport,
+  onAutoFixCodeIssue,
 }: InspectorProps) {
 
 
@@ -277,6 +280,9 @@ export const Inspector = React.memo(function Inspector({
 
       {!settingsOpen && mode === 'plan' && (
         <div className="inspector-content">
+          {codeReport && (
+            <ArchitecturalIntelligenceCard report={codeReport} onAutoFix={onAutoFixCodeIssue} />
+          )}
           <section className="scale-calibration">
             <div>
               <p className="eyebrow">One shared scale</p>
@@ -394,6 +400,17 @@ export const Inspector = React.memo(function Inspector({
                   Depth <input aria-label="Room depth in meters" type="number" value={((room.h / 100) * site.h).toFixed(1)} min="0.5" max={site.h} step="0.1" onChange={(event) => updateRoom({ h: (Number(event.target.value) / site.h) * 100 })} /><span>m</span>
                 </label>
               </div>
+              <label className="field-label" style={{ marginTop: 8 }}>
+                Ceiling / Wall Height (Code Min 2.5m)
+                <input
+                  type="number"
+                  step="0.1"
+                  min="2.0"
+                  max="6.0"
+                  value={room.wallHeight ?? 2.5}
+                  onChange={(e) => updateRoom({ wallHeight: Number(e.target.value) })}
+                />
+              </label>
               <div className="room-stat">
                 <span>Internal area</span><strong>{roomAreaFor(room, site).toFixed(1)} m²</strong>
               </div>

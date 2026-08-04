@@ -23,6 +23,8 @@ export { windFlowPotential, facadePressureCoefficient, WIND_ASSUMPTIONS } from '
 export type { RoomWindPotential } from './windFlow'
 export { egressRoutes } from './egress'
 export type { RoomEgressRoute, RoutePoint } from './egress'
+export { analyzeBuildingCode, CODE_MIN_CEILING_HEIGHT_M } from './buildingCode'
+export type { ArchitecturalCodeReport, CodeIssue } from './buildingCode'
 
 const SCAN_DAY_DEFAULT = 172 // ~summer solstice (June 21 in northern hemisphere)
 

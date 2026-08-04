@@ -5,6 +5,7 @@ import { RenderGallery } from './canvas/RenderGallery'
 import { useCanvasViewport } from './canvas/useCanvasViewport'
 import { useRoomGestures } from './canvas/useRoomGestures'
 import { clientToPercent, moveOpening, moveRoom, strokeToRoomRect, type StrokePoint } from './canvas/geometry'
+import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
 import { calibrateSiteFromRoom, defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureRectFor, roomAreaFor, roomOverlaps, siteOf, solarPosition, sunPatches, locations } from './plan'
@@ -33,7 +34,7 @@ import {
   estimateApartmentCarbon,
 } from './mockups/chinaApartment'
 import { buildShareUrl, decodePlanFromHash, sanitizePlan } from './sharePlan'
-import { analyze, daylightPotential, egressRoutes, heatFlowSnapshot, windFlowPotential } from './analysis'
+import { analyze, analyzeBuildingCode, daylightPotential, egressRoutes, heatFlowSnapshot, windFlowPotential, type CodeIssue } from './analysis'
 import type { AnalysisResult, Suggestion } from './analysis'
 import type { CanvasView, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
 import { TopBar } from './components/TopBar'
@@ -96,6 +97,9 @@ function App() {
   const [activeTool, setActiveTool] = useState<PlanTool>('select')
   const [furnitureTrayOpen, setFurnitureTrayOpen] = useState(false)
   const [draftStroke, setDraftStroke] = useState<StrokePoint[] | null>(null)
+  const [rulerArmed, setRulerArmed] = useState(false)
+  const [rulerLine, setRulerLine] = useState<NapkinCalibrationLine | null>(null)
+  const [rulerMeters, setRulerMeters] = useState('')
   const [location, setLocation] = useState<string>(CHINA_PROJECT_LOCATION)
   const [styleKeywords, setStyleKeywords] = useState<string>(() => readString('style-keywords:shanghai-50', 'luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
   const [hour, setHour] = useState(10)
@@ -133,6 +137,9 @@ function App() {
   const drawPointerRef = useRef<number | null>(null)
   // Source of truth for the active stroke; draftStroke state only mirrors it for rendering.
   const strokePointsRef = useRef<StrokePoint[]>([])
+  // Gesture truth lives in refs, not state closures (see tasks/lessons.md).
+  const rulerPointerRef = useRef<number | null>(null)
+  const rulerLineRef = useRef<NapkinCalibrationLine | null>(null)
 
   const {
     viewport,
@@ -204,8 +211,10 @@ function App() {
     () => analyze({ plan, location: locations[location as keyof typeof locations] }),
     [plan, location],
   )
+  const codeReport = useMemo(() => analyzeBuildingCode(plan), [plan])
   const carbon = useMemo(() => estimateApartmentCarbon(plan), [plan])
   const overlaps = useMemo(() => roomOverlaps(plan.rooms), [plan.rooms])
+
   const interior = useMemo(() => interiorBoq(plan, site, currency), [plan, site, currency])
   const [isTracing, setIsTracing] = useState(false)
   const [traceNote, setTraceNote] = useState<string | null>(null)
@@ -218,6 +227,62 @@ function App() {
     setPlan((current) => (typeof next === 'function' ? next(current) : next))
     setFuture([])
   }, [plan])
+  const handleAutoFixCodeIssue = useCallback((issue: CodeIssue) => {
+    if (issue.fixAction === 'set_ceiling_2_5m' && issue.roomId) {
+      commit((current) => ({
+        ...current,
+        rooms: current.rooms.map((r) => (r.id === issue.roomId ? { ...r, wallHeight: 2.5 } : r)),
+      }))
+      setToast('Ceiling raised to 2.5 m — undo if unwanted')
+    } else if (issue.fixAction === 'fix_egress_window') {
+      commit((current) => {
+        if (issue.openingId) {
+          return {
+            ...current,
+            openings: current.openings.map((op) =>
+              op.id === issue.openingId ? { ...op, widthM: 1.6, heightM: 1.2, sillHeightM: 0.9, operableFraction: 0.5 } : op,
+            ),
+          }
+        }
+        if (issue.roomId) {
+          const room = current.rooms.find((r) => r.id === issue.roomId)
+          if (!room) return current
+          const newWindow = {
+            id: `egress-win-${Date.now()}`,
+            type: 'window' as const,
+            x: room.x + room.w / 2,
+            y: room.y,
+            rotation: 0 as const,
+            widthM: 1.6,
+            heightM: 1.2,
+            sillHeightM: 0.9,
+            operableFraction: 0.5,
+          }
+          return { ...current, openings: [...current.openings, newWindow] }
+        }
+        return current
+      })
+      setToast('Egress window sized to code — undo if unwanted')
+    } else if (issue.fixAction === 'add_glazing' && issue.roomId) {
+      commit((current) => {
+        const room = current.rooms.find((r) => r.id === issue.roomId)
+        if (!room) return current
+        const newWindow = {
+          id: `glaze-win-${Date.now()}`,
+          type: 'window' as const,
+          x: room.x + room.w / 2,
+          y: room.y,
+          rotation: 0 as const,
+          widthM: 1.6,
+          heightM: 1.2,
+          sillHeightM: 0.9,
+          operableFraction: 0.5,
+        }
+        return { ...current, openings: [...current.openings, newWindow] }
+      })
+      setToast('Window added for daylight — undo if unwanted')
+    }
+  }, [commit])
 
   const updateOpening = useCallback((id: string, updates: Partial<Opening>) => {
     commit((current) => ({
@@ -367,7 +432,44 @@ function App() {
     setFuture((items) => items.slice(1))
   }, [future, plan])
 
+  const applyRulerCalibration = useCallback(() => {
+    const meters = Number(rulerMeters)
+    if (!rulerLine) return
+    if (!Number.isFinite(meters) || meters <= 0) {
+      setToast('Type the real length of that line in meters')
+      return
+    }
+    const { newSite, scaleRatio } = calibrateSiteFromNapkinLine(site, rulerLine, meters)
+    commit((current) => ({ ...current, site: newSite }))
+    rulerLineRef.current = null
+    setRulerLine(null)
+    setRulerMeters('')
+    setToast(`Scale calibrated ×${scaleRatio.toFixed(2)} — site is now ${newSite.w.toFixed(1)} × ${newSite.h.toFixed(1)} m`)
+  }, [commit, rulerLine, rulerMeters, site])
+
+  const cancelRulerCalibration = useCallback(() => {
+    rulerLineRef.current = null
+    setRulerLine(null)
+    setRulerMeters('')
+    setRulerArmed(false)
+  }, [])
+
   const handleCanvasPointerDown = useCallback((event: ReactPointerEvent) => {
+    if (rulerArmed) {
+      if (rulerPointerRef.current !== null) return
+      const bounds = stageRef.current?.getBoundingClientRect()
+      if (!bounds) return
+      rulerPointerRef.current = event.pointerId
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      } catch {
+        // Synthetic pointers (tests) have no active pointer to capture.
+      }
+      const point = clientToPercent(event.clientX, event.clientY, bounds)
+      rulerLineRef.current = { p1: point, p2: point }
+      setRulerLine(rulerLineRef.current)
+      return
+    }
     if (activeTool === 'draw') {
       if (drawPointerRef.current !== null) return
       const bounds = stageRef.current?.getBoundingClientRect()
@@ -396,9 +498,16 @@ function App() {
     if (!isBackground) return
     panMovedRef.current = false
     onViewportPointerDown(event)
-  }, [activeTool, onViewportPointerDown])
+  }, [activeTool, onViewportPointerDown, rulerArmed])
 
   const handleCanvasPointerMove = useCallback((event: ReactPointerEvent) => {
+    if (rulerPointerRef.current === event.pointerId) {
+      const bounds = stageRef.current?.getBoundingClientRect()
+      if (!bounds || !rulerLineRef.current) return
+      rulerLineRef.current = { ...rulerLineRef.current, p2: clientToPercent(event.clientX, event.clientY, bounds) }
+      setRulerLine(rulerLineRef.current)
+      return
+    }
     if (drawPointerRef.current === event.pointerId) {
       const bounds = stageRef.current?.getBoundingClientRect()
       if (!bounds) return
@@ -411,6 +520,20 @@ function App() {
   }, [onViewportPointerMove])
 
   const handleCanvasPointerUp = useCallback((event: ReactPointerEvent) => {
+    if (rulerPointerRef.current === event.pointerId) {
+      rulerPointerRef.current = null
+      setRulerArmed(false)
+      const line = rulerLineRef.current
+      const lengthPct = line ? Math.hypot(line.p2.x - line.p1.x, line.p2.y - line.p1.y) : 0
+      if (!line || lengthPct < 2) {
+        rulerLineRef.current = null
+        setRulerLine(null)
+        setToast('Drag a longer line along a wall you know the length of')
+        return
+      }
+      // Line stays visible; the calibration chip asks for its real length.
+      return
+    }
     if (drawPointerRef.current === event.pointerId) {
       drawPointerRef.current = null
       const rect = strokeToRoomRect(strokePointsRef.current)
@@ -941,6 +1064,8 @@ function App() {
                 gridCellX={(site.unit / site.w) * 100}
                 gridCellY={(site.unit / site.h) * 100}
                 viewportStyle={viewportStyle}
+                napkinRuler={rulerLine}
+                rulerArmed={rulerArmed}
                 onRoomPointerDown={onRoomPointerDown}
                 onOpeningPointerDown={onOpeningPointerDown}
                 onFurniturePointerDown={onFurniturePointerDown}
@@ -1067,9 +1192,41 @@ function App() {
                 <small>m / cell</small>
                 <span>·</span>
                 <small>{site.w.toFixed(1)} × {site.h.toFixed(1)} m site</small>
+                <span>·</span>
+                <button
+                  type="button"
+                  className={`ruler-arm ${rulerArmed ? 'active' : ''}`}
+                  onClick={() => {
+                    if (rulerArmed || rulerLine) {
+                      cancelRulerCalibration()
+                      return
+                    }
+                    setRulerArmed(true)
+                    setToast('Drag along a wall whose real length you know')
+                  }}
+                >
+                  {rulerArmed || rulerLine ? 'Cancel' : 'Calibrate'}
+                </button>
               </div>
             )}
-            {view === 'plan' && isEmpty && !draftStroke && (
+            {view === 'plan' && rulerLine && !rulerArmed && (
+              <div className="ruler-chip" role="dialog" aria-label="Calibrate drawing scale">
+                <span><strong>Real length</strong><small>of the line you drew</small></span>
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  value={rulerMeters}
+                  onChange={(event) => setRulerMeters(event.target.value)}
+                  onKeyDown={(event) => { if (event.key === 'Enter') applyRulerCalibration() }}
+                  aria-label="Real length in meters"
+                  autoFocus
+                />
+                <small>m</small>
+                <button className="button primary" type="button" onClick={applyRulerCalibration}>Apply</button>
+              </div>
+            )}
+            {view === 'plan' && isEmpty && !draftStroke && !rulerArmed && !rulerLine && (
               <div className="canvas-empty">
                 <Pencil />
                 <h3>Draw your first room</h3>
@@ -1217,6 +1374,8 @@ function App() {
           onPinBaseline={handlePinBaseline}
           onOpenABComparison={handleOpenABComparison}
           hasBaselinePin={!!pinnedBaseline}
+          codeReport={codeReport}
+          onAutoFixCodeIssue={handleAutoFixCodeIssue}
         />
       </div>
       <WelcomeGate

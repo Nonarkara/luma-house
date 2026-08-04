@@ -8,6 +8,7 @@ import { exteriorWalls } from '../analysis'
 import type { ValueLensMode } from '../components/ValueLens'
 import type { Compass } from '../analysis'
 import type { ResizeHandle, StrokePoint } from './geometry'
+import type { NapkinCalibrationLine } from './napkinScale'
 
 const roomColors: Record<RoomKind, string> = {
   living: 'rgba(245, 158, 11, 0.07)',
@@ -48,6 +49,8 @@ export const FloorPlan = React.memo(function FloorPlan({
   gridCellX,
   gridCellY,
   viewportStyle,
+  napkinRuler,
+  rulerArmed,
   onRoomPointerDown,
   onOpeningPointerDown,
   onFurniturePointerDown,
@@ -79,6 +82,8 @@ export const FloorPlan = React.memo(function FloorPlan({
   gridCellX: number
   gridCellY: number
   viewportStyle: CSSProperties
+  napkinRuler?: NapkinCalibrationLine | null
+  rulerArmed?: boolean
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
   onOpeningPointerDown: (event: ReactPointerEvent, opening: Opening) => void
   onFurniturePointerDown: (event: ReactPointerEvent, item: Furniture) => void
@@ -96,7 +101,7 @@ export const FloorPlan = React.memo(function FloorPlan({
 
   return (
     <div
-      className={`plan-viewport tool-${activeTool}`}
+      className={`plan-viewport tool-${activeTool}${rulerArmed ? ' tool-ruler' : ''}`}
       onPointerDown={onCanvasPointerDown}
       onPointerMove={(event) => {
         onCanvasPointerMove(event)
@@ -296,6 +301,22 @@ export const FloorPlan = React.memo(function FloorPlan({
                 vectorEffect="non-scaling-stroke"
                 opacity="0.9"
               />
+            </svg>
+          )}
+          {napkinRuler && (
+            <svg className="draw-overlay napkin-ruler-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <line
+                x1={napkinRuler.p1.x}
+                y1={napkinRuler.p1.y}
+                x2={napkinRuler.p2.x}
+                y2={napkinRuler.p2.y}
+                stroke="var(--accent-primary)"
+                strokeWidth="3"
+                strokeDasharray="4 2"
+                vectorEffect="non-scaling-stroke"
+              />
+              <circle cx={napkinRuler.p1.x} cy={napkinRuler.p1.y} r="1.5" fill="var(--accent-primary)" />
+              <circle cx={napkinRuler.p2.x} cy={napkinRuler.p2.y} r="1.5" fill="var(--accent-primary)" />
             </svg>
           )}
           <div className="dimension dimension-x"><span>{Math.round(site.w * 1000).toLocaleString()}</span></div>
