@@ -1,4 +1,6 @@
 import type { Furniture, FurnitureKind, Opening, PlanState, Room, SiteSpec } from './types'
+import { getEnvelopeFromAssemblies } from './assemblies/envelope'
+import { exteriorWalls } from './analysis/walls'
 
 // Legacy defaults — kept as the fallback for plans authored before per-plan
 // `site` existed. New code should resolve scale via `siteOf(plan)`.
@@ -292,14 +294,34 @@ export interface CarbonLine {
 }
 
 export function estimateEmbodiedCarbon(plan: PlanState): { lines: CarbonLine[]; totalKg: number; kgPerM2: number } {
-  const area = totalAreaFor(plan.rooms, siteOf(plan))
-  const lines: CarbonLine[] = [
-    { label: 'Structure & slab', basis: `${area.toFixed(1)} m² × 280 kg`, kgCO2e: area * 280 },
-    { label: 'Roof & envelope', basis: `${area.toFixed(1)} m² × 65 kg`, kgCO2e: area * 65 },
-    { label: 'Windows & doors', basis: `${plan.openings.length} units × 90 kg`, kgCO2e: plan.openings.length * 90 },
-    { label: 'Interior finishes', basis: `${area.toFixed(1)} m² × 40 kg`, kgCO2e: area * 40 },
-    { label: 'Plumbing & electrical', basis: `${area.toFixed(1)} m² × 35 kg`, kgCO2e: area * 35 },
-  ]
+  const site = siteOf(plan)
+  const area = totalAreaFor(plan.rooms, site)
+  const lines: CarbonLine[] = []
+
+  // Wall / roof / floor from layered assemblies if present, else fixed
+  // multipliers. We compute gross wall area as (perimeter × wall height)
+  // and roof area as floor area.
+  if (plan.assemblies) {
+    const env = getEnvelopeFromAssemblies(plan)
+    const wallHeightM = 3.0
+    const wallPerimeterM = wallsExterior(plan) * wallHeightM
+    lines.push({
+      label: 'Wall assembly',
+      basis: `${wallPerimeterM.toFixed(1)} m² × ${env.embodiedCarbonKgPerM2Floor.toFixed(0)} kg/m² (layered)`,
+      kgCO2e: wallPerimeterM * env.embodiedCarbonKgPerM2Floor,
+    })
+    lines.push({
+      label: 'Roof & floor assemblies',
+      basis: `${area.toFixed(1)} m² × ~${(env.embodiedCarbonKgPerM2Floor * 0.5).toFixed(0)} kg/m²`,
+      kgCO2e: area * env.embodiedCarbonKgPerM2Floor * 0.5,
+    })
+  } else {
+    lines.push({ label: 'Structure & slab', basis: `${area.toFixed(1)} m² × 280 kg`, kgCO2e: area * 280 })
+    lines.push({ label: 'Roof & envelope', basis: `${area.toFixed(1)} m² × 65 kg`, kgCO2e: area * 65 })
+  }
+  lines.push({ label: 'Windows & doors', basis: `${plan.openings.length} units × 90 kg`, kgCO2e: plan.openings.length * 90 })
+  lines.push({ label: 'Interior finishes', basis: `${area.toFixed(1)} m² × 40 kg`, kgCO2e: area * 40 })
+  lines.push({ label: 'Plumbing & electrical', basis: `${area.toFixed(1)} m² × 35 kg`, kgCO2e: area * 35 })
   if (plan.systems.solar) {
     lines.push({ label: 'Solar array (7.2 kWp)', basis: '7.2 kWp × 400 kg/kWp', kgCO2e: 7.2 * 400 })
   }
@@ -308,6 +330,11 @@ export function estimateEmbodiedCarbon(plan: PlanState): { lines: CarbonLine[]; 
   }
   const totalKg = lines.reduce((sum, line) => sum + line.kgCO2e, 0)
   return { lines, totalKg, kgPerM2: area > 0 ? totalKg / area : 0 }
+}
+
+/** Sum of exterior wall lengths in meters, for carbon accounting. */
+function wallsExterior(plan: PlanState): number {
+  return exteriorWalls(plan).reduce((sum, wall) => sum + wall.lengthMeters, 0)
 }
 
 export function solarPosition(latitude: number, dayOfYear: number, hour: number) {

@@ -10,10 +10,12 @@ import {
   Grid2X2,
   ImagePlus,
   Layers3,
+  BrickWall,
   Leaf,
   Lightbulb,
   PanelLeftClose,
   RotateCcw,
+  Sprout,
   Sun,
   ShieldCheck,
   Thermometer,
@@ -37,6 +39,15 @@ import {
 } from '../mockups/chinaApartment'
 import { buildDesignBrief, type AnalysisResult, type Suggestion } from '../analysis'
 import type { CurrencyCode, Opening, PlanState, PlanTool, Room, SiteSpec, WorkspaceMode } from '../types'
+import {
+  applyClimateResponse as applyClimateResponseFn,
+  CLIMATE_RESPONSES,
+  DEFAULT_ASSEMBLIES,
+  getClimateResponse,
+  listResolvedAssemblies,
+  resolvePlanAssemblies,
+} from '../assemblies/resolve'
+import type { ClimateResponseId } from '../assemblies/types'
 import type { InteriorBoq } from '../boq/interiorBoq'
 import { SunChart } from '../canvas/SunChart'
 
@@ -653,6 +664,117 @@ export const Inspector = React.memo(function Inspector({
             <strong>{climateResult.location}</strong>. Annual overheating samples one day per month, 07:00–19:00.
             Not a substitute for EnergyPlus — but the hot room shows up fast.
           </p>
+
+          <section className="panel-section">
+            <div className="section-title">
+              <div>
+                <p className="eyebrow">Climate response</p>
+                <h3>Pick a starting point for the latitude</h3>
+              </div>
+            </div>
+            {(() => {
+              const currentId = plan.assemblies?.climateResponseId ?? 'tropical-humid'
+              const current = getClimateResponse(currentId)
+              return (
+                <>
+                  <label className="field-label">
+                    Response
+                    <select
+                      value={currentId}
+                      onChange={(e) => {
+                        const id = e.target.value as ClimateResponseId
+                        commit((planState) => ({
+                          ...planState,
+                          assemblies: applyClimateResponseFn(planState.assemblies ?? DEFAULT_ASSEMBLIES, id),
+                        }))
+                      }}
+                    >
+                      {CLIMATE_RESPONSES.map((r) => (
+                        <option key={r.id} value={r.id}>{r.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <p className="section-intro">{current.description}</p>
+                  <p className="design-note"><strong>Principle:</strong> {current.defaults.principle}</p>
+                  <p className="design-note"><strong>Ventilation:</strong> {current.defaults.ventilationStrategy}</p>
+                  <p className="design-note"><strong>Eave depth:</strong> {current.defaults.recommendedEaveDepthM.toFixed(1)} m on south + west</p>
+                  <ul className="design-notes-list">
+                    {current.designNotes.map((note, i) => <li key={i}>{note}</li>)}
+                  </ul>
+                </>
+              )
+            })()}
+          </section>
+
+          <section className="panel-section">
+            <div className="section-title">
+              <div>
+                <p className="eyebrow">Envelope assemblies</p>
+                <h3>Walls, roof, floor — by layer, not by toggle</h3>
+              </div>
+            </div>
+            {(() => {
+              const resolved = resolvePlanAssemblies(plan.assemblies ?? DEFAULT_ASSEMBLIES)
+              const items: Array<{ key: 'wall' | 'roof' | 'floor'; label: string; icon: typeof BrickWall }> = [
+                { key: 'wall', label: 'Wall', icon: BrickWall },
+                { key: 'roof', label: 'Roof', icon: Layers3 },
+                { key: 'floor', label: 'Floor', icon: Sprout },
+              ]
+              const presets = listResolvedAssemblies('wall').concat(
+                listResolvedAssemblies('roof'),
+                listResolvedAssemblies('floor'),
+              )
+              return items.map(({ key, label, icon: Icon }) => {
+                const r = resolved[key]
+                return (
+                  <details key={key} className="assembly-card">
+                    <summary>
+                      <span className="assembly-icon"><Icon /></span>
+                      <div className="assembly-head">
+                        <strong>{label}: {r.assembly.label}</strong>
+                        <div className="assembly-stats">
+                          <span><strong>R-{r.totalRValue.toFixed(1)}</strong></span>
+                          <span>U {r.uValue.toFixed(2)} W/m²·K</span>
+                          <span>{r.totalThicknessMm} mm</span>
+                          <span>{r.embodiedCarbonKgPerM2.toFixed(0)} kgCO₂e/m²</span>
+                        </div>
+                      </div>
+                    </summary>
+                    <p className="assembly-principle">{r.assembly.principle}</p>
+                    <ul className="assembly-layers">
+                      {r.assembly.layers.map((l, i) => (
+                        <li key={`${l.materialId}-${i}`}>
+                          <span>{l.thicknessMm} mm</span>
+                          <span>{l.materialId}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="assembly-swap">
+                      <span>Swap to:</span>
+                      {presets.filter((p) => p.assembly.kind === key && p.assembly.id !== r.assembly.id).map((p) => (
+                        <button
+                          key={p.assembly.id}
+                          type="button"
+                          className="button secondary small"
+                          onClick={() => {
+                            commit((planState) => ({
+                              ...planState,
+                              assemblies: {
+                                ...(planState.assemblies ?? DEFAULT_ASSEMBLIES),
+                                [key]: p.assembly.id,
+                              },
+                            }))
+                          }}
+                        >
+                          {p.assembly.label} · R-{p.totalRValue.toFixed(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                )
+              })
+            })()}
+          </section>
 
           <section className="panel-section">
             <div className="section-title"><h3>Room diagnostics</h3></div>

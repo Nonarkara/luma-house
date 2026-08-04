@@ -1,5 +1,6 @@
 import { roomHeight } from '../plan'
 import type { PlanState } from '../types'
+import { getEnvelopeFromAssemblies } from '../assemblies/envelope'
 import { wallIntensity } from './sunHours'
 import type { Compass } from './types'
 import { exteriorWalls, isOpeningExterior, openingsForRoomWall } from './walls'
@@ -59,9 +60,11 @@ export function heatFlowSnapshot({
   const assumptions = ENVELOPE_ASSUMPTIONS
   const deltaC = outsideC - insideC
   const walls = exteriorWalls(plan)
-  const wallU = plan.systems.assemblies?.wallU ?? (plan.systems.insulation ? assumptions.wallUInsulated : assumptions.wallUUninsulated)
+  const envelope = getEnvelopeFromAssemblies(plan)
+  // Fallback chain: legacy EnvelopeAssemblies > new layered assemblies > boolean default
+  const wallU = plan.systems.assemblies?.wallU ?? envelope.wallU
   const defaultShgc = plan.systems.insulation ? assumptions.windowShgcLowE : assumptions.windowShgcClear
-  const windowU = plan.systems.assemblies?.glazingU ?? assumptions.windowU
+  const windowU = plan.systems.assemblies?.glazingU ?? envelope.glazingU
 
   let exteriorWallM2 = 0
   let windowM2 = 0

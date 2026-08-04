@@ -76,6 +76,8 @@ export interface PlanState {
   systems: HouseSystems
   /** Per-plan site + scale. Omitted on legacy plans = default 14×10, 1 m/cell. */
   site?: SiteSpec
+  /** Wall / roof / floor assembly spec. Falls back to defaults when absent. */
+  assemblies?: PlanAssemblies
 }
 
 export interface ABComparisonState {
@@ -95,6 +97,22 @@ export interface RegionalRateCard {
   doorUnitRate: number
   insulationM2Rate: number
   solarSystemRate: number
+}
+
+/**
+ * Layered wall / roof / floor assemblies. The full system lives in
+ * `src/assemblies/`. This type mirrors the IDs so plan state stays
+ * serialisable + JSON-exportable.
+ */
+export interface PlanAssemblies {
+  wall: string
+  roof: string
+  floor: string
+  /** Single whole-house glazing spec — U-value (W/m²·K) and SHGC. */
+  glazingUValue: number
+  glazingSHGC: number
+  /** Climate response that produced these defaults (provenance + undo). */
+  climateResponseId: 'tropical-humid' | 'hot-arid' | 'cold-temperate' | 'high-altitude' | 'temperate-mixed' | null
 }
 
 export type PlanTool = 'select' | 'draw' | 'window' | 'door'

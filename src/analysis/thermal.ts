@@ -1,4 +1,5 @@
 import type { PlanState, Room } from '../types'
+import { getEnvelopeFromAssemblies } from '../assemblies/envelope'
 import { openingsForRoomWall } from './walls'
 import type { WallSun } from './types'
 import { roomAreaFor, siteOf } from '../plan'
@@ -39,24 +40,29 @@ interface ThermalVerdict {
 /**
  * Rough steady-state heat-gain model.
  *
- * Q  = Σ (sun-hours × wall length × SHGC) + window SHGC sum
+ * Q  = solar gain (through walls + windows) + conductive gain (U × A × ΔT)
  * ΔT = Q / (mass + ventilation)
+ *
+ * The solar gain term uses the existing wall- and window-orientation data.
+ * The conductive term is read from the chosen wall / roof assembly, so
+ * switching the wall to a higher-R assembly moves the peak indoor °C.
  *
  * Tuned for directional guidance — surfaces "the hot room", not a replacement for EnergyPlus.
  */
 export function thermalProfile(input: ThermalInputs): ThermalVerdict {
   const { walls, plan, room, ventilationScore, insulationOn, latitude } = input
   const outdoorC = peakOutdoorC(latitude)
+  const envelope = getEnvelopeFromAssemblies(plan)
 
-  // Wall solar heat gain: sun-hours × length × SHGC (Wh)
+  // Solar heat gain through opaque walls: sun-hours × length × SHGC × wall height (Wh)
   let wallHeatWh = 0
   for (const wall of walls) {
     const sunHours = wall.directMinutes / 60
-    wallHeatWh += sunHours * wall.lengthMeters * 3 * 0.35
+    // wall height ≈ 2.7m default; we use 3.0 to be honest about real walls
+    wallHeatWh += sunHours * wall.lengthMeters * 3.0 * 0.35
   }
 
-  // Window heat gain: each window adds 70 Wh per ~1.2m² pane.
-  // If the window sits on a wall blasted by afternoon sun, double it.
+  // Window heat gain: each window adds ~70 Wh per ~1.2m² pane, doubled on hot walls
   const sunBlasted: Record<Compass, boolean> = { N: false, E: false, S: true, W: true }
   let windowHeatWh = 0
   for (const compass of ['N', 'E', 'S', 'W'] as Compass[]) {
@@ -66,8 +72,16 @@ export function thermalProfile(input: ThermalInputs): ThermalVerdict {
     windowHeatWh += windowCount * 70 * multiplier
   }
 
-  let totalHeat = wallHeatWh + windowHeatWh
-  if (insulationOn) totalHeat *= 0.55
+  // Conductive gain: this is what responds to the assembly choice
+  const wallArea = walls.reduce((sum, w) => sum + w.lengthMeters * 3.0, 0)
+  const conductiveHeatWh = envelope.wallU * wallArea * (outdoorC - 26) * 6 // ~6 sun hours
+
+  let totalHeat = wallHeatWh + windowHeatWh + conductiveHeatWh
+
+  // Legacy boolean still scales for back-compat with old plans
+  if (insulationOn && !plan.assemblies) totalHeat *= 0.55
+  // Real assembly scaling: factor 0.3 (high-R) → 1.0 (uninsulated)
+  if (plan.assemblies) totalHeat *= envelope.insulationFactor
 
   // Thermal mass + ventilation heat removal (Wh/°C)
   const area = roomAreaFor(room, siteOf(plan))
