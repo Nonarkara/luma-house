@@ -51,6 +51,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   viewportStyle,
   napkinRuler,
   rulerArmed,
+  liveDragRect,
   onRoomPointerDown,
   onOpeningPointerDown,
   onFurniturePointerDown,
@@ -84,6 +85,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   viewportStyle: CSSProperties
   napkinRuler?: NapkinCalibrationLine | null
   rulerArmed?: boolean
+  liveDragRect?: { id: string; x: number; y: number; w: number; h: number } | null
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
   onOpeningPointerDown: (event: ReactPointerEvent, opening: Opening) => void
   onFurniturePointerDown: (event: ReactPointerEvent, item: Furniture) => void
@@ -125,6 +127,32 @@ export const FloorPlan = React.memo(function FloorPlan({
           style={{ '--grid-cell-x': `${gridCellX}%`, '--grid-cell-y': `${gridCellY}%` } as CSSProperties}
         >
           {sketchUrl && <img className="sketch-underlay" src={sketchUrl} alt="Uploaded sketch tracing layer" />}
+          {liveDragRect && (
+            <svg className="snap-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <line
+                x1={liveDragRect.x} y1={0} x2={liveDragRect.x} y2={100}
+                className="snap-line snap-vertical"
+                vectorEffect="non-scaling-stroke"
+              />
+              <line
+                x1={liveDragRect.x + liveDragRect.w} y1={0}
+                x2={liveDragRect.x + liveDragRect.w} y2={100}
+                className="snap-line snap-vertical"
+                vectorEffect="non-scaling-stroke"
+              />
+              <line
+                x1={0} y1={liveDragRect.y} x2={100} y2={liveDragRect.y}
+                className="snap-line snap-horizontal"
+                vectorEffect="non-scaling-stroke"
+              />
+              <line
+                x1={0} y1={liveDragRect.y + liveDragRect.h}
+                x2={100} y2={liveDragRect.y + liveDragRect.h}
+                className="snap-line snap-horizontal"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+          )}
           <div className="north-mark" aria-label="North points upward"><ArrowRight /> <span>N</span></div>
           <div className="scale-label">{site.unit} m grid <span>•</span> {site.w.toFixed(1)} × {site.h.toFixed(1)} m field</div>
           {showSun && (
@@ -175,6 +203,22 @@ export const FloorPlan = React.memo(function FloorPlan({
               ))}
             </button>
           ))}
+          {liveDragRect && (() => {
+            const wMeters = (liveDragRect.w / 100) * site.w
+            const hMeters = (liveDragRect.h / 100) * site.h
+            const left = liveDragRect.x + liveDragRect.w
+            const top = liveDragRect.y
+            return (
+              <div
+                className="live-dim"
+                style={{ left: `${Math.min(99, left + 1)}%`, top: `${Math.max(1, top - 4)}%` }}
+                aria-live="polite"
+              >
+                <strong>{wMeters.toFixed(2)} × {hMeters.toFixed(2)} m</strong>
+                <small>{((wMeters * hMeters)).toFixed(1)} m²</small>
+              </div>
+            )
+          })()}
           {valueLens !== 'off' && valueLens !== 'shade' && (
             <svg className={`value-plan-overlay is-${valueLens}`} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
               <defs>

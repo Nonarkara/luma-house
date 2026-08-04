@@ -39,6 +39,7 @@ import {
 } from '../mockups/chinaApartment'
 import { buildDesignBrief, type AnalysisResult, type Suggestion, type ArchitecturalCodeReport, type CodeIssue } from '../analysis'
 import { ArchitecturalIntelligenceCard } from './ArchitecturalIntelligenceCard'
+import { VariantThumbnail } from './VariantThumbnail'
 import type { CurrencyCode, Opening, PlanState, PlanTool, Room, SiteSpec, WorkspaceMode } from '../types'
 import {
   applyClimateResponse as applyClimateResponseFn,
@@ -465,15 +466,20 @@ export const Inspector = React.memo(function Inspector({
             <div className="section-title">
               <div>
                 <p className="eyebrow">Generated directions</p>
-                <h3>Three ways to live here</h3>
+                <h3>Pick a starting layout</h3>
               </div>
             </div>
-            <div className="variant-list">
+            <div className="variant-grid">
               {variants.map((variant, index) => (
-                <button key={variant.name} type="button" onClick={() => applyVariant(index)}>
-                  <span className={`variant-thumb variant-${index}`}><i /><i /><i /></span>
-                  <span><strong>{variant.name}</strong><small>{variant.note}</small></span>
-                  <ArrowRight />
+                <button
+                  key={variant.name}
+                  type="button"
+                  className="variant-card"
+                  onClick={() => applyVariant(index)}
+                >
+                  <VariantThumbnail rooms={variant.rooms} />
+                  <strong>{variant.name}</strong>
+                  <small>{variant.note}</small>
                 </button>
               ))}
             </div>

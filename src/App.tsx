@@ -87,8 +87,8 @@ function readSavedPlan(): PlanState {
 
 function App() {
   const [plan, setPlan] = useState<PlanState>(readSavedPlan)
-  const [past, setPast] = useState<PlanState[]>([])
-  const [future, setFuture] = useState<PlanState[]>([])
+  const [past, setPast] = useState<Array<{ state: PlanState; label: string }>>([])
+  const [future, setFuture] = useState<Array<{ state: PlanState; label: string }>>([])
   const [mode, setMode] = useState<WorkspaceMode>('plan')
   const [view, setView] = useState<CanvasView>('plan')
   const [selectedRoom, setSelectedRoom] = useState<string | null>('living')
@@ -125,6 +125,8 @@ function App() {
   const [scenariosOpen, setScenariosOpen] = useState(false)
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
   const [walkMode, setWalkMode] = useState(false)
+  /** Live room rect being dragged, for the in-canvas dimension readout. */
+  const [liveDragRect, setLiveDragRect] = useState<{ id: string; x: number; y: number; w: number; h: number } | null>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [currency, setCurrency] = useState<CurrencyCode>('CNY')
   const [pinnedBaseline, setPinnedBaseline] = useState<ABComparisonState | null>(null)
@@ -222,8 +224,8 @@ function App() {
   const isAuthoredSample = plan.rooms.length > 0 && plan.rooms.every((room) => chinaApartmentPlan.rooms.some((sampleRoom) => sampleRoom.id === room.id))
   const projectTitle = isAuthoredSample ? CHINA_PROJECT_NAME : 'Untitled sketch'
 
-  const commit = useCallback((next: PlanState | ((current: PlanState) => PlanState)) => {
-    setPast((items) => [...items.slice(-29), plan])
+  const commit = useCallback((next: PlanState | ((current: PlanState) => PlanState), label = 'Edit') => {
+    setPast((items) => [...items.slice(-29), { state: plan, label }])
     setPlan((current) => (typeof next === 'function' ? next(current) : next))
     setFuture([])
   }, [plan])
@@ -232,7 +234,7 @@ function App() {
       commit((current) => ({
         ...current,
         rooms: current.rooms.map((r) => (r.id === issue.roomId ? { ...r, wallHeight: 2.5 } : r)),
-      }))
+      }), 'Set ceiling 2.5 m')
       setToast('Ceiling raised to 2.5 m — undo if unwanted')
     } else if (issue.fixAction === 'fix_egress_window') {
       commit((current) => {
@@ -288,7 +290,7 @@ function App() {
     commit((current) => ({
       ...current,
       openings: current.openings.map((o) => (o.id === id ? { ...o, ...updates } : o)),
-    }))
+    }), 'Adjust opening')
   }, [commit])
 
   const handlePinBaseline = useCallback(() => {
@@ -372,8 +374,8 @@ function App() {
     if (nav.tool) setActiveTool(nav.tool)
   }, [])
 
-  const commitSnapshot = useCallback((snapshot: PlanState) => {
-    setPast((items) => [...items.slice(-29), snapshot])
+  const commitSnapshot = useCallback((snapshot: PlanState, label = 'Auto-save') => {
+    setPast((items) => [...items.slice(-29), { state: snapshot, label }])
     setFuture([])
   }, [])
 
@@ -419,16 +421,17 @@ function App() {
   const undo = useCallback(() => {
     const previous = past[past.length - 1]
     if (!previous) return
-    setFuture((items) => [plan, ...items])
-    setPlan(previous)
+    setFuture((items) => [{ state: plan, label: previous.label }, ...items])
+    setPlan(previous.state)
     setPast((items) => items.slice(0, -1))
+    setToast(`Undid: ${previous.label}`)
   }, [past, plan])
 
   const redo = useCallback(() => {
     const next = future[0]
     if (!next) return
-    setPast((items) => [...items, plan])
-    setPlan(next)
+    setPast((items) => [...items, { state: plan, label: next.label }])
+    setPlan(next.state)
     setFuture((items) => items.slice(1))
   }, [future, plan])
 
@@ -440,7 +443,7 @@ function App() {
       return
     }
     const { newSite, scaleRatio } = calibrateSiteFromNapkinLine(site, rulerLine, meters)
-    commit((current) => ({ ...current, site: newSite }))
+    commit((current) => ({ ...current, site: newSite }), 'Calibrate scale')
     rulerLineRef.current = null
     setRulerLine(null)
     setRulerMeters('')
@@ -501,6 +504,13 @@ function App() {
   }, [activeTool, onViewportPointerDown, rulerArmed])
 
   const handleCanvasPointerMove = useCallback((event: ReactPointerEvent) => {
+    // Live room rect for the dimension readout in the canvas
+    if (isGesturing() && selectedRoom) {
+      const live = plan.rooms.find((r) => r.id === selectedRoom)
+      if (live) {
+        setLiveDragRect({ id: live.id, x: live.x, y: live.y, w: live.w, h: live.h })
+      }
+    }
     if (rulerPointerRef.current === event.pointerId) {
       const bounds = stageRef.current?.getBoundingClientRect()
       if (!bounds || !rulerLineRef.current) return
@@ -517,9 +527,10 @@ function App() {
     }
     onViewportPointerMove(event)
     if (Math.abs(event.movementX) + Math.abs(event.movementY) > 2) panMovedRef.current = true
-  }, [onViewportPointerMove])
+  }, [isGesturing, onViewportPointerMove, plan.rooms, selectedRoom])
 
   const handleCanvasPointerUp = useCallback((event: ReactPointerEvent) => {
+    setLiveDragRect(null)
     if (rulerPointerRef.current === event.pointerId) {
       rulerPointerRef.current = null
       setRulerArmed(false)
@@ -545,7 +556,7 @@ function App() {
       }
       const id = `room-${Date.now()}`
       const sketched: Room = { id, name: 'Sketched room', kind: 'studio', ...rect }
-      commit((current) => ({ ...current, rooms: [...current.rooms, sketched] }))
+      commit((current) => ({ ...current, rooms: [...current.rooms, sketched] }), 'Sketch room')
       setSelectedRoom(id)
       setMode('plan')
       setActiveTool('select')
@@ -570,7 +581,7 @@ function App() {
     }
     const opening = placeOpeningAt(event.clientX, event.clientY)
     if (!opening) return
-    commit((current) => ({ ...current, openings: [...current.openings, opening] }))
+    commit((current) => ({ ...current, openings: [...current.openings, opening] }), `Place ${opening.type}`)
     setActiveTool('select')
     setToast(`${opening.type === 'window' ? 'Window' : 'Door'} placed`)
   }, [activeTool, commit, isGesturing, placeOpeningAt])
@@ -581,13 +592,13 @@ function App() {
     commit((current) => ({
       ...current,
       rooms: [...current.rooms, { id, name: `Flexible room ${index}`, kind: 'studio', x: 30, y: 30, w: 25, h: 24 }],
-    }))
+    }), 'Add room')
     setSelectedRoom(id)
   }, [commit, plan.rooms.length])
 
   const deleteRoom = useCallback(() => {
     if (!selectedRoom) return
-    commit((current) => ({ ...current, rooms: current.rooms.filter((item) => item.id !== selectedRoom) }))
+    commit((current) => ({ ...current, rooms: current.rooms.filter((item) => item.id !== selectedRoom) }), 'Delete room')
     setSelectedRoom(null)
   }, [commit, selectedRoom])
 
@@ -596,7 +607,7 @@ function App() {
     commit((current) => ({
       ...current,
       rooms: current.rooms.map((item) => (item.id === selectedRoom ? { ...item, ...updates } : item)),
-    }))
+    }), 'Edit room')
   }, [commit, selectedRoom])
 
   const setWallHeight = useCallback((roomId: string, height: number) => {
@@ -677,7 +688,7 @@ function App() {
           setToast('That file does not contain a valid designon plan')
           return
         }
-        commit(next)
+        commit(next, 'Import project')
         setSelectedRoom(next.rooms[0].id)
         setSelectedOpening(null)
         setSelectedFurniture(null)
@@ -810,7 +821,7 @@ function App() {
   const applyVariant = useCallback((index: number) => {
     const variant = chinaApartmentVariants[index]
     if (!variant) return
-    commit((current) => ({ ...current, rooms: variant.rooms.map((item) => ({ ...item })) }))
+    commit((current) => ({ ...current, rooms: variant.rooms.map((item) => ({ ...item })) }), 'Apply layout')
     setToast(`${variant.name} applied`)
   }, [commit])
 
@@ -824,12 +835,12 @@ function App() {
     const x = compass === 'W' ? targetRoom.x : compass === 'E' ? targetRoom.x + targetRoom.w : targetRoom.x + targetRoom.w / 2
     const y = compass === 'N' ? targetRoom.y : compass === 'S' ? targetRoom.y + targetRoom.h : targetRoom.y + targetRoom.h / 2
     const opening = { id: `w-${Date.now()}`, type: 'window' as const, x: Math.round(x), y: Math.round(y), rotation: (vertical ? 90 : 0) as 0 | 90 }
-    commit((current) => ({ ...current, openings: [...current.openings, opening] }))
+    commit((current) => ({ ...current, openings: [...current.openings, opening] }), 'Apply suggestion')
     setToast(`Window added — scores update live`)
   }, [commit, plan.rooms])
 
   const resetPlan = useCallback(() => {
-    commit(chinaApartmentPlan)
+    commit(chinaApartmentPlan, 'Restore sample apartment')
     setSelectedRoom('living')
     setSelectedOpening(null)
     resetView()
@@ -839,7 +850,7 @@ function App() {
 
   // Start from a truly blank napkin — empty dotted canvas.
   const startBlank = useCallback(() => {
-    commit(blankPlan())
+    commit(blankPlan(), 'Start blank canvas')
     setSelectedRoom(null)
     setSelectedOpening(null)
     setSelectedFurniture(null)
@@ -853,7 +864,7 @@ function App() {
   // Adjustable scale: change the meters represented by one grid cell.
   const setSiteScale = useCallback((unit: number) => {
     const safe = Math.max(0.1, Math.min(Math.min(site.w, site.h), unit))
-    commit((current) => ({ ...current, site: { ...siteOf(current), unit: safe } }))
+    commit((current) => ({ ...current, site: { ...siteOf(current), unit: safe } }), 'Set grid scale')
     setToast(`Grid scale set to ${safe} m / cell`)
   }, [commit, site])
 
@@ -885,7 +896,7 @@ function App() {
       setIsTracing(true)
       try {
         const result = await tracePlanFromImage({ imageDataUrl, siteW: site.w, siteH: site.h })
-        commit(result.plan)
+        commit(result.plan, 'Trace plan from photo')
         setSelectedRoom(result.plan.rooms[0]?.id ?? null)
         setMode('plan')
         setSettingsOpen(false)
@@ -944,7 +955,7 @@ function App() {
           ...current.openings,
           { id: `w-${Date.now()}`, type: 'window', x: Math.round(target.x + target.w / 2), y: Math.round(target.y), rotation: 0 },
         ],
-      }))
+      }), 'Add north window')
       setMode('light')
       setToast(`North window added to ${target.name} — light study open`)
     } else if (prompt.includes('bedroom') || prompt.includes('room')) {
@@ -1066,6 +1077,7 @@ function App() {
                 viewportStyle={viewportStyle}
                 napkinRuler={rulerLine}
                 rulerArmed={rulerArmed}
+                liveDragRect={liveDragRect}
                 onRoomPointerDown={onRoomPointerDown}
                 onOpeningPointerDown={onOpeningPointerDown}
                 onFurniturePointerDown={onFurniturePointerDown}
