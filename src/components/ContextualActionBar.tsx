@@ -13,6 +13,11 @@ interface ContextualActionBarProps {
   onDeleteOpening?: (id: string) => void
 }
 
+/**
+ * Floating action bar above the selected room or opening. Sharp edges,
+ * hairline border, the single accent reserved for emphasis. No glass,
+ * no shadow, no rounded corners — per the Axiom Design Core.
+ */
 export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
   room,
   opening,
@@ -27,68 +32,58 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
   const isRoom = !!room
   const targetX = room ? room.x + room.w / 2 : opening ? opening.x : 50
   const targetY = room ? room.y : opening ? opening.y : 50
+  const area = room ? roomAreaFor(room, site) : 0
 
   return (
     <div
       className="contextual-action-bar"
       style={{
-        position: 'absolute',
         left: `${targetX}%`,
-        top: `calc(${targetY}% - 46px)`,
+        top: `calc(${targetY}% - 44px)`,
         transform: 'translateX(-50%)',
-        zIndex: 50,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '4px 8px',
-        background: 'rgba(15, 23, 42, 0.9)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255, 255, 255, 0.15)',
-        borderRadius: 20,
-        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6)',
-        color: '#ffffff',
-        fontSize: '0.78rem',
       }}
     >
       {isRoom && room && (
         <>
-          <span style={{ fontWeight: 600, padding: '0 4px', color: 'var(--accent-amber, #f59e0b)' }}>
-            {room.name} ({roomAreaFor(room, site).toFixed(1)}m²)
+          <span className="contextual-action-label">
+            <strong>{room.name}</strong>
+            <span className="contextual-action-area">{area.toFixed(1)} m²</span>
           </span>
 
-          <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.15)' }} />
+          <span className="toolbar-divider" aria-hidden="true" />
 
-          {/* Wall Height ±0.1m */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: '2px 6px' }}>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>H:</span>
-            <span style={{ fontWeight: 600 }}>{(room.wallHeight ?? 2.5).toFixed(1)}m</span>
+          <div className="contextual-stepper" aria-label="Ceiling height">
+            <span className="contextual-stepper-label">H</span>
+            <span className="contextual-stepper-value">{(room.wallHeight ?? 2.5).toFixed(1)} m</span>
             <button
               type="button"
-              style={{ background: 'none', border: 0, color: '#fff', cursor: 'pointer', padding: 2 }}
+              className="contextual-stepper-btn"
               onClick={() => onUpdateRoom?.({ wallHeight: Math.min(6.0, (room.wallHeight ?? 2.5) + 0.1) })}
-              title="Increase Ceiling Height"
+              title="Increase ceiling height"
+              aria-label="Increase ceiling height"
             >
-              <Plus style={{ width: 12, height: 12 }} />
+              <Plus className="contextual-stepper-icon" aria-hidden="true" />
             </button>
             <button
               type="button"
-              style={{ background: 'none', border: 0, color: '#fff', cursor: 'pointer', padding: 2 }}
+              className="contextual-stepper-btn"
               onClick={() => onUpdateRoom?.({ wallHeight: Math.max(2.0, (room.wallHeight ?? 2.5) - 0.1) })}
-              title="Decrease Ceiling Height"
+              title="Decrease ceiling height"
+              aria-label="Decrease ceiling height"
             >
-              <Minus style={{ width: 12, height: 12 }} />
+              <Minus className="contextual-stepper-icon" aria-hidden="true" />
             </button>
           </div>
 
           {onDeleteRoom && (
             <button
               type="button"
-              style={{ background: 'none', border: 0, color: '#ef4444', cursor: 'pointer', padding: 4 }}
+              className="contextual-icon-btn contextual-icon-btn-danger"
               onClick={onDeleteRoom}
-              title="Delete Room"
+              title="Delete room"
+              aria-label="Delete room"
             >
-              <Trash2 style={{ width: 14, height: 14 }} />
+              <Trash2 className="contextual-icon-icon" aria-hidden="true" />
             </button>
           )}
         </>
@@ -96,49 +91,57 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
 
       {!isRoom && opening && (
         <>
-          <span style={{ fontWeight: 600, padding: '0 4px', color: '#38bdf8' }}>
-            {opening.type === 'window' ? 'Window' : 'Door'} ({(opening.widthM ?? (opening.type === 'window' ? 1.6 : 0.9)).toFixed(1)}×{(opening.heightM ?? (opening.type === 'window' ? 1.2 : 2.1)).toFixed(1)}m)
+          <span className="contextual-action-label">
+            <strong>{opening.type === 'window' ? 'Window' : 'Door'}</strong>
+            <span className="contextual-action-area">
+              {(opening.widthM ?? (opening.type === 'window' ? 1.6 : 0.9)).toFixed(2)} ×{' '}
+              {(opening.heightM ?? (opening.type === 'window' ? 1.2 : 2.1)).toFixed(2)} m
+            </span>
           </span>
 
-          <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.15)' }} />
+          <span className="toolbar-divider" aria-hidden="true" />
 
-          {/* Width ±0.1m */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: '2px 6px' }}>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>W:</span>
+          <div className="contextual-stepper" aria-label="Width">
+            <span className="contextual-stepper-label">W</span>
             <button
               type="button"
-              style={{ background: 'none', border: 0, color: '#fff', cursor: 'pointer', padding: 2 }}
+              className="contextual-stepper-btn"
               onClick={() => onUpdateOpening?.(opening.id, { widthM: Math.min(6.0, (opening.widthM ?? 1.6) + 0.1) })}
+              title="Increase width"
+              aria-label="Increase opening width"
             >
-              <Plus style={{ width: 12, height: 12 }} />
+              <Plus className="contextual-stepper-icon" aria-hidden="true" />
             </button>
             <button
               type="button"
-              style={{ background: 'none', border: 0, color: '#fff', cursor: 'pointer', padding: 2 }}
+              className="contextual-stepper-btn"
               onClick={() => onUpdateOpening?.(opening.id, { widthM: Math.max(0.4, (opening.widthM ?? 1.6) - 0.1) })}
+              title="Decrease width"
+              aria-label="Decrease opening width"
             >
-              <Minus style={{ width: 12, height: 12 }} />
+              <Minus className="contextual-stepper-icon" aria-hidden="true" />
             </button>
           </div>
 
-          {/* Rotate opening orientation */}
           <button
             type="button"
-            style={{ background: 'none', border: 0, color: '#fff', cursor: 'pointer', padding: 4 }}
+            className="contextual-icon-btn"
             onClick={() => onUpdateOpening?.(opening.id, { rotation: opening.rotation === 0 ? 90 : 0 })}
-            title="Rotate Orientation"
+            title="Rotate orientation"
+            aria-label="Rotate opening orientation"
           >
-            <RotateCw style={{ width: 14, height: 14 }} />
+            <RotateCw className="contextual-icon-icon" aria-hidden="true" />
           </button>
 
           {onDeleteOpening && (
             <button
               type="button"
-              style={{ background: 'none', border: 0, color: '#ef4444', cursor: 'pointer', padding: 4 }}
+              className="contextual-icon-btn contextual-icon-btn-danger"
               onClick={() => onDeleteOpening(opening.id)}
-              title="Delete Opening"
+              title="Delete opening"
+              aria-label="Delete opening"
             >
-              <Trash2 style={{ width: 14, height: 14 }} />
+              <Trash2 className="contextual-icon-icon" aria-hidden="true" />
             </button>
           )}
         </>

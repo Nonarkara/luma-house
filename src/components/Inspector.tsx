@@ -37,8 +37,10 @@ import {
   hygieneChecks,
   preferenceChecks,
 } from '../mockups/chinaApartment'
-import { buildDesignBrief, type AnalysisResult, type Suggestion, type ArchitecturalCodeReport, type CodeIssue, type EnergySimulationResult, type AirQualityReport } from '../analysis'
-import { ArchitecturalIntelligenceCard } from './ArchitecturalIntelligenceCard'
+import { buildDesignBrief, type AnalysisResult, type Suggestion, type EnergySimulationResult, type AirQualityReport } from '../analysis'
+import { type CodeIssue as StandardsCodeIssue } from '../codes/checkPlan'
+import { StandardsBadge } from './StandardsBadge'
+import { CodeIssuesPanel } from './CodeIssuesPanel'
 import { EnergySimulationCard } from './EnergySimulationCard'
 import { synthesizeLayout } from '../concept/layoutSynthesizer'
 import { VariantThumbnail } from './VariantThumbnail'
@@ -114,8 +116,9 @@ export interface InspectorProps {
   onPinBaseline?: () => void
   onOpenABComparison?: () => void
   hasBaselinePin?: boolean
-  codeReport?: ArchitecturalCodeReport
-  onAutoFixCodeIssue?: (issue: CodeIssue) => void
+  /** New standards-library system (IBC / ASHRAE / ADA / ISO). */
+  standardsIssues?: StandardsCodeIssue[]
+  onApplyStandardsIssue?: (issue: StandardsCodeIssue) => void
   energySimulation?: EnergySimulationResult
   airQualityReport?: AirQualityReport
 }
@@ -179,8 +182,8 @@ export const Inspector = React.memo(function Inspector({
   onPinBaseline,
   onOpenABComparison,
   hasBaselinePin = false,
-  codeReport,
-  onAutoFixCodeIssue,
+  standardsIssues = [],
+  onApplyStandardsIssue,
   energySimulation,
   airQualityReport,
 }: InspectorProps) {
@@ -287,8 +290,16 @@ export const Inspector = React.memo(function Inspector({
 
       {!settingsOpen && mode === 'plan' && (
         <div className="inspector-content">
-          {codeReport && (
-            <ArchitecturalIntelligenceCard report={codeReport} onAutoFix={onAutoFixCodeIssue} />
+          {standardsIssues.length > 0 && (
+            <section className="panel-section">
+              <div className="section-title">
+                <div>
+                  <p className="eyebrow">Code check</p>
+                  <h3>Building standards</h3>
+                </div>
+              </div>
+              <CodeIssuesPanel issues={standardsIssues} rooms={plan.rooms} onApply={onApplyStandardsIssue} />
+            </section>
           )}
           <section className="scale-calibration">
             <div>
@@ -409,7 +420,7 @@ export const Inspector = React.memo(function Inspector({
                 </label>
               </div>
               <label className="field-label" style={{ marginTop: 8 }}>
-                Ceiling / Wall Height (Code Min 2.5m)
+                Ceiling / Wall Height
                 <input
                   type="number"
                   step="0.1"
@@ -419,9 +430,68 @@ export const Inspector = React.memo(function Inspector({
                   onChange={(e) => updateRoom({ wallHeight: Number(e.target.value) })}
                 />
               </label>
-              <div className="room-stat">
-                <span>Internal area</span><strong>{roomAreaFor(room, site).toFixed(1)} m²</strong>
-              </div>
+              {(() => {
+                const widthM = (room.w / 100) * site.w
+                const depthM = (room.h / 100) * site.h
+                const ceilingM = room.wallHeight ?? 2.5
+                const areaM2 = roomAreaFor(room, site)
+                const volumeM3 = areaM2 * ceilingM
+                const perimeterM = 2 * (widthM + depthM)
+                // Room's issue severities for the standards tags.
+                const issuesForRoom = standardsIssues.filter((i) => i.roomId === room.id)
+                const worstSev: 'info' | 'warning' | 'critical' = issuesForRoom.some((i) => i.severity === 'critical')
+                  ? 'critical'
+                  : issuesForRoom.some((i) => i.severity === 'warning')
+                    ? 'warning'
+                    : 'info'
+                const areaPasses = areaM2 >= 6.5
+                const ceilingPasses = ceilingM >= 2.13
+                return (
+                  <>
+                    <div className="room-data-primary">
+                      <span className="room-data-number">{areaM2.toFixed(1)}</span>
+                      <span className="room-data-unit">m²</span>
+                      <StandardsBadge
+                        ref="IBC 1208.1"
+                        severity={areaPasses ? 'info' : worstSev}
+                        name="IBC 1208.1 — Minimum Habitable Area"
+                        inline
+                      />
+                    </div>
+                    <div className="room-data-secondary">
+                      <div className="room-data-cell">
+                        <span className="room-data-cell-label">Width</span>
+                        <span className="room-data-cell-value">{widthM.toFixed(2)} m</span>
+                      </div>
+                      <div className="room-data-cell">
+                        <span className="room-data-cell-label">Depth</span>
+                        <span className="room-data-cell-value">{depthM.toFixed(2)} m</span>
+                      </div>
+                      <div className="room-data-cell">
+                        <span className="room-data-cell-label">Ceiling</span>
+                        <span className="room-data-cell-value">
+                          {ceilingM.toFixed(2)} m
+                          {' '}
+                          <StandardsBadge
+                            ref="IBC 1208.2"
+                            severity={ceilingPasses ? 'info' : worstSev}
+                            name="IBC 1208.2 — Minimum Ceiling Height"
+                            inline
+                          />
+                        </span>
+                      </div>
+                      <div className="room-data-cell">
+                        <span className="room-data-cell-label">Volume</span>
+                        <span className="room-data-cell-value">{volumeM3.toFixed(1)} m³</span>
+                      </div>
+                      <div className="room-data-cell">
+                        <span className="room-data-cell-label">Perimeter</span>
+                        <span className="room-data-cell-value">{perimeterM.toFixed(1)} m</span>
+                      </div>
+                    </div>
+                  </>
+                )
+              })()}
             </section>
           )}
 
@@ -828,6 +898,34 @@ export const Inspector = React.memo(function Inspector({
                     </span>
                   </div>
                   <small>{rc.ventilationNote}</small>
+                  {(() => {
+                    const issuesForRoom = standardsIssues.filter((i) => i.roomId === rc.room.id)
+                    if (issuesForRoom.length === 0) return null
+                    const seen = new Set<string>()
+                    const tags: Array<{ ref: string; sev: 'info' | 'warning' | 'critical'; name: string }> = []
+                    for (const issue of issuesForRoom) {
+                      if (seen.has(issue.ref)) continue
+                      seen.add(issue.ref)
+                      tags.push({
+                        ref: issue.ref.replace(/^IBC-/, 'IBC ').replace(/^ASHRAE-/, 'ASHRAE ').replace(/^ADA-/, 'ADA ').replace(/^ISO-/, 'ISO '),
+                        sev: issue.severity,
+                        name: issue.name,
+                      })
+                    }
+                    return (
+                      <div className="climate-room-standards">
+                        {tags.map((t) => (
+                          <StandardsBadge
+                            key={t.ref}
+                            ref={t.ref}
+                            severity={t.sev}
+                            name={t.name}
+                            inline
+                          />
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}

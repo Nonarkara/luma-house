@@ -35,7 +35,7 @@ import {
   estimateApartmentCarbon,
 } from './mockups/chinaApartment'
 import { buildShareUrl, decodePlanFromHash, sanitizePlan } from './sharePlan'
-import { analyze, analyzeAirQuality, analyzeBuildingCode, daylightPotential, egressRoutes, heatFlowSnapshot, simulateEnergy, windFlowPotential, type CodeIssue } from './analysis'
+import { analyze, analyzeAirQuality, daylightPotential, egressRoutes, heatFlowSnapshot, simulateEnergy, windFlowPotential } from './analysis'
 import type { AnalysisResult, Suggestion } from './analysis'
 import type { CanvasView, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
 import { TopBar } from './components/TopBar'
@@ -73,6 +73,8 @@ import { comparePlans } from './analysis/abComparison'
 import { ABComparisonModal } from './components/ABComparisonModal'
 import type { ABComparisonState, CurrencyCode, Opening } from './types'
 import { readString } from './storage/keys'
+import { checkPlan, type CodeIssue as StandardsCodeIssue } from './codes/checkPlan'
+import { openingCompassForRoom } from './analysis/walls'
 
 
 function readSavedPlan(): PlanState {
@@ -222,7 +224,7 @@ function App() {
     () => analyze({ plan, location: locations[location as keyof typeof locations] }),
     [plan, location],
   )
-  const codeReport = useMemo(() => analyzeBuildingCode(plan), [plan])
+  const codeIssues = useMemo(() => checkPlan(plan), [plan])
   const energySimulation = useMemo(() => simulateEnergy(plan, locations[location as keyof typeof locations]?.latitude ?? 31.23), [plan, location])
   const airQualityReport = useMemo(() => analyzeAirQuality(plan), [plan])
   const carbon = useMemo(() => estimateApartmentCarbon(plan), [plan])
@@ -242,60 +244,88 @@ function App() {
     setPlan((current) => (typeof next === 'function' ? next(current) : next))
     setFuture([])
   }, [plan])
-  const handleAutoFixCodeIssue = useCallback((issue: CodeIssue) => {
-    if (issue.fixAction === 'set_ceiling_2_5m' && issue.roomId) {
+
+  const handleApplyStandardsIssue = useCallback((issue: StandardsCodeIssue) => {
+    const action = issue.fixAction
+    if (!action) return
+    if (action.type === 'enlarge_opening') {
       commit((current) => ({
         ...current,
-        rooms: current.rooms.map((r) => (r.id === issue.roomId ? { ...r, wallHeight: 2.5 } : r)),
-      }), 'Set ceiling 2.5 m')
-      setToast('Ceiling raised to 2.5 m — undo if unwanted')
-    } else if (issue.fixAction === 'fix_egress_window') {
+        openings: current.openings.map((o) =>
+          o.id === action.openingId ? { ...o, widthM: Math.max(0.9, o.widthM ?? 0.9) } : o,
+        ),
+      }), 'Resize door to ADA clear width')
+      setToast('Door widened to 0.9 m — undo if unwanted')
+      return
+    }
+    if (action.type === 'set_ceiling') {
+      commit((current) => ({
+        ...current,
+        rooms: current.rooms.map((r) =>
+          r.id === action.roomId ? { ...r, wallHeight: action.meters } : r,
+        ),
+      }), `Set ceiling ${action.meters.toFixed(2)} m`)
+      setToast(`Ceiling raised to ${action.meters.toFixed(2)} m — undo if unwanted`)
+      return
+    }
+    if (action.type === 'add_exterior_door' || action.type === 'add_opening_for_egress') {
+      const { roomId, compass } = action
       commit((current) => {
-        if (issue.openingId) {
-          return {
-            ...current,
-            openings: current.openings.map((op) =>
-              op.id === issue.openingId ? { ...op, widthM: 1.6, heightM: 1.2, sillHeightM: 0.9, operableFraction: 0.5 } : op,
-            ),
-          }
-        }
-        if (issue.roomId) {
-          const room = current.rooms.find((r) => r.id === issue.roomId)
-          if (!room) return current
-          const newWindow = {
-            id: `egress-win-${Date.now()}`,
-            type: 'window' as const,
-            x: room.x + room.w / 2,
-            y: room.y,
-            rotation: 0 as const,
-            widthM: 1.6,
-            heightM: 1.2,
-            sillHeightM: 0.9,
-            operableFraction: 0.5,
-          }
-          return { ...current, openings: [...current.openings, newWindow] }
-        }
-        return current
-      })
-      setToast('Egress window sized to code — undo if unwanted')
-    } else if (issue.fixAction === 'add_glazing' && issue.roomId) {
-      commit((current) => {
-        const room = current.rooms.find((r) => r.id === issue.roomId)
+        const room = current.rooms.find((r) => r.id === roomId)
         if (!room) return current
-        const newWindow = {
-          id: `glaze-win-${Date.now()}`,
-          type: 'window' as const,
-          x: room.x + room.w / 2,
-          y: room.y,
-          rotation: 0 as const,
-          widthM: 1.6,
-          heightM: 1.2,
-          sillHeightM: 0.9,
-          operableFraction: 0.5,
+        // Place the new door on the midpoint of the chosen exterior wall.
+        let x = room.x + room.w / 2
+        let y = room.y + room.h / 2
+        let rotation: 0 | 90 = 0
+        if (compass === 'N') { y = room.y; rotation = 0 }
+        else if (compass === 'S') { y = room.y + room.h; rotation = 0 }
+        else if (compass === 'E') { x = room.x + room.w; rotation = 90 }
+        else if (compass === 'W') { x = room.x; rotation = 90 }
+        // Verify the chosen wall is still exterior after the new door is added —
+        // we can't have two doors at the exact same wall position. If the spot
+        // is already taken, shift along the wall until we find a free slot.
+        const isOccupied = (px: number, py: number) =>
+          current.openings.some((op) => Math.abs(op.x - px) < 0.5 && Math.abs(op.y - py) < 0.5)
+        if (isOccupied(x, y)) {
+          // Try sliding along the wall in 5% steps (≈ 0.5 m on a 10 m site).
+          for (let step = 1; step <= 8; step += 1) {
+            const offset = step * 5
+            let cand: { x: number; y: number; rot: 0 | 90 }
+            if (compass === 'N' || compass === 'S') {
+              cand = { x: Math.min(room.x + room.w - 5, Math.max(room.x + 5, x - 5 + offset)), y, rot: rotation }
+            } else {
+              cand = { x, y: Math.min(room.y + room.h - 5, Math.max(room.y + 5, y - 5 + offset)), rot: rotation }
+            }
+            if (!isOccupied(cand.x, cand.y)) {
+              x = cand.x
+              y = cand.y
+              rotation = cand.rot
+              break
+            }
+          }
         }
-        return { ...current, openings: [...current.openings, newWindow] }
-      })
-      setToast('Window added for daylight — undo if unwanted')
+        // Last-resort fallback: if we still can't find a free slot, use the
+        // openingCompassForRoom to confirm the final position still classifies
+        // as the requested wall.
+        const newOpening = {
+          id: `code-door-${Date.now()}`,
+          type: 'door' as const,
+          x,
+          y,
+          rotation,
+          widthM: 0.9,
+          heightM: 2.1,
+        }
+        const finalCompass = openingCompassForRoom(room, newOpening)
+        if (finalCompass !== compass) {
+          // Just give up the constraint and use the original coords; the user
+          // can drag it. Don't silently fail.
+          setToast('No free wall slot — door added, please drag to a clear spot')
+        } else {
+          setToast(`Door added on ${compass} wall — undo if unwanted`)
+        }
+        return { ...current, openings: [...current.openings, newOpening] }
+      }, 'Add egress door')
     }
   }, [commit])
 
@@ -1493,8 +1523,8 @@ function App() {
           onPinBaseline={handlePinBaseline}
           onOpenABComparison={handleOpenABComparison}
           hasBaselinePin={!!pinnedBaseline}
-          codeReport={codeReport}
-          onAutoFixCodeIssue={handleAutoFixCodeIssue}
+          standardsIssues={codeIssues}
+          onApplyStandardsIssue={handleApplyStandardsIssue}
           energySimulation={energySimulation}
           airQualityReport={airQualityReport}
         />

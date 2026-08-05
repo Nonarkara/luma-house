@@ -670,19 +670,20 @@ export default function Spatial3D({
             3D Roof
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 8px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
-            <span>Section Cut:</span>
+          <div className="spatial-section">
+            <span className="spatial-section-label">Section Cut</span>
             <input
               type="range"
+              className="spatial-section-range"
               min="0.5"
               max="4.5"
               step="0.1"
               value={sectionHeight}
               onChange={(event) => setSectionHeight(Number(event.target.value))}
-              style={{ width: 70, accentColor: 'var(--accent-primary, #3b82f6)' }}
               title={`3D section cut at ${sectionHeight.toFixed(1)} m — anything above is clipped`}
+              aria-label="3D section cut height"
             />
-            <span style={{ fontSize: '0.7rem', minWidth: 28, color: 'var(--accent-primary)' }}>{sectionHeight.toFixed(1)} m</span>
+            <span className="spatial-section-value">{sectionHeight.toFixed(1)} m</span>
           </div>
         </div>
       </div>
