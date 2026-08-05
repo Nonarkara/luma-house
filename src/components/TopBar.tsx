@@ -11,6 +11,7 @@ interface TopBarProps {
   exportPlan: () => void
   sharePlan: () => void
   onOpenShortcuts?: () => void
+  onToggleCatalog?: () => void
 }
 
 export const TopBar = React.memo(function TopBar({
@@ -22,6 +23,7 @@ export const TopBar = React.memo(function TopBar({
   exportPlan,
   sharePlan,
   onOpenShortcuts,
+  onToggleCatalog,
 }: TopBarProps) {
   return (
     <header className="topbar">
@@ -34,6 +36,16 @@ export const TopBar = React.memo(function TopBar({
       </div>
 
       <div className="top-actions">
+        {onToggleCatalog && (
+          <button
+            type="button"
+            className="button secondary"
+            onClick={onToggleCatalog}
+            style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+          >
+            + Furniture Catalog
+          </button>
+        )}
         {onOpenShortcuts && (
           <IconButton label="Keyboard shortcuts & visual legend (?)" onClick={onOpenShortcuts}>
             <HelpCircle className="w-4 h-4" />

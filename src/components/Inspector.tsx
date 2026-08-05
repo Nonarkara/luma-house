@@ -37,8 +37,10 @@ import {
   hygieneChecks,
   preferenceChecks,
 } from '../mockups/chinaApartment'
-import { buildDesignBrief, type AnalysisResult, type Suggestion, type ArchitecturalCodeReport, type CodeIssue } from '../analysis'
+import { buildDesignBrief, type AnalysisResult, type Suggestion, type ArchitecturalCodeReport, type CodeIssue, type EnergySimulationResult, type AirQualityReport } from '../analysis'
 import { ArchitecturalIntelligenceCard } from './ArchitecturalIntelligenceCard'
+import { EnergySimulationCard } from './EnergySimulationCard'
+import { synthesizeLayout } from '../concept/layoutSynthesizer'
 import { VariantThumbnail } from './VariantThumbnail'
 import type { CurrencyCode, Opening, PlanState, PlanTool, Room, SiteSpec, WorkspaceMode } from '../types'
 import {
@@ -114,6 +116,8 @@ export interface InspectorProps {
   hasBaselinePin?: boolean
   codeReport?: ArchitecturalCodeReport
   onAutoFixCodeIssue?: (issue: CodeIssue) => void
+  energySimulation?: EnergySimulationResult
+  airQualityReport?: AirQualityReport
 }
 
 export const Inspector = React.memo(function Inspector({
@@ -177,6 +181,8 @@ export const Inspector = React.memo(function Inspector({
   hasBaselinePin = false,
   codeReport,
   onAutoFixCodeIssue,
+  energySimulation,
+  airQualityReport,
 }: InspectorProps) {
 
 
@@ -324,8 +330,9 @@ export const Inspector = React.memo(function Inspector({
               </button>
             )}
             <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+              <button className="text-button" type="button" onClick={() => commit(synthesizeLayout({ style: 'courtyard' }))} style={{ flex: 1.2, color: 'var(--accent-emerald, #10b981)', fontWeight: 600 }}>★ AI Synthesize Layout</button>
               <button className="text-button" type="button" onClick={startBlank} style={{ flex: 1 }}>Blank canvas</button>
-              <button className="text-button" type="button" onClick={resetPlan} style={{ flex: 1 }}>Load sample</button>
+              <button className="text-button" type="button" onClick={resetPlan} style={{ flex: 1 }}>Sample</button>
             </div>
             <p className="legal-note" style={{ marginTop: 4 }}>AI trace is a draft — verify walls and openings before costing.</p>
           </section>
@@ -634,6 +641,7 @@ export const Inspector = React.memo(function Inspector({
 
       {!settingsOpen && mode === 'climate' && (
         <div className="inspector-content">
+          {energySimulation && <EnergySimulationCard energy={energySimulation} airQuality={airQualityReport} />}
           <section className="score-card climate-card">
             <div className="climate-overall">
               <strong>{climateResult.scores.overall}</strong>

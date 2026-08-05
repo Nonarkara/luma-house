@@ -6150,3 +6150,30 @@ summary:focus-visible {
   stroke-width: 0.4;
   stroke-dasharray: 2 2;
 }
+
+/* --- Floating Island Toolbar & Next-Gen CAD UX Styles --- */
+.toolbar-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.toolbar-pill-btn.is-active {
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+}
+
+.catalog-card-hover:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  transform: translateY(-2px);
+}
+
+.contextual-action-bar {
+  animation: contextBarPop 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes contextBarPop {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.92); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+

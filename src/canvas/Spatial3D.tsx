@@ -9,6 +9,7 @@ import { windFlowPotential } from '../analysis'
 import type { Compass } from '../analysis'
 import type { CameraWaypoint } from '../tour/guidedTour'
 import { nextWalkPosition } from './walkNavigation'
+import { Roof3D } from './Roof3D'
 
 const HEIGHT_MIN = 2.2
 const HEIGHT_MAX = 4.5
@@ -165,15 +166,18 @@ function RoomVolume({
   site,
   isSelected,
   onSelectRoom,
+  sectionHeight,
 }: {
   room: Room
   plan: PlanState
   site: SiteSpec
   isSelected: boolean
   onSelectRoom: (id: string | null) => void
+  sectionHeight?: number
 }) {
   const footprint = useMemo(() => roomFootprint(room, site), [room, site])
-  const height = roomHeight(room)
+  const fullHeight = roomHeight(room)
+  const height = sectionHeight !== undefined && sectionHeight < fullHeight ? sectionHeight : fullHeight
 
   const handleSelect = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
@@ -587,6 +591,11 @@ export default function Spatial3D({
   const [preset, setPreset] = useState<CameraPreset>('orbit')
   const [showSunRays, setShowSunRays] = useState(true)
   const [showAirPaths, setShowAirPaths] = useState(false)
+  const [showRoof, setShowRoof] = useState(false)
+  // Section plane height in meters — anything above this Y is clipped in the
+  // 3D view, which makes it easy to read the plan by slicing through the
+  // walls. Default 4.5 m = no clipping (most single-storey plans).
+  const [sectionHeight, setSectionHeight] = useState(4.5)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const controlsRef = useRef<any>(null)
 
@@ -653,6 +662,28 @@ export default function Spatial3D({
           >
             Air Paths
           </button>
+          <button
+            type="button"
+            className={`spatial-tb-btn toggle ${showRoof ? 'active-layer' : ''}`}
+            onClick={() => setShowRoof(!showRoof)}
+          >
+            3D Roof
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 8px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+            <span>Section Cut:</span>
+            <input
+              type="range"
+              min="0.5"
+              max="4.5"
+              step="0.1"
+              value={sectionHeight}
+              onChange={(event) => setSectionHeight(Number(event.target.value))}
+              style={{ width: 70, accentColor: 'var(--accent-primary, #3b82f6)' }}
+              title={`3D section cut at ${sectionHeight.toFixed(1)} m — anything above is clipped`}
+            />
+            <span style={{ fontSize: '0.7rem', minWidth: 28, color: 'var(--accent-primary)' }}>{sectionHeight.toFixed(1)} m</span>
+          </div>
         </div>
       </div>
 
@@ -689,6 +720,17 @@ export default function Spatial3D({
           <planeGeometry args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]} />
           <meshStandardMaterial color="#14161b" roughness={0.95} metalness={0} />
         </mesh>
+
+        {/* Section-cut plane — a translucent amber disc at sectionHeight that
+            signals "anything above this height is conceptually clipped". The
+            geometry below the plane stays visible; the plane is a visual
+            indicator + can be used to read interior volumes. */}
+        {sectionHeight < 4.4 && (
+          <mesh position={[0, sectionHeight, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={1}>
+            <planeGeometry args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]} />
+            <meshBasicMaterial color="#f59e0b" transparent opacity={0.18} depthWrite={false} />
+          </mesh>
+        )}
         <Grid
           position={[0, 0.005, 0]}
           args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]}
@@ -718,6 +760,7 @@ export default function Spatial3D({
                 site={site}
                 isSelected={room.id === selectedRoom}
                 onSelectRoom={onSelectRoom}
+                sectionHeight={sectionHeight}
               />
             ))}
         {!ghost && plan.openings.map((opening) => (
@@ -733,6 +776,7 @@ export default function Spatial3D({
         {!ghost && showAirPaths && (
           <AirflowPathVectors plan={plan} site={site} windFrom={windFrom} windSpeed={windSpeed} />
         )}
+        <Roof3D plan={plan} site={site} visible={showRoof} />
 
         {selected && <HeightHandle room={selected} site={site} onSetWallHeight={onSetWallHeight} />}
 

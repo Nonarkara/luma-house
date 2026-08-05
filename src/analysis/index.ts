@@ -25,6 +25,10 @@ export { egressRoutes } from './egress'
 export type { RoomEgressRoute, RoutePoint } from './egress'
 export { analyzeBuildingCode, CODE_MIN_CEILING_HEIGHT_M } from './buildingCode'
 export type { ArchitecturalCodeReport, CodeIssue } from './buildingCode'
+export { simulateEnergy } from './energySimulation'
+export type { EnergySimulationResult } from './energySimulation'
+export { analyzeAirQuality } from './airQuality'
+export type { AirQualityReport, RoomAirQuality } from './airQuality'
 
 const SCAN_DAY_DEFAULT = 172 // ~summer solstice (June 21 in northern hemisphere)
 

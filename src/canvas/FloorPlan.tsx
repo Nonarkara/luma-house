@@ -52,6 +52,8 @@ export const FloorPlan = React.memo(function FloorPlan({
   napkinRuler,
   rulerArmed,
   liveDragRect,
+  measureStart,
+  measureEnd,
   onRoomPointerDown,
   onOpeningPointerDown,
   onFurniturePointerDown,
@@ -86,6 +88,8 @@ export const FloorPlan = React.memo(function FloorPlan({
   napkinRuler?: NapkinCalibrationLine | null
   rulerArmed?: boolean
   liveDragRect?: { id: string; x: number; y: number; w: number; h: number } | null
+  measureStart?: { x: number; y: number } | null
+  measureEnd?: { x: number; y: number } | null
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
   onOpeningPointerDown: (event: ReactPointerEvent, opening: Opening) => void
   onFurniturePointerDown: (event: ReactPointerEvent, item: Furniture) => void
@@ -363,6 +367,39 @@ export const FloorPlan = React.memo(function FloorPlan({
               <circle cx={napkinRuler.p2.x} cy={napkinRuler.p2.y} r="1.5" fill="var(--accent-primary)" />
             </svg>
           )}
+          {measureStart && measureEnd && (() => {
+            const dx = ((measureEnd.x - measureStart.x) / 100) * site.w
+            const dy = ((measureEnd.y - measureStart.y) / 100) * site.h
+            const meters = Math.sqrt(dx * dx + dy * dy)
+            const feet = meters * 3.28084
+            const midX = (measureStart.x + measureEnd.x) / 2
+            const midY = (measureStart.y + measureEnd.y) / 2
+            return (
+              <svg className="draw-overlay measure-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <line
+                  x1={measureStart.x} y1={measureStart.y}
+                  x2={measureEnd.x} y2={measureEnd.y}
+                  stroke="var(--accent-primary)"
+                  strokeWidth="1.5"
+                  strokeDasharray="2 1.5"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <circle cx={measureStart.x} cy={measureStart.y} r="1.2" fill="var(--accent-primary)" />
+                <circle cx={measureEnd.x} cy={measureEnd.y} r="1.2" fill="var(--accent-primary)" />
+                <g transform={`translate(${Math.min(99, midX + 1)}, ${Math.max(1, midY - 4)})`}>
+                  <text
+                    x="0" y="0"
+                    fontSize="3.5"
+                    fill="var(--accent-primary)"
+                    fontFamily="'IBM Plex Mono', monospace"
+                    dominantBaseline="hanging"
+                  >
+                    {meters.toFixed(2)} m / {feet.toFixed(2)} ft
+                  </text>
+                </g>
+              </svg>
+            )
+          })()}
           <div className="dimension dimension-x"><span>{Math.round(site.w * 1000).toLocaleString()}</span></div>
           <div className="dimension dimension-y"><span>{Math.round(site.h * 1000).toLocaleString()}</span></div>
         </div>

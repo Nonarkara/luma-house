@@ -5,6 +5,7 @@ import { RenderGallery } from './canvas/RenderGallery'
 import { useCanvasViewport } from './canvas/useCanvasViewport'
 import { useRoomGestures } from './canvas/useRoomGestures'
 import { clientToPercent, moveOpening, moveRoom, strokeToRoomRect, type StrokePoint } from './canvas/geometry'
+import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
@@ -34,13 +35,17 @@ import {
   estimateApartmentCarbon,
 } from './mockups/chinaApartment'
 import { buildShareUrl, decodePlanFromHash, sanitizePlan } from './sharePlan'
-import { analyze, analyzeBuildingCode, daylightPotential, egressRoutes, heatFlowSnapshot, windFlowPotential, type CodeIssue } from './analysis'
+import { analyze, analyzeAirQuality, analyzeBuildingCode, daylightPotential, egressRoutes, heatFlowSnapshot, simulateEnergy, windFlowPotential, type CodeIssue } from './analysis'
 import type { AnalysisResult, Suggestion } from './analysis'
 import type { CanvasView, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
 import { TopBar } from './components/TopBar'
 import { AssistantBar } from './components/AssistantBar'
 import { Inspector } from './components/Inspector'
 import { JourneyRail } from './components/JourneyRail'
+import { FloatingToolbar } from './components/FloatingToolbar'
+import { ContextualActionBar } from './components/ContextualActionBar'
+import { FurnitureCatalogDrawer } from './components/FurnitureCatalogDrawer'
+import { synthesizeLayout } from './concept/layoutSynthesizer'
 import { WelcomeGate } from './components/WelcomeGate'
 import { ScienceDock } from './components/ScienceDock'
 import { ValueLens, type ValueLensMode } from './components/ValueLens'
@@ -142,6 +147,10 @@ function App() {
   // Gesture truth lives in refs, not state closures (see tasks/lessons.md).
   const rulerPointerRef = useRef<number | null>(null)
   const rulerLineRef = useRef<NapkinCalibrationLine | null>(null)
+  // Tape measure tool state — first click sets the start, second click sets the
+  // end and freezes the line. Mouse-move previews a live endpoint.
+  const [measureStart, setMeasureStart] = useState<{ x: number; y: number } | null>(null)
+  const [measureEnd, setMeasureEnd] = useState<{ x: number; y: number } | null>(null)
 
   const {
     viewport,
@@ -214,12 +223,16 @@ function App() {
     [plan, location],
   )
   const codeReport = useMemo(() => analyzeBuildingCode(plan), [plan])
+  const energySimulation = useMemo(() => simulateEnergy(plan, locations[location as keyof typeof locations]?.latitude ?? 31.23), [plan, location])
+  const airQualityReport = useMemo(() => analyzeAirQuality(plan), [plan])
   const carbon = useMemo(() => estimateApartmentCarbon(plan), [plan])
   const overlaps = useMemo(() => roomOverlaps(plan.rooms), [plan.rooms])
 
   const interior = useMemo(() => interiorBoq(plan, site, currency), [plan, site, currency])
   const [isTracing, setIsTracing] = useState(false)
   const [traceNote, setTraceNote] = useState<string | null>(null)
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false)
+  const [isMeasuring, setIsMeasuring] = useState(false)
   const isEmpty = plan.rooms.length === 0
   const isAuthoredSample = plan.rooms.length > 0 && plan.rooms.every((room) => chinaApartmentPlan.rooms.some((sampleRoom) => sampleRoom.id === room.id))
   const projectTitle = isAuthoredSample ? CHINA_PROJECT_NAME : 'Untitled sketch'
@@ -511,6 +524,13 @@ function App() {
         setLiveDragRect({ id: live.id, x: live.x, y: live.y, w: live.w, h: live.h })
       }
     }
+    // Tape measure live preview — update the endpoint while the user moves
+    if (isMeasuring && measureStart) {
+      const bounds = stageRef.current?.getBoundingClientRect()
+      if (bounds) {
+        setMeasureEnd(clientToPercent(event.clientX, event.clientY, bounds))
+      }
+    }
     if (rulerPointerRef.current === event.pointerId) {
       const bounds = stageRef.current?.getBoundingClientRect()
       if (!bounds || !rulerLineRef.current) return
@@ -570,6 +590,27 @@ function App() {
 
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (panMovedRef.current || isGesturing()) return
+
+    // Tape measure: first click sets the start, second click sets the end
+    // and freezes the line. A third click starts a new measurement.
+    if (isMeasuring) {
+      const bounds = stageRef.current?.getBoundingClientRect()
+      if (!bounds) return
+      const point = clientToPercent(event.clientX, event.clientY, bounds)
+      if (!measureStart) {
+        setMeasureStart(point)
+        setMeasureEnd(point)
+        setToast('Click again to set the end point')
+      } else {
+        setMeasureEnd(point)
+        const line = calculateMeasureDistance(measureStart, point, site.w, site.h)
+        setToast(`Distance: ${line.distanceMeters.toFixed(2)} m (${line.distanceFeet.toFixed(2)} ft)`)
+        // Reset start so the next click starts a new measurement
+        setMeasureStart(null)
+      }
+      return
+    }
+
     if (activeTool === 'draw') return
     if (activeTool === 'select') {
       if (event.target === event.currentTarget || (event.target as HTMLElement).classList.contains('plan-canvas')) {
@@ -584,7 +625,7 @@ function App() {
     commit((current) => ({ ...current, openings: [...current.openings, opening] }), `Place ${opening.type}`)
     setActiveTool('select')
     setToast(`${opening.type === 'window' ? 'Window' : 'Door'} placed`)
-  }, [activeTool, commit, isGesturing, placeOpeningAt])
+  }, [activeTool, commit, isGesturing, isMeasuring, measureStart, placeOpeningAt, site.h, site.w])
 
   const addRoom = useCallback(() => {
     const index = plan.rooms.length + 1
@@ -721,6 +762,29 @@ function App() {
       }
       if (meta) return
 
+      // Tool shortcuts — V/W/O/D/M/S, advertised by the FloatingToolbar.
+      // The earlier editable check at the top of this handler already
+      // bails out for input/textarea/contenteditable, so we just check
+      // we're in a tool-shortcut key.
+      if (!meta) {
+        const toolKey = event.key.toLowerCase()
+        if (toolKey === 'v') { event.preventDefault(); setActiveTool('select'); return }
+        if (toolKey === 'w') { event.preventDefault(); setActiveTool('draw'); return }
+        if (toolKey === 'o') { event.preventDefault(); setActiveTool('window'); return }
+        if (toolKey === 'd') { event.preventDefault(); setActiveTool('door'); return }
+        if (toolKey === 'm') { event.preventDefault(); setIsMeasuring((prev) => !prev); return }
+        if (toolKey === 's') {
+          event.preventDefault()
+          if (plan.rooms.length === 0) {
+            setToast('Draw a room before synthesizing a layout')
+          } else {
+            commit(synthesizeLayout({ style: 'courtyard' }), 'Synthesize layout')
+            setToast('Layout synthesized — courtyard style')
+          }
+          return
+        }
+      }
+
       if (event.key === 'Escape') {
         setSelectedRoom(null)
         setSelectedOpening(null)
@@ -731,6 +795,9 @@ function App() {
         setScenariosOpen(false)
         setShortcutsOpen(false)
         setWalkMode(false)
+        setIsMeasuring(false)
+        setMeasureStart(null)
+        setMeasureEnd(null)
         return
       }
       if (event.key.toLowerCase() === 't') {
@@ -1006,6 +1073,7 @@ function App() {
         exportPlan={exportPlan}
         sharePlan={shareProject}
         onOpenShortcuts={() => setShortcutsOpen((prev) => !prev)}
+        onToggleCatalog={() => setIsCatalogOpen((prev) => !prev)}
       />
 
       <div className="workspace">
@@ -1078,6 +1146,8 @@ function App() {
                 napkinRuler={rulerLine}
                 rulerArmed={rulerArmed}
                 liveDragRect={liveDragRect}
+                measureStart={measureStart}
+                measureEnd={measureEnd}
                 onRoomPointerDown={onRoomPointerDown}
                 onOpeningPointerDown={onOpeningPointerDown}
                 onFurniturePointerDown={onFurniturePointerDown}
@@ -1309,6 +1379,43 @@ function App() {
               </div>
             )}
             {view === 'plan' && (
+              <FloatingToolbar
+                activeTool={activeTool}
+                setActiveTool={setActiveTool}
+                isMeasuring={isMeasuring}
+                onToggleMeasure={() => setIsMeasuring(!isMeasuring)}
+                onSynthesize={() => commit(synthesizeLayout({ style: 'courtyard' }))}
+              />
+            )}
+
+            {view === 'plan' && (room || selectedOpening) && (
+              <ContextualActionBar
+                room={room}
+                opening={plan.openings.find((item) => item.id === selectedOpening)}
+                site={site}
+                onUpdateRoom={(updates) => updateRoom(updates)}
+                onDeleteRoom={() => deleteRoom()}
+                onUpdateOpening={(id, updates) => updateOpening(id, updates)}
+                onDeleteOpening={() => deleteOpening()}
+              />
+            )}
+
+            <FurnitureCatalogDrawer
+              open={isCatalogOpen}
+              onClose={() => setIsCatalogOpen(false)}
+              onAddFurniture={(kind) => {
+                commit({
+                  ...plan,
+                  furniture: [
+                    ...plan.furniture,
+                    { id: `furn-${Date.now()}`, kind, x: 50, y: 50, rotated: false },
+                  ],
+                })
+                setIsCatalogOpen(false)
+              }}
+            />
+
+            {view === 'plan' && (
               <div className="zoom-control">
                 <button type="button" onClick={zoomOut} aria-label="Zoom out" disabled={!canZoomOut}>−</button>
                 <button type="button" className="zoom-label" onClick={resetView} aria-label="Fit plan to view">{zoomPercent === 100 ? 'Fit' : `${zoomPercent}%`}</button>
@@ -1388,6 +1495,8 @@ function App() {
           hasBaselinePin={!!pinnedBaseline}
           codeReport={codeReport}
           onAutoFixCodeIssue={handleAutoFixCodeIssue}
+          energySimulation={energySimulation}
+          airQualityReport={airQualityReport}
         />
       </div>
       <WelcomeGate
