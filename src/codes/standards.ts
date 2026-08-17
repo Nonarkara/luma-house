@@ -134,21 +134,14 @@ export interface Thresholds {
   minCeilingHeightM: number
   /** Minimum door clear opening width. ADA 404.2.3 (815 mm = 32 in). */
   minDoorClearWidthM: number
-  /** Minimum corridor / aisle clear width. IBC 1005.1. */
-  minAisleWidthM: number
-  /** Maximum dead-end corridor length. IBC 1003.3. */
-  maxDeadEndM: number
+  /** Minimum door height. IBC 1010.1.1 (2.03 m = 80 in). */
+  minDoorHeightM: number
   /** Minimum fresh-air rate per person, L/s. ASHRAE 62.1. */
   freshAirLsPerPerson: number
-  /** Minimum outside-air ACH for residential. ASHRAE 62.1. */
-  minAch: number
   /** Kitchen intermittent exhaust, L/s. ASHRAE 62.1. */
   kitchenExhaustLs: number
   /** Bathroom intermittent exhaust, L/s. ASHRAE 62.1. */
   bathroomExhaustLs: number
-  /** Max cooling PMV for ISO 7730 comfort. */
-  maxHeatingPmv: number
-  minCoolingPmv: number
   /** Default occupants per room kind. ASHRAE 62.1 default occupancy. */
   occupantsPerKind: Record<string, number>
 }
@@ -157,14 +150,10 @@ export const DEFAULT_THRESHOLDS: Thresholds = {
   minHabitableAreaM2: 6.5,    // 70 sq ft per IBC 1208.1
   minCeilingHeightM: 2.13,    // 7'-0" per IBC 1208.2
   minDoorClearWidthM: 0.81,   // 32 in per ADA 404.2.3
-  minAisleWidthM: 0.91,       // 36 in per IBC 1005.1
-  maxDeadEndM: 6.1,           // 20 ft per IBC 1003.3 (conservative residential)
+  minDoorHeightM: 2.03,       // 80 in per IBC 1010.1.1
   freshAirLsPerPerson: 7.5,   // ASHRAE 62.1 Table 5.5.1 (residential)
-  minAch: 0.35,                // ASHRAE 62.1 residential default
-  kitchenExhaustLs: 25,        // ASHRAE 62.1 kitchen continuous
-  bathroomExhaustLs: 10,       // ASHRAE 62.1 bathroom intermittent
-  maxHeatingPmv: 0.5,
-  minCoolingPmv: -0.5,
+  kitchenExhaustLs: 25,       // ASHRAE 62.1 kitchen intermittent
+  bathroomExhaustLs: 10,      // ASHRAE 62.1 bathroom intermittent
   occupantsPerKind: {
     living: 3,
     kitchen: 2,

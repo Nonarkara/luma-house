@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clampRoom, moveRoom, resizeRoom, scaleRoomFromCenter, snapOpeningToWall, strokeToRoomRect } from './geometry'
+import { appendStrokePoint, clampRoom, clientToPercent, moveRoom, resizeRoom, scaleRoomFromCenter, snapOpeningToWall, strokeToRoomRect } from './geometry'
 import type { Opening, Room } from '../types'
 
 const base: Room = { id: 'r1', name: 'Test', kind: 'studio', x: 20, y: 20, w: 30, h: 30 }
@@ -55,6 +55,45 @@ describe('geometry', () => {
     expect(strokeToRoomRect([{ x: 10, y: 10 }, { x: 11, y: 10 }])).toBeNull()
     const line = Array.from({ length: 20 }, (_, i) => ({ x: 10 + i * 3, y: 20 + (i % 2) }))
     expect(strokeToRoomRect(line)).toBeNull()
+  })
+
+  it('reduces a dense pen stroke without overflowing the call stack', () => {
+    const points = Array.from({ length: 200_000 }, (_, index) => ({
+      x: 10 + (index % 70),
+      y: 15 + (index % 60),
+    }))
+    expect(strokeToRoomRect(points)).toEqual({ x: 10, y: 15, w: 69, h: 59 })
+  })
+
+  it('bounds live stroke samples while preserving the newest point', () => {
+    let points: Array<{ x: number; y: number }> = []
+    for (let index = 0; index < 10_000; index += 1) {
+      points = appendStrokePoint(points, { x: index, y: index % 100 })
+    }
+    expect(points.length).toBeLessThanOrEqual(512)
+    expect(points[points.length - 1]).toEqual({ x: 9_999, y: 99 })
+  })
+
+  it('skips sub-threshold stroke samples so a jittery pointer does not fill the cap', () => {
+    const points = appendStrokePoint(
+      appendStrokePoint([{ x: 10, y: 10 }], { x: 10.05, y: 10.05 }),
+      { x: 20, y: 24 },
+    )
+    expect(points).toEqual([{ x: 10, y: 10 }, { x: 20, y: 24 }])
+  })
+
+  it('ignores invalid stroke samples and keeps pointer coordinates finite', () => {
+    expect(strokeToRoomRect([
+      { x: Number.NaN, y: 10 },
+      { x: 10, y: 10 },
+      { x: 30, y: 40 },
+    ])).toEqual({ x: 10, y: 10, w: 20, h: 30 })
+
+    const zeroBounds = { left: 0, top: 0, width: 0, height: 0 } as DOMRect
+    expect(clientToPercent(20, 20, zeroBounds)).toBeNull()
+
+    const bounds = { left: 10, top: 20, width: 100, height: 200 } as DOMRect
+    expect(clientToPercent(-50, 500, bounds)).toEqual({ x: 0, y: 100 })
   })
 
   it('snaps a nearby opening onto the closest wall with matching rotation', () => {

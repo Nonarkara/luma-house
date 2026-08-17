@@ -41,6 +41,10 @@ export interface Furniture {
   x: number
   y: number
   rotated: boolean
+  /** Explicit width in meters — overrides the generic catalog spec for this piece. */
+  wM?: number
+  /** Explicit depth in meters — overrides the generic catalog spec for this piece. */
+  dM?: number
 }
 
 export interface EnvelopeAssemblies {

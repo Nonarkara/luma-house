@@ -452,7 +452,7 @@ export const Inspector = React.memo(function Inspector({
                       <span className="room-data-number">{areaM2.toFixed(1)}</span>
                       <span className="room-data-unit">m²</span>
                       <StandardsBadge
-                        ref="IBC 1208.1"
+                        codeRef="IBC 1208.1"
                         severity={areaPasses ? 'info' : worstSev}
                         name="IBC 1208.1 — Minimum Habitable Area"
                         inline
@@ -473,7 +473,7 @@ export const Inspector = React.memo(function Inspector({
                           {ceilingM.toFixed(2)} m
                           {' '}
                           <StandardsBadge
-                            ref="IBC 1208.2"
+                            codeRef="IBC 1208.2"
                             severity={ceilingPasses ? 'info' : worstSev}
                             name="IBC 1208.2 — Minimum Ceiling Height"
                             inline
@@ -917,7 +917,7 @@ export const Inspector = React.memo(function Inspector({
                         {tags.map((t) => (
                           <StandardsBadge
                             key={t.ref}
-                            ref={t.ref}
+                            codeRef={t.ref}
                             severity={t.sev}
                             name={t.name}
                             inline

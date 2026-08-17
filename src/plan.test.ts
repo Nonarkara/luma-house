@@ -180,4 +180,17 @@ describe('site scale', () => {
     // On a 10×10 site: each is 5×5=25 m², total 50
     expect(totalAreaFor(rooms, { w: 10, h: 10, unit: 1 })).toBe(50)
   })
+
+  it('per-piece dimension overrides beat the generic kind spec', () => {
+    // A "Single Bed 1.2 × 2.0 m" from the catalog must render at that size,
+    // not at the generic bed spec (2.0 × 1.8 m) the kind would imply.
+    const single = { id: 'f', kind: 'bed' as const, x: 10, y: 10, rotated: false, wM: 1.2, dM: 2.0 }
+    const rect = furnitureRectFor(single, { w: 14, h: 10, unit: 1 })
+    expect(rect.w).toBeCloseTo((1.2 / 14) * 100, 5)
+    expect(rect.h).toBeCloseTo((2.0 / 10) * 100, 5)
+    // Rotation still swaps the override axes.
+    const rotatedRect = furnitureRectFor({ ...single, rotated: true }, { w: 14, h: 10, unit: 1 })
+    expect(rotatedRect.w).toBeCloseTo((2.0 / 14) * 100, 5)
+    expect(rotatedRect.h).toBeCloseTo((1.2 / 10) * 100, 5)
+  })
 })

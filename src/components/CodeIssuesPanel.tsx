@@ -15,7 +15,7 @@ const SEVERITY_ORDER: Record<CodeIssue['severity'], number> = {
   info: 2,
 }
 
-const SEVERITY_LABEL: Record<CodeIssue['severity'], string> = {
+const SEVERITY_SHORT: Record<CodeIssue['severity'], string> = {
   critical: 'CRIT',
   warning: 'WARN',
   info: 'INFO',
@@ -56,7 +56,7 @@ export const CodeIssuesPanel: React.FC<CodeIssuesPanelProps> = ({
   return (
     <div className="code-issues-panel">
       <div className="code-issues-summary">
-        <span>{sorted.length} checked</span>
+        <span>{counts.critical + counts.warning + counts.info} findings</span>
         <span className="code-issues-summary-counts">
           <span className="count-critical">{counts.critical} critical</span>
           <span className="count-warning">{counts.warning} warn</span>
@@ -67,7 +67,6 @@ export const CodeIssuesPanel: React.FC<CodeIssuesPanelProps> = ({
         const refShort = issue.ref.replace(/^IBC-/, 'IBC ').replace(/^ASHRAE-/, 'ASHRAE ').replace(/^ADA-/, 'ADA ').replace(/^ISO-/, 'ISO ')
         const refDisplay = refShort.replace(/IBC /, 'IBC ')
         const roomName = roomNameById(issue.roomId)
-        const openingRoomName = issue.openingId ? null : null
         return (
           <div key={`${issue.ref}-${issue.roomId ?? ''}-${issue.openingId ?? ''}-${index}`} className="code-issue-row">
             <div className="code-issue-ref">
@@ -77,13 +76,12 @@ export const CodeIssuesPanel: React.FC<CodeIssuesPanelProps> = ({
               >
                 {refDisplay}
               </span>
-              <span className="code-issue-sev">{SEVERITY_LABEL[issue.severity]}</span>
+              <span className="code-issue-sev">{SEVERITY_SHORT[issue.severity]}</span>
             </div>
             <div className="code-issue-body-block">
               <div className="code-issue-title">
                 {issue.title}
                 {roomName && <span className="code-issue-room"> · {roomName}</span>}
-                {openingRoomName && <span className="code-issue-room"> · {openingRoomName}</span>}
               </div>
               <p className="code-issue-body">{issue.body}</p>
               {issue.fixAction && onApply && (
@@ -117,8 +115,6 @@ function fixLabel(action: NonNullable<CodeIssue['fixAction']>): string {
     case 'set_ceiling':
       return `Raise ceiling to ${action.meters.toFixed(2)} m`
     case 'add_exterior_door':
-      return `Add door on ${action.compass} wall`
-    case 'add_opening_for_egress':
-      return `Add egress opening on ${action.compass}`
+      return 'Add exterior door'
   }
 }

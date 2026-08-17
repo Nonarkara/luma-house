@@ -43,7 +43,19 @@ function sanitizeOpening(raw: unknown): Opening | null {
   const y = num(candidate.y)
   if (!id || x === null || y === null) return null
   if (candidate.type !== 'window' && candidate.type !== 'door') return null
-  return { id, type: candidate.type, x, y, rotation: candidate.rotation === 90 ? 90 : 0 }
+  // Preserve explicit dimensions — the code check and BOQ read them, and
+  // dropping them would silently reset a 0.7 m door to the 0.9 m default.
+  const widthM = num(candidate.widthM)
+  const heightM = num(candidate.heightM)
+  return {
+    id,
+    type: candidate.type,
+    x,
+    y,
+    rotation: candidate.rotation === 90 ? 90 : 0,
+    ...(widthM !== null && widthM > 0 && widthM < 10 ? { widthM } : {}),
+    ...(heightM !== null && heightM > 0 && heightM < 10 ? { heightM } : {}),
+  }
 }
 
 function sanitizeFurniture(raw: unknown): Furniture | null {
@@ -54,7 +66,18 @@ function sanitizeFurniture(raw: unknown): Furniture | null {
   const y = num(candidate.y)
   if (!id || x === null || y === null) return null
   if (!FURNITURE_KINDS.includes(candidate.kind as Furniture['kind'])) return null
-  return { id, kind: candidate.kind as Furniture['kind'], x, y, rotated: candidate.rotated === true }
+  const wM = num(candidate.wM)
+  const dM = num(candidate.dM)
+  return {
+    id,
+    kind: candidate.kind as Furniture['kind'],
+    x,
+    y,
+    rotated: candidate.rotated === true,
+    // Per-piece dimension overrides (catalog items with specific sizes).
+    ...(wM !== null && wM > 0 && wM < 20 ? { wM } : {}),
+    ...(dM !== null && dM > 0 && dM < 20 ? { dM } : {}),
+  }
 }
 
 /**

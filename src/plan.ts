@@ -109,8 +109,17 @@ export const furnitureCatalog: Record<FurnitureKind, { label: string; w: number;
   desk: { label: 'Desk', w: 1.4, d: 0.7 },
 }
 
-export function furnitureRectFor(item: Furniture, site: SiteSpec): { x: number; y: number; w: number; h: number } {
+/**
+ * Effective dimensions of one furniture piece: explicit per-piece overrides
+ * (catalog items like a single bed vs a king) win over the generic kind spec.
+ */
+export function furnitureSpecFor(item: Furniture): { w: number; d: number } {
   const spec = furnitureCatalog[item.kind]
+  return { w: item.wM ?? spec.w, d: item.dM ?? spec.d }
+}
+
+export function furnitureRectFor(item: Furniture, site: SiteSpec): { x: number; y: number; w: number; h: number } {
+  const spec = furnitureSpecFor(item)
   const widthMeters = item.rotated ? spec.d : spec.w
   const depthMeters = item.rotated ? spec.w : spec.d
   return {

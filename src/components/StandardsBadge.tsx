@@ -3,7 +3,7 @@ import type { Severity } from '../codes/standards'
 
 export interface StandardsBadgeProps {
   /** Standard ref id, e.g. "IBC-1208.2" (catalogued) or already-rendered "IBC 1208.2". */
-  ref: string
+  codeRef: string
   /** Severity — controls the border + text color. */
   severity: Severity
   /** Long name for the tooltip. */
@@ -21,7 +21,7 @@ export interface StandardsBadgeProps {
  * the only signal — the value of the number is what matters.
  */
 export const StandardsBadge: React.FC<StandardsBadgeProps> = ({
-  ref,
+  codeRef,
   severity,
   name,
   inline = false,
@@ -31,10 +31,10 @@ export const StandardsBadge: React.FC<StandardsBadgeProps> = ({
   return (
     <span
       className={className}
-      title={name ?? ref}
-      aria-label={name ? `${ref} — ${name}` : ref}
+      title={name ?? codeRef}
+      aria-label={name ? `${codeRef} — ${name}` : codeRef}
     >
-      {ref}
+      {codeRef}
     </span>
   )
 }

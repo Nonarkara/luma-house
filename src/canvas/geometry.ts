@@ -141,16 +141,40 @@ export interface StrokePoint {
   y: number
 }
 
+const MAX_STROKE_POINTS = 512
+const MIN_STROKE_STEP = 0.15
+
+export function appendStrokePoint(points: StrokePoint[], point: StrokePoint): StrokePoint[] {
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return points
+  const last = points[points.length - 1]
+  if (last && Math.hypot(point.x - last.x, point.y - last.y) < MIN_STROKE_STEP) return points
+  if (points.length < MAX_STROKE_POINTS) return [...points, point]
+
+  // Keep the visible stroke responsive during long pen gestures. Every time the
+  // cap is reached, retain alternating samples plus the latest point.
+  return [...points.filter((_, index) => index % 2 === 0), point]
+}
+
 // ponytail: the stroke's bounding box — an L-shaped stroke becomes its enclosing
 // rectangle. Polygon rooms come when the model grows non-rectangular walls.
 export function strokeToRoomRect(points: StrokePoint[]): Pick<Room, 'x' | 'y' | 'w' | 'h'> | null {
   if (points.length < 2) return null
-  const xs = points.map((point) => point.x)
-  const ys = points.map((point) => point.y)
-  const minX = Math.min(...xs)
-  const minY = Math.min(...ys)
-  const w = Math.max(...xs) - minX
-  const h = Math.max(...ys) - minY
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  let finitePoints = 0
+  for (const point of points) {
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) continue
+    minX = Math.min(minX, point.x)
+    minY = Math.min(minY, point.y)
+    maxX = Math.max(maxX, point.x)
+    maxY = Math.max(maxY, point.y)
+    finitePoints += 1
+  }
+  if (finitePoints < 2) return null
+  const w = maxX - minX
+  const h = maxY - minY
   // A tap or a single line is not a room.
   if (w < 6 || h < 6) return null
   return clampRoom({
@@ -165,9 +189,21 @@ export function clientToPercent(
   clientX: number,
   clientY: number,
   bounds: DOMRect,
-): { x: number; y: number } {
+): { x: number; y: number } | null {
+  if (
+    !Number.isFinite(clientX) ||
+    !Number.isFinite(clientY) ||
+    !Number.isFinite(bounds.left) ||
+    !Number.isFinite(bounds.top) ||
+    !Number.isFinite(bounds.width) ||
+    !Number.isFinite(bounds.height) ||
+    bounds.width <= 0 ||
+    bounds.height <= 0
+  ) {
+    return null
+  }
   return {
-    x: ((clientX - bounds.left) / bounds.width) * 100,
-    y: ((clientY - bounds.top) / bounds.height) * 100,
+    x: Math.max(0, Math.min(100, ((clientX - bounds.left) / bounds.width) * 100)),
+    y: Math.max(0, Math.min(100, ((clientY - bounds.top) / bounds.height) * 100)),
   }
 }

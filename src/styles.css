@@ -683,7 +683,15 @@ button:active {
 .tool-draw .room,
 .tool-draw .opening,
 .tool-draw .furniture,
-.tool-draw .resize-handle {
+.tool-draw .resize-handle,
+.tool-window .room,
+.tool-window .opening,
+.tool-window .furniture,
+.tool-window .resize-handle,
+.tool-door .room,
+.tool-door .opening,
+.tool-door .furniture,
+.tool-door .resize-handle {
   pointer-events: none;
 }
 
@@ -6453,6 +6461,38 @@ summary:focus-visible {
 .catalog-close-icon {
   width: 14px;
   height: 14px;
+}
+
+.catalog-search {
+  padding: 8px 12px 0;
+}
+
+.catalog-search input {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--axiom-mute, #2a2c30);
+  border-radius: 0;
+  appearance: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.catalog-search input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.catalog-search input:focus-visible {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: 0;
+}
+
+.catalog-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 16px 14px;
+  color: var(--text-tertiary);
 }
 
 .catalog-tabs {

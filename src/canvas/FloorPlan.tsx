@@ -62,6 +62,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   onCanvasPointerDown,
   onCanvasPointerMove,
   onCanvasPointerUp,
+  onCanvasPointerCancel,
   onCanvasClick,
   stageRef,
 }: {
@@ -98,6 +99,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   onCanvasPointerDown: (event: ReactPointerEvent) => void
   onCanvasPointerMove: (event: ReactPointerEvent) => void
   onCanvasPointerUp: (event: ReactPointerEvent) => void
+  onCanvasPointerCancel: (event: ReactPointerEvent) => void
   onCanvasClick: (event: React.MouseEvent<HTMLDivElement>) => void
   stageRef: RefObject<HTMLDivElement>
 }) {
@@ -118,7 +120,7 @@ export const FloorPlan = React.memo(function FloorPlan({
         onGesturePointerUp(event)
       }}
       onPointerCancel={(event) => {
-        onCanvasPointerUp(event)
+        onCanvasPointerCancel(event)
         onGesturePointerUp(event)
       }}
       onClick={onCanvasClick}
@@ -305,7 +307,9 @@ export const FloorPlan = React.memo(function FloorPlan({
                 className={`furniture ${selectedFurniture === item.id ? 'is-selected' : ''} ${furnitureConflicts.has(item.id) ? 'is-conflict' : ''}`}
                 style={{ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%` }}
                 onPointerDown={(event) => onFurniturePointerDown(event, item)}
-                onClick={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  if (activeTool === 'select') event.stopPropagation()
+                }}
                 aria-label={`${spec.label}, ${spec.w} by ${spec.d} meters${furnitureConflicts.has(item.id) ? ', blocks a door swing' : ''}`}
               >
                 <span>{spec.label}</span>
@@ -325,7 +329,9 @@ export const FloorPlan = React.memo(function FloorPlan({
                 title={`${opening.type} (${w.toFixed(1)}m × ${h.toFixed(1)}m)`}
                 aria-label={`${opening.type} opening ${w.toFixed(1)} by ${h.toFixed(1)} meters`}
                 onPointerDown={(event) => onOpeningPointerDown(event, opening)}
-                onClick={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  if (activeTool === 'select') event.stopPropagation()
+                }}
               >
                 {opening.type === 'door' && <i />}
                 {isSel && (

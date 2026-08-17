@@ -162,11 +162,14 @@ export function useRoomGestures({
 
   const onRoomPointerDown = useCallback(
     (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => {
+      // Non-select tools belong to the canvas. Let their pointer event bubble so
+      // a new room can be sketched over an existing plan and openings can be
+      // placed on room surfaces.
+      if (activeTool !== 'select') return
       event.stopPropagation()
       setSelectedRoom(room.id)
       setSelectedOpening(null)
       setSelectedFurniture(null)
-      if (activeTool !== 'select') return
 
       const existing = gestureRef.current
       if (existing?.kind === 'move-room' && existing.roomId === room.id && !handle) {
@@ -198,11 +201,11 @@ export function useRoomGestures({
 
   const onOpeningPointerDown = useCallback(
     (event: ReactPointerEvent, opening: Opening) => {
+      if (activeTool !== 'select') return
       event.stopPropagation()
       setSelectedOpening(opening.id)
       setSelectedRoom(null)
       setSelectedFurniture(null)
-      if (activeTool !== 'select') return
       gestureRef.current = {
         kind: 'move-opening',
         pointerIds: [event.pointerId],
@@ -219,11 +222,11 @@ export function useRoomGestures({
 
   const onFurniturePointerDown = useCallback(
     (event: ReactPointerEvent, item: Furniture) => {
+      if (activeTool !== 'select') return
       event.stopPropagation()
       setSelectedFurniture(item.id)
       setSelectedRoom(null)
       setSelectedOpening(null)
-      if (activeTool !== 'select') return
       gestureRef.current = {
         kind: 'move-furniture',
         pointerIds: [event.pointerId],
@@ -256,7 +259,9 @@ export function useRoomGestures({
     (clientX: number, clientY: number) => {
       const bounds = stageBounds()
       if (!bounds || (activeTool !== 'window' && activeTool !== 'door')) return null
-      const { x, y } = clientToPercent(clientX, clientY, bounds)
+      const point = clientToPercent(clientX, clientY, bounds)
+      if (!point) return null
+      const { x, y } = point
       const rotation: 0 | 90 = Math.min(y, 100 - y) < Math.min(x, 100 - x) ? 0 : 90
       return snapOpeningToWall(
         {

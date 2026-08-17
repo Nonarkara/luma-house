@@ -24,7 +24,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
 }) => {
   const tools: Array<{ id: PlanTool; label: string; shortcut: string; icon: typeof MousePointer2 }> = [
     { id: 'select', label: 'Select & Move', shortcut: 'V', icon: MousePointer2 },
-    { id: 'draw', label: 'Draw Wall', shortcut: 'W', icon: Pencil },
+    { id: 'draw', label: 'Draw Room', shortcut: 'W', icon: Pencil },
     { id: 'window', label: 'Place Window', shortcut: 'O', icon: PanelLeftClose },
     { id: 'door', label: 'Place Door', shortcut: 'D', icon: DoorOpen },
   ]

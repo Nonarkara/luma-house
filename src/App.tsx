@@ -4,7 +4,7 @@ import { FloorPlan } from './canvas/FloorPlan'
 import { RenderGallery } from './canvas/RenderGallery'
 import { useCanvasViewport } from './canvas/useCanvasViewport'
 import { useRoomGestures } from './canvas/useRoomGestures'
-import { clientToPercent, moveOpening, moveRoom, strokeToRoomRect, type StrokePoint } from './canvas/geometry'
+import { appendStrokePoint, clientToPercent, moveOpening, moveRoom, strokeToRoomRect, type StrokePoint } from './canvas/geometry'
 import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { generateConceptPhoto } from './concept/generateConcept'
@@ -24,6 +24,8 @@ function blankPlan(): PlanState {
     site: defaultSite(),
   }
 }
+
+const DRAW_HINT = 'Drag a rectangle for the room — it snaps to the grid'
 import {
   CHINA_PROJECT_KEY,
   CHINA_PROJECT_LOCATION,
@@ -73,8 +75,7 @@ import { comparePlans } from './analysis/abComparison'
 import { ABComparisonModal } from './components/ABComparisonModal'
 import type { ABComparisonState, CurrencyCode, Opening } from './types'
 import { readString } from './storage/keys'
-import { checkPlan, type CodeIssue as StandardsCodeIssue } from './codes/checkPlan'
-import { openingCompassForRoom } from './analysis/walls'
+import { checkPlan, exteriorDoorPlacement, type CodeIssue as StandardsCodeIssue } from './codes/checkPlan'
 
 
 function readSavedPlan(): PlanState {
@@ -268,66 +269,29 @@ function App() {
       setToast(`Ceiling raised to ${action.meters.toFixed(2)} m — undo if unwanted`)
       return
     }
-    if (action.type === 'add_exterior_door' || action.type === 'add_opening_for_egress') {
-      const { roomId, compass } = action
-      commit((current) => {
-        const room = current.rooms.find((r) => r.id === roomId)
-        if (!room) return current
-        // Place the new door on the midpoint of the chosen exterior wall.
-        let x = room.x + room.w / 2
-        let y = room.y + room.h / 2
-        let rotation: 0 | 90 = 0
-        if (compass === 'N') { y = room.y; rotation = 0 }
-        else if (compass === 'S') { y = room.y + room.h; rotation = 0 }
-        else if (compass === 'E') { x = room.x + room.w; rotation = 90 }
-        else if (compass === 'W') { x = room.x; rotation = 90 }
-        // Verify the chosen wall is still exterior after the new door is added —
-        // we can't have two doors at the exact same wall position. If the spot
-        // is already taken, shift along the wall until we find a free slot.
-        const isOccupied = (px: number, py: number) =>
-          current.openings.some((op) => Math.abs(op.x - px) < 0.5 && Math.abs(op.y - py) < 0.5)
-        if (isOccupied(x, y)) {
-          // Try sliding along the wall in 5% steps (≈ 0.5 m on a 10 m site).
-          for (let step = 1; step <= 8; step += 1) {
-            const offset = step * 5
-            let cand: { x: number; y: number; rot: 0 | 90 }
-            if (compass === 'N' || compass === 'S') {
-              cand = { x: Math.min(room.x + room.w - 5, Math.max(room.x + 5, x - 5 + offset)), y, rot: rotation }
-            } else {
-              cand = { x, y: Math.min(room.y + room.h - 5, Math.max(room.y + 5, y - 5 + offset)), rot: rotation }
-            }
-            if (!isOccupied(cand.x, cand.y)) {
-              x = cand.x
-              y = cand.y
-              rotation = cand.rot
-              break
-            }
-          }
-        }
-        // Last-resort fallback: if we still can't find a free slot, use the
-        // openingCompassForRoom to confirm the final position still classifies
-        // as the requested wall.
-        const newOpening = {
-          id: `code-door-${Date.now()}`,
-          type: 'door' as const,
-          x,
-          y,
-          rotation,
-          widthM: 0.9,
-          heightM: 2.1,
-        }
-        const finalCompass = openingCompassForRoom(room, newOpening)
-        if (finalCompass !== compass) {
-          // Just give up the constraint and use the original coords; the user
-          // can drag it. Don't silently fail.
-          setToast('No free wall slot — door added, please drag to a clear spot')
-        } else {
-          setToast(`Door added on ${compass} wall — undo if unwanted`)
-        }
-        return { ...current, openings: [...current.openings, newOpening] }
-      }, 'Add egress door')
+    if (action.type === 'add_exterior_door') {
+      // Derive the placement before the updater — the updater stays pure and
+      // toasts fire once, not inside setPlan (StrictMode runs updaters twice).
+      const placement = exteriorDoorPlacement(plan, action.roomId)
+      if (!placement) {
+        setToast('No exterior wall on that room — connect it through a door to a room that has one')
+        return
+      }
+      const newOpening: Opening = {
+        id: `code-door-${Date.now()}`,
+        type: 'door',
+        x: placement.x,
+        y: placement.y,
+        rotation: placement.rotation,
+        widthM: 0.9,
+        heightM: 2.1,
+      }
+      commit((current) => ({ ...current, openings: [...current.openings, newOpening] }), 'Add egress door')
+      setToast(placement.crowded
+        ? `Every ${placement.compass}-wall slot was taken — door added at the midpoint, drag it clear`
+        : `Exterior door added on the ${placement.compass} wall — undo if unwanted`)
     }
-  }, [commit])
+  }, [commit, plan])
 
   const updateOpening = useCallback((id: string, updates: Partial<Opening>) => {
     commit((current) => ({
@@ -500,18 +464,51 @@ function App() {
     setRulerArmed(false)
   }, [])
 
+  const finalizeRulerLine = useCallback(() => {
+    rulerPointerRef.current = null
+    setRulerArmed(false)
+    const line = rulerLineRef.current
+    const lengthPct = line ? Math.hypot(line.p2.x - line.p1.x, line.p2.y - line.p1.y) : 0
+    if (!line || lengthPct < 2) {
+      rulerLineRef.current = null
+      setRulerLine(null)
+      setToast('Drag a longer line along a wall you know the length of')
+    }
+  }, [])
+
+  const finalizeDrawnRoom = useCallback(() => {
+    drawPointerRef.current = null
+    const rect = strokeToRoomRect(strokePointsRef.current)
+    strokePointsRef.current = []
+    setDraftStroke(null)
+    if (!rect) {
+      setToast(DRAW_HINT)
+      return
+    }
+    const id = `room-${Date.now()}`
+    const sketched: Room = { id, name: 'Sketched room', kind: 'studio', ...rect }
+    commit((current) => ({ ...current, rooms: [...current.rooms, sketched] }), 'Sketch room')
+    setSelectedRoom(id)
+    setMode('plan')
+    setActiveTool('select')
+    setSettingsOpen(false)
+    setInspectorOpen(true)
+    setToast('Room drawn · enter one known dimension to calibrate the whole sketch')
+  }, [commit])
+
   const handleCanvasPointerDown = useCallback((event: ReactPointerEvent) => {
     if (rulerArmed) {
       if (rulerPointerRef.current !== null) return
       const bounds = stageRef.current?.getBoundingClientRect()
       if (!bounds) return
+      const point = clientToPercent(event.clientX, event.clientY, bounds)
+      if (!point) return
       rulerPointerRef.current = event.pointerId
       try {
         event.currentTarget.setPointerCapture(event.pointerId)
       } catch {
         // Synthetic pointers (tests) have no active pointer to capture.
       }
-      const point = clientToPercent(event.clientX, event.clientY, bounds)
       rulerLineRef.current = { p1: point, p2: point }
       setRulerLine(rulerLineRef.current)
       return
@@ -520,13 +517,15 @@ function App() {
       if (drawPointerRef.current !== null) return
       const bounds = stageRef.current?.getBoundingClientRect()
       if (!bounds) return
+      const point = clientToPercent(event.clientX, event.clientY, bounds)
+      if (!point) return
       drawPointerRef.current = event.pointerId
       try {
         event.currentTarget.setPointerCapture(event.pointerId)
       } catch {
         // Synthetic pointers (tests) have no active pointer to capture.
       }
-      strokePointsRef.current = [clientToPercent(event.clientX, event.clientY, bounds)]
+      strokePointsRef.current = [point]
       setDraftStroke(strokePointsRef.current)
       return
     }
@@ -558,65 +557,55 @@ function App() {
     if (isMeasuring && measureStart) {
       const bounds = stageRef.current?.getBoundingClientRect()
       if (bounds) {
-        setMeasureEnd(clientToPercent(event.clientX, event.clientY, bounds))
+        const point = clientToPercent(event.clientX, event.clientY, bounds)
+        if (point) setMeasureEnd(point)
       }
     }
     if (rulerPointerRef.current === event.pointerId) {
       const bounds = stageRef.current?.getBoundingClientRect()
       if (!bounds || !rulerLineRef.current) return
-      rulerLineRef.current = { ...rulerLineRef.current, p2: clientToPercent(event.clientX, event.clientY, bounds) }
+      const point = clientToPercent(event.clientX, event.clientY, bounds)
+      if (!point) return
+      rulerLineRef.current = { ...rulerLineRef.current, p2: point }
       setRulerLine(rulerLineRef.current)
       return
     }
     if (drawPointerRef.current === event.pointerId) {
       const bounds = stageRef.current?.getBoundingClientRect()
       if (!bounds) return
-      strokePointsRef.current = [...strokePointsRef.current, clientToPercent(event.clientX, event.clientY, bounds)]
+      const point = clientToPercent(event.clientX, event.clientY, bounds)
+      if (!point) return
+      strokePointsRef.current = appendStrokePoint(strokePointsRef.current, point)
       setDraftStroke(strokePointsRef.current)
       return
     }
     onViewportPointerMove(event)
     if (Math.abs(event.movementX) + Math.abs(event.movementY) > 2) panMovedRef.current = true
-  }, [isGesturing, onViewportPointerMove, plan.rooms, selectedRoom])
+  }, [isGesturing, isMeasuring, measureStart, onViewportPointerMove, plan.rooms, selectedRoom])
 
   const handleCanvasPointerUp = useCallback((event: ReactPointerEvent) => {
     setLiveDragRect(null)
     if (rulerPointerRef.current === event.pointerId) {
-      rulerPointerRef.current = null
-      setRulerArmed(false)
-      const line = rulerLineRef.current
-      const lengthPct = line ? Math.hypot(line.p2.x - line.p1.x, line.p2.y - line.p1.y) : 0
-      if (!line || lengthPct < 2) {
-        rulerLineRef.current = null
-        setRulerLine(null)
-        setToast('Drag a longer line along a wall you know the length of')
-        return
-      }
-      // Line stays visible; the calibration chip asks for its real length.
+      finalizeRulerLine()
       return
     }
     if (drawPointerRef.current === event.pointerId) {
-      drawPointerRef.current = null
-      const rect = strokeToRoomRect(strokePointsRef.current)
-      strokePointsRef.current = []
-      setDraftStroke(null)
-      if (!rect) {
-        setToast('Sketch a rough room outline — it snaps to scale')
-        return
-      }
-      const id = `room-${Date.now()}`
-      const sketched: Room = { id, name: 'Sketched room', kind: 'studio', ...rect }
-      commit((current) => ({ ...current, rooms: [...current.rooms, sketched] }), 'Sketch room')
-      setSelectedRoom(id)
-      setMode('plan')
-      setActiveTool('select')
-      setSettingsOpen(false)
-      setInspectorOpen(true)
-      setToast(`Room drawn · enter one known dimension to calibrate the whole sketch`)
+      finalizeDrawnRoom()
       return
     }
     onViewportPointerUp(event)
-  }, [commit, onViewportPointerUp])
+  }, [finalizeDrawnRoom, finalizeRulerLine, onViewportPointerUp])
+
+  const handleCanvasPointerCancel = useCallback((event: ReactPointerEvent) => {
+    setLiveDragRect(null)
+    if (rulerPointerRef.current === event.pointerId) {
+      finalizeRulerLine()
+    }
+    if (drawPointerRef.current === event.pointerId) {
+      finalizeDrawnRoom()
+    }
+    onViewportPointerUp(event)
+  }, [finalizeDrawnRoom, finalizeRulerLine, onViewportPointerUp])
 
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (panMovedRef.current || isGesturing()) return
@@ -627,6 +616,7 @@ function App() {
       const bounds = stageRef.current?.getBoundingClientRect()
       if (!bounds) return
       const point = clientToPercent(event.clientX, event.clientY, bounds)
+      if (!point) return
       if (!measureStart) {
         setMeasureStart(point)
         setMeasureEnd(point)
@@ -793,10 +783,8 @@ function App() {
       if (meta) return
 
       // Tool shortcuts — V/W/O/D/M/S, advertised by the FloatingToolbar.
-      // The earlier editable check at the top of this handler already
-      // bails out for input/textarea/contenteditable, so we just check
-      // we're in a tool-shortcut key.
-      if (!meta) {
+      // Walk mode owns WASD; skip plan-tool bindings so W does not switch to Draw.
+      if (!walkMode) {
         const toolKey = event.key.toLowerCase()
         if (toolKey === 'v') { event.preventDefault(); setActiveTool('select'); return }
         if (toolKey === 'w') { event.preventDefault(); setActiveTool('draw'); return }
@@ -902,7 +890,7 @@ function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [commit, deleteFurniture, deleteOpening, deleteRoom, plan.rooms.length, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo])
+  }, [commit, deleteFurniture, deleteOpening, deleteRoom, plan.rooms.length, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo, walkMode])
 
   const handleSketch = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -1132,7 +1120,7 @@ function App() {
           <div className="canvas-toolbar" aria-label="Plan tools">
             <div className="tool-group">
               <IconButton label="Select and move" className={activeTool === 'select' ? 'active' : ''} onClick={() => setActiveTool('select')}><MousePointer2 /></IconButton>
-              <IconButton label="Sketch a room" className={activeTool === 'draw' ? 'active' : ''} onClick={() => setActiveTool(activeTool === 'draw' ? 'select' : 'draw')}><Pencil /></IconButton>
+              <IconButton label="Draw room" className={activeTool === 'draw' ? 'active' : ''} onClick={() => setActiveTool(activeTool === 'draw' ? 'select' : 'draw')}><Pencil /></IconButton>
               <IconButton label="Add room" onClick={addRoom}><Plus /></IconButton>
               <IconButton label="Place window" className={activeTool === 'window' ? 'active' : ''} onClick={() => setActiveTool('window')}><PanelLeftClose /></IconButton>
               <IconButton label="Place door" className={activeTool === 'door' ? 'active' : ''} onClick={() => setActiveTool('door')}><DoorOpen /></IconButton>
@@ -1186,6 +1174,7 @@ function App() {
                 onCanvasPointerDown={handleCanvasPointerDown}
                 onCanvasPointerMove={handleCanvasPointerMove}
                 onCanvasPointerUp={handleCanvasPointerUp}
+                onCanvasPointerCancel={handleCanvasPointerCancel}
                 onCanvasClick={handleCanvasClick}
                 stageRef={stageRef}
               />
@@ -1366,7 +1355,7 @@ function App() {
             )}
             {view === 'plan' && activeTool === 'draw' && !draftStroke && (
               <div className="draw-hint" role="status">
-                <Pencil /> Draw a rough room with one finger — it snaps straight, to scale
+                <Pencil /> Drag a rectangle for the room — it snaps to the grid
               </div>
             )}
             {view === 'plan' && furnitureTrayOpen && (
@@ -1433,14 +1422,28 @@ function App() {
             <FurnitureCatalogDrawer
               open={isCatalogOpen}
               onClose={() => setIsCatalogOpen(false)}
-              onAddFurniture={(kind) => {
+              onAddFurniture={(kind, label, size) => {
+                const id = `furn-${Date.now()}`
                 commit({
                   ...plan,
                   furniture: [
                     ...plan.furniture,
-                    { id: `furn-${Date.now()}`, kind, x: 50, y: 50, rotated: false },
+                    {
+                      id,
+                      kind,
+                      x: 50,
+                      y: 50,
+                      rotated: false,
+                      // The catalog card's real footprint — the piece on the
+                      // plan must match the dimensions it advertised.
+                      ...(size ?? {}),
+                    },
                   ],
                 })
+                setSelectedFurniture(id)
+                setToast(size
+                  ? `${label} placed at ${size.wM.toFixed(1)} × ${size.dM.toFixed(1)} m — drag into a room`
+                  : `${furnitureCatalog[kind].label} placed — drag into a room`)
                 setIsCatalogOpen(false)
               }}
             />

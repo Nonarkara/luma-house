@@ -3,16 +3,27 @@ import { Command, X } from 'lucide-react'
 export function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
   const shortcutGroups = [
     {
+      category: 'Plan tools',
+      items: [
+        { key: 'V', description: 'Select and move' },
+        { key: 'W', description: 'Draw a room (plan view)' },
+        { key: 'O', description: 'Place a window' },
+        { key: 'D', description: 'Place a door' },
+        { key: 'M', description: 'Tape measure' },
+        { key: 'S', description: 'Synthesize a courtyard layout' },
+      ],
+    },
+    {
       category: '3D',
       items: [
         { key: 'T', description: 'Start the drawing-to-3D tour' },
         { key: 'G', description: 'Enter or leave 1.6 m eye-level walk mode' },
-        { key: 'W / A / S / D', description: 'Move while walk mode is active' },
+        { key: 'W / A / S / D', description: 'Move while walk mode is active — plan tools pause' },
         { key: '?', description: 'Open or close this guide' },
       ],
     },
     {
-      category: 'Drawing',
+      category: 'Editing',
       items: [
         { key: 'Esc', description: 'Leave walk/tour or clear the current selection' },
         { key: 'Delete / Backspace', description: 'Remove selected room, opening, or furniture' },

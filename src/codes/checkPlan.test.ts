@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { STANDARDS, DEFAULT_THRESHOLDS, getStandard } from './standards'
-import { checkPlan, SEVERITY_LABEL } from './checkPlan'
+import { checkPlan, exteriorDoorPlacement, SEVERITY_LABEL } from './checkPlan'
 import { initialPlan } from '../plan'
 import type { PlanState, Room, Opening } from '../types'
 
@@ -33,7 +33,7 @@ function door(over: Partial<Opening> = {}): Opening {
 }
 
 describe('standards library', () => {
-  it('has the five core standards (IBC, ASHRAE, ADA, ISO)', () => {
+  it('has the four standards bodies (IBC, ASHRAE, ADA, ISO)', () => {
     const bodies = new Set(Object.values(STANDARDS).map((s) => s.body))
     expect(bodies).toEqual(new Set(['IBC', 'ASHRAE', 'ADA', 'ISO']))
   })
@@ -55,6 +55,7 @@ describe('standards library', () => {
     expect(DEFAULT_THRESHOLDS.minHabitableAreaM2).toBe(6.5)
     expect(DEFAULT_THRESHOLDS.minCeilingHeightM).toBeCloseTo(2.13)
     expect(DEFAULT_THRESHOLDS.minDoorClearWidthM).toBeCloseTo(0.81)
+    expect(DEFAULT_THRESHOLDS.minDoorHeightM).toBeCloseTo(2.03)
     expect(DEFAULT_THRESHOLDS.freshAirLsPerPerson).toBe(7.5)
   })
 })
@@ -128,16 +129,16 @@ describe('checkPlan — door + accessibility rules', () => {
   })
 })
 
-describe('checkPlan — egress connectivity', () => {
+describe('checkPlan — egress connectivity (door graph, IBC 1003.3)', () => {
   it('flags a habitable room with no door at all', () => {
     const plan = withRooms([room({ id: 'a', kind: 'bedroom', x: 0, y: 0, w: 50, h: 100 })])
     const issues = checkPlan(plan)
     const egress = issues.find((i) => i.ref === 'IBC-1003.3' && i.roomId === 'a')
     expect(egress?.severity).toBe('critical')
-    expect(egress?.fixAction).toMatchObject({ type: 'add_exterior_door' })
+    expect(egress?.fixAction).toEqual({ type: 'add_exterior_door', roomId: 'a' })
   })
 
-  it('does not flag a room with at least one door', () => {
+  it('does not flag a room with an exterior door on its own wall', () => {
     const plan: PlanState = {
       ...initialPlan,
       rooms: [room({ id: 'a', kind: 'bedroom', x: 0, y: 0, w: 50, h: 100 })],
@@ -145,9 +146,40 @@ describe('checkPlan — egress connectivity', () => {
     }
     expect(checkPlan(plan).find((i) => i.ref === 'IBC-1003.3' && i.roomId === 'a')).toBeUndefined()
   })
+
+  it('flags a room whose only door leads deeper into a dead-end chain', () => {
+    // Bedroom B (right) → door → Bedroom A (left) → no exterior door anywhere.
+    // The old check passed this plan; the door graph correctly fails it.
+    const plan: PlanState = {
+      ...initialPlan,
+      rooms: [
+        room({ id: 'a', kind: 'bedroom', x: 0, y: 0, w: 50, h: 100 }),
+        room({ id: 'b', kind: 'bedroom', x: 50, y: 0, w: 50, h: 100 }),
+      ],
+      openings: [door({ id: 'd1', type: 'door', x: 50, y: 50, rotation: 90 })],
+    }
+    const issues = checkPlan(plan)
+    expect(issues.find((i) => i.ref === 'IBC-1003.3' && i.roomId === 'a')).toBeDefined()
+    expect(issues.find((i) => i.ref === 'IBC-1003.3' && i.roomId === 'b')).toBeDefined()
+  })
+
+  it('passes a room connected through an interior door to a room with an exterior door', () => {
+    const plan: PlanState = {
+      ...initialPlan,
+      rooms: [
+        room({ id: 'a', kind: 'bedroom', x: 0, y: 0, w: 50, h: 100 }),
+        room({ id: 'b', kind: 'living', x: 50, y: 0, w: 50, h: 100 }),
+      ],
+      openings: [
+        door({ id: 'd1', type: 'door', x: 50, y: 50, rotation: 90 }), // a ↔ b
+        door({ id: 'd2', type: 'door', x: 75, y: 100, rotation: 0 }), // b → exterior
+      ],
+    }
+    expect(checkPlan(plan).find((i) => i.ref === 'IBC-1003.3')).toBeUndefined()
+  })
 })
 
-describe('checkPlan — ventilation (ASHRAE 62.1)', () => {
+describe('checkPlan — ventilation info rows (aggregated)', () => {
   it('flags a plan with rooms but no openings as critical (no fresh air path)', () => {
     const plan = withRooms([
       room({ id: 'a', kind: 'living' }),
@@ -172,14 +204,91 @@ describe('checkPlan — ventilation (ASHRAE 62.1)', () => {
     expect(ash?.title).toMatch(/\d+ occupants/)
   })
 
-  it('emits a kitchen exhaust info tag on kitchen rooms', () => {
+  it('aggregates kitchen + bathroom exhaust into one row each, not per room', () => {
     const plan: PlanState = {
       ...initialPlan,
-      rooms: [room({ id: 'k', kind: 'kitchen' })],
+      rooms: [
+        room({ id: 'k1', name: 'Kitchen one', kind: 'kitchen' }),
+        room({ id: 'k2', name: 'Kitchen two', kind: 'kitchen' }),
+        room({ id: 'b1', name: 'Bath one', kind: 'bathroom' }),
+        room({ id: 'b2', name: 'Bath two', kind: 'bathroom' }),
+      ],
       openings: [{ id: 'w1', type: 'window', x: 25, y: 0, rotation: 0 }],
     }
     const issues = checkPlan(plan)
-    expect(issues.find((i) => i.ref === 'ASHRAE-62.1-KITCHEN' && i.roomId === 'k')).toBeDefined()
+    expect(issues.filter((i) => i.ref === 'ASHRAE-62.1-KITCHEN')).toHaveLength(1)
+    expect(issues.filter((i) => i.ref === 'ASHRAE-62.1-BATHROOM')).toHaveLength(1)
+    const kitchenRow = issues.find((i) => i.ref === 'ASHRAE-62.1-KITCHEN')
+    expect(kitchenRow?.title).toContain('Kitchen one')
+    expect(kitchenRow?.title).toContain('Kitchen two')
+  })
+
+  it('emits exactly one envelope info row regardless of window count', () => {
+    const plan: PlanState = {
+      ...initialPlan,
+      rooms: [room({ id: 'a', kind: 'living' })],
+      openings: [
+        { id: 'w1', type: 'window', x: 25, y: 0, rotation: 0 },
+        { id: 'w2', type: 'window', x: 40, y: 0, rotation: 0 },
+        { id: 'w3', type: 'window', x: 60, y: 0, rotation: 0 },
+      ],
+    }
+    expect(checkPlan(plan).filter((i) => i.ref === 'ASHRAE-90.1-ENVELOPE')).toHaveLength(1)
+  })
+})
+
+describe('exteriorDoorPlacement — one-click egress door targeting', () => {
+  it('places on the midpoint of the longest exterior wall', () => {
+    const plan = withRooms([room({ id: 'a', kind: 'bedroom', x: 10, y: 10, w: 60, h: 30 })])
+    const spot = exteriorDoorPlacement(plan, 'a')
+    // Longest wall is N or S (60% vs 30%); both are fully exterior.
+    expect(spot).not.toBeNull()
+    expect(['N', 'S']).toContain(spot!.compass)
+    expect(spot!.rotation).toBe(0)
+    expect(spot!.crowded).toBe(false)
+  })
+
+  it('never targets a wall shared with a neighboring room', () => {
+    const plan: PlanState = {
+      ...initialPlan,
+      rooms: [
+        room({ id: 'a', kind: 'bedroom', x: 0, y: 0, w: 50, h: 100 }),
+        room({ id: 'b', kind: 'living', x: 50, y: 0, w: 50, h: 100 }),
+      ],
+      openings: [],
+    }
+    const spot = exteriorDoorPlacement(plan, 'a')
+    expect(spot).not.toBeNull()
+    // The E wall of 'a' is shared with 'b' — it must not be chosen.
+    expect(spot!.compass).not.toBe('E')
+  })
+
+  it('slides along the wall when the midpoint is occupied', () => {
+    const plan: PlanState = {
+      ...initialPlan,
+      rooms: [room({ id: 'a', kind: 'bedroom', x: 10, y: 10, w: 60, h: 30 })],
+      openings: [door({ id: 'd1', type: 'door', x: 40, y: 10, rotation: 0 })],
+    }
+    const spot = exteriorDoorPlacement(plan, 'a')
+    expect(spot).not.toBeNull()
+    expect(Math.abs(spot!.x - 40)).toBeGreaterThanOrEqual(0.5)
+  })
+
+  it('returns null for a room with no exterior wall (all four edges shared)', () => {
+    // The engine treats a wall as shared only when a neighbor's edge
+    // coincides with it, so the target room must be framed on all sides.
+    const plan: PlanState = {
+      ...initialPlan,
+      rooms: [
+        room({ id: 't', kind: 'bedroom', x: 40, y: 40, w: 20, h: 20 }),
+        room({ id: 'west', kind: 'living', x: 0, y: 40, w: 40, h: 20 }),
+        room({ id: 'east', kind: 'living', x: 60, y: 40, w: 40, h: 20 }),
+        room({ id: 'north', kind: 'living', x: 40, y: 0, w: 20, h: 40 }),
+        room({ id: 'south', kind: 'living', x: 40, y: 60, w: 20, h: 40 }),
+      ],
+      openings: [],
+    }
+    expect(exteriorDoorPlacement(plan, 't')).toBeNull()
   })
 })
 

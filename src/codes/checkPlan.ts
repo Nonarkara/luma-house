@@ -1,5 +1,7 @@
 import type { Opening, PlanState, Room } from '../types'
-import { openingsForRoomWall } from '../analysis/walls'
+import { exteriorWalls } from '../analysis/walls'
+import { egressRoutes } from '../analysis/egress'
+import type { Compass } from '../analysis/types'
 import { roomAreaFor, siteOf } from '../plan'
 import { DEFAULT_THRESHOLDS, getStandard, type Severity, type Thresholds } from './standards'
 
@@ -20,10 +22,9 @@ export interface CodeIssue {
   body: string
   /** Suggested fix, if any. The Inspector uses this to drive one-click actions. */
   fixAction?:
-    | { type: 'enlarge_opening'; openingId: string }
-    | { type: 'set_ceiling'; roomId: string; meters: number }
-    | { type: 'add_opening_for_egress'; roomId: string; compass: 'N' | 'E' | 'S' | 'W' }
-    | { type: 'add_exterior_door'; roomId: string; compass: 'N' | 'E' | 'S' | 'W' }
+  | { type: 'enlarge_opening'; openingId: string }
+  | { type: 'set_ceiling'; roomId: string; meters: number }
+  | { type: 'add_exterior_door'; roomId: string }
 }
 
 function roomIsHabitable(room: Room): boolean {
@@ -44,7 +45,7 @@ function defaultDoorHeightM(opening: Opening): number {
 }
 
 /**
- * Round to one decimal for human display. Used for measured values
+ * Round to two decimals for human display. Used for measured values
  * surfaced in CodeIssue bodies so the user can see exactly what the
  * rule is comparing against.
  */
@@ -115,53 +116,24 @@ export function checkPlan(
         { type: 'set_ceiling', roomId: room.id, meters: thresholds.minCeilingHeightM },
       )
     }
+  }
 
-    // Egress connectivity for habitable rooms
-    if (roomNeedsEgress(room)) {
-      // We only flag if the room has no doors at all (interior-only).
-      const hasAnyDoor = plan.openings.some(
-        (op) => op.type === 'door' &&
-          (openingsForRoomWall(plan, room.id, 'N').some((d) => d.id === op.id) ||
-           openingsForRoomWall(plan, room.id, 'S').some((d) => d.id === op.id) ||
-           openingsForRoomWall(plan, room.id, 'E').some((d) => d.id === op.id) ||
-           openingsForRoomWall(plan, room.id, 'W').some((d) => d.id === op.id)),
-      )
-      if (!hasAnyDoor) {
-        add(
-          'IBC-1003.3',
-          'critical',
-          room.id,
-          null,
-          `${room.name} has no door to an adjacent space`,
-          `Habitable rooms need a clear egress path. Add a door on any exterior wall.`,
-          { type: 'add_exterior_door', roomId: room.id, compass: 'S' },
-        )
-      }
-    }
-
-    // Kitchen exhaust (ASHRAE 62.1)
-    if (room.kind === 'kitchen') {
-      add(
-        'ASHRAE-62.1-KITCHEN',
-        'info',
-        room.id,
-        null,
-        `${room.name} kitchen — confirm range-hood exhaust`,
-        `Kitchens typically need ${thresholds.kitchenExhaustLs} L/s intermittent or ${thresholds.kitchenExhaustLs / 2} L/s continuous exhaust.`,
-      )
-    }
-
-    // Bathroom exhaust (ASHRAE 62.1)
-    if (room.kind === 'bathroom') {
-      add(
-        'ASHRAE-62.1-BATHROOM',
-        'info',
-        room.id,
-        null,
-        `${room.name} bath — confirm fan exhaust to exterior`,
-        `Bathrooms typically need ${thresholds.bathroomExhaustLs} L/s intermittent exhaust vented outside.`,
-      )
-    }
+  // IBC 1003.3 — egress connectivity via the door graph. A door symbol on an
+  // interior wall is not egress: the room needs a continuous modeled door
+  // path to an exterior door. This reuses the same engine the Escape lens
+  // draws on the canvas, so the check and the visualization can't disagree.
+  for (const route of egressRoutes(plan)) {
+    if (!roomNeedsEgress(route.room)) continue
+    if (route.connected) continue
+    add(
+      'IBC-1003.3',
+      'critical',
+      route.room.id,
+      null,
+      `${route.room.name} has no door path to the exterior`,
+      `No continuous modeled door route reaches outdoors — a door into another dead-end room is not egress. Add an exterior door or connect this room through doors to one.`,
+      { type: 'add_exterior_door', roomId: route.room.id },
+    )
   }
 
   // --- per-opening rules ---
@@ -182,32 +154,61 @@ export function checkPlan(
     // IBC 1010.1.1 — door height minimum 2.03 m (80 in)
     if (opening.type === 'door') {
       const height = defaultDoorHeightM(opening)
-      if (height < 2.03) {
+      if (height < thresholds.minDoorHeightM) {
         add(
           'IBC-1010.1.1',
           'warning',
           null,
           opening.id,
           `Door height below the standard minimum`,
-          `${fmt(height, 'm')} is below the 2.03 m (80 in) standard door height.`,
+          `${fmt(height, 'm')} is below the ${fmt(thresholds.minDoorHeightM, 'm')} (${Math.round(thresholds.minDoorHeightM / 0.0254)} in) standard door height.`,
         )
       }
     }
-    // ASHRAE 90.1 — window U-value and SHGC are covered by the climate
-    // response library; we add an info tag for natural-light windows.
-    if (opening.type === 'window') {
-      add(
-        'ASHRAE-90.1-ENVELOPE',
-        'info',
-        null,
-        opening.id,
-        'Window envelope spec',
-        'See the climate response library for the location-specific U-value and SHGC defaults.',
-      )
-    }
   }
 
-  // --- whole-plan rules ---
+  // --- whole-plan rules (aggregated: one row per concern, not per item) ---
+
+  // ASHRAE 62.1 — kitchen exhaust: one row listing the kitchens, not one
+  // identical row per kitchen.
+  const kitchens = plan.rooms.filter((room) => room.kind === 'kitchen')
+  if (kitchens.length > 0) {
+    add(
+      'ASHRAE-62.1-KITCHEN',
+      'info',
+      null,
+      null,
+      `Kitchen exhaust — ${kitchens.map((room) => room.name).join(', ')}`,
+      `Range hoods typically need ${thresholds.kitchenExhaustLs} L/s intermittent (or ${thresholds.kitchenExhaustLs / 2} L/s continuous) exhaust vented to the exterior.`,
+    )
+  }
+
+  // ASHRAE 62.1 — bathroom exhaust, aggregated the same way.
+  const bathrooms = plan.rooms.filter((room) => room.kind === 'bathroom')
+  if (bathrooms.length > 0) {
+    add(
+      'ASHRAE-62.1-BATHROOM',
+      'info',
+      null,
+      null,
+      `Bathroom exhaust — ${bathrooms.map((room) => room.name).join(', ')}`,
+      `Bathrooms typically need ${thresholds.bathroomExhaustLs} L/s intermittent exhaust vented outside.`,
+    )
+  }
+
+  // ASHRAE 90.1 — one envelope row for all windows: U-value / SHGC defaults
+  // live in the climate response library, not in this check.
+  const windows = plan.openings.filter((opening) => opening.type === 'window')
+  if (windows.length > 0) {
+    add(
+      'ASHRAE-90.1-ENVELOPE',
+      'info',
+      null,
+      null,
+      `${windows.length} window${windows.length === 1 ? '' : 's'} — envelope spec`,
+      `Location-specific U-value and SHGC defaults are applied by the climate response library (Systems panel); this check does not rate glazing.`,
+    )
+  }
 
   // ASHRAE 62.1 — minimum fresh-air for the whole house
   const totalOccupants = plan.rooms.reduce((sum, room) => {
@@ -239,6 +240,78 @@ export function checkPlan(
   }
 
   return issues
+}
+
+export interface DoorPlacement {
+  /** Percent coordinates on the chosen wall (rounded to 0.1). */
+  x: number
+  y: number
+  rotation: 0 | 90
+  /** Compass of the exterior wall the placement sits on. */
+  compass: Compass
+  /** True when every slot on the wall was taken and the midpoint was reused. */
+  crowded: boolean
+}
+
+/**
+ * Where a one-click egress door should go: the midpoint of the room's
+ * longest exterior wall (per `exteriorWalls`), slid along the wall in 5%
+ * steps when the midpoint is already occupied. Returns null when the room
+ * has no exterior wall at all — the caller must say so instead of placing
+ * a door on a shared interior wall.
+ *
+ * Pure: derives everything from the passed plan.
+ */
+export function exteriorDoorPlacement(plan: PlanState, roomId: string): DoorPlacement | null {
+  const room = plan.rooms.find((r) => r.id === roomId)
+  if (!room) return null
+  const walls = exteriorWalls(plan).filter((wall) => wall.roomId === roomId)
+  if (walls.length === 0) return null
+  const best = [...walls].sort((a, b) => b.lengthPct - a.lengthPct)[0]
+
+  const isOccupied = (x: number, y: number) =>
+    plan.openings.some((op) => Math.abs(op.x - x) < 0.5 && Math.abs(op.y - y) < 0.5)
+
+  const along = (compass: Compass): { pos: number; min: number; max: number } =>
+    compass === 'N' || compass === 'S'
+      ? { pos: room.x + room.w / 2, min: room.x + 5, max: room.x + room.w - 5 }
+      : { pos: room.y + room.h / 2, min: room.y + 5, max: room.y + room.h - 5 }
+
+  const point = (compass: Compass, value: number): { x: number; y: number; rotation: 0 | 90 } => {
+    if (compass === 'N') return { x: value, y: room.y, rotation: 0 }
+    if (compass === 'S') return { x: value, y: room.y + room.h, rotation: 0 }
+    if (compass === 'W') return { x: room.x, y: value, rotation: 90 }
+    return { x: room.x + room.w, y: value, rotation: 90 }
+  }
+
+  const { pos, min, max } = along(best.compass)
+  const candidates = [pos]
+  for (let step = 1; step <= 8; step += 1) {
+    candidates.push(pos + step * 5, pos - step * 5)
+  }
+  for (const candidate of candidates) {
+    const value = Math.max(min, Math.min(max, candidate))
+    const spot = point(best.compass, value)
+    if (!isOccupied(spot.x, spot.y)) {
+      return {
+        x: Math.round(spot.x * 10) / 10,
+        y: Math.round(spot.y * 10) / 10,
+        rotation: spot.rotation,
+        compass: best.compass,
+        crowded: false,
+      }
+    }
+  }
+  // Every slot on the longest wall is taken; fall back to the midpoint and
+  // let the UI tell the user to drag it somewhere clear.
+  const midpoint = point(best.compass, pos)
+  return {
+    x: Math.round(midpoint.x * 10) / 10,
+    y: Math.round(midpoint.y * 10) / 10,
+    rotation: midpoint.rotation,
+    compass: best.compass,
+    crowded: true,
+  }
 }
 
 /**
