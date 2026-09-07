@@ -4,28 +4,16 @@ import { FloorPlan } from './canvas/FloorPlan'
 import { RenderGallery } from './canvas/RenderGallery'
 import { useCanvasViewport } from './canvas/useCanvasViewport'
 import { useRoomGestures } from './canvas/useRoomGestures'
-import { appendStrokePoint, clientToPercent, moveOpening, moveRoom, strokeToRoomRect, type StrokePoint } from './canvas/geometry'
+import { appendStrokePoint, clientToPercent, moveOpening, moveRoom, type StrokePoint } from './canvas/geometry'
+import { applyNapkinStroke } from './canvas/napkinStroke'
 import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
-import { calibrateSiteFromRoom, defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureRectFor, roomAreaFor, roomOverlaps, siteOf, solarPosition, sunPatches, locations } from './plan'
+import { calibrateSiteFromRoom, defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureRectFor, furnitureSpecFor, roomAreaFor, roomOverlaps, siteOf, solarPosition, sunPatches, locations } from './plan'
 import { interiorBoq } from './boq/interiorBoq'
 import { tracePlanFromImage } from './concept/tracePlan'
 import type { SiteSpec } from './types'
-
-/** A truly blank plan — the napkin / tissue-paper starting point. */
-function blankPlan(): PlanState {
-  return {
-    rooms: [],
-    openings: [],
-    furniture: [],
-    systems: { solar: false, insulation: false, climate: false, lighting: false },
-    site: defaultSite(),
-  }
-}
-
-const DRAW_HINT = 'Drag a rectangle for the room — it snaps to the grid'
 import {
   CHINA_PROJECT_KEY,
   CHINA_PROJECT_LOCATION,
@@ -77,19 +65,42 @@ import type { ABComparisonState, CurrencyCode, Opening } from './types'
 import { readString } from './storage/keys'
 import { checkPlan, exteriorDoorPlacement, type CodeIssue as StandardsCodeIssue } from './codes/checkPlan'
 
+const DRAW_HINT = 'Line = wall · tick on a wall = door or window · box = room or furniture'
+
+/** A truly blank plan — the napkin / tissue-paper starting point. */
+function blankPlan(): PlanState {
+  return {
+    rooms: [],
+    openings: [],
+    furniture: [],
+    walls: [],
+    systems: { solar: false, insulation: false, climate: false, lighting: false },
+    site: defaultSite(),
+  }
+}
+
+function isStockDemo(plan: PlanState): boolean {
+  if (plan.rooms.length !== chinaApartmentPlan.rooms.length) return false
+  return plan.rooms.every((room, index) => {
+    const sample = chinaApartmentPlan.rooms[index]
+    return sample !== undefined && room.id === sample.id && room.x === sample.x && room.y === sample.y && room.w === sample.w && room.h === sample.h
+  })
+}
 
 function readSavedPlan(): PlanState {
-  // Priority: share link in the URL hash, then the local draft, then the demo plan.
+  // Priority: share link in the URL hash, then the user's draft, then a blank napkin.
   if (typeof window !== 'undefined') {
     const shared = decodePlanFromHash(window.location.hash)
     if (shared) return shared
   }
   try {
     const saved = localStorage.getItem(CHINA_PROJECT_KEY)
-    if (!saved) return chinaApartmentPlan
-    return sanitizePlan(JSON.parse(saved)) ?? chinaApartmentPlan
+    if (!saved) return blankPlan()
+    const next = sanitizePlan(JSON.parse(saved)) ?? blankPlan()
+    if (isStockDemo(next)) return blankPlan()
+    return next
   } catch {
-    return chinaApartmentPlan
+    return blankPlan()
   }
 }
 
@@ -99,10 +110,10 @@ function App() {
   const [future, setFuture] = useState<Array<{ state: PlanState; label: string }>>([])
   const [mode, setMode] = useState<WorkspaceMode>('plan')
   const [view, setView] = useState<CanvasView>('plan')
-  const [selectedRoom, setSelectedRoom] = useState<string | null>('living')
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null)
   const [selectedOpening, setSelectedOpening] = useState<string | null>(null)
   const [selectedFurniture, setSelectedFurniture] = useState<string | null>(null)
-  const [activeTool, setActiveTool] = useState<PlanTool>('select')
+  const [activeTool, setActiveTool] = useState<PlanTool>(() => (readSavedPlan().rooms.length === 0 ? 'draw' : 'select'))
   const [furnitureTrayOpen, setFurnitureTrayOpen] = useState(false)
   const [draftStroke, setDraftStroke] = useState<StrokePoint[] | null>(null)
   const [rulerArmed, setRulerArmed] = useState(false)
@@ -237,6 +248,7 @@ function App() {
   const [isCatalogOpen, setIsCatalogOpen] = useState(false)
   const [isMeasuring, setIsMeasuring] = useState(false)
   const isEmpty = plan.rooms.length === 0
+  const hasNapkinWalls = (plan.walls?.length ?? 0) > 0
   const isAuthoredSample = plan.rooms.length > 0 && plan.rooms.every((room) => chinaApartmentPlan.rooms.some((sampleRoom) => sampleRoom.id === room.id))
   const projectTitle = isAuthoredSample ? CHINA_PROJECT_NAME : 'Untitled sketch'
 
@@ -478,23 +490,25 @@ function App() {
 
   const finalizeDrawnRoom = useCallback(() => {
     drawPointerRef.current = null
-    const rect = strokeToRoomRect(strokePointsRef.current)
+    const points = strokePointsRef.current
     strokePointsRef.current = []
     setDraftStroke(null)
-    if (!rect) {
-      setToast(DRAW_HINT)
+    const result = applyNapkinStroke(plan, points, site)
+    if (!result.plan) {
+      setToast(result.toast)
       return
     }
-    const id = `room-${Date.now()}`
-    const sketched: Room = { id, name: 'Sketched room', kind: 'studio', ...rect }
-    commit((current) => ({ ...current, rooms: [...current.rooms, sketched] }), 'Sketch room')
-    setSelectedRoom(id)
+    commit(result.plan, result.label)
+    setSelectedRoom(result.selectRoom ?? null)
+    setSelectedOpening(result.selectOpening ?? null)
+    setSelectedFurniture(result.selectFurniture ?? null)
     setMode('plan')
-    setActiveTool('select')
-    setSettingsOpen(false)
-    setInspectorOpen(true)
-    setToast('Room drawn · enter one known dimension to calibrate the whole sketch')
-  }, [commit])
+    if (result.selectRoom) {
+      setSettingsOpen(false)
+      setInspectorOpen(true)
+    }
+    setToast(result.toast)
+  }, [commit, plan, site])
 
   const handleCanvasPointerDown = useCallback((event: ReactPointerEvent) => {
     if (rulerArmed) {
@@ -1182,7 +1196,7 @@ function App() {
               <div className="spatial-wrap">
                 <Suspense fallback={<div className="spatial-note">Loading 3D…</div>}>
                   <Spatial3D
-                    plan={isEmpty ? chinaApartmentPlan : plan}
+                    plan={plan}
                     sunAzimuth={sun.azimuth}
                     sunAltitude={sun.altitude}
                     selectedRoom={selectedRoom}
@@ -1327,11 +1341,11 @@ function App() {
                 <button className="button primary" type="button" onClick={applyRulerCalibration}>Apply</button>
               </div>
             )}
-            {view === 'plan' && isEmpty && !draftStroke && !rulerArmed && !rulerLine && (
+            {view === 'plan' && isEmpty && !hasNapkinWalls && !draftStroke && !rulerArmed && !rulerLine && (
               <div className="canvas-empty">
                 <Pencil />
-                <h3>Draw your first room</h3>
-                <p>Sketch a rough rectangle with one finger — it snaps straight, to scale. Or upload an existing plan and let AI trace it.</p>
+                <h3>Draw like a napkin</h3>
+                <p>A line is a wall. A tick on a wall is a door or a window. A box is a room — draw a bed inside it, or a WC in a small bath.</p>
                 <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'center' }}>
                   <button className="button primary small" type="button" onClick={() => setActiveTool('draw')}>Draw a room</button>
                   <button className="button secondary small" type="button" onClick={() => traceFileInputRef.current?.click()} disabled={isTracing || quotaLeft <= 0}>
@@ -1355,7 +1369,7 @@ function App() {
             )}
             {view === 'plan' && activeTool === 'draw' && !draftStroke && (
               <div className="draw-hint" role="status">
-                <Pencil /> Drag a rectangle for the room — it snaps to the grid
+                <Pencil /> {DRAW_HINT}
               </div>
             )}
             {view === 'plan' && furnitureTrayOpen && (
@@ -1373,9 +1387,12 @@ function App() {
                 <span>
                   <strong>{furnitureCatalog[furnitureItem.kind].label}</strong>
                   <small>
-                    {furnitureItem.rotated
-                      ? `${furnitureCatalog[furnitureItem.kind].d} × ${furnitureCatalog[furnitureItem.kind].w} m`
-                      : `${furnitureCatalog[furnitureItem.kind].w} × ${furnitureCatalog[furnitureItem.kind].d} m`}
+                    {(() => {
+                      const spec = furnitureSpecFor(furnitureItem)
+                      return furnitureItem.rotated
+                        ? `${spec.d} × ${spec.w} m`
+                        : `${spec.w} × ${spec.d} m`
+                    })()}
                     {furnitureConflicts.has(furnitureItem.id) ? ' · blocks a door swing' : ''}
                   </small>
                 </span>
@@ -1544,6 +1561,7 @@ function App() {
         onSkip={() => {
           writeWelcomeDismissed()
           setWelcomeOpen(false)
+          resetPlan()
         }}
       />
       {tourChapterIndex !== null && (

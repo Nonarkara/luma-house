@@ -11,7 +11,7 @@ describe('buildRenderPrompt', () => {
     })
     expect(prompt).toContain('Bangkok')
     expect(prompt).toContain('Living + dining')
-    expect(prompt).toContain('concept visualization')
+    expect(prompt).toContain('low-detail concept sketch')
     expect(prompt).toContain('No text, logos')
   })
 })

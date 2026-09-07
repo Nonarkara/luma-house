@@ -51,8 +51,8 @@ export function buildRenderPrompt({ plan, locationLabel, hour, projectName = 'Ri
     `Program: ${rooms}.`,
     `Openings: ${windows} windows, ${doors} doors. Systems emphasis: ${systems}.`,
     `Style: ${styleKeywords || 'quiet contemporary residential, timber and light concrete, deep eaves, shaded terrace, green courtyard'}.`,
-    'Camera: exterior eye-level three-quarter view of the house and courtyard, photographic realism for a design concept board.',
-    'Important: this is a concept visualization only, not a photograph of a finished building. No text, logos, watermarks, or UI chrome.',
+    'Camera: exterior three-quarter view, quick architectural massing sketch at concept-board resolution — clay volumes, simple materials, readable sunlight, not a finished photograph.',
+    'Important: this is a low-detail concept sketch only, not a photograph of a finished building. No text, logos, watermarks, or UI chrome.',
   ].join(' ')
 }
 

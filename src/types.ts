@@ -33,7 +33,7 @@ export interface Opening {
   operableFraction?: number
 }
 
-export type FurnitureKind = 'bed' | 'sofa' | 'dining' | 'wardrobe' | 'desk'
+export type FurnitureKind = 'bed' | 'sofa' | 'dining' | 'wardrobe' | 'desk' | 'wc'
 
 export interface Furniture {
   id: string
@@ -45,6 +45,15 @@ export interface Furniture {
   wM?: number
   /** Explicit depth in meters — overrides the generic catalog spec for this piece. */
   dM?: number
+}
+
+/** An unfinished napkin wall — axis-aligned line until it closes a room. */
+export interface DrawnWall {
+  id: string
+  x1: number
+  y1: number
+  x2: number
+  y2: number
 }
 
 export interface EnvelopeAssemblies {
@@ -77,6 +86,8 @@ export interface PlanState {
   rooms: Room[]
   openings: Opening[]
   furniture: Furniture[]
+  /** Incomplete walls from the pencil. Closed rectangles become rooms and drop out. */
+  walls?: DrawnWall[]
   systems: HouseSystems
   /** Per-plan site + scale. Omitted on legacy plans = default 14×10, 1 m/cell. */
   site?: SiteSpec

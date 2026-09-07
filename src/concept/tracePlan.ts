@@ -48,7 +48,7 @@ export async function tracePlanFromImage(options: {
 
     const payload = (await response.json()) as { plan?: unknown; note?: string; draft?: boolean }
     const sanitized = sanitizePlan(payload.plan)
-    if (!sanitized) {
+    if (!sanitized || sanitized.rooms.length === 0) {
         throw new Error('AI could not read a usable plan from that image. Try a clearer scan or draw it.')
     }
     return {

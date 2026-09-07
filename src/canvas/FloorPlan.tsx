@@ -312,7 +312,7 @@ export const FloorPlan = React.memo(function FloorPlan({
                 }}
                 aria-label={`${spec.label}, ${spec.w} by ${spec.d} meters${furnitureConflicts.has(item.id) ? ', blocks a door swing' : ''}`}
               >
-                <span>{spec.label}</span>
+                <span>{item.kind === 'wc' ? 'WC' : spec.label}</span>
               </button>
             )
           })}
@@ -343,6 +343,21 @@ export const FloorPlan = React.memo(function FloorPlan({
             )
           })}
 
+          {plan.walls && plan.walls.length > 0 && (
+            <svg className="draw-overlay napkin-walls" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              {plan.walls.map((wall) => (
+                <line
+                  key={wall.id}
+                  x1={wall.x1}
+                  y1={wall.y1}
+                  x2={wall.x2}
+                  y2={wall.y2}
+                  className="napkin-wall"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+            </svg>
+          )}
           {draftStroke && draftStroke.length > 1 && (
             <svg className="draw-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
               <polyline

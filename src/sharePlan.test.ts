@@ -42,8 +42,14 @@ describe('sharePlan', () => {
     expect(plan!.systems).toEqual({ solar: true, insulation: false, climate: true, lighting: false })
   })
 
-  it('rejects payloads with no usable rooms', () => {
-    expect(sanitizePlan({ rooms: [] })).toBeNull()
+  it('keeps a blank napkin and drops garbage that only pretended to have rooms', () => {
+    expect(sanitizePlan({ rooms: [] })).toEqual({
+      rooms: [],
+      openings: [],
+      furniture: [],
+      systems: { solar: false, insulation: false, climate: false, lighting: false },
+      site: undefined,
+    })
     expect(sanitizePlan({ rooms: [{ id: 'x' }] })).toBeNull()
     expect(sanitizePlan(null)).toBeNull()
     expect(sanitizePlan('plan')).toBeNull()

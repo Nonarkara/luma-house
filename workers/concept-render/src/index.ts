@@ -94,6 +94,10 @@ async function handleRender(request: Request, env: Env): Promise<Response> {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         responseModalities: ['TEXT', 'IMAGE'],
+        imageConfig: {
+          aspectRatio: '4:3',
+          imageSize: '1K',
+        },
       },
     }),
   })

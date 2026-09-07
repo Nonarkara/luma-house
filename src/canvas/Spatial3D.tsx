@@ -26,6 +26,7 @@ const FURNITURE_HEIGHTS: Record<FurnitureKind, number> = {
   dining: 0.75,
   wardrobe: 2.0,
   desk: 0.75,
+  wc: 0.42,
 }
 
 export type CameraPreset = 'orbit' | 'axonometric' | 'topdown'
@@ -210,7 +211,7 @@ function RoomVolume({
         onClick={handleSelect}
       >
         <boxGeometry args={[footprint.width, FLOOR_THICKNESS, footprint.depth]} />
-        <meshStandardMaterial color="#1b1e24" roughness={0.9} metalness={0} />
+        <meshStandardMaterial color={room.kind === 'bathroom' ? '#2a2c30' : '#1b1e24'} roughness={0.9} metalness={0} />
       </mesh>
       {(['N', 'S', 'W', 'E'] as Compass[]).map((compass) => (
         <SegmentedWall
@@ -690,7 +691,7 @@ export default function Spatial3D({
 
       <Canvas
         shadows="basic"
-        dpr={[1, 2]}
+        dpr={1}
         camera={{ position: [12, 9, 12], fov: 45 }}
         onPointerMissed={() => onSelectRoom(null)}
       >
