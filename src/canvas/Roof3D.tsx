@@ -1,7 +1,6 @@
 import type { ThreeEvent } from '@react-three/fiber'
 import type { PlanState, SiteSpec } from '../types'
-
-export type RoofStyle = 'flat' | 'gable' | 'shed' | 'green'
+import { buildGableGeometry, type RoofStyle } from './roofGeometry'
 
 interface Roof3DProps {
   plan: PlanState
@@ -90,9 +89,8 @@ export function Roof3D({ plan, site, style = 'flat', visible = true, onClick }: 
           <meshStandardMaterial color="#1e293b" roughness={0.4} metalness={0.6} />
         </mesh>
       ) : (
-        // Gable Pitch Roof
-        <mesh position={[0, 0.6, 0]} rotation={[0, 0, 0]} castShadow receiveShadow>
-          <coneGeometry args={[Math.max(width, depth) * 0.6, 1.2, 4]} />
+        // Gable roof — real triangular-prism volume, ridge along the long axis.
+        <mesh geometry={buildGableGeometry(width, depth)} castShadow receiveShadow>
           <meshStandardMaterial color="#78350f" roughness={0.7} />
         </mesh>
       )}

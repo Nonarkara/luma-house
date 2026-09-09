@@ -10,6 +10,7 @@ import type { Compass } from '../analysis'
 import type { CameraWaypoint } from '../tour/guidedTour'
 import { nextWalkPosition } from './walkNavigation'
 import { Roof3D } from './Roof3D'
+import { ROOF_STYLES, type RoofStyle } from './roofGeometry'
 
 const HEIGHT_MIN = 2.2
 const HEIGHT_MAX = 4.5
@@ -592,6 +593,7 @@ export default function Spatial3D({
   const [showSunRays, setShowSunRays] = useState(true)
   const [showAirPaths, setShowAirPaths] = useState(false)
   const [showRoof, setShowRoof] = useState(false)
+  const [roofStyle, setRoofStyle] = useState<RoofStyle>('flat')
   // Section plane height in meters — anything above this Y is clipped in the
   // 3D view, which makes it easy to read the plan by slicing through the
   // walls. Default 4.5 m = no clipping (most single-storey plans).
@@ -669,6 +671,16 @@ export default function Spatial3D({
           >
             3D Roof
           </button>
+          {showRoof && (
+            <button
+              type="button"
+              className="spatial-tb-btn"
+              onClick={() => setRoofStyle(ROOF_STYLES[(ROOF_STYLES.indexOf(roofStyle) + 1) % ROOF_STYLES.length])}
+              title="Cycle roof shape: flat, gable, shed, green"
+            >
+              Roof: {roofStyle}
+            </button>
+          )}
 
           <div className="spatial-section">
             <span className="spatial-section-label">Section Cut</span>
@@ -777,7 +789,7 @@ export default function Spatial3D({
         {!ghost && showAirPaths && (
           <AirflowPathVectors plan={plan} site={site} windFrom={windFrom} windSpeed={windSpeed} />
         )}
-        <Roof3D plan={plan} site={site} visible={showRoof} />
+        <Roof3D plan={plan} site={site} visible={showRoof} style={roofStyle} />
 
         {selected && <HeightHandle room={selected} site={site} onSetWallHeight={onSetWallHeight} />}
 
