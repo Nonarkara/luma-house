@@ -1,3 +1,4 @@
+import { furnitureDoorConflicts } from './plan'
 import { describe, expect, it } from 'vitest'
 import { decodePlanFromHash, encodePlanToHash, sanitizePlan } from './sharePlan'
 import { DEFAULT_ASSEMBLIES } from './assemblies/resolve'
@@ -25,7 +26,7 @@ describe('physical model integrity', () => {
     expect(roomsForOpening(plan, { ...plan.openings[0], x: 2 })).toEqual([])
   })
   for (const style of ['courtyard', 'compact', 'linear', 'l-shaped'] as const) {
-    for (const targetAreaM2 of [40, 80, 150]) {
+    for (const targetAreaM2 of [20, 40, 60, 80, 150, 1000]) {
       it(`${style} produces ${targetAreaM2} m² and connected rooms with attached openings`, () => {
         const generated = synthesizeLayout({ style, targetAreaM2, includeStudy: true, includeTerrace: true })
         const area = generated.rooms.filter(r => r.kind !== 'terrace').reduce((a, r) => a + r.w * r.h / 10000 * generated.site!.w * generated.site!.h, 0)
@@ -33,10 +34,16 @@ describe('physical model integrity', () => {
         for (const opening of generated.openings) {
           expect(roomsForOpening(generated, opening).length, opening.id).toBeGreaterThan(0)
         }
+        expect(furnitureDoorConflicts(generated.furniture, generated.openings, generated.site).size).toBe(0)
         expect(egressRoutes(generated).filter(r => r.room.kind !== 'terrace').every(r => r.connected)).toBe(true)
       })
     }
   }
+  it('keeps the 60 m² L-shaped UI preset clear of door swings', () => {
+    const generated = synthesizeLayout({ style: 'l-shaped', targetAreaM2: 60 })
+    expect(generated.furniture.some(item => item.kind === 'bed')).toBe(true)
+    expect(furnitureDoorConflicts(generated.furniture, generated.openings, generated.site).size).toBe(0)
+  })
   it('does not assign a grade or payback without a real simulation', () => {
     for (const input of [plan, { ...plan, rooms: [], openings: [] }]) {
       const result = simulateEnergy(input)

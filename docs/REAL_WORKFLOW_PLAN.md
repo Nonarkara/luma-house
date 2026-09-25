@@ -136,3 +136,10 @@ No test endpoint, provider credential, or fixture response is shipped.
 EnergyPlus/Radiance integration remains the next release. This release does not
 claim real annual simulation, energy certification, carbon payback, or successful
 production AI tracing.
+
+
+Live verification of the first deployment confirmed drawing, calibration and
+reload, and revealed a bed/door-swing conflict in the 60 m² L-shaped preset.
+Preset furniture now searches contained placements using the existing clearance
+check and leaves a piece unplaced if none fits. Regression coverage includes
+20–1000 m² presets and the exact 60 m² UI case.

@@ -1,5 +1,5 @@
 import type { Opening, PlanState, Room } from '../types'
-import { defaultSite } from '../plan'
+import { defaultSite, furnitureDoorConflicts } from '../plan'
 import { boundarySpans } from '../analysis/walls'
 
 export interface SynthesizerBrief {
@@ -108,7 +108,15 @@ export function synthesizeLayout(brief: SynthesizerBrief = { style: 'courtyard' 
     if (!kind) continue
     const wM = Math.min(kind === 'sofa' ? 2.2 : kind === 'bed' ? 2 : 1.8, room.w / 100 * site.w * 0.7)
     const dM = Math.min(kind === 'sofa' ? 0.9 : kind === 'bed' ? 1.8 : 0.9, room.h / 100 * site.h * 0.7)
-    plan.furniture.push({ id: `f-${room.id}`, kind, x: room.x + room.w / 2 - wM / site.w * 50, y: room.y + room.h / 2 - dM / site.h * 50, rotated: false, wM, dM })
+    const item = { id: `f-${room.id}`, kind, x: 0, y: 0, rotated: false, wM, dM }
+    const candidates = [0.5, 0.05, 0.95].flatMap(u => [0.5, 0.05, 0.95].map(v => ({
+      ...item,
+      x: room.x + (room.w - wM / site.w * 100) * u,
+      y: room.y + (room.h - dM / site.h * 100) * v,
+    })))
+    const placement = candidates.find(candidate => furnitureDoorConflicts([candidate], openings, site).size === 0)
+    // A tight preset can be furnished manually; never pre-place a blocked door.
+    if (placement) plan.furniture.push(placement)
   }
   return plan
 }
