@@ -11,24 +11,76 @@ export interface RenderContext {
 
 export const ARCHITECTURAL_STYLE_PRESETS = [
   {
-    id: 'shanghai',
-    name: 'Shanghai Contemporary',
-    keywords: 'contemporary Shanghai, bespoke elm joinery, mineral plaster walls, linen screens, quiet craftsmanship',
-  },
-  {
-    id: 'nordic',
-    name: 'Nordic Passive House',
-    keywords: 'Nordic passive house, pale cedar cladding, triple-glazed Scandinavian windows, high insulation, minimalist warm timber',
+    id: 'japandi',
+    name: 'Japandi Timber',
+    category: 'Minimalist',
+    keywords: 'Japandi timber pavilion, shoji sliding screens, warm oak joinery, natural stone paving, serene courtyard garden, soft diffuse daylight',
   },
   {
     id: 'tropical',
     name: 'Tropical Courtyard',
-    keywords: 'contemporary tropical courtyard, deep overhanging bamboo eaves, polished terrazzo floor, lush garden courtyard, cross-breeze',
+    category: 'Regional',
+    keywords: 'contemporary tropical courtyard, deep overhanging bamboo eaves, polished terrazzo floor, lush garden courtyard, cross-breeze, dappled shadows',
   },
   {
-    id: 'japandi',
-    name: 'Japandi Timber Pavilion',
-    keywords: 'Japandi timber pavilion, shoji sliding screens, warm oak joinery, natural stone paving, serene courtyard garden',
+    id: 'nordic',
+    name: 'Nordic Passive',
+    category: 'Minimalist',
+    keywords: 'Nordic passive house, pale cedar cladding, triple-glazed Scandinavian windows, high insulation, minimalist warm timber, hygge atmosphere',
+  },
+  {
+    id: 'brutalist',
+    name: 'Brutalist Monolith',
+    category: 'Modernist',
+    keywords: 'warm brutalist architecture, board-formed concrete walls, geometric deep lightwells, sculptural massing, teak interior panels, architectural shadows',
+  },
+  {
+    id: 'bauhaus',
+    name: 'Modern Bauhaus',
+    category: 'Modernist',
+    keywords: 'Bauhaus modernism, slim black steel frames, floor-to-ceiling glass curtain walls, pure geometric planes, primary accent colors, floating roof',
+  },
+  {
+    id: 'vernacular',
+    name: 'Thai Vernacular',
+    category: 'Regional',
+    keywords: 'contemporary Thai timber pavilion, elevated platform, sweeping gabled clay tile roof, slatted wooden louvers, open breezeway, lotus water court',
+  },
+  {
+    id: 'midcentury',
+    name: 'Mid-Century Modern',
+    category: 'Modernist',
+    keywords: 'mid-century modern residence, warm walnut wall cladding, terrazzo floors, clerestory ribbon windows, post-and-beam structure, brass hardware',
+  },
+  {
+    id: 'biophilic',
+    name: 'Biophilic Oasis',
+    category: 'Eco',
+    keywords: 'biophilic residential architecture, integrated living plant walls, sunken courtyard atrium, natural river stone, daylight-responsive skylights',
+  },
+  {
+    id: 'mediterranean',
+    name: 'Mediterranean Court',
+    category: 'Regional',
+    keywords: 'Mediterranean coastal villa, textured warm lime plaster, terracotta roof tiles, arched shaded loggia, stone paved courtyard with olive tree',
+  },
+  {
+    id: 'industrial',
+    name: 'Industrial Loft',
+    category: 'Modernist',
+    keywords: 'refined industrial loft residence, exposed black steel trusses, crittall window frames, polished screed concrete floor, warm tungsten lighting',
+  },
+  {
+    id: 'monochrome',
+    name: 'Minimalist White',
+    category: 'Minimalist',
+    keywords: 'ultra-minimalist monochrome residence, museum-grade white microcement, frameless floor-to-ceiling glass, architectural shadow reveals, quiet emptiness',
+  },
+  {
+    id: 'rammedearth',
+    name: 'Rammed Earth Sanctuary',
+    category: 'Eco',
+    keywords: 'sustainable rammed earth house, stratified sedimentary earth walls, heavy timber rafters, natural lime plaster, terracotta floor tiles, thermal mass',
   },
 ]
 

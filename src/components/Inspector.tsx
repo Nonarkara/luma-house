@@ -56,6 +56,7 @@ import {
 import type { ClimateResponseId } from '../assemblies/types'
 import type { InteriorBoq } from '../boq/interiorBoq'
 import { SunChart } from '../canvas/SunChart'
+import { ARCHITECTURAL_STYLE_PRESETS } from '../concept/buildRenderPrompt'
 
 export interface InspectorProps {
   mode: WorkspaceMode
@@ -351,12 +352,43 @@ export const Inspector = React.memo(function Inspector({
 
           <section className="panel-section">
             <div className="section-title">
-              <h3>Concept photo</h3>
+              <h3>Concept visualization</h3>
               <span className="badge">{quotaLeft} left</span>
             </div>
-            <p className="section-intro">Style keywords feed the concept render and the live finish estimate below.</p>
+            <p className="section-intro">Select an architectural style or customize keywords to drive concept renders and finish estimates.</p>
+            
+            <div className="style-preset-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', marginBottom: '10px' }}>
+              {ARCHITECTURAL_STYLE_PRESETS.map((preset) => {
+                const isSelected = styleKeywords.toLowerCase().includes(preset.name.toLowerCase()) || styleKeywords === preset.keywords
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    className={`style-preset-btn ${isSelected ? 'active' : ''}`}
+                    onClick={() => setStyleKeywords(preset.keywords)}
+                    style={{
+                      textAlign: 'left',
+                      padding: '6px 8px',
+                      fontSize: '11px',
+                      borderRadius: '4px',
+                      border: isSelected ? '1px solid var(--accent-primary, #f59e0b)' : '1px solid var(--border)',
+                      background: isSelected ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                      color: isSelected ? '#fff' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px',
+                    }}
+                  >
+                    <span style={{ fontWeight: 600, color: isSelected ? 'var(--accent-primary, #f59e0b)' : '#fff' }}>{preset.name}</span>
+                    <span style={{ fontSize: '9px', opacity: 0.6 }}>{preset.category}</span>
+                  </button>
+                )
+              })}
+            </div>
+
             <label className="field-label" style={{ marginBottom: 12 }}>
-              Style & interior keywords
+              Active style & prompt keywords
               <input
                 type="text"
                 placeholder="e.g. cozy tropical cabin, warm wood, minimalist"
