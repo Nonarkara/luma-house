@@ -24,6 +24,7 @@ export async function tracePlanFromImage(options: {
     imageDataUrl: string
     siteW?: number
     siteH?: number
+    signal?: AbortSignal
     apiUrl?: string
 }): Promise<TraceResult> {
     if (!canGenerateConcept()) {
@@ -31,7 +32,9 @@ export async function tracePlanFromImage(options: {
     }
     const endpoint = (options.apiUrl || DEFAULT_API || '').replace(/\/$/, '') + '/trace'
 
+    const signal = options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(60000)]) : AbortSignal.timeout(60000)
     const response = await fetch(endpoint, {
+        signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -43,17 +46,21 @@ export async function tracePlanFromImage(options: {
 
     if (!response.ok) {
         const detail = await response.text().catch(() => '')
-        throw new Error(detail || `Plan trace failed (${response.status})`)
+        let message = detail
+        try { message = (JSON.parse(detail) as { error?: string }).error || detail } catch { /* plain-text error */ }
+        if (message.includes('GEMINI_API_KEY is not configured')) message = 'AI tracing is unavailable: the service is not configured. Keep your project and use Manual underlay to trace the image locally.'
+        throw new Error(message || `Plan trace failed (${response.status})`)
     }
 
     const payload = (await response.json()) as { plan?: unknown; note?: string; draft?: boolean }
     const sanitized = sanitizePlan(payload.plan)
-    if (!sanitized) {
+    if (!sanitized || sanitized.rooms.length === 0) {
         throw new Error('AI could not read a usable plan from that image. Try a clearer scan or draw it.')
     }
+    signal.throwIfAborted()
     return {
-        plan: sanitized,
-        draft: payload.draft !== false,
+        plan: { ...sanitized, site: { w: options.siteW ?? sanitized.site?.w ?? 14, h: options.siteH ?? sanitized.site?.h ?? 10, unit: sanitized.site?.unit ?? 1 } },
+        draft: true,
         note: payload.note || 'AI-read draft — verify walls and openings before costing.',
         remaining: recordAiTrace(),
     }

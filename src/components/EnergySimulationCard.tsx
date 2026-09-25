@@ -9,25 +9,14 @@ interface EnergySimulationCardProps {
 }
 
 export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ energy, airQuality }) => {
-  const ratingColors: Record<EnergySimulationResult['energyRating'], string> = {
-    'A+': '#10b981',
-    A: '#059669',
-    B: '#10b981',
-    C: '#84cc16',
-    D: '#f59e0b',
-    E: '#f97316',
-    F: '#ef4444',
-    G: '#b91c1c',
-  }
-
-  const badgeColor = ratingColors[energy.energyRating]
+  const badgeColor = 'var(--accent, #f59e0b)'
 
   return (
-    <section className="panel-section energy-simulation-card" style={{ background: 'rgba(255, 255, 255, 0.03)', borderRadius: 8, padding: 12, marginBottom: 16 }}>
+    <section className="panel-section energy-simulation-card" style={{ background: 'rgba(255, 255, 255, 0.03)', borderRadius: 0, padding: 12, marginBottom: 16 }}>
       <div className="section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Zap style={{ width: 18, height: 18, color: badgeColor }} />
-          <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Operational EUI & Carbon Payback</h3>
+          <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Energy assumptions preview</h3>
         </div>
         <span
           className="badge"
@@ -38,37 +27,39 @@ export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ ener
             fontSize: '0.8rem',
             fontWeight: 700,
             padding: '2px 8px',
-            borderRadius: 12,
+            borderRadius: 0,
           }}
         >
-          Class {energy.energyRating} Energy
+          {energy.status === 'unavailable' ? 'No enclosed rooms' : 'Heuristic only'}
         </span>
       </div>
 
       <p className="section-intro" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
-        Annual building energy balance simulation (kWh/m²/yr) including envelope transmission, HVAC ventilation, internal gains, and solar PV yield.
+        {energy.source} Updated from the current sketch. Annual energy, an energy grade and carbon payback are not verified.
       </p>
 
-      {/* Main EUI & Payback Metrics */}
+      {/* Preserve the illustrative breakdown without presenting it as a prediction. */}
+      <details>
+        <summary>Inspect illustrative calculations</summary>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-        <div style={{ background: 'rgba(0, 0, 0, 0.18)', padding: 10, borderRadius: 6 }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', display: 'block' }}>Net EUI</span>
+        <div style={{ background: 'rgba(0, 0, 0, 0.18)', padding: 10, borderRadius: 0 }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', display: 'block' }}>Illustrative EUI</span>
           <strong style={{ fontSize: '1.1rem', color: badgeColor }}>
             {energy.netEuiKwhPerM2Yr.toFixed(1)} <small style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>kWh/m²/yr</small>
           </strong>
           <small style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
-            {energy.annualOperationalCarbonKg.toLocaleString()} kgCO₂e/yr emissions
+            {energy.annualOperationalCarbonKg.toLocaleString()} kgCO₂e/yr at assumed grid factor
           </small>
         </div>
 
-        <div style={{ background: 'rgba(0, 0, 0, 0.18)', padding: 10, borderRadius: 6 }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', display: 'block' }}>Carbon Neutral Payback</span>
+        <div style={{ background: 'rgba(0, 0, 0, 0.18)', padding: 10, borderRadius: 0 }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', display: 'block' }}>Carbon payback</span>
           <strong style={{ fontSize: '1.1rem', color: 'var(--accent-emerald, #10b981)' }}>
-            {energy.carbonNeutralityPaybackYears ? `${energy.carbonNeutralityPaybackYears} yrs` : 'N/A'}
+            Not calculated
           </strong>
           <small style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
             <Clock style={{ width: 10, height: 10, display: 'inline', marginRight: 2 }} />
-            embodied carbon ROI
+            Needs a modeled baseline and intervention inventory
           </small>
         </div>
       </div>
@@ -89,11 +80,13 @@ export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ ener
         </div>
       </div>
 
+      </details>
+
       {/* IAQ CO2 Status if available */}
       {airQuality && (
         <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '0.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'var(--text-secondary)' }}><Leaf style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: '#10b981' }} /> Indoor Air Quality (CO₂):</span>
+            <span style={{ color: 'var(--text-secondary)' }}><Leaf style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: '#10b981' }} /> Assumed CO₂ scenario:</span>
             <strong style={{ color: airQuality.overallIaq === 'POOR' ? '#ef4444' : airQuality.overallIaq === 'MODERATE' ? '#f59e0b' : '#10b981' }}>
               {airQuality.averageCo2Ppm} ppm ({airQuality.overallIaq})
             </strong>

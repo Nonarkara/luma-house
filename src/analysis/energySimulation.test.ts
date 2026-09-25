@@ -7,7 +7,8 @@ describe('simulateEnergy', () => {
     const result = simulateEnergy(chinaApartmentPlan)
 
     expect(result.grossEuiKwhPerM2Yr).toBeGreaterThan(0)
-    expect(['A+', 'A', 'B', 'C', 'D', 'E', 'F', 'G']).toContain(result.energyRating)
+    expect(result.energyRating).toBeNull()
+    expect(result.confidence).toBe('heuristic')
     expect(result.breakdown.wallLossKwh).toBeGreaterThan(0)
   })
 

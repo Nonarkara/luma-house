@@ -1,3 +1,7 @@
+import { traceSiteFromImage } from './concept/reviewTrace'
+import { LayoutPresetDialog } from './components/LayoutPresetDialog'
+import { TraceReview, type PendingTrace } from './components/TraceReview'
+import { updateOpeningDimensions } from './openingGeometry'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Armchair, Check, DoorOpen, ImagePlus, MapPin, MousePointer2, PanelLeftClose, Pencil, Plus, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
 import { FloorPlan } from './canvas/FloorPlan'
@@ -47,7 +51,6 @@ import { JourneyRail } from './components/JourneyRail'
 import { FloatingToolbar } from './components/FloatingToolbar'
 import { ContextualActionBar } from './components/ContextualActionBar'
 import { FurnitureCatalogDrawer } from './components/FurnitureCatalogDrawer'
-import { synthesizeLayout } from './concept/layoutSynthesizer'
 import { WelcomeGate } from './components/WelcomeGate'
 import { ScienceDock } from './components/ScienceDock'
 import { ValueLens, type ValueLensMode } from './components/ValueLens'
@@ -95,8 +98,8 @@ function readSavedPlan(): PlanState {
 
 function App() {
   const [plan, setPlan] = useState<PlanState>(readSavedPlan)
-  const [past, setPast] = useState<Array<{ state: PlanState; label: string }>>([])
-  const [future, setFuture] = useState<Array<{ state: PlanState; label: string }>>([])
+  const [past, setPast] = useState<Array<{ state: PlanState; label: string; sketchUrl: string | null }>>([])
+  const [future, setFuture] = useState<Array<{ state: PlanState; label: string; sketchUrl: string | null }>>([])
   const [mode, setMode] = useState<WorkspaceMode>('plan')
   const [view, setView] = useState<CanvasView>('plan')
   const [selectedRoom, setSelectedRoom] = useState<string | null>('living')
@@ -232,6 +235,10 @@ function App() {
   const overlaps = useMemo(() => roomOverlaps(plan.rooms), [plan.rooms])
 
   const interior = useMemo(() => interiorBoq(plan, site, currency), [plan, site, currency])
+  const [presetOpen, setPresetOpen] = useState(false)
+  const [pendingTrace, setPendingTrace] = useState<PendingTrace | null>(null)
+  const traceRequest = useRef<AbortController | null>(null)
+  useEffect(() => () => traceRequest.current?.abort(), [])
   const [isTracing, setIsTracing] = useState(false)
   const [traceNote, setTraceNote] = useState<string | null>(null)
   const [isCatalogOpen, setIsCatalogOpen] = useState(false)
@@ -241,10 +248,10 @@ function App() {
   const projectTitle = isAuthoredSample ? CHINA_PROJECT_NAME : 'Untitled sketch'
 
   const commit = useCallback((next: PlanState | ((current: PlanState) => PlanState), label = 'Edit') => {
-    setPast((items) => [...items.slice(-29), { state: plan, label }])
+    setPast((items) => [...items.slice(-29), { state: plan, label, sketchUrl }])
     setPlan((current) => (typeof next === 'function' ? next(current) : next))
     setFuture([])
-  }, [plan])
+  }, [plan, sketchUrl])
 
   const handleApplyStandardsIssue = useCallback((issue: StandardsCodeIssue) => {
     const action = issue.fixAction
@@ -296,7 +303,7 @@ function App() {
   const updateOpening = useCallback((id: string, updates: Partial<Opening>) => {
     commit((current) => ({
       ...current,
-      openings: current.openings.map((o) => (o.id === id ? { ...o, ...updates } : o)),
+      openings: current.openings.map((o) => (o.id === id ? updateOpeningDimensions(o, updates) : o)),
     }), 'Adjust opening')
   }, [commit])
 
@@ -382,9 +389,9 @@ function App() {
   }, [])
 
   const commitSnapshot = useCallback((snapshot: PlanState, label = 'Auto-save') => {
-    setPast((items) => [...items.slice(-29), { state: snapshot, label }])
+    setPast((items) => [...items.slice(-29), { state: snapshot, label, sketchUrl }])
     setFuture([])
-  }, [])
+  }, [sketchUrl])
 
   const {
     onRoomPointerDown,
@@ -408,9 +415,15 @@ function App() {
 
   useEffect(() => {
     setLastSaved('Saving…')
+    // A share link is an import, not a permanent override of later local edits.
+    if (window.location.hash.startsWith('#plan=')) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
     const timeout = window.setTimeout(() => {
-      localStorage.setItem(CHINA_PROJECT_KEY, JSON.stringify(plan))
-      setLastSaved('Saved locally')
+      try {
+        localStorage.setItem(CHINA_PROJECT_KEY, JSON.stringify(plan))
+        setLastSaved('Saved locally')
+      } catch { setLastSaved('Not saved — export your project') }
     }, 300)
     return () => window.clearTimeout(timeout)
   }, [plan])
@@ -428,19 +441,23 @@ function App() {
   const undo = useCallback(() => {
     const previous = past[past.length - 1]
     if (!previous) return
-    setFuture((items) => [{ state: plan, label: previous.label }, ...items])
+    setFuture((items) => [{ state: plan, label: previous.label, sketchUrl }, ...items])
     setPlan(previous.state)
+    setSketchUrl(previous.sketchUrl)
+    setTraceNote(null)
     setPast((items) => items.slice(0, -1))
     setToast(`Undid: ${previous.label}`)
-  }, [past, plan])
+  }, [past, plan, sketchUrl])
 
   const redo = useCallback(() => {
     const next = future[0]
     if (!next) return
-    setPast((items) => [...items, { state: plan, label: next.label }])
+    setPast((items) => [...items, { state: plan, label: next.label, sketchUrl }])
     setPlan(next.state)
+    setSketchUrl(next.sketchUrl)
+    setTraceNote(null)
     setFuture((items) => items.slice(1))
-  }, [future, plan])
+  }, [future, plan, sketchUrl])
 
   const applyRulerCalibration = useCallback(() => {
     const meters = Number(rulerMeters)
@@ -750,7 +767,7 @@ function App() {
           return
         }
         commit(next, 'Import project')
-        setSelectedRoom(next.rooms[0].id)
+        setSelectedRoom(next.rooms[0]?.id ?? null)
         setSelectedOpening(null)
         setSelectedFurniture(null)
         setToast('Project imported')
@@ -766,6 +783,7 @@ function App() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
+      if (target?.closest('dialog')) return
       if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
 
       const meta = event.metaKey || event.ctrlKey
@@ -793,12 +811,7 @@ function App() {
         if (toolKey === 'm') { event.preventDefault(); setIsMeasuring((prev) => !prev); return }
         if (toolKey === 's') {
           event.preventDefault()
-          if (plan.rooms.length === 0) {
-            setToast('Draw a room before synthesizing a layout')
-          } else {
-            commit(synthesizeLayout({ style: 'courtyard' }), 'Synthesize layout')
-            setToast('Layout synthesized — courtyard style')
-          }
+          setPresetOpen(true)
           return
         }
       }
@@ -966,38 +979,70 @@ function App() {
 
   // AI trace: read a plan from an uploaded image via the Gemini vision worker.
   const traceFileInputRef = useRef<HTMLInputElement>(null)
+  const cancelTrace = useCallback(() => {
+    traceRequest.current?.abort()
+    traceRequest.current = null
+    setIsTracing(false)
+    setPendingTrace(null)
+  }, [])
   const runTrace = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
-    if (quotaLeft <= 0) {
-      setToast('Daily AI limit reached (3/day)')
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+      setToast('Choose a PNG, JPEG or WebP floor plan under 10 MB')
       return
     }
+    if (quotaLeft <= 0) { setToast('Daily AI limit reached (3/day)'); return }
+    traceRequest.current?.abort()
+    const controller = new AbortController()
+    traceRequest.current = controller
+    setIsTracing(true)
     const reader = new FileReader()
+    reader.onerror = () => {
+      if (traceRequest.current !== controller) return
+      setIsTracing(false)
+      setToast('Could not read that image')
+    }
     reader.onload = async () => {
-      const imageDataUrl = String(reader.result)
-      setSketchUrl(imageDataUrl) // show it as the underlay while tracing
-      setIsTracing(true)
+      if (traceRequest.current !== controller) return
+      const image = String(reader.result)
+      setPendingTrace({ image, plan: null, note: '' })
       try {
-        const result = await tracePlanFromImage({ imageDataUrl, siteW: site.w, siteH: site.h })
-        commit(result.plan, 'Trace plan from photo')
-        setSelectedRoom(result.plan.rooms[0]?.id ?? null)
-        setMode('plan')
-        setSettingsOpen(false)
-        setInspectorOpen(true)
-        setStyleKeywords('')
+        const source = new Image()
+        source.src = image
+        await source.decode()
+        if (traceRequest.current !== controller) return
+        const field = traceSiteFromImage(source.naturalWidth, source.naturalHeight)
+        const result = await tracePlanFromImage({ imageDataUrl: image, siteW: field.w, siteH: field.h, signal: controller.signal })
+        if (traceRequest.current !== controller) return
         setQuotaLeft(result.remaining)
-        setTraceNote(`${result.note} Scale is assumed until you enter one known room dimension.`)
-        setToast(`AI found ${result.plan.rooms.length} rooms · ${result.remaining} AI use${result.remaining === 1 ? '' : 's'} left today`)
+        setPendingTrace({ image, plan: result.plan, note: result.note })
       } catch (error) {
-        setToast(error instanceof Error ? error.message : 'Plan trace failed')
+        if (traceRequest.current !== controller) return
+        setPendingTrace({ image, plan: null, note: '', error: error instanceof Error ? error.message : 'Plan trace failed' })
       } finally {
-        setIsTracing(false)
+        if (traceRequest.current === controller) setIsTracing(false)
       }
     }
     reader.readAsDataURL(file)
-  }, [commit, quotaLeft, site.h, site.w])
+  }, [quotaLeft])
+  const acceptTrace = (next: PlanState) => {
+    if (!pendingTrace || isTracing) return
+    commit(next, 'Accept calibrated trace')
+    setSketchUrl(pendingTrace.image)
+    setSelectedRoom(next.rooms[0]?.id ?? null)
+    setSelectedOpening(null)
+    setSelectedFurniture(null)
+    setMode('plan')
+    setView('plan')
+    setSettingsOpen(false)
+    setInspectorOpen(true)
+    setStyleKeywords('')
+    setTraceNote('Accepted AI draft. Check room boundaries, openings and assumed dimensions before analysis.')
+    setToast('Calibrated draft accepted — undo restores the previous plan')
+    cancelTrace()
+  }
 
   const runConceptRender = useCallback(async () => {
     if (isRendering) return
@@ -1079,6 +1124,18 @@ function App() {
 
   return (
     <div className="app-shell">
+      <input ref={traceFileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={runTrace} hidden />
+      {presetOpen && <LayoutPresetDialog onClose={() => setPresetOpen(false)} onApply={next => {
+        commit(next, 'Apply layout preset')
+        setSelectedRoom(next.rooms[0]?.id ?? null)
+        setSelectedOpening(null)
+        setSelectedFurniture(null)
+        setSketchUrl(null)
+        setStyleKeywords('')
+        setPresetOpen(false)
+        setToast('Layout preset applied — undo restores the previous plan')
+      }} />}
+      {pendingTrace && <TraceReview draft={pendingTrace} busy={isTracing} onCancel={cancelTrace} onAccept={acceptTrace} />}
       <TopBar
         projectName={projectTitle}
         lastSaved={lastSaved}
@@ -1339,7 +1396,7 @@ function App() {
                   </button>
                   <button className="button secondary small" type="button" onClick={resetPlan}>Load sample</button>
                 </div>
-                <input ref={traceFileInputRef} type="file" accept="image/*" onChange={runTrace} hidden />
+
               </div>
             )}
             {view === 'plan' && traceNote && (
@@ -1403,7 +1460,7 @@ function App() {
                 setActiveTool={setActiveTool}
                 isMeasuring={isMeasuring}
                 onToggleMeasure={() => setIsMeasuring(!isMeasuring)}
-                onSynthesize={() => commit(synthesizeLayout({ style: 'courtyard' }))}
+                onSynthesize={() => setPresetOpen(true)}
               />
             )}
 
@@ -1514,6 +1571,7 @@ function App() {
           setStyleKeywords={setStyleKeywords}
           site={site}
           interior={interior}
+          onOpenPresets={() => setPresetOpen(true)}
           startBlank={startBlank}
           runTrace={runTrace}
           traceFileInputRef={traceFileInputRef}

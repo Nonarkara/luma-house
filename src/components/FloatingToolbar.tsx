@@ -71,11 +71,11 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           type="button"
           className="toolbar-pill-btn toolbar-pill-ai"
           onClick={onSynthesize}
-          title="AI Layout Synthesizer (S)"
-          aria-label="AI Layout Synthesizer"
+          title="Layout presets (S)"
+          aria-label="Layout presets"
         >
           <Sparkles className="toolbar-pill-icon" aria-hidden="true" />
-          <span className="toolbar-pill-label">AI Layout</span>
+          <span className="toolbar-pill-label">Layout preset</span>
         </button>
       )}
     </div>

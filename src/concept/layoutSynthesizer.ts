@@ -1,5 +1,6 @@
 import type { Opening, PlanState, Room } from '../types'
 import { defaultSite } from '../plan'
+import { boundarySpans } from '../analysis/walls'
 
 export interface SynthesizerBrief {
   style: 'courtyard' | 'linear' | 'compact' | 'l-shaped'
@@ -9,8 +10,8 @@ export interface SynthesizerBrief {
 }
 
 /**
- * Algorithmic Layout Synthesizer: Synthesizes a non-overlapping, solar-optimized
- * architectural floor plan from scratch.
+ * Deterministic layout presets. Rooms are templates; openings and scale derive
+ * from their actual geometry. No AI or solar optimization is performed.
  */
 export function synthesizeLayout(brief: SynthesizerBrief = { style: 'courtyard' }): PlanState {
   const rooms: Room[] = []
@@ -51,30 +52,63 @@ export function synthesizeLayout(brief: SynthesizerBrief = { style: 'courtyard' 
     }
   }
 
-  // Synthesize exterior windows & interior doors automatically
-  // Windows facing South / East
-  openings.push(
-    { id: 'op-win-living-s', type: 'window', x: 35, y: 80, rotation: 0, widthM: 2.4, heightM: 1.8, sillHeightM: 0.4, headHeightM: 2.2, shgc: 0.35, operableFraction: 0.6 },
-    { id: 'op-win-bed-s', type: 'window', x: 71, y: 50, rotation: 0, widthM: 1.8, heightM: 1.4, sillHeightM: 0.8, headHeightM: 2.2, shgc: 0.35, operableFraction: 0.5 },
-    { id: 'op-win-kitchen-n', type: 'window', x: 35, y: 15, rotation: 0, widthM: 1.6, heightM: 1.2, sillHeightM: 1.0, headHeightM: 2.2, shgc: 0.65, operableFraction: 0.5 },
-    { id: 'op-door-main', type: 'door', x: 15, y: 62, rotation: 90, widthM: 0.9, heightM: 2.1, sillHeightM: 0 },
-    { id: 'op-door-living-bed', type: 'door', x: 55, y: 32, rotation: 90, widthM: 0.9, heightM: 2.1, sillHeightM: 0 },
-  )
-
-  return {
+  const site = defaultSite()
+  const enclosedArea = rooms.filter(room => room.kind !== 'terrace').reduce((sum, room) => sum + room.w * room.h / 10000 * site.w * site.h, 0)
+  if (brief.targetAreaM2 !== undefined) {
+    if (!Number.isFinite(brief.targetAreaM2) || brief.targetAreaM2 < 20 || brief.targetAreaM2 > 1000) {
+      throw new Error('Choose an enclosed area between 20 and 1000 m².')
+    }
+    const factor = Math.sqrt(brief.targetAreaM2 / enclosedArea)
+    site.w *= factor
+    site.h *= factor
+  }
+  const plan: PlanState = {
     rooms,
     openings,
-    furniture: [
-      { id: 'f-sofa', kind: 'sofa', x: 25, y: 52, rotated: false },
-      { id: 'f-bed', kind: 'bed', x: 62, y: 22, rotated: false },
-      { id: 'f-dining', kind: 'dining', x: 25, y: 22, rotated: false },
-    ],
+    furniture: [],
     systems: {
       solar: true,
       insulation: true,
       climate: true,
       lighting: true,
     },
-    site: defaultSite(),
+    site,
   }
+  // Connect every touching pair once. A window only uses an exterior span.
+  const connectedPairs = new Set<string>()
+  for (const room of rooms) {
+    if (room.kind === 'terrace') continue
+    const spans = boundarySpans(plan, room)
+    const add = (span: typeof spans[number], type: Opening['type'], id: string) => {
+      const lengthM = (span.end - span.start) / 100 * (span.rotation === 0 ? site.w : site.h)
+      const widthM = Math.min(type === 'door' ? 0.9 : 1.6, lengthM - 0.2)
+      if (widthM < 0.4) return false
+      const center = (span.start + span.end) / 2
+      openings.push({ id, type, x: span.rotation === 0 ? center : span.fixed, y: span.rotation === 0 ? span.fixed : center,
+        rotation: span.rotation, widthM, heightM: type === 'door' ? 2.1 : 1.2,
+        sillHeightM: type === 'door' ? 0 : 0.9, headHeightM: 2.1,
+        ...(type === 'window' ? { shgc: 0.35, vlt: 0.65, operableFraction: 0.5 } : {}),
+      })
+      return true
+    }
+    for (const span of spans.filter(span => span.neighborIds.length === 1)) {
+      const pair = [room.id, span.neighborIds[0]].sort().join(':')
+      if (!connectedPairs.has(pair) && add(span, 'door', `door-${pair}`)) connectedPairs.add(pair)
+    }
+    const exterior = spans.filter(span => span.neighborIds.length === 0).sort((a, b) => (b.end - b.start) - (a.end - a.start))
+    // Reserve a separate exterior face for the living-room entry.
+    const entry = room.kind === 'living' ? exterior.find(span => span.compass === 'W') ?? exterior[0] : undefined
+    if (entry) add(entry, 'door', `entry-${room.id}`)
+    const windowSpan = exterior.find(span => span !== entry)
+    if (windowSpan) add(windowSpan, 'window', `window-${room.id}`)
+  }
+  // Center each piece in its intended room and fit its real dimensions.
+  for (const room of rooms) {
+    const kind = room.kind === 'living' ? 'sofa' : room.kind === 'bedroom' ? 'bed' : room.kind === 'kitchen' ? 'dining' : null
+    if (!kind) continue
+    const wM = Math.min(kind === 'sofa' ? 2.2 : kind === 'bed' ? 2 : 1.8, room.w / 100 * site.w * 0.7)
+    const dM = Math.min(kind === 'sofa' ? 0.9 : kind === 'bed' ? 1.8 : 0.9, room.h / 100 * site.h * 0.7)
+    plan.furniture.push({ id: `f-${room.id}`, kind, x: room.x + room.w / 2 - wM / site.w * 50, y: room.y + room.h / 2 - dM / site.h * 50, rotated: false, wM, dM })
+  }
+  return plan
 }

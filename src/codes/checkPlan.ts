@@ -1,3 +1,4 @@
+import { openingDimensions } from '../openingGeometry'
 import type { Opening, PlanState, Room } from '../types'
 import { exteriorWalls } from '../analysis/walls'
 import { egressRoutes } from '../analysis/egress'
@@ -37,11 +38,11 @@ function roomNeedsEgress(room: Room): boolean {
 }
 
 function defaultDoorWidthM(opening: Opening): number {
-  return opening.widthM ?? (opening.type === 'window' ? 1.6 : 0.9)
+  return openingDimensions(opening).width
 }
 
 function defaultDoorHeightM(opening: Opening): number {
-  return opening.heightM ?? (opening.type === 'window' ? 1.2 : 2.1)
+  return openingDimensions(opening).height
 }
 
 /**

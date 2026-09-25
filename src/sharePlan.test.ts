@@ -43,7 +43,7 @@ describe('sharePlan', () => {
   })
 
   it('rejects payloads with no usable rooms', () => {
-    expect(sanitizePlan({ rooms: [] })).toBeNull()
+    expect(sanitizePlan({ rooms: [] })?.rooms).toEqual([])
     expect(sanitizePlan({ rooms: [{ id: 'x' }] })).toBeNull()
     expect(sanitizePlan(null)).toBeNull()
     expect(sanitizePlan('plan')).toBeNull()

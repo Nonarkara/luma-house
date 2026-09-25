@@ -1,3 +1,4 @@
+import { openingDimensions } from '../openingGeometry'
 import { roomHeight } from '../plan'
 import type { PlanState } from '../types'
 import { getEnvelopeFromAssemblies } from '../assemblies/envelope'
@@ -83,8 +84,8 @@ export function heatFlowSnapshot({
     let thisWallDoorM2 = 0
 
     for (const op of openings) {
-      const w = op.widthM ?? (op.type === 'window' ? 1.6 : 0.9)
-      const h = op.heightM ?? (op.type === 'window' ? 1.2 : 2.1)
+      const w = openingDimensions(op).width
+      const h = openingDimensions(op).height
       const area = w * h
       if (op.type === 'window') {
         thisWallWindowM2 += area

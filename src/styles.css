@@ -6870,3 +6870,23 @@ summary:focus-visible {
   width: 10px;
   height: 10px;
 }
+
+/* Trace review keeps the source dominant; the draft is an overlay for checking. */
+.trace-review { width: min(780px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; margin: auto; padding: 20px; background: #121214; color: #fff; border: 2px solid var(--accent, #f59e0b); border-radius: 0; }
+.trace-review::backdrop { background: rgba(9, 9, 11, .88); }
+.trace-review h2 { font-size: 20px; }
+.trace-review p, .trace-review label, .trace-review li { font-size: 14px; line-height: 1.5; }
+.trace-preview { position: relative; margin: 16px 0; }
+.trace-preview img { display: block; width: 100%; height: auto; }
+.trace-preview svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.trace-fields { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin: 16px 0; }
+.trace-fields label { display: grid; gap: 4px; min-width: 0; }
+.trace-fields input, .trace-fields select { min-width: 0; width: 100%; min-height: 44px; background: #202024; color: #fff; border: 1px solid #777; border-radius: 0; padding: 8px; }
+.trace-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.trace-actions button { min-height: 44px; }
+.trace-review input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; accent-color: #f59e0b; }
+@media (max-width: 600px) { .trace-fields { grid-template-columns: 1fr; } .trace-actions button { width: 100%; } }
+
+/* Keep physical proportions and source-image coordinates aligned at every size. */
+.plan-viewport { container-type: size; }
+.plan-canvas { width: min(90cqw, calc((100cqh - 78px) * var(--site-ratio, 1.4))); height: auto; aspect-ratio: var(--site-ratio, 1.4); }

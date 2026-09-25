@@ -1,5 +1,5 @@
 import { siteOf } from '../plan'
-import type { Opening, PlanState, Room } from '../types'
+import type { Opening, PlanState, Room, SiteSpec } from '../types'
 import type { Compass, WallSegment } from './types'
 
 const EPS = 0.5 // percentage tolerance for "touching" / "shared wall"
@@ -64,18 +64,22 @@ export function exteriorWalls(plan: PlanState): WallSegment[] {
  */
 export function openingCompassForRoom(
   room: Room,
-  opening: { x: number; y: number; rotation: 0 | 90 },
+  opening: Pick<Opening, 'x' | 'y' | 'rotation'> & Partial<Opening>,
+  site?: SiteSpec,
 ): Compass | null {
   const onTop = Math.abs(opening.y - room.y) < 1.5
   const onBottom = Math.abs(opening.y - (room.y + room.h)) < 1.5
   const onLeft = Math.abs(opening.x - room.x) < 1.5
   const onRight = Math.abs(opening.x - (room.x + room.w)) < 1.5
-  const inSpanX = opening.x >= room.x - 1.5 && opening.x <= room.x + room.w + 1.5
-  const inSpanY = opening.y >= room.y - 1.5 && opening.y <= room.y + room.h + 1.5
-  if (onTop && inSpanX) return 'N'
-  if (onBottom && inSpanX) return 'S'
-  if (onLeft && inSpanY) return 'W'
-  if (onRight && inSpanY) return 'E'
+  const width = opening.widthM ?? (opening.type === 'door' ? 0.9 : opening.type === 'window' ? 1.6 : 0)
+  const halfX = site ? width / site.w * 50 : 0
+  const halfY = site ? width / site.h * 50 : 0
+  const inSpanX = opening.x - halfX >= room.x - 1e-6 && opening.x + halfX <= room.x + room.w + 1e-6
+  const inSpanY = opening.y - halfY >= room.y - 1e-6 && opening.y + halfY <= room.y + room.h + 1e-6
+  if (opening.rotation === 0 && onTop && inSpanX) return 'N'
+  if (opening.rotation === 0 && onBottom && inSpanX) return 'S'
+  if (opening.rotation === 90 && onLeft && inSpanY) return 'W'
+  if (opening.rotation === 90 && onRight && inSpanY) return 'E'
   return null
 }
 
@@ -85,10 +89,16 @@ export interface OpeningRoomMatch {
 }
 
 /** Rooms and wall faces physically touched by an opening marker. */
-export function roomsForOpening(plan: PlanState, opening: Pick<Opening, 'x' | 'y' | 'rotation'>): OpeningRoomMatch[] {
+export function roomsForOpening(plan: PlanState, opening: Pick<Opening, 'x' | 'y' | 'rotation'> & Partial<Opening>): OpeningRoomMatch[] {
   return plan.rooms.flatMap((room) => {
-    const compass = openingCompassForRoom(room, opening)
-    return compass ? [{ room, compass }] : []
+    const compass = openingCompassForRoom(room, opening, siteOf(plan))
+    if (!compass) return []
+    const site = siteOf(plan)
+    const width = opening.widthM ?? (opening.type === 'door' ? 0.9 : opening.type === 'window' ? 1.6 : 0)
+    const half = width / (opening.rotation === 0 ? site.w : site.h) * 50
+    const center = opening.rotation === 0 ? opening.x : opening.y
+    const span = boundarySpans(plan, room).find(span => span.compass === compass && center - half >= span.start - 1e-6 && center + half <= span.end + 1e-6)
+    return span ? [{ room, compass }] : []
   })
 }
 
@@ -101,5 +111,35 @@ export function isOpeningExterior(plan: PlanState, roomId: string, opening: Open
 export function openingsForRoomWall(plan: PlanState, roomId: string, compass: Compass) {
   const room = plan.rooms.find((r) => r.id === roomId)
   if (!room) return [] as typeof plan.openings
-  return plan.openings.filter((o) => openingCompassForRoom(room, o) === compass)
+  return plan.openings.filter((o) => roomsForOpening(plan, o).some(match => match.room.id === roomId && match.compass === compass))
+}
+
+/** Contiguous wall spans split at every neighboring room boundary. */
+export interface BoundarySpan {
+  compass: Compass
+  rotation: 0 | 90
+  fixed: number
+  start: number
+  end: number
+  neighborIds: string[]
+}
+
+export function boundarySpans(plan: PlanState, room: Room): BoundarySpan[] {
+  const spans: BoundarySpan[] = []
+  for (const compass of ['N', 'S', 'W', 'E'] as const) {
+    const horizontal = compass === 'N' || compass === 'S'
+    const fixed = compass === 'N' ? room.y : compass === 'S' ? room.y + room.h : compass === 'W' ? room.x : room.x + room.w
+    const start = horizontal ? room.x : room.y
+    const end = start + (horizontal ? room.w : room.h)
+    const neighbors = plan.rooms.filter(other => other.id !== room.id && Math.abs(
+      (compass === 'N' ? other.y + other.h : compass === 'S' ? other.y : compass === 'W' ? other.x + other.w : other.x) - fixed,
+    ) <= EPS).map(other => ({ id: other.id, start: Math.max(start, horizontal ? other.x : other.y), end: Math.min(end, horizontal ? other.x + other.w : other.y + other.h) }))
+      .filter(other => other.end > other.start)
+    const points = [...new Set([start, end, ...neighbors.flatMap(n => [n.start, n.end])])].sort((a, b) => a - b)
+    for (let i = 0; i < points.length - 1; i++) {
+      const midpoint = (points[i] + points[i + 1]) / 2
+      spans.push({ compass, rotation: horizontal ? 0 : 90, fixed, start: points[i], end: points[i + 1], neighborIds: neighbors.filter(n => midpoint > n.start && midpoint < n.end).map(n => n.id) })
+    }
+  }
+  return spans
 }

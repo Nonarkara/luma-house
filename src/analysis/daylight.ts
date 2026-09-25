@@ -1,3 +1,4 @@
+import { openingDimensions } from '../openingGeometry'
 import { roomHeight, siteOf } from '../plan'
 import type { PlanState, Room } from '../types'
 import type { Compass } from './types'
@@ -62,7 +63,7 @@ export function daylightPotential(plan: PlanState): RoomDaylightPotential[] {
         : (room.h / 100) * site.h
       for (const window of windows) {
         exteriorWindowCount += 1
-        const headHeight = Math.min(window.headHeightM ?? DAYLIGHT_ASSUMPTIONS.windowHeadHeightM, wallHeight)
+        const headHeight = Math.min(openingDimensions(window).head, wallHeight)
         const vltFactor = (window.vlt ?? 0.70) / 0.70
         const reachM = headHeight * DAYLIGHT_ASSUMPTIONS.reachMultiplier * vltFactor
         const clippedReachM = Math.min(reachM, roomDepthM)

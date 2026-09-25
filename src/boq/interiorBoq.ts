@@ -1,3 +1,4 @@
+import { openingDimensions } from '../openingGeometry'
 import type { CurrencyCode, Opening, PlanState, RegionalRateCard, Room, SiteSpec } from '../types'
 import { roomAreaFor, roomHeight } from '../plan'
 
@@ -107,8 +108,8 @@ function buildRoomBoq(room: Room, openings: Opening[], site: SiteSpec): RoomInte
   const windowCount = roomOpenings.filter((o) => o.type === 'window').length
 
   const openingM2 = roomOpenings.reduce((acc, op) => {
-    const w = op.widthM ?? (op.type === 'window' ? 1.6 : 0.9)
-    const h = op.heightM ?? (op.type === 'window' ? 1.2 : 2.1)
+    const w = openingDimensions(op).width
+    const h = openingDimensions(op).height
     return acc + w * h
   }, 0)
 

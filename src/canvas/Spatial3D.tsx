@@ -9,6 +9,7 @@ import { windFlowPotential } from '../analysis'
 import type { Compass } from '../analysis'
 import type { CameraWaypoint } from '../tour/guidedTour'
 import { nextWalkPosition } from './walkNavigation'
+import { openingDimensions } from '../openingGeometry'
 import { Roof3D } from './Roof3D'
 import { ROOF_STYLES, type RoofStyle } from './roofGeometry'
 
@@ -114,7 +115,7 @@ function SegmentedWall({
     .map((opening) => {
       const center = toMeters(opening.x, opening.y, site)
       const centerAxis = horizontal ? center.mx : center.mz
-      const width = opening.type === 'window' ? 1.6 : 0.9
+      const { width } = openingDimensions(opening)
       return {
         opening,
         start: Math.max(wallStart, centerAxis - width / 2),
@@ -130,8 +131,9 @@ function SegmentedWall({
     if (cut.start > cursor) {
       pieces.push({ key: `pier-${index}`, start: cursor, length: cut.start - cursor, y: 0, h: height })
     }
-    const sill = cut.opening.type === 'window' ? 0.9 : 0
-    const openingHeight = cut.opening.type === 'window' ? 1.2 : 2.1
+    const dimensions = openingDimensions(cut.opening)
+    const sill = Math.min(height, dimensions.sill)
+    const openingHeight = dimensions.height
     const width = cut.end - cut.start
     if (sill > 0) pieces.push({ key: `sill-${cut.opening.id}`, start: cut.start, length: width, y: 0, h: sill })
     const headStart = Math.min(height, sill + openingHeight)
@@ -232,9 +234,7 @@ function RoomVolume({
 function OpeningPanel({ opening, site }: { opening: Opening; site: SiteSpec }) {
   const { mx, mz } = toMeters(opening.x, opening.y, site)
   const isWindow = opening.type === 'window'
-  const width = opening.widthM ?? (isWindow ? 1.6 : 0.9)
-  const height = opening.heightM ?? (isWindow ? 1.2 : 2.1)
-  const sill = opening.sillHeightM ?? (isWindow ? 0.9 : 0)
+  const { width, height, sill } = openingDimensions(opening)
   const y = FLOOR_THICKNESS + sill + height / 2
   const size: [number, number, number] =
     opening.rotation === 0 ? [width, height, WALL_THICKNESS] : [WALL_THICKNESS, height, width]

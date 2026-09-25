@@ -1,3 +1,4 @@
+import { openingDimensions } from '../openingGeometry'
 import { ArrowRight } from 'lucide-react'
 import React, { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { furnitureCatalog, furnitureRectFor, roomAreaFor, siteOf } from '../plan'
@@ -130,7 +131,7 @@ export const FloorPlan = React.memo(function FloorPlan({
         <div
           ref={stageRef}
           className={`plan-canvas ${showGrid ? 'show-grid' : 'hide-grid'}`}
-          style={{ '--grid-cell-x': `${gridCellX}%`, '--grid-cell-y': `${gridCellY}%` } as CSSProperties}
+          style={{ '--site-ratio': site.w / site.h, '--grid-cell-x': `${gridCellX}%`, '--grid-cell-y': `${gridCellY}%` } as CSSProperties}
         >
           {sketchUrl && <img className="sketch-underlay" src={sketchUrl} alt="Uploaded sketch tracing layer" />}
           {liveDragRect && (
@@ -317,8 +318,8 @@ export const FloorPlan = React.memo(function FloorPlan({
             )
           })}
           {plan.openings.map((opening) => {
-            const w = opening.widthM ?? (opening.type === 'window' ? 1.6 : 0.9)
-            const h = opening.heightM ?? (opening.type === 'window' ? 1.2 : 2.1)
+            const w = openingDimensions(opening).width
+            const h = openingDimensions(opening).height
             const isSel = selectedOpening === opening.id
             return (
               <button

@@ -1,16 +1,20 @@
+import { openingDimensions } from '../openingGeometry'
 import { siteOf } from '../plan'
 import type { PlanState } from '../types'
 import { resolvePlanAssemblies, DEFAULT_ASSEMBLIES } from '../assemblies/resolve'
 import { exteriorWalls } from './walls'
 
 export interface EnergySimulationResult {
+  confidence: 'heuristic'
+  status: 'preview' | 'unavailable'
+  source: string
   heatingDemandKwhPerM2Yr: number
   coolingDemandKwhPerM2Yr: number
   lightingEquipmentKwhPerM2Yr: number
   solarPvGenerationKwhPerM2Yr: number
   grossEuiKwhPerM2Yr: number
   netEuiKwhPerM2Yr: number
-  energyRating: 'A+' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'
+  energyRating: null
   annualOperationalCarbonKg: number
   carbonNeutralityPaybackYears: number | null // Payback period for green envelope + PV upgrade
   breakdown: {
@@ -25,23 +29,27 @@ export interface EnergySimulationResult {
 }
 
 /**
- * Simulates annual operational energy balance (EUI in kWh/m²/yr) and carbon neutrality payback.
+ * Legacy degree-day illustration, not an annual energy simulation.
+ * Retains its breakdown for education; it cannot issue a rating or payback.
  */
 export function simulateEnergy(plan: PlanState, latitude = 31.23): EnergySimulationResult {
   const site = siteOf(plan)
-  const totalFloorAreaM2 = plan.rooms.reduce((acc, r) => acc + (r.w / 100) * site.w * ((r.h / 100) * site.h), 0)
+  const provenance = { confidence: 'heuristic' as const, source: 'Latitude-derived degree days; assumed schedules, PV yield and grid factor. No weather file or simulation engine.' }
+  const totalFloorAreaM2 = plan.rooms.filter(room => room.kind !== 'terrace').reduce((acc, r) => acc + (r.w / 100) * site.w * ((r.h / 100) * site.h), 0)
 
   if (totalFloorAreaM2 <= 0) {
     return {
+      ...provenance,
+      status: 'unavailable',
       heatingDemandKwhPerM2Yr: 0,
       coolingDemandKwhPerM2Yr: 0,
       lightingEquipmentKwhPerM2Yr: 0,
       solarPvGenerationKwhPerM2Yr: 0,
       grossEuiKwhPerM2Yr: 0,
       netEuiKwhPerM2Yr: 0,
-      energyRating: 'A+',
+      energyRating: null,
       annualOperationalCarbonKg: 0,
-      carbonNeutralityPaybackYears: 0,
+      carbonNeutralityPaybackYears: null,
       breakdown: {
         wallLossKwh: 0,
         roofLossKwh: 0,
@@ -73,7 +81,7 @@ export function simulateEnergy(plan: PlanState, latitude = 31.23): EnergySimulat
   let totalGlazingM2 = 0
   for (const op of plan.openings) {
     if (op.type === 'window') {
-      totalGlazingM2 += (op.widthM ?? 1.6) * (op.heightM ?? 1.2)
+      totalGlazingM2 += openingDimensions(op).width * openingDimensions(op).height
     }
   }
 
@@ -124,27 +132,21 @@ export function simulateEnergy(plan: PlanState, latitude = 31.23): EnergySimulat
   const grossEuiKwhPerM2Yr = heatingDemandKwhPerM2Yr + coolingDemandKwhPerM2Yr + lightingEquipmentKwhPerM2Yr
   const netEuiKwhPerM2Yr = Math.max(0, grossEuiKwhPerM2Yr - solarPvGenerationKwhPerM2Yr)
 
-  // 9. Energy Rating Class
-  let energyRating: EnergySimulationResult['energyRating'] = 'G'
-  if (netEuiKwhPerM2Yr < 15) energyRating = 'A+'
-  else if (netEuiKwhPerM2Yr < 40) energyRating = 'A'
-  else if (netEuiKwhPerM2Yr < 75) energyRating = 'B'
-  else if (netEuiKwhPerM2Yr < 110) energyRating = 'C'
-  else if (netEuiKwhPerM2Yr < 150) energyRating = 'D'
-  else if (netEuiKwhPerM2Yr < 200) energyRating = 'E'
-  else if (netEuiKwhPerM2Yr < 260) energyRating = 'F'
+  // This heuristic has no jurisdiction, weather file or engine validation.
+  // Do not turn its arbitrary thresholds into a building energy certificate.
+  const energyRating = null
 
   // 10. Operational Carbon & Payback Period
   // Grid carbon intensity ≈ 0.45 kgCO₂e/kWh
   const annualOperationalCarbonKg = netEuiKwhPerM2Yr * totalFloorAreaM2 * 0.45
 
-  // Payback calculation: Extra embodied carbon of upgraded insulation/solar divided by annual carbon savings
-  const baselineEui = 180 // Typical uninsulated building EUI
-  const annualCarbonSavedKg = Math.max(1, (baselineEui - netEuiKwhPerM2Yr) * totalFloorAreaM2 * 0.45)
-  const totalEmbodiedCarbonKg = (assemblies.wall.embodiedCarbonKgPerM2 + assemblies.roof.embodiedCarbonKgPerM2) * totalFloorAreaM2
-  const carbonNeutralityPaybackYears = parseFloat((totalEmbodiedCarbonKg / annualCarbonSavedKg).toFixed(1))
+  // Carbon payback needs an actual baseline and an incremental intervention
+  // inventory. A fixed 180 EUI comparison cannot establish either.
+  const carbonNeutralityPaybackYears = null
 
   return {
+    ...provenance,
+    status: 'preview',
     heatingDemandKwhPerM2Yr: parseFloat(heatingDemandKwhPerM2Yr.toFixed(1)),
     coolingDemandKwhPerM2Yr: parseFloat(coolingDemandKwhPerM2Yr.toFixed(1)),
     lightingEquipmentKwhPerM2Yr: parseFloat(lightingEquipmentKwhPerM2Yr.toFixed(1)),

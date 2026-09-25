@@ -1,3 +1,4 @@
+import { openingDimensions } from '../openingGeometry'
 import React from 'react'
 import { RotateCw, Trash2, Plus, Minus } from 'lucide-react'
 import type { Opening, Room, SiteSpec } from '../types'
@@ -94,8 +95,8 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
           <span className="contextual-action-label">
             <strong>{opening.type === 'window' ? 'Window' : 'Door'}</strong>
             <span className="contextual-action-area">
-              {(opening.widthM ?? (opening.type === 'window' ? 1.6 : 0.9)).toFixed(2)} ×{' '}
-              {(opening.heightM ?? (opening.type === 'window' ? 1.2 : 2.1)).toFixed(2)} m
+              {(openingDimensions(opening).width).toFixed(2)} ×{' '}
+              {(openingDimensions(opening).height).toFixed(2)} m
             </span>
           </span>
 

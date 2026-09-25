@@ -1,3 +1,4 @@
+import { openingDimensions } from '../openingGeometry'
 import React from 'react'
 import {
   ArrowRight,
@@ -42,7 +43,6 @@ import { type CodeIssue as StandardsCodeIssue } from '../codes/checkPlan'
 import { StandardsBadge } from './StandardsBadge'
 import { CodeIssuesPanel } from './CodeIssuesPanel'
 import { EnergySimulationCard } from './EnergySimulationCard'
-import { synthesizeLayout } from '../concept/layoutSynthesizer'
 import { VariantThumbnail } from './VariantThumbnail'
 import type { CurrencyCode, Opening, PlanState, PlanTool, Room, SiteSpec, WorkspaceMode } from '../types'
 import {
@@ -104,6 +104,7 @@ export interface InspectorProps {
   setStyleKeywords: React.Dispatch<React.SetStateAction<string>>
   site: SiteSpec
   interior: InteriorBoq
+  onOpenPresets: () => void
   startBlank: () => void
   runTrace: (event: React.ChangeEvent<HTMLInputElement>) => void
   traceFileInputRef: React.RefObject<HTMLInputElement>
@@ -170,8 +171,8 @@ export const Inspector = React.memo(function Inspector({
   setStyleKeywords,
   site,
   interior,
+  onOpenPresets,
   startBlank,
-  runTrace,
   traceFileInputRef,
   isTracing,
   selectedOpeningId,
@@ -323,7 +324,7 @@ export const Inspector = React.memo(function Inspector({
               <h3>{sketchUrl ? 'Underlay active' : 'Upload a plan to trace'}</h3>
               <p>Upload an existing plan photo and let AI read the rooms — or use it as a manual tracing underlay.</p>
             </div>
-            <input ref={traceFileInputRef} type="file" accept="image/*" onChange={runTrace} hidden />
+
             <button
               className="button primary full"
               type="button"
@@ -341,7 +342,7 @@ export const Inspector = React.memo(function Inspector({
               </button>
             )}
             <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-              <button className="text-button" type="button" onClick={() => commit(synthesizeLayout({ style: 'courtyard' }))} style={{ flex: 1.2, color: 'var(--accent-emerald, #10b981)', fontWeight: 600 }}>★ AI Synthesize Layout</button>
+              <button className="text-button" type="button" onClick={onOpenPresets} style={{ flex: 1.2, color: 'var(--accent-emerald, #10b981)', fontWeight: 600 }}>★ Load layout preset</button>
               <button className="text-button" type="button" onClick={startBlank} style={{ flex: 1 }}>Blank canvas</button>
               <button className="text-button" type="button" onClick={resetPlan} style={{ flex: 1 }}>Sample</button>
             </div>
@@ -509,7 +510,7 @@ export const Inspector = React.memo(function Inspector({
                     Width <input type="number" step="0.1" min="0.4" max="6.0" value={op.widthM ?? (op.type === 'window' ? 1.6 : 0.9)} onChange={(e) => updateOpening?.(op.id, { widthM: Number(e.target.value) })} /><span>m</span>
                   </label>
                   <label className="field-label">
-                    Height <input type="number" step="0.1" min="0.4" max="3.5" value={op.heightM ?? (op.type === 'window' ? 1.2 : 2.1)} onChange={(e) => updateOpening?.(op.id, { heightM: Number(e.target.value) })} /><span>m</span>
+                    Height <input type="number" step="0.1" min="0.4" max="3.5" value={openingDimensions(op).height} onChange={(e) => updateOpening?.(op.id, { heightM: Number(e.target.value) })} /><span>m</span>
                   </label>
                 </div>
                 {op.type === 'window' && (
@@ -519,7 +520,7 @@ export const Inspector = React.memo(function Inspector({
                         Sill <input type="number" step="0.1" min="0" max="2.5" value={op.sillHeightM ?? 0.9} onChange={(e) => updateOpening?.(op.id, { sillHeightM: Number(e.target.value) })} /><span>m</span>
                       </label>
                       <label className="field-label">
-                        Head <input type="number" step="0.1" min="0.5" max="4.0" value={op.headHeightM ?? 2.1} onChange={(e) => updateOpening?.(op.id, { headHeightM: Number(e.target.value) })} /><span>m</span>
+                        Head <input type="number" step="0.1" min="0.5" max="4.0" value={openingDimensions(op).head} onChange={(e) => updateOpening?.(op.id, { headHeightM: Number(e.target.value) })} /><span>m</span>
                       </label>
                     </div>
                     <label className="field-label">
