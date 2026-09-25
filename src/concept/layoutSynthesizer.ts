@@ -1,4 +1,4 @@
-import type { Opening, PlanState, Room } from '../types'
+import type { Furniture, Opening, PlanState, Room } from '../types'
 import { defaultSite, furnitureDoorConflicts } from '../plan'
 import { boundarySpans } from '../analysis/walls'
 
@@ -108,7 +108,7 @@ export function synthesizeLayout(brief: SynthesizerBrief = { style: 'courtyard' 
     if (!kind) continue
     const wM = Math.min(kind === 'sofa' ? 2.2 : kind === 'bed' ? 2 : 1.8, room.w / 100 * site.w * 0.7)
     const dM = Math.min(kind === 'sofa' ? 0.9 : kind === 'bed' ? 1.8 : 0.9, room.h / 100 * site.h * 0.7)
-    const item = { id: `f-${room.id}`, kind, x: 0, y: 0, rotated: false, wM, dM }
+    const item: Furniture = { id: `f-${room.id}`, kind, x: 0, y: 0, rotated: false, wM, dM }
     const candidates = [0.5, 0.05, 0.95].flatMap(u => [0.5, 0.05, 0.95].map(v => ({
       ...item,
       x: room.x + (room.w - wM / site.w * 100) * u,
