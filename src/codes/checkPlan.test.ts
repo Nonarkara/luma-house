@@ -306,3 +306,62 @@ describe('severity labels', () => {
     expect(SEVERITY_LABEL.critical).toBe('Critical')
   })
 })
+
+describe('checkPlan — ADA 304.3 turning space', () => {
+  it('flags a bathroom whose short side is below the 1.5 m turning diameter', () => {
+    // 1.2 m × 1.8 m bathroom — short side under 1.5 m
+    const plan = withRooms([room({ id: 'b1', kind: 'bathroom', w: 10, h: 15 })])
+    const issues = checkPlan(plan)
+    const ada = issues.find((i) => i.ref === 'ADA-304.3' && i.roomId === 'b1')
+    expect(ada?.severity).toBe('warning')
+    expect(ada?.title).toMatch(/ADA turning circle/)
+  })
+
+  it('does not flag a bathroom wide enough for the turning circle', () => {
+    // 2.0 m × 2.2 m — short side ≥ 1.5 m
+    const plan = withRooms([room({ id: 'b1', kind: 'bathroom', w: 16, h: 18 })])
+    expect(checkPlan(plan).find((i) => i.ref === 'ADA-304.3' && i.roomId === 'b1')).toBeUndefined()
+  })
+
+  it('also applies to kitchens smaller than the turning diameter', () => {
+    const plan = withRooms([room({ id: 'k1', kind: 'kitchen', w: 8, h: 14 })])
+    expect(checkPlan(plan).find((i) => i.ref === 'ADA-304.3' && i.roomId === 'k1')).toBeDefined()
+  })
+})
+
+describe('checkPlan — IBC 1005.1 minimum aisle width', () => {
+  it('flags a long narrow room whose short side is below 36"', () => {
+    // On the default 14×10 site, w:5 h:50 = 0.7 m × 5.0 m = 7.1:1 ratio,
+    // short side 0.7 m below the 0.91 m aisle threshold.
+    const plan = withRooms([room({ id: 'h1', kind: 'living', x: 0, y: 0, w: 5, h: 50 })])
+    const issues = checkPlan(plan)
+    const aisle = issues.find((i) => i.ref === 'IBC-1005.1' && i.roomId === 'h1')
+    expect(aisle?.severity).toBe('warning')
+  })
+
+  it('does not flag a room whose short side is wide enough', () => {
+    // 2 m × 5 m — short side above 0.91 m threshold
+    const plan = withRooms([room({ id: 'h1', kind: 'living', x: 0, y: 0, w: 14, h: 36 })])
+    expect(checkPlan(plan).find((i) => i.ref === 'IBC-1005.1' && i.roomId === 'h1')).toBeUndefined()
+  })
+
+  it('does not flag a square room regardless of size', () => {
+    const plan = withRooms([room({ id: 'h1', kind: 'living', w: 16, h: 16 })])
+    expect(checkPlan(plan).find((i) => i.ref === 'IBC-1005.1' && i.roomId === 'h1')).toBeUndefined()
+  })
+})
+
+describe('checkPlan — IBC 1208.4 efficiency dwelling unit', () => {
+  it('emits an info row for studios at or above the habitable minimum', () => {
+    // 14 m × 14 m studio on a 14×14 site — way above 6.5 m²
+    const plan = withRooms([room({ id: 's1', kind: 'studio', w: 60, h: 60 })])
+    const issues = checkPlan(plan)
+    expect(issues.find((i) => i.ref === 'IBC-1208.4' && i.roomId === 's1')).toBeDefined()
+  })
+
+  it('does not emit EDU info for sub-threshold studios (already failed 1208.1)', () => {
+    const plan = withRooms([room({ id: 's1', kind: 'studio', w: 8, h: 8 })])
+    const issues = checkPlan(plan)
+    expect(issues.find((i) => i.ref === 'IBC-1208.4' && i.roomId === 's1')).toBeUndefined()
+  })
+})

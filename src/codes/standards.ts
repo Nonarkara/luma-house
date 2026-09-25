@@ -136,6 +136,13 @@ export interface Thresholds {
   minDoorClearWidthM: number
   /** Minimum door height. IBC 1010.1.1 (2.03 m = 80 in). */
   minDoorHeightM: number
+  /** Minimum clear aisle / corridor width. IBC 1005.1 (0.91 m = 36 in). */
+  minAisleWidthM: number
+  /**
+   * Turning space diameter for an accessible room. ADA 304.3 requires a
+   * 1.5 m (60 in) clear circle inside bathrooms and other accessible rooms.
+   */
+  adaTurningDiameterM: number
   /** Minimum fresh-air rate per person, L/s. ASHRAE 62.1. */
   freshAirLsPerPerson: number
   /** Kitchen intermittent exhaust, L/s. ASHRAE 62.1. */
@@ -151,6 +158,8 @@ export const DEFAULT_THRESHOLDS: Thresholds = {
   minCeilingHeightM: 2.13,    // 7'-0" per IBC 1208.2
   minDoorClearWidthM: 0.81,   // 32 in per ADA 404.2.3
   minDoorHeightM: 2.03,       // 80 in per IBC 1010.1.1
+  minAisleWidthM: 0.91,       // 36 in per IBC 1005.1
+  adaTurningDiameterM: 1.5,   // 60 in per ADA 304.3
   freshAirLsPerPerson: 7.5,   // ASHRAE 62.1 Table 5.5.1 (residential)
   kitchenExhaustLs: 25,       // ASHRAE 62.1 kitchen intermittent
   bathroomExhaustLs: 10,      // ASHRAE 62.1 bathroom intermittent

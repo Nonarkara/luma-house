@@ -117,6 +117,58 @@ export function checkPlan(
         { type: 'set_ceiling', roomId: room.id, meters: thresholds.minCeilingHeightM },
       )
     }
+
+    // IBC 1005.1 — minimum aisle width. Long rooms whose narrow dimension
+    // falls below 36" read as corridors; surface as a warning so the user
+    // isn't surprised when no furniture fits between facing walls.
+    const widthM = (room.w / 100) * site.w
+    const depthM = (room.h / 100) * site.h
+    const longRatio = Math.max(widthM, depthM) / Math.max(0.1, Math.min(widthM, depthM))
+    const narrowM = Math.min(widthM, depthM)
+    if (longRatio >= 2.5 && narrowM < thresholds.minAisleWidthM) {
+      add(
+        'IBC-1005.1',
+        'warning',
+        room.id,
+        null,
+        `${room.name} is too narrow for its length`,
+        `Long-then-narrow ratio ${longRatio.toFixed(1)}:1 with the short wall at ${fmt(narrowM, 'm')}; corridors need ≥ ${fmt(thresholds.minAisleWidthM, 'm')} clear.`,
+      )
+    }
+
+    // ADA 304.3 — turning space. A bathroom or kitchen that is shorter than
+    // the 1.5 m turning diameter cannot accommodate a wheelchair without a
+    // T-turn; flag so the user knows the room fails accessible design.
+    if (room.kind === 'bathroom' || room.kind === 'kitchen') {
+      if (narrowM < thresholds.adaTurningDiameterM) {
+        add(
+          'ADA-304.3',
+          'warning',
+          room.id,
+          null,
+          `${room.name} cannot fit the ADA turning circle`,
+          `${fmt(narrowM, 'm')} short side is below the ${fmt(thresholds.adaTurningDiameterM, 'm')} ADA turning diameter.`,
+        )
+      }
+    }
+
+    // IBC 1208.4 — efficiency dwelling unit. Studios (single habitable
+    // space) get an info reminder of the 1208.4 minimum area unless the
+    // local AHJ allows less; the threshold table already encodes 6.5 m² so
+    // this only surfaces when the studio is large enough not to flag 1208.1.
+    if (room.kind === 'studio') {
+      const area = roomAreaFor(room, site)
+      if (area >= thresholds.minHabitableAreaM2) {
+        add(
+          'IBC-1208.4',
+          'info',
+          room.id,
+          null,
+          `${room.name} is an efficiency dwelling unit`,
+          `Studios need a sleeping area, kitchen, and bath within one space — confirm cooking + sleeping separations meet local AHJ requirements.`,
+        )
+      }
+    }
   }
 
   // IBC 1003.3 — egress connectivity via the door graph. A door symbol on an
