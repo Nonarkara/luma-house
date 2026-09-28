@@ -1498,6 +1498,110 @@ button:active {
   overflow: hidden;
 }
 
+.drawing-gallery {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.drawing-style-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #101114;
+}
+
+.drawing-style-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  font: 600 11px 'Source Sans 3', sans-serif;
+  cursor: pointer;
+}
+
+.drawing-style-bar button.active {
+  border-color: var(--accent-primary);
+  color: #fff;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.drawing-style-bar i {
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+.drawing-sheet-wrap {
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 80px),
+    #0b0c0e;
+}
+
+.drawing-sheet {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 720px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.drawing-style-choices {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.style-preset-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.style-preset-btn strong,
+.style-preset-btn small {
+  display: block;
+}
+
+.style-preset-btn strong {
+  color: var(--text-primary, #fff);
+  font-size: 12px;
+}
+
+.style-preset-btn small {
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+
+.style-preset-btn.active {
+  border-color: var(--accent-primary);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.drawing-style-swatch {
+  width: 12px;
+  height: 28px;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 .render-stage {
   position: relative;
   min-height: 0;

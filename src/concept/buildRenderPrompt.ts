@@ -1,3 +1,4 @@
+import { buildDrawingSheet } from '../drawing/sheet'
 import { roomAreaFor, siteOf, totalAreaFor } from '../plan'
 import type { PlanState } from '../types'
 
@@ -96,13 +97,19 @@ export function buildRenderPrompt({ plan, locationLabel, hour, projectName = 'Ri
     .map(([key]) => key)
     .join(', ') || 'none selected'
   const timeLabel = hour >= 12 ? `${hour === 12 ? 12 : hour - 12}:00 PM` : `${hour}:00 AM`
+  const sheet = buildDrawingSheet(plan)
+  const measured = sheet.section
+    ? `Measured model: ${sheet.totals.area.toFixed(1)} m², ${sheet.extents.width.toFixed(1)} by ${sheet.extents.depth.toFixed(1)} m, section looking ${sheet.section.looking}, ${sheet.elevation?.face ?? 'exterior'} elevation.`
+    : 'Measured model: no rooms yet.'
 
   return [
-    `Architectural concept visualization of a single-storey residence named "${projectName}".`,
+    `Architectural mood image of a single-storey residence named "${projectName}".`,
     `Location atmosphere: ${locationLabel}. Time of day: ${timeLabel}, soft natural daylight.`,
     `Program: ${rooms}.`,
+    measured,
     `Openings: ${windows} windows, ${doors} doors. Systems emphasis: ${systems}.`,
     `Style: ${styleKeywords || 'quiet contemporary residential, timber and light concrete, deep eaves, shaded terrace, green courtyard'}.`,
+    'Match this room arrangement. Do not invent extra wings or storeys.',
     'Camera: exterior eye-level three-quarter view of the house and courtyard, photographic realism for a design concept board.',
     'Important: this is a concept visualization only, not a photograph of a finished building. No text, logos, watermarks, or UI chrome.',
   ].join(' ')

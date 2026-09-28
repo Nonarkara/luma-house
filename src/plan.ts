@@ -374,6 +374,12 @@ export function estimateEnergySavings(systems: PlanState['systems']): number {
 
 export const DEFAULT_WALL_HEIGHT = 2.7
 
+/** Solid wall thickness shared by the 3D model and the measured drawings. */
+export const MODEL_WALL_THICKNESS_M = 0.15
+
+/** Terrace slab used when a terrace has no explicit wall height. */
+export const TERRACE_SLAB_M = 0.12
+
 export function roomHeight(room: Room): number {
   return room.wallHeight ?? DEFAULT_WALL_HEIGHT
 }

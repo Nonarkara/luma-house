@@ -204,7 +204,7 @@ export const STAGES: StageDef[] = [
     coach: () => ({
       title: 'Anchor the number, then dream',
       body: 'Scan the BOQ once. Then open interiors — people remember the last beautiful frame more than the middle spreadsheet.',
-      cta: 'See interiors',
+      cta: 'Open the sheet',
       why: 'Peak-end rule · finish on feeling',
       nav: { view: 'renders', inspector: false },
     }),
@@ -215,13 +215,13 @@ export const STAGES: StageDef[] = [
     label: 'Picture',
     principle: 'peak-end',
     nav: { view: 'renders', inspector: false },
-    metric: (ctx) => (ctx.hasConcept ? 'Concept ready' : '5 views'),
+    metric: (ctx) => (ctx.plan.rooms.length >= 1 ? 'Measured sheet' : 'No rooms'),
     // Like every other stage, "picture" cannot claim completion over an empty
     // canvas — there is nothing to picture until a room exists.
     isComplete: (ctx) => (ctx.visited.has('picture') || ctx.hasConcept) && ctx.plan.rooms.length >= 1,
     coach: () => ({
       title: 'Close on a picture you can share',
-      body: 'Pick a view or generate a concept photo. The walkthrough ends when you can show someone else what you decided.',
+      body: 'The sheet is this plan: a section through the most floor, the longest exterior elevation, and an axonometric at the same ceiling heights. Pick a graphic style. A mood image, if you generate one, is not a measured view.',
       cta: 'Back to plan',
       why: 'Social proof · design that can be shown',
       nav: { mode: 'plan', view: 'plan', inspector: true },

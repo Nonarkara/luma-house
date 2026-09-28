@@ -77,6 +77,7 @@ import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal'
 import { comparePlans } from './analysis/abComparison'
 import { ABComparisonModal } from './components/ABComparisonModal'
 import type { ABComparisonState, CurrencyCode, Opening } from './types'
+import { drawingStyleById, isDrawingStyleId, type DrawingStyleId } from './drawing/styles'
 import { readString } from './storage/keys'
 import { checkPlan, exteriorDoorPlacement, type CodeIssue as StandardsCodeIssue } from './codes/checkPlan'
 
@@ -113,6 +114,10 @@ function App() {
   const [rulerMeters, setRulerMeters] = useState('')
   const [location, setLocation] = useState<string>(CHINA_PROJECT_LOCATION)
   const [styleKeywords, setStyleKeywords] = useState<string>(() => readString('style-keywords:shanghai-50', 'luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
+  const [drawingStyle, setDrawingStyle] = useState<DrawingStyleId>(() => {
+    const saved = readString('drawing-style', 'luma-drawing-style')
+    return isDrawingStyleId(saved) ? saved : 'minimalist'
+  })
   const [hour, setHour] = useState(10)
   const [day, setDay] = useState(355)
   const [outsideC, setOutsideC] = useState(34)
@@ -431,6 +436,15 @@ function App() {
   useEffect(() => {
     localStorage.setItem('designon:style-keywords:shanghai-50', styleKeywords)
   }, [styleKeywords])
+
+  useEffect(() => {
+    localStorage.setItem('designon:drawing-style', drawingStyle)
+  }, [drawingStyle])
+
+  const chooseDrawingStyle = useCallback((style: DrawingStyleId) => {
+    setDrawingStyle(style)
+    setStyleKeywords(drawingStyleById(style).keywords)
+  }, [])
 
   useEffect(() => {
     if (!toast) return
@@ -1186,7 +1200,7 @@ function App() {
             <div className="view-switch" role="group" aria-label="View mode">
               <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>Plan</button>
               <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>Spatial</button>
-              <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>Renders</button>
+              <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>Drawings</button>
             </div>
             <div className="tool-group history-tools">
               <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
@@ -1248,6 +1262,7 @@ function App() {
                     hour={hour}
                     day={day}
                     locationLabel={locations[location as keyof typeof locations].label}
+                    presentation={drawingStyleById(drawingStyle).spatial}
                     ghost={isEmpty}
                     tourWaypoint={tourChapterIndex !== null ? tourChapters[tourChapterIndex]?.camera : null}
                     walkMode={walkMode}
@@ -1285,11 +1300,8 @@ function App() {
             ) : (
               <RenderGallery
                 plan={plan}
-                sun={sun}
-                conceptImages={conceptImages}
-                onRequestConcept={() => void runConceptRender()}
-                isRendering={isRendering}
-                quotaLeft={quotaLeft}
+                drawingStyle={drawingStyle}
+                onDrawingStyle={chooseDrawingStyle}
               />
             )}
             {view !== 'renders' && !isEmpty && (
@@ -1569,6 +1581,8 @@ function App() {
           applySuggestion={applySuggestion}
           styleKeywords={styleKeywords}
           setStyleKeywords={setStyleKeywords}
+          drawingStyle={drawingStyle}
+          onDrawingStyle={chooseDrawingStyle}
           site={site}
           interior={interior}
           onOpenPresets={() => setPresetOpen(true)}
