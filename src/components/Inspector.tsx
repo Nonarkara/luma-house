@@ -56,7 +56,7 @@ import {
 import type { ClimateResponseId } from '../assemblies/types'
 import type { InteriorBoq } from '../boq/interiorBoq'
 import { SunChart } from '../canvas/SunChart'
-import { ARCHITECTURAL_STYLE_PRESETS } from '../concept/buildRenderPrompt'
+import { DRAWING_STYLES, type DrawingStyleId } from '../drawing/styles'
 
 export interface InspectorProps {
   mode: WorkspaceMode
@@ -103,6 +103,8 @@ export interface InspectorProps {
   applySuggestion: (suggestion: Suggestion) => void
   styleKeywords: string
   setStyleKeywords: React.Dispatch<React.SetStateAction<string>>
+  drawingStyle: DrawingStyleId
+  onDrawingStyle: (style: DrawingStyleId) => void
   site: SiteSpec
   interior: InteriorBoq
   onOpenPresets: () => void
@@ -170,6 +172,8 @@ export const Inspector = React.memo(function Inspector({
   applySuggestion,
   styleKeywords,
   setStyleKeywords,
+  drawingStyle,
+  onDrawingStyle,
   site,
   interior,
   onOpenPresets,
@@ -352,53 +356,44 @@ export const Inspector = React.memo(function Inspector({
 
           <section className="panel-section">
             <div className="section-title">
-              <h3>Concept visualization</h3>
-              <span className="badge">{quotaLeft} left</span>
+              <h3>Drawing style</h3>
+              <span className="badge">{quotaLeft} mood</span>
             </div>
-            <p className="section-intro">Select an architectural style or customize keywords to drive concept renders and finish estimates.</p>
-            
-            <div className="style-preset-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', marginBottom: '10px' }}>
-              {ARCHITECTURAL_STYLE_PRESETS.map((preset) => {
-                const isSelected = styleKeywords.toLowerCase().includes(preset.name.toLowerCase()) || styleKeywords === preset.keywords
+            <p className="section-intro">The plan, section, elevation, and axonometric are measured from this model. The style changes line, color, and the finish estimate. It does not move a wall.</p>
+
+            <div className="style-preset-grid drawing-style-choices">
+              {DRAWING_STYLES.map((style) => {
+                const isSelected = drawingStyle === style.id
                 return (
                   <button
-                    key={preset.id}
+                    key={style.id}
                     type="button"
                     className={`style-preset-btn ${isSelected ? 'active' : ''}`}
-                    onClick={() => setStyleKeywords(preset.keywords)}
-                    style={{
-                      textAlign: 'left',
-                      padding: '6px 8px',
-                      fontSize: '11px',
-                      borderRadius: '4px',
-                      border: isSelected ? '1px solid var(--accent-primary, #f59e0b)' : '1px solid var(--border)',
-                      background: isSelected ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 255, 255, 0.03)',
-                      color: isSelected ? '#fff' : 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '2px',
-                    }}
+                    aria-pressed={isSelected}
+                    onClick={() => onDrawingStyle(style.id)}
                   >
-                    <span style={{ fontWeight: 600, color: isSelected ? 'var(--accent-primary, #f59e0b)' : '#fff' }}>{preset.name}</span>
-                    <span style={{ fontSize: '9px', opacity: 0.6 }}>{preset.category}</span>
+                    <span className="drawing-style-swatch" style={{ background: style.swatch }} />
+                    <span>
+                      <strong>{style.name}</strong>
+                      <small>{style.note}</small>
+                    </span>
                   </button>
                 )
               })}
             </div>
 
             <label className="field-label" style={{ marginBottom: 12 }}>
-              Active style & prompt keywords
+              Finish keywords
               <input
                 type="text"
-                placeholder="e.g. cozy tropical cabin, warm wood, minimalist"
+                placeholder="Keywords follow the drawing style"
                 value={styleKeywords}
                 onChange={(e) => setStyleKeywords(e.target.value)}
                 style={{ width: '100%', marginTop: 4 }}
               />
             </label>
             <button
-              className="button primary full"
+              className="button secondary full"
               type="button"
               onClick={() => runConceptRender()}
               disabled={isRendering || quotaLeft <= 0}
@@ -406,13 +401,14 @@ export const Inspector = React.memo(function Inspector({
               {isRendering ? (
                 <><RotateCcw className="spin" /> Rendering…</>
               ) : (
-                <><ImagePlus /> Generate concept</>
+                <><ImagePlus /> Mood image, optional</>
               )}
             </button>
+            <p className="legal-note">A mood image is a language-model picture. It is not a view of the plan.</p>
             {conceptImages[0] && (
               <figure className="concept-preview">
                 <img src={conceptImages[0]} alt="Latest concept visualization" />
-                <figcaption>Latest concept · {conceptImages.length} saved today</figcaption>
+                <figcaption>Mood image · not a measured view · {conceptImages.length} saved today</figcaption>
               </figure>
             )}
           </section>

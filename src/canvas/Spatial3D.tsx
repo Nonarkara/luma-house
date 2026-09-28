@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { Edges, Grid, Html, OrbitControls, PivotControls, PointerLockControls } from '@react-three/drei'
 import * as THREE from 'three'
-import { furnitureRectFor, roomHeight, siteOf, sunVector } from '../plan'
+import type { SpatialPalette } from '../drawing/styles'
+import { furnitureRectFor, MODEL_WALL_THICKNESS_M, roomHeight, siteOf, sunVector, TERRACE_SLAB_M } from '../plan'
 import type { Furniture, FurnitureKind, Opening, PlanState, Room, SiteSpec } from '../types'
 import { openingsForRoomWall, roomsForOpening } from '../analysis/walls'
 import { windFlowPotential } from '../analysis'
@@ -18,9 +19,9 @@ const HEIGHT_MAX = 4.5
 const HEIGHT_STEP = 0.1
 const HEIGHT_SNAP = 0.05
 
-const WALL_THICKNESS = 0.15
+const WALL_THICKNESS = MODEL_WALL_THICKNESS_M
 const FLOOR_THICKNESS = 0.1
-const TERRACE_THICKNESS = 0.12
+const TERRACE_THICKNESS = TERRACE_SLAB_M
 
 const FURNITURE_HEIGHTS: Record<FurnitureKind, number> = {
   bed: 0.55,
@@ -65,19 +66,21 @@ function Wall({
   size,
   emissiveIntensity,
   onClick,
+  palette,
 }: {
   position: [number, number, number]
   size: [number, number, number]
   emissiveIntensity: number
   onClick: (event: ThreeEvent<MouseEvent>) => void
+  palette: SpatialPalette
 }) {
   return (
     <mesh position={position} castShadow receiveShadow onClick={onClick}>
       <boxGeometry args={size} />
       <meshStandardMaterial
-        color="#dfe0da"
-        roughness={0.9}
-        metalness={0}
+        color={palette.wall}
+        roughness={palette.roughness}
+        metalness={palette.metalness}
         emissive="#f59e0b"
         emissiveIntensity={emissiveIntensity}
       />
@@ -95,6 +98,7 @@ function SegmentedWall({
   site,
   emissiveIntensity,
   onClick,
+  palette,
 }: {
   compass: Compass
   footprint: Footprint
@@ -103,6 +107,7 @@ function SegmentedWall({
   site: SiteSpec
   emissiveIntensity: number
   onClick: (event: ThreeEvent<MouseEvent>) => void
+  palette: SpatialPalette
 }) {
   const horizontal = compass === 'N' || compass === 'S'
   const wallStart = horizontal ? footprint.minX : footprint.minZ
@@ -157,6 +162,7 @@ function SegmentedWall({
           size={horizontal ? [piece.length, piece.h, WALL_THICKNESS] : [WALL_THICKNESS, piece.h, piece.length]}
           emissiveIntensity={emissiveIntensity}
           onClick={onClick}
+          palette={palette}
         />
       ))}
     </group>
@@ -170,6 +176,7 @@ function RoomVolume({
   isSelected,
   onSelectRoom,
   sectionHeight,
+  palette,
 }: {
   room: Room
   plan: PlanState
@@ -177,6 +184,7 @@ function RoomVolume({
   isSelected: boolean
   onSelectRoom: (id: string | null) => void
   sectionHeight?: number
+  palette: SpatialPalette
 }) {
   const footprint = useMemo(() => roomFootprint(room, site), [room, site])
   const fullHeight = roomHeight(room)
@@ -198,7 +206,7 @@ function RoomVolume({
         onClick={handleSelect}
       >
         <boxGeometry args={[footprint.width, TERRACE_THICKNESS, footprint.depth]} />
-        <meshStandardMaterial color="#23262d" roughness={0.9} metalness={0} />
+        <meshStandardMaterial color={palette.terrace} roughness={palette.roughness} metalness={palette.metalness} />
       </mesh>
     )
   }
@@ -213,7 +221,7 @@ function RoomVolume({
         onClick={handleSelect}
       >
         <boxGeometry args={[footprint.width, FLOOR_THICKNESS, footprint.depth]} />
-        <meshStandardMaterial color="#1b1e24" roughness={0.9} metalness={0} />
+        <meshStandardMaterial color={palette.floors[room.kind]} roughness={palette.roughness} metalness={palette.metalness} />
       </mesh>
       {(['N', 'S', 'W', 'E'] as Compass[]).map((compass) => (
         <SegmentedWall
@@ -225,39 +233,40 @@ function RoomVolume({
           site={site}
           emissiveIntensity={emissiveIntensity}
           onClick={handleSelect}
+          palette={palette}
         />
       ))}
     </group>
   )
 }
 
-function OpeningPanel({ opening, site }: { opening: Opening; site: SiteSpec }) {
+function OpeningPanel({ opening, site, palette }: { opening: Opening; site: SiteSpec; palette: SpatialPalette }) {
   const { mx, mz } = toMeters(opening.x, opening.y, site)
   const isWindow = opening.type === 'window'
   const { width, height, sill } = openingDimensions(opening)
   const y = FLOOR_THICKNESS + sill + height / 2
   const size: [number, number, number] =
     opening.rotation === 0 ? [width, height, WALL_THICKNESS] : [WALL_THICKNESS, height, width]
-  const color = isWindow ? '#38444d' : '#f59e0b'
+  const color = isWindow ? palette.window : palette.door
 
   return (
     <mesh position={[mx, y, mz]}>
       <boxGeometry args={size} />
       <meshStandardMaterial
         color={color}
-        roughness={0.9}
-        metalness={0}
+        roughness={palette.roughness}
+        metalness={palette.metalness}
         transparent={isWindow}
-        opacity={isWindow ? 0.42 : 1}
-        emissive={isWindow ? '#f59e0b' : '#000000'}
-        emissiveIntensity={isWindow ? 0.06 : 0}
+        opacity={isWindow ? 0.55 : 1}
+        emissive={isWindow ? palette.window : '#000000'}
+        emissiveIntensity={isWindow ? 0.08 : 0}
       />
     </mesh>
   )
 }
 
 
-function FurniturePiece({ item, site }: { item: Furniture; site: SiteSpec }) {
+function FurniturePiece({ item, site, palette }: { item: Furniture; site: SiteSpec; palette: SpatialPalette }) {
   const rect = useMemo(() => furnitureRectFor(item, site), [item, site])
   const widthM = (rect.w / 100) * site.w
   const depthM = (rect.h / 100) * site.h
@@ -267,7 +276,7 @@ function FurniturePiece({ item, site }: { item: Furniture; site: SiteSpec }) {
   return (
     <mesh position={[mx, FLOOR_THICKNESS + height / 2, mz]} castShadow>
       <boxGeometry args={[widthM, height, depthM]} />
-      <meshStandardMaterial color="#8b8f98" roughness={0.9} metalness={0} />
+      <meshStandardMaterial color={palette.furniture} roughness={palette.roughness} metalness={palette.metalness} />
     </mesh>
   )
 }
@@ -563,6 +572,7 @@ export default function Spatial3D({
   onOpenScenarios,
   windFrom = 180,
   windSpeed = 3,
+  presentation,
 }: {
   plan: PlanState
   sunAzimuth: number
@@ -582,6 +592,7 @@ export default function Spatial3D({
   onOpenScenarios?: () => void
   windFrom?: number
   windSpeed?: number
+  presentation: SpatialPalette
 }) {
   const site = useMemo(() => siteOf(plan), [plan])
   const selected = useMemo(
@@ -706,7 +717,7 @@ export default function Spatial3D({
         camera={{ position: [12, 9, 12], fov: 45 }}
         onPointerMissed={() => onSelectRoom(null)}
       >
-        <color attach="background" args={['#0d0f13']} />
+        <color attach="background" args={[presentation.background]} />
         <SunLight azimuth={sunAzimuth} altitude={sunAltitude} />
         <CameraController
           preset={preset}
@@ -731,7 +742,7 @@ export default function Spatial3D({
 
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={handleGroundClick}>
           <planeGeometry args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]} />
-          <meshStandardMaterial color="#14161b" roughness={0.95} metalness={0} />
+          <meshStandardMaterial color={presentation.ground} roughness={0.95} metalness={0} />
         </mesh>
 
         {/* Section-cut plane — a translucent amber disc at sectionHeight that
@@ -747,8 +758,8 @@ export default function Spatial3D({
         <Grid
           position={[0, 0.005, 0]}
           args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]}
-          cellColor="#1f232b"
-          sectionColor="#2a2f3a"
+          cellColor={presentation.gridCell}
+          sectionColor={presentation.gridSection}
           fadeDistance={30}
           infiniteGrid={false}
         />
@@ -774,13 +785,14 @@ export default function Spatial3D({
                 isSelected={room.id === selectedRoom}
                 onSelectRoom={onSelectRoom}
                 sectionHeight={sectionHeight}
+                palette={presentation}
               />
             ))}
         {!ghost && plan.openings.map((opening) => (
-          <OpeningPanel key={opening.id} opening={opening} site={site} />
+          <OpeningPanel key={opening.id} opening={opening} site={site} palette={presentation} />
         ))}
         {!ghost && plan.furniture.map((item) => (
-          <FurniturePiece key={item.id} item={item} site={site} />
+          <FurniturePiece key={item.id} item={item} site={site} palette={presentation} />
         ))}
 
         {!ghost && showSunRays && (
