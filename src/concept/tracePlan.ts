@@ -10,6 +10,20 @@ const DEFAULT_API =
 export const TRACE_TIMEOUT_MS = 60000
 
 /**
+ * A server can still answer with something built for a console — a JSON body, a
+ * stack trace, a bare status. None of that belongs in front of someone who just
+ * wants their floor plan, so anything that is not plainly a sentence is
+ * replaced. The real text goes to the console, where it is actually useful.
+ */
+function readableServerError(message: string, status: number): string {
+  const text = (message || '').trim()
+  const looksLikeNoise = !text || text.length > 240 || /[{}[\]"]|":\s*"/.test(text) || /\n/.test(text)
+  if (!looksLikeNoise) return text
+  console.error('plan trace failed', status, text)
+  return `The tracing service could not answer (HTTP ${status}). Try again in a moment, or trace the photo by hand with Manual underlay.`
+}
+
+/**
  * A hung vision call used to leave the user staring at an unchanging
  * "Reading the image…" with no way to tell working from stuck, and the abort
  * surfaced as a raw transport string. Say what happened, and say what to do.
@@ -71,7 +85,7 @@ export async function tracePlanFromImage(options: {
         let message = detail
         try { message = (JSON.parse(detail) as { error?: string }).error || detail } catch { /* plain-text error */ }
         if (message.includes('GEMINI_API_KEY is not configured')) message = 'AI tracing is unavailable: the service is not configured. Keep your project and use Manual underlay to trace the image locally.'
-        throw new Error(message || `Plan trace failed (${response.status})`)
+        throw new Error(readableServerError(message, response.status))
     }
 
     const payload = (await response.json()) as { plan?: unknown; note?: string; draft?: boolean }

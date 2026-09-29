@@ -55,6 +55,19 @@ describe('trace boundary', () => {
     expect(error!.message).toMatch(/could not reach/i)
     expect(error!.message).not.toMatch(/failed to fetch/i)
   })
+  it('never puts a JSON body in front of the user', async () => {
+    const body = JSON.stringify({ error: 'Gemini vision request failed: { "error": { "code": 429, "message": "You exceeded your current quota, please check your plan and billing details.", "status": "RESOURCE_EXHAUSTED" } }' })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(body, { status: 502 })))
+    const error = await tracePlanFromImage({ imageDataUrl: 'test' }).then(() => null, (e: unknown) => e as Error)
+    expect(error!.message).not.toMatch(/[{}"]/)
+    expect(error!.message).toMatch(/could not answer/i)
+    expect(error!.message).toMatch(/502/)
+  })
+  it('keeps a plain human sentence from the server', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ error: 'The AI service is busy right now. Wait a moment and use Try again.' }), { status: 502 })))
+    await expect(tracePlanFromImage({ imageDataUrl: 'test' })).rejects.toThrow(/busy right now/)
+  })
   it('calibrates a square source as square regardless of previous project dimensions', () => {
     const plan = { ...synthesizeLayout(), site: traceSiteFromImage(1000, 1000), rooms: [{ id: 'square', name: 'Square', kind: 'living' as const, x: 0, y: 0, w: 50, h: 50 }] }
     const calibrated = calibrateTrace(plan, 'square', 'w', 5)!

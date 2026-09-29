@@ -25,8 +25,32 @@ const CORS: Record<string, string> = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
+/**
+ * Gemini's failure bodies are JSON meant for a developer console. Passing them
+ * straight through put a wall of quoted text in front of the user, so name the
+ * failure instead. The technical body goes to the log, never to the screen.
+ */
+function explainUpstream(status: number, detail: string): string {
+  const rateLimited = status === 429 || /quota|rate limit|RESOURCE_EXHAUSTED/i.test(detail)
+  if (rateLimited) {
+    return 'The AI service is out of capacity right now — too many requests from this account. Wait a minute and use Try again.'
+  }
+  if (status === 503 || /UNAVAILABLE|high demand|overloaded/i.test(detail)) {
+    return 'The AI service is busy right now. Wait a moment and use Try again.'
+  }
+  if (status === 401 || status === 403 || /API_KEY_INVALID|PERMISSION_DENIED/i.test(detail)) {
+    console.error('trace upstream auth failure', status, detail.slice(0, 500))
+    return 'The AI service rejected its own credentials. This is a configuration fault, not yours — nothing was charged.'
+  }
+  if (status === 400) {
+    console.error('trace upstream bad request', detail.slice(0, 500))
+    return 'The AI service would not accept this image. Try a clearer, flatter photo of the sketch.'
+  }
+  console.error('trace upstream failure', status, detail.slice(0, 500))
+  return 'The AI service could not read that image right now. Try again, or trace the photo by hand with Manual underlay.'
+}
+
+function json(data: unknown, status = 200): Response {  return new Response(JSON.stringify(data), {
     status,
     headers: { 'Content-Type': 'application/json', ...CORS },
   })
@@ -273,7 +297,7 @@ async function handleTrace(request: Request, env: Env): Promise<Response> {
 
   if (!upstream.ok) {
     const detail = await upstream.text()
-    return json({ error: `Gemini vision request failed: ${detail.slice(0, 400)}` }, 502)
+    return json({ error: explainUpstream(upstream.status, detail) }, 502)
   }
 
   const payload = (await upstream.json()) as {
