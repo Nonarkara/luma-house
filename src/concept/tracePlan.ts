@@ -6,6 +6,23 @@ const DEFAULT_API =
     (import.meta.env.VITE_CONCEPT_API_URL as string | undefined) ||
     'https://luma-concept-render.drnon.workers.dev'
 
+/** Vision trace on a real photo takes ~30-60s. The UI shows this same number. */
+export const TRACE_TIMEOUT_MS = 60000
+
+/**
+ * A hung vision call used to leave the user staring at an unchanging
+ * "Reading the image…" with no way to tell working from stuck, and the abort
+ * surfaced as a raw transport string. Say what happened, and say what to do.
+ */
+function describeTransportFailure(error: unknown, cancelled: boolean): string {
+  if (cancelled) return 'Tracing canceled. Your project is untouched — pick the image again to retry.'
+  const name = (error as { name?: string } | null)?.name
+  if (name === 'TimeoutError') {
+    return `The AI did not answer within ${Math.round(TRACE_TIMEOUT_MS / 1000)} seconds. Nothing was charged. Try again, or trace the photo by hand with Manual underlay.`
+  }
+  return 'Could not reach the AI tracing service. Check your connection and try again, or trace the photo by hand with Manual underlay.'
+}
+
 export interface TraceResult {
     plan: PlanState
     /** Whether the model reported low confidence (hand-drawn, partial, etc.). */
@@ -32,17 +49,22 @@ export async function tracePlanFromImage(options: {
     }
     const endpoint = (options.apiUrl || DEFAULT_API || '').replace(/\/$/, '') + '/trace'
 
-    const signal = options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(60000)]) : AbortSignal.timeout(60000)
-    const response = await fetch(endpoint, {
+    const signal = options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(TRACE_TIMEOUT_MS)]) : AbortSignal.timeout(TRACE_TIMEOUT_MS)
+    let response: Response
+    try {
+      response = await fetch(endpoint, {
         signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            image: options.imageDataUrl,
-            siteW: options.siteW,
-            siteH: options.siteH,
+          image: options.imageDataUrl,
+          siteW: options.siteW,
+          siteH: options.siteH,
         }),
-    })
+      })
+    } catch (error) {
+      throw new Error(describeTransportFailure(error, options.signal?.aborted === true))
+    }
 
     if (!response.ok) {
         const detail = await response.text().catch(() => '')

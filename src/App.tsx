@@ -993,11 +993,36 @@ function App() {
 
   // AI trace: read a plan from an uploaded image via the Gemini vision worker.
   const traceFileInputRef = useRef<HTMLInputElement>(null)
+  const traceImage = useRef<string | null>(null)
   const cancelTrace = useCallback(() => {
     traceRequest.current?.abort()
     traceRequest.current = null
     setIsTracing(false)
     setPendingTrace(null)
+  }, [])
+  /** Kept so a failed or timed-out trace can be retried without re-picking the file. */
+  const startTrace = useCallback(async (image: string) => {
+    traceRequest.current?.abort()
+    const controller = new AbortController()
+    traceRequest.current = controller
+    setIsTracing(true)
+    setPendingTrace({ image, plan: null, note: '' })
+    try {
+      const source = new Image()
+      source.src = image
+      await source.decode()
+      if (traceRequest.current !== controller) return
+      const field = traceSiteFromImage(source.naturalWidth, source.naturalHeight)
+      const result = await tracePlanFromImage({ imageDataUrl: image, siteW: field.w, siteH: field.h, signal: controller.signal })
+      if (traceRequest.current !== controller) return
+      setQuotaLeft(result.remaining)
+      setPendingTrace({ image, plan: result.plan, note: result.note })
+    } catch (error) {
+      if (traceRequest.current !== controller) return
+      setPendingTrace({ image, plan: null, note: '', error: error instanceof Error ? error.message : 'Plan trace failed' })
+    } finally {
+      if (traceRequest.current === controller) setIsTracing(false)
+    }
   }, [])
   const runTrace = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -1008,39 +1033,16 @@ function App() {
       return
     }
     if (quotaLeft <= 0) { setToast('Daily AI limit reached (3/day)'); return }
-    traceRequest.current?.abort()
-    const controller = new AbortController()
-    traceRequest.current = controller
-    setIsTracing(true)
     const reader = new FileReader()
-    reader.onerror = () => {
-      if (traceRequest.current !== controller) return
-      setIsTracing(false)
-      setToast('Could not read that image')
-    }
-    reader.onload = async () => {
-      if (traceRequest.current !== controller) return
-      const image = String(reader.result)
-      setPendingTrace({ image, plan: null, note: '' })
-      try {
-        const source = new Image()
-        source.src = image
-        await source.decode()
-        if (traceRequest.current !== controller) return
-        const field = traceSiteFromImage(source.naturalWidth, source.naturalHeight)
-        const result = await tracePlanFromImage({ imageDataUrl: image, siteW: field.w, siteH: field.h, signal: controller.signal })
-        if (traceRequest.current !== controller) return
-        setQuotaLeft(result.remaining)
-        setPendingTrace({ image, plan: result.plan, note: result.note })
-      } catch (error) {
-        if (traceRequest.current !== controller) return
-        setPendingTrace({ image, plan: null, note: '', error: error instanceof Error ? error.message : 'Plan trace failed' })
-      } finally {
-        if (traceRequest.current === controller) setIsTracing(false)
-      }
-    }
+    reader.onerror = () => { setToast('Could not read that image') }
+    reader.onload = () => { traceImage.current = String(reader.result); startTrace(traceImage.current) }
     reader.readAsDataURL(file)
-  }, [quotaLeft])
+  }, [quotaLeft, startTrace])
+  const retryTrace = useCallback(() => {
+    if (isTracing || !traceImage.current) return
+    if (quotaLeft <= 0) { setToast('Daily AI limit reached (3/day)'); return }
+    startTrace(traceImage.current)
+  }, [isTracing, quotaLeft, startTrace])
   const acceptTrace = (next: PlanState) => {
     if (!pendingTrace || isTracing) return
     commit(next, 'Accept calibrated trace')
@@ -1149,7 +1151,7 @@ function App() {
         setPresetOpen(false)
         setToast('Layout preset applied — undo restores the previous plan')
       }} />}
-      {pendingTrace && <TraceReview draft={pendingTrace} busy={isTracing} onCancel={cancelTrace} onAccept={acceptTrace} />}
+      {pendingTrace && <TraceReview draft={pendingTrace} busy={isTracing} onCancel={cancelTrace} onAccept={acceptTrace} onRetry={retryTrace} />}
       <TopBar
         projectName={projectTitle}
         lastSaved={lastSaved}

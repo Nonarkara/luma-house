@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PlanState } from '../types'
 import { calibrateTrace, traceIssues } from '../concept/reviewTrace'
+import { TRACE_TIMEOUT_MS } from '../concept/tracePlan'
 
 export interface PendingTrace { image: string; plan: PlanState | null; note: string; error?: string }
 
-export function TraceReview({ draft, busy, onCancel, onAccept }: {
-  draft: PendingTrace; busy: boolean; onCancel: () => void; onAccept: (plan: PlanState) => void
+export function TraceReview({ draft, busy, onCancel, onAccept, onRetry }: {
+  draft: PendingTrace; busy: boolean; onCancel: () => void; onAccept: (plan: PlanState) => void; onRetry?: () => void
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [roomId, setRoomId] = useState('')
@@ -13,10 +14,20 @@ export function TraceReview({ draft, busy, onCancel, onAccept }: {
   const [meters, setMeters] = useState('')
   const [confirmed, setConfirmed] = useState(false)
   const [overlay, setOverlay] = useState(true)
+  const [elapsed, setElapsed] = useState(0)
   const selected = roomId || draft.plan?.rooms[0]?.id || ''
   const calibrated = useMemo(() => draft.plan ? calibrateTrace(draft.plan, selected, axis, Number(meters)) : null, [draft.plan, selected, axis, meters])
   const issues = useMemo(() => calibrated ? traceIssues(calibrated) : [], [calibrated])
   useEffect(() => { dialog.current?.showModal() }, [])
+  // A vision trace really does take ~30-60s. Count it up so the wait reads as
+  // work in progress rather than a hung app, and stop before the request times out.
+  useEffect(() => {
+    if (!busy) { setElapsed(0); return }
+    const started = Date.now()
+    setElapsed(0)
+    const timer = window.setInterval(() => setElapsed(Math.round((Date.now() - started) / 1000)), 500)
+    return () => window.clearInterval(timer)
+  }, [busy])
   return (
     <dialog ref={dialog} className="trace-review" aria-labelledby="trace-title" onCancel={(event) => { event.preventDefault(); onCancel() }}>
       <h2 id="trace-title">Review the traced plan</h2>
@@ -31,7 +42,14 @@ export function TraceReview({ draft, busy, onCancel, onAccept }: {
           {draft.plan.openings.map((opening, index) => <circle key={index} cx={opening.x} cy={opening.y} r="1" fill="var(--accent, #f59e0b)" />)}
         </svg>}
       </div>
-      <p role="status">{busy ? 'Reading the image…' : draft.error || draft.note}</p>
+      <p role="status">
+        {busy
+          ? elapsed * 1000 > TRACE_TIMEOUT_MS - 15000
+            ? `Still reading — ${elapsed}s. It is about to give up; you can cancel or retry.`
+            : `Reading the image… ${elapsed}s · this usually takes 30–60 seconds`
+          : draft.error || draft.note}
+      </p>
+      {!busy && draft.error && onRetry && <p><button className="button secondary small" type="button" onClick={onRetry}>Try again</button></p>}
       {draft.plan && <>
         <label><input type="checkbox" checked={overlay} onChange={event => setOverlay(event.target.checked)} /> Show traced boundaries</label>
         <div className="trace-fields">

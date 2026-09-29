@@ -1,3 +1,5 @@
+import { repairTrace, type TracePlan } from './repairTrace'
+
 export interface Env {
   GEMINI_API_KEY: string
   GEMINI_MODEL?: string
@@ -132,7 +134,8 @@ async function handleRender(request: Request, env: Env): Promise<Response> {
 // Sends an uploaded plan image to a Gemini vision model with a strict JSON
 // schema prompt, then returns the structured plan for the editor to import.
 // ---------------------------------------------------------------------------
-const TRACE_PROMPT = (siteW: number, siteH: number) => `You are an architectural plan reader. Analyze the uploaded floor-plan image and return ONLY a JSON object describing the rooms and openings, normalized to a ${siteW}m x ${siteH}m site coordinate system where the full width is 0-100% and the full height is 0-100%. North is up.
+
+const TRACE_PROMPT = (siteW: number, siteH: number) => `You are an architectural plan reader. Analyze the uploaded image — it is usually a hand-drawn floor plan sketched on paper — and return ONLY a JSON object describing the rooms and openings, normalized to a ${siteW}m x ${siteH}m site coordinate system where the full width is 0-100% and the full height is 0-100%. North is up.
 
 Return this exact JSON shape, no markdown, no commentary:
 {
@@ -151,7 +154,66 @@ Rules:
 - "rotation" is 0 for windows/doors on horizontal walls (top/bottom edges), 90 for vertical walls (left/right edges).
 - x,y is the CENTER of the opening on its wall.
 - If the image is not a floor plan, return { "rooms": [], "openings": [] }.
-- Coordinates are approximate from the image proportions; precision is not expected.`
+- Coordinates are approximate from the image proportions; precision is not expected.
+
+Layout rules — these are checked against your answer afterwards, and violations are reported to the user as errors:
+- ROOMS MUST NOT OVERLAP. No two rooms may share any area. Measure each room from the picture, then check every pair.
+- ROOMS MUST TOUCH THE OUTLINE. Keep the whole layout inside 0-100 on both axes.
+- Give every room a unique id.
+- Name a room for what is actually drawn. Do not invent a second bedroom, bathroom or kitchen that is not in the picture. If you are unsure, use "studio".
+- AN OPENING MUST FIT ITS WALL. Place x,y on a room's edge, far enough from each corner that the full opening width (about 1.6 m for a window, 0.9 m for a door) still lies on that wall. An opening flush against a corner will be rejected.`
+
+/**
+ * Ask for JSON via the API rather than parsing it back out of prose. This is
+ * what makes the trace dependable: no markdown, no commentary, no
+ * unparseable-JSON failure mode.
+ */
+const TRACE_RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    rooms: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          name: { type: 'string' },
+          kind: { type: 'string', enum: ['living', 'kitchen', 'bedroom', 'bathroom', 'studio', 'terrace'] },
+          x: { type: 'number' },
+          y: { type: 'number' },
+          w: { type: 'number' },
+          h: { type: 'number' },
+        },
+        required: ['id', 'name', 'kind', 'x', 'y', 'w', 'h'],
+      },
+    },
+    openings: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          type: { type: 'string', enum: ['window', 'door'] },
+          x: { type: 'number' },
+          y: { type: 'number' },
+          rotation: { type: 'integer' },
+        },
+        required: ['id', 'type', 'x', 'y', 'rotation'],
+      },
+    },
+    furniture: { type: 'array', items: { type: 'object' } },
+    systems: {
+      type: 'object',
+      properties: {
+        solar: { type: 'boolean' },
+        insulation: { type: 'boolean' },
+        climate: { type: 'boolean' },
+        lighting: { type: 'boolean' },
+      },
+    },
+  },
+  required: ['rooms', 'openings', 'furniture', 'systems'],
+}
 
 async function handleTrace(request: Request, env: Env): Promise<Response> {
   if (!env.GEMINI_API_KEY) {
@@ -202,6 +264,8 @@ async function handleTrace(request: Request, env: Env): Promise<Response> {
       ],
       generationConfig: {
         responseModalities: ['TEXT'],
+        responseMimeType: 'application/json',
+        responseSchema: TRACE_RESPONSE_SCHEMA,
         temperature: 0.1,
       },
     }),
@@ -224,11 +288,11 @@ async function handleTrace(request: Request, env: Env): Promise<Response> {
   // Extract the first JSON object from the text (the model may wrap it in prose).
   const jsonStart = text.indexOf('{')
   const jsonEnd = text.lastIndexOf('}')
-  let plan: unknown = null
+  let parsed: TracePlan | null = null
   let note = 'AI-read draft — verify walls and openings before costing.'
   if (jsonStart >= 0 && jsonEnd > jsonStart) {
     try {
-      plan = JSON.parse(text.slice(jsonStart, jsonEnd + 1))
+      parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1)) as TracePlan
     } catch {
       note = 'AI returned unparseable JSON — the image may not be a clear floor plan.'
     }
@@ -236,5 +300,7 @@ async function handleTrace(request: Request, env: Env): Promise<Response> {
     note = 'AI did not return a plan — the image may not be a recognizable floor plan.'
   }
 
-  return json({ plan, note, draft: true })
+  if (!parsed) return json({ plan: null, note, draft: true })
+  const repaired = repairTrace(parsed)
+  return json({ plan: repaired, note: repaired.note ?? note, draft: true })
 }

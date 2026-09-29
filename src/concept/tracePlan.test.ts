@@ -36,6 +36,25 @@ describe('trace boundary', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Trace service unavailable', { status: 503 })))
     await expect(tracePlanFromImage({ imageDataUrl: 'test' })).rejects.toThrow('Trace service unavailable')
   })
+  it('explains a timeout in plain words and does not charge the quota', async () => {
+    const timedOut = Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' })
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timedOut))
+    await expect(tracePlanFromImage({ imageDataUrl: 'test' })).rejects.toThrow(/did not answer within 60 seconds/)
+    expect(getQuotaRemaining()).toBe(3)
+  })
+  it('explains a cancel as a cancel, not a failure, and offers a retry', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' })))
+    await expect(tracePlanFromImage({ imageDataUrl: 'test', signal: controller.signal })).rejects.toThrow(/canceled/i)
+  })
+  it('explains an unreachable service without leaking a transport string', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    const error = await tracePlanFromImage({ imageDataUrl: 'test' }).then(() => null, (e: unknown) => e as Error)
+    expect(error).toBeInstanceOf(Error)
+    expect(error!.message).toMatch(/could not reach/i)
+    expect(error!.message).not.toMatch(/failed to fetch/i)
+  })
   it('calibrates a square source as square regardless of previous project dimensions', () => {
     const plan = { ...synthesizeLayout(), site: traceSiteFromImage(1000, 1000), rooms: [{ id: 'square', name: 'Square', kind: 'living' as const, x: 0, y: 0, w: 50, h: 50 }] }
     const calibrated = calibrateTrace(plan, 'square', 'w', 5)!
