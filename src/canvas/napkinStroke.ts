@@ -1,4 +1,4 @@
-import { roomsForOpening } from '../analysis/walls'
+import { boundarySpans, roomsForOpening } from '../analysis/walls'
 import { roomAreaFor, siteOf } from '../plan'
 import type { DrawnWall, Furniture, FurnitureKind, Opening, PlanState, Room, RoomKind, SiteSpec } from '../types'
 import { MIN_ROOM, clampRoom, snap, snapOpeningToWall, strokeToRoomRect, type StrokePoint } from './geometry'
@@ -220,6 +220,32 @@ function mintRoom(rect: Pick<Room, 'x' | 'y' | 'w' | 'h'>, plan: PlanState, site
 }
 
 /**
+ * A tick near a room corner is thrown away by roomsForOpening, because the
+ * full opening width does not fit between the mark and the corner — on a small
+ * room that silently kills the outer ~40% of every wall. The mark clearly means
+ * "window here", so slide it along the wall to the nearest position where it
+ * does fit rather than discarding it. Only the gesture moves; the resulting
+ * opening is an ordinary one, so daylight, BOQ and the code check are unchanged.
+ */
+function slideOntoWallSpan(plan: PlanState, opening: Opening, site: SiteSpec): Opening {
+  const horizontal = opening.rotation === 0
+  const width = opening.widthM ?? (opening.type === 'door' ? 0.9 : 1.6)
+  const half = width / (horizontal ? site.w : site.h) * 50
+  for (const room of plan.rooms) {
+    for (const span of boundarySpans(plan, room)) {
+      if (span.rotation !== opening.rotation) continue
+      if (Math.abs((horizontal ? opening.y : opening.x) - span.fixed) > 1.5) continue
+      const along = horizontal ? opening.x : opening.y
+      const clamped = Math.max(span.start + half, Math.min(span.end - half, along))
+      if (clamped === along) continue
+      const moved = horizontal ? { ...opening, x: clamped } : { ...opening, y: clamped }
+      if (roomsForOpening(plan, moved).length > 0) return moved
+    }
+  }
+  return opening
+}
+
+/**
  * One pencil, many meanings. A line is a wall, a short stop on a wall is a
  * door (interior) or window (exterior), a box in empty space is a room, a
  * box inside a room is furniture.
@@ -238,7 +264,7 @@ export function applyNapkinStroke(plan: PlanState, points: StrokePoint[], site: 
   const isTick = minSide < 3.2 && maxSide < SHORT_MAX + 1
 
   if (isTick) {
-    const opening = snapOpeningToWall(
+    let opening = snapOpeningToWall(
       {
         id: nid('op'),
         type: 'window',
@@ -248,7 +274,12 @@ export function applyNapkinStroke(plan: PlanState, points: StrokePoint[], site: 
       },
       plan.rooms,
     )
-    const matches = roomsForOpening(plan, opening)
+    let matches = roomsForOpening(plan, opening)
+    if (matches.length === 0) {
+      // On a wall, but too close to a corner for the opening to fit. Slide it in.
+      opening = slideOntoWallSpan(plan, opening, site)
+      matches = roomsForOpening(plan, opening)
+    }
     if (matches.length > 0) {
       const type: Opening['type'] = matches.length >= 2 ? 'door' : 'window'
       const alongM = type === 'door'
