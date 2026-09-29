@@ -1171,6 +1171,10 @@ button:active {
   z-index: 7;
   display: block;
   transform-origin: center;
+  /* x/y IS the point on the wall (snapOpeningToWall snaps it there, sunPatches
+     casts daylight from it). The 44px box is anchored top-left by default, which
+     would push the glyph 22px down-right of the wall — off the building. Center it. */
+  transform: translate(-50%, -50%);
   pointer-events: auto;
   border: 0;
   padding: 0;
@@ -1232,7 +1236,7 @@ button:active {
 }
 
 .opening.rotate-90 {
-  transform: rotate(90deg);
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 
 .sun-overlay {
