@@ -110,6 +110,8 @@ export const Inspector = React.memo(function Inspector({
               ? 'Settings'
               : mode === 'plan'
               ? 'Plan intelligence'
+              : mode === 'climate'
+              ? 'Climate study'
               : mode === 'light'
               ? 'Daylight study'
               : mode === 'systems'

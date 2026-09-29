@@ -31,5 +31,5 @@ export interface PlanState {
   systems: HouseSystems
 }
 
-export type WorkspaceMode = 'plan' | 'light' | 'systems' | 'budget'
+export type WorkspaceMode = 'plan' | 'climate' | 'light' | 'systems' | 'budget'
 export type CanvasView = 'plan' | 'spatial'
