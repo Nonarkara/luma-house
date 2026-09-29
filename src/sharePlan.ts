@@ -1,4 +1,4 @@
-import type { Furniture, Opening, PlanState, Room, RoomKind } from './types'
+import type { DrawnWall, Furniture, Opening, PlanState, Room, RoomKind } from './types'
 import { sanitizeSite } from './plan'
 import { ASSEMBLY_PRESETS } from './assemblies/presets'
 import { DEFAULT_ASSEMBLIES } from './assemblies/resolve'
@@ -11,7 +11,7 @@ import type { PlanAssemblies, EnvelopeAssemblies } from './types'
 // ---------------------------------------------------------------------------
 
 const ROOM_KINDS: RoomKind[] = ['living', 'kitchen', 'bedroom', 'bathroom', 'studio', 'terrace']
-const FURNITURE_KINDS: Furniture['kind'][] = ['bed', 'sofa', 'dining', 'wardrobe', 'desk']
+const FURNITURE_KINDS: Furniture['kind'][] = ['bed', 'sofa', 'dining', 'wardrobe', 'desk', 'wc']
 
 function num(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
@@ -117,17 +117,35 @@ function sanitizeEnvelope(raw: unknown): EnvelopeAssemblies | undefined {
   return Object.fromEntries(entries.map(([key, value]) => [key, value])) as unknown as EnvelopeAssemblies
 }
 
+function sanitizeWall(raw: unknown): DrawnWall | null {
+  if (typeof raw !== 'object' || raw === null) return null
+  const candidate = raw as Record<string, unknown>
+  const id = str(candidate.id)
+  const x1 = num(candidate.x1)
+  const y1 = num(candidate.y1)
+  const x2 = num(candidate.x2)
+  const y2 = num(candidate.y2)
+  if (!id || x1 === null || y1 === null || x2 === null || y2 === null) return null
+  return { id, x1, y1, x2, y2 }
+}
+
 /**
  * Validate untrusted JSON into a PlanState. Drops malformed entries, keeps
  * valid ones, and returns null when nothing usable remains — callers fall
  * back to the default plan. Unknown extra fields are ignored.
+ * An empty rooms array is a valid blank napkin.
  */
 export function sanitizePlan(raw: unknown): PlanState | null {
   if (typeof raw !== 'object' || raw === null) return null
   const candidate = raw as Record<string, unknown>
   if (!Array.isArray(candidate.rooms)) return null
   const rooms = candidate.rooms.map(sanitizeRoom).filter((room): room is Room => room !== null)
-  if (rooms.length === 0 && candidate.rooms.length > 0) return null
+  // Walls alone are a valid napkin: you draw the outline before any room is
+  // closed. Only reject when neither survived sanitising.
+  const walls = Array.isArray(candidate.walls)
+    ? candidate.walls.map(sanitizeWall).filter((wall): wall is DrawnWall => wall !== null)
+    : []
+  if (rooms.length === 0 && walls.length === 0 && candidate.rooms.length > 0) return null
   const openings = Array.isArray(candidate.openings)
     ? candidate.openings.map(sanitizeOpening).filter((o): o is Opening => o !== null)
     : []
@@ -144,6 +162,7 @@ export function sanitizePlan(raw: unknown): PlanState | null {
     rooms,
     openings,
     furniture,
+    ...(walls.length > 0 ? { walls } : {}),
     systems: {
       ...(envelope ? { assemblies: envelope } : {}),
       solar: systemsRaw.solar === true,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X, Bed, Armchair, Monitor, Utensils, Flower2, Tv, LayoutGrid, Layers } from 'lucide-react'
+import { X, Bed, Armchair, Monitor, Utensils, Flower2, Tv, LayoutGrid, Layers, Bath } from 'lucide-react'
 import { furnitureCatalog } from '../plan'
 import type { FurnitureKind } from '../types'
 
@@ -12,7 +12,7 @@ interface FurnitureCatalogDrawerProps {
 interface CatalogItem {
   kind: FurnitureKind
   label: string
-  category: 'bedroom' | 'living' | 'office' | 'dining' | 'decor'
+  category: 'bedroom' | 'living' | 'office' | 'dining' | 'decor' | 'bath'
   /** Explicit footprint override. Omitted = the generic kind spec. */
   size?: { wM: number; dM: number }
   icon: typeof Bed
@@ -28,6 +28,7 @@ const CATALOG_ITEMS: CatalogItem[] = [
   { kind: 'sofa', label: 'Media & TV Console', category: 'living', size: { wM: 2.0, dM: 0.4 }, icon: Tv },
   { kind: 'wardrobe', label: 'Built-in Wardrobe', category: 'bedroom', size: { wM: 2.0, dM: 0.6 }, icon: LayoutGrid },
   { kind: 'sofa', label: 'Lounge Armchair', category: 'living', size: { wM: 0.9, dM: 0.9 }, icon: Flower2 },
+  { kind: 'wc', label: 'WC', category: 'bath', size: { wM: 0.4, dM: 0.7 }, icon: Bath },
 ]
 
 /**
@@ -50,6 +51,7 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
     { id: 'living', label: 'Living' },
     { id: 'office', label: 'Office' },
     { id: 'dining', label: 'Dining' },
+    { id: 'bath', label: 'Bath' },
   ]
 
   const needle = searchQuery.trim().toLowerCase()

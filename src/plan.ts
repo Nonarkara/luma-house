@@ -107,6 +107,7 @@ export const furnitureCatalog: Record<FurnitureKind, { label: string; w: number;
   dining: { label: 'Dining table', w: 1.8, d: 0.9 },
   wardrobe: { label: 'Wardrobe', w: 2.0, d: 0.6 },
   desk: { label: 'Desk', w: 1.4, d: 0.7 },
+  wc: { label: 'WC', w: 0.4, d: 0.7 },
 }
 
 /**
