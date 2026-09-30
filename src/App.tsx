@@ -65,7 +65,7 @@ import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal'
 import { comparePlans } from './analysis/abComparison'
 import { ABComparisonModal } from './components/ABComparisonModal'
 import type { ABComparisonState, CurrencyCode, Opening } from './types'
-import { readString } from './storage/keys'
+import { readString, storageIsPersistent } from './storage/keys'
 import { checkPlan, exteriorDoorPlacement, type CodeIssue as StandardsCodeIssue } from './codes/checkPlan'
 
 const DRAW_HINT = 'Line = wall · tick on a wall = door or window · box = room or furniture'
@@ -434,14 +434,16 @@ function App() {
     const timeout = window.setTimeout(() => {
       try {
         localStorage.setItem(CHINA_PROJECT_KEY, JSON.stringify(plan))
-        setLastSaved('Saved locally')
-      } catch { setLastSaved('Not saved — export your project') }
+        // Never claim a save that did not happen. Without storage the plan lives
+        // only in memory and in the Share link, and the user must be told.
+        setLastSaved(storageIsPersistent() ? 'Saved locally' : 'Not saved — use Share to keep it')
+      } catch { setLastSaved('Not saved — use Share to keep it') }
     }, 300)
     return () => window.clearTimeout(timeout)
   }, [plan])
 
   useEffect(() => {
-    localStorage.setItem('designon:style-keywords:shanghai-50', styleKeywords)
+    try { localStorage.setItem('designon:style-keywords:shanghai-50', styleKeywords) } catch { /* private mode or quota */ }
   }, [styleKeywords])
 
   useEffect(() => {

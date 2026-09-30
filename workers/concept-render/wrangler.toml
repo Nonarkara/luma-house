@@ -2,6 +2,12 @@ name = "luma-concept-render"
 main = "src/index.ts"
 compatibility_date = "2026-04-01"
 
+# Real rate limiting. Without this binding, rateLimit() short-circuits to `true`
+# and the endpoint was an unlimited public proxy to a paid key.
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "9ba6e1dcd51f4500b591b245c0acad20"
+
 [vars]
 GEMINI_MODEL = "gemini-2.5-flash-image"
 DAILY_IP_LIMIT = "20"

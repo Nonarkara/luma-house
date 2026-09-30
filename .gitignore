@@ -9,3 +9,4 @@ coverage/
 *.tsbuildinfo
 .worktrees/
 worker-configuration.d.ts
+.wrangler/

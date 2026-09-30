@@ -251,7 +251,8 @@ export function readVisited(): Set<JourneyStageId> {
 }
 
 export function writeVisited(visited: Set<JourneyStageId>): void {
-  localStorage.setItem(JOURNEY_STORAGE_KEY, JSON.stringify([...visited]))
+  // Guards the write, keeps the original unprefixed key so existing progress survives.
+  try { localStorage.setItem(JOURNEY_STORAGE_KEY, JSON.stringify([...visited])) } catch { /* private mode or quota */ }
 }
 
 export function readWelcomeDismissed(): boolean {
@@ -263,5 +264,6 @@ export function readWelcomeDismissed(): boolean {
 }
 
 export function writeWelcomeDismissed(): void {
-  localStorage.setItem(WELCOME_STORAGE_KEY, '1')
+  // Guards the write, keeps the original unprefixed key.
+  try { localStorage.setItem(WELCOME_STORAGE_KEY, '1') } catch { /* private mode or quota */ }
 }

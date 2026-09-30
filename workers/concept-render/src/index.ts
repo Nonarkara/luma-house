@@ -19,10 +19,34 @@ interface TraceBody {
   siteH?: number
 }
 
-const CORS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+/**
+ * Only the frontends we actually ship may call this from a browser.
+ *
+ * `Access-Control-Allow-Origin: *` meant any page on the internet could POST to
+ * a paid key by embedding one line of script — the most likely way this quota
+ * gets burned. A request carrying no Origin (curl, server-to-server) is still
+ * served, because the browser is not the only client we care about; that path is
+ * held down by the per-IP rate limit instead.
+ */
+const ALLOWED_ORIGINS = new Set([
+  'https://nonarkara.github.io',
+  'https://luma-house.pages.dev',
+  'http://localhost:5173',
+  'http://localhost:4173',
+])
+
+function corsHeaders(request: Request): Record<string, string> {
+  const base = { 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }
+  const origin = request.headers.get('Origin')
+  // No Origin is not a browser. Serve it, and let the rate limit hold the line.
+  if (!origin) return { ...base, Vary: 'Origin' }
+  if (!ALLOWED_ORIGINS.has(origin)) return { Vary: 'Origin' }
+  return { ...base, 'Access-Control-Allow-Origin': origin, Vary: 'Origin' }
+}
+
+function isBrowserCall(request: Request): boolean {
+  const origin = request.headers.get('Origin')
+  return origin !== null && !ALLOWED_ORIGINS.has(origin)
 }
 
 /**
@@ -50,64 +74,84 @@ function explainUpstream(status: number, detail: string): string {
   return 'The AI service could not read that image right now. Try again, or trace the photo by hand with Manual underlay.'
 }
 
-function json(data: unknown, status = 200): Response {  return new Response(JSON.stringify(data), {
+function json(data: unknown, status = 200, cors: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', ...CORS },
+    headers: { 'Content-Type': 'application/json', ...cors },
   })
 }
 
+/**
+ * Per-IP daily cap. Fails CLOSED: if KV is unreachable the request is refused,
+ * because an unbounded path to a paid key is worse than a temporarily broken
+ * one. Both AI endpoints call this before spending anything.
+ */
 async function rateLimit(env: Env, ip: string): Promise<boolean> {
-  if (!env.RATE_LIMIT) return true
+  if (!env.RATE_LIMIT) return false
   const day = new Date().toISOString().slice(0, 10)
   const key = `concept:${day}:${ip}`
   const limit = Number(env.DAILY_IP_LIMIT || 20)
-  const current = Number((await env.RATE_LIMIT.get(key)) || '0')
-  if (current >= limit) return false
-  await env.RATE_LIMIT.put(key, String(current + 1), { expirationTtl: 60 * 60 * 36 })
-  return true
+  try {
+    const current = Number((await env.RATE_LIMIT.get(key)) || '0')
+    if (current >= limit) return false
+    await env.RATE_LIMIT.put(key, String(current + 1), { expirationTtl: 60 * 60 * 36 })
+    return true
+  } catch (error) {
+    console.error('rate limit unavailable, refusing to spend', error)
+    return false
+  }
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const cors = corsHeaders(request)
+
     if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: CORS })
+      return new Response(null, { status: 204, headers: cors })
     }
 
     if (request.method !== 'POST') {
-      return json({ error: 'POST only' }, 405)
+      return json({ error: 'POST only' }, 405, cors)
+    }
+
+    // A browser on a site that is not ours gets no CORS headers, which stops the
+    // response being readable — and refuse it outright rather than relying on
+    // the browser to be the thing that stops it.
+    if (isBrowserCall(request)) {
+      return json({ error: 'This service is only available to the designon app.' }, 403, cors)
     }
 
     const url = new URL(request.url)
     // AI floor-plan trace (vision → structured plan JSON).
     if (url.pathname.endsWith('/trace')) {
-      return handleTrace(request, env)
+      return handleTrace(request, env, cors)
     }
 
     // Default: concept photo generation.
-    return handleRender(request, env)
+    return handleRender(request, env, cors)
   },
 }
 
-async function handleRender(request: Request, env: Env): Promise<Response> {
+async function handleRender(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
   if (!env.GEMINI_API_KEY) {
-    return json({ error: 'GEMINI_API_KEY is not configured on the worker' }, 500)
+    return json({ error: 'GEMINI_API_KEY is not configured on the worker' }, 500, cors)
   }
 
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown'
   if (!(await rateLimit(env, ip))) {
-    return json({ error: 'Server daily render limit reached for this network' }, 429)
+    return json({ error: 'Server daily render limit reached for this network' }, 429, cors)
   }
 
   let body: RenderBody
   try {
     body = (await request.json()) as RenderBody
   } catch {
-    return json({ error: 'Invalid JSON body' }, 400)
+    return json({ error: 'Invalid JSON body' }, 400, cors)
   }
 
   const prompt = (body.prompt || '').trim()
   if (prompt.length < 20 || prompt.length > 4000) {
-    return json({ error: 'Prompt must be between 20 and 4000 characters' }, 400)
+    return json({ error: 'Prompt must be between 20 and 4000 characters' }, 400, cors)
   }
 
   const model = env.GEMINI_MODEL || 'gemini-2.5-flash-image'
@@ -130,7 +174,7 @@ async function handleRender(request: Request, env: Env): Promise<Response> {
 
   if (!upstream.ok) {
     const detail = await upstream.text()
-    return json({ error: `Gemini request failed: ${detail.slice(0, 400)}` }, 502)
+    return json({ error: explainUpstream(upstream.status, detail) }, 502, cors)
   }
 
   const payload = (await upstream.json()) as {
@@ -144,13 +188,13 @@ async function handleRender(request: Request, env: Env): Promise<Response> {
   const parts = payload.candidates?.[0]?.content?.parts ?? []
   const imagePart = parts.find((part) => part.inlineData?.data)
   if (!imagePart?.inlineData?.data) {
-    return json({ error: 'Gemini returned no image. Try a shorter prompt.' }, 502)
+    return json({ error: 'Gemini returned no image. Try a shorter prompt.' }, 502, cors)
   }
 
   return json({
     imageBase64: imagePart.inlineData.data,
     mimeType: imagePart.inlineData.mimeType || 'image/png',
-  })
+  }, 200, cors)
 }
 
 // ---------------------------------------------------------------------------
@@ -239,33 +283,33 @@ const TRACE_RESPONSE_SCHEMA = {
   required: ['rooms', 'openings', 'furniture', 'systems'],
 }
 
-async function handleTrace(request: Request, env: Env): Promise<Response> {
+async function handleTrace(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
   if (!env.GEMINI_API_KEY) {
-    return json({ error: 'GEMINI_API_KEY is not configured on the worker' }, 500)
+    return json({ error: 'GEMINI_API_KEY is not configured on the worker' }, 500, cors)
   }
 
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown'
   if (!(await rateLimit(env, ip))) {
-    return json({ error: 'Server daily AI limit reached for this network' }, 429)
+    return json({ error: 'Server daily AI limit reached for this network' }, 429, cors)
   }
 
   let body: TraceBody
   try {
     body = (await request.json()) as TraceBody
   } catch {
-    return json({ error: 'Invalid JSON body' }, 400)
+    return json({ error: 'Invalid JSON body' }, 400, cors)
   }
 
   const image = (body.image || '').trim()
   // Expect a data URL: data:image/...;base64,....
   const match = image.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/)
   if (!match) {
-    return json({ error: 'A base64 image data URL is required' }, 400)
+    return json({ error: 'A base64 image data URL is required' }, 400, cors)
   }
   const mimeType = match[1]
   const base64 = match[2]
   if (base64.length < 1000) {
-    return json({ error: 'Image too small to read a plan from' }, 400)
+    return json({ error: 'Image too small to read a plan from' }, 400, cors)
   }
 
   const siteW = body.siteW && body.siteW > 0 ? body.siteW : 14
@@ -297,7 +341,7 @@ async function handleTrace(request: Request, env: Env): Promise<Response> {
 
   if (!upstream.ok) {
     const detail = await upstream.text()
-    return json({ error: explainUpstream(upstream.status, detail) }, 502)
+    return json({ error: explainUpstream(upstream.status, detail) }, 502, cors)
   }
 
   const payload = (await upstream.json()) as {
@@ -324,7 +368,7 @@ async function handleTrace(request: Request, env: Env): Promise<Response> {
     note = 'AI did not return a plan — the image may not be a recognizable floor plan.'
   }
 
-  if (!parsed) return json({ plan: null, note, draft: true })
+  if (!parsed) return json({ plan: null, note, draft: true }, 200, cors)
   const repaired = repairTrace(parsed)
-  return json({ plan: repaired, note: repaired.note ?? note, draft: true })
+  return json({ plan: repaired, note: repaired.note ?? note, draft: true }, 200, cors)
 }
