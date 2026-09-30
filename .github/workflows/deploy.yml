@@ -25,6 +25,14 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      # Shipability smoke, in a real browser. This must run AFTER the build:
+      # playwright.config boots `npm run preview`, which serves dist/, and a
+      # fresh checkout has no dist until the step above. Gating the deploy on
+      # this is the point — the three regressions it covers (welcome gate
+      # destroying an opened share link, and Share / New sketch / Furniture
+      # Catalog hidden on phones) all passed the 284 vitest cases.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
