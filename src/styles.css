@@ -466,6 +466,33 @@ button:active {
   display: none;
 }
 
+/**
+ * The seven stages are a 852px row inside a 390px phone. It scrolls, but the
+ * scrollbar is hidden, so on a phone you simply cannot see that Cost, Systems
+ * and Picture exist — no cue at all. On a touch device show a thin scrollbar and
+ * snap each stage into place, so swiping is both discoverable and predictable.
+ */
+@media (pointer: coarse) {
+  .journey-rail {
+    scroll-snap-type: x proximity;
+    scroll-padding-left: 16px;
+    scrollbar-width: thin;
+  }
+  .journey-rail button {
+    scroll-snap-align: start;
+  }
+  .journey-rail::-webkit-scrollbar {
+    display: block;
+    height: 3px;
+  }
+  .journey-rail::-webkit-scrollbar-thumb {
+    background: var(--accent-primary);
+  }
+  .journey-rail::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, .08);
+  }
+}
+
 .deliverable-rail button,
 .journey-rail button {
   min-width: 104px;
@@ -3446,8 +3473,27 @@ select {
     display: none;
   }
 
+  /*
+   * These used to be hidden outright on a phone, which removed Share, New
+   * sketch and the Furniture Catalog entirely — you could draw a plan on a
+   * phone and not be able to send it or start another. Keep the function, drop
+   * the label: the aria-label still names them, so this is a phone
+   * affordance change and not a silent removal.
+   */
   .top-actions .button.secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    padding: 0 8px;
+  }
+  .top-actions .top-action-label .btn-label {
     display: none;
+  }
+  .top-actions .top-action-icon {
+    width: 16px;
+    height: 16px;
+    display: block;
   }
 
   .design-stage {

@@ -359,7 +359,12 @@ export function solarPosition(latitude: number, dayOfYear: number, hour: number)
     (Math.sin(declination * radians) - Math.sin(altitude * radians) * Math.sin(latitude * radians)) /
     (Math.cos(altitude * radians) * Math.cos(latitude * radians))
   const rawAzimuth = Math.acos(Math.max(-1, Math.min(1, cosAzimuth))) / radians
-  const azimuth = hour < 12 ? 180 - rawAzimuth : 180 + rawAzimuth
+  // acos can only return 0..180, which is the correct azimuth-from-north for the
+  // MORNING. The afternoon is its mirror about north. Adding/subtracting from 180
+  // instead is right only at the horizons and badly wrong near noon — it put the
+  // noon sun at 360 (due north) in the northern hemisphere, so a south-facing
+  // wall was modelled as facing away from the sun at the most important moment.
+  const azimuth = hour < 12 ? rawAzimuth : 360 - rawAzimuth
   return { altitude: Math.max(0, altitude), azimuth }
 }
 

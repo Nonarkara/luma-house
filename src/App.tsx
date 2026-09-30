@@ -142,7 +142,11 @@ function App() {
   const [quotaLeft, setQuotaLeft] = useState(() => getQuotaRemaining())
   const [isRendering, setIsRendering] = useState(false)
   const [visitedStages, setVisitedStages] = useState<Set<JourneyStageId>>(() => readVisited())
-  const [welcomeOpen, setWelcomeOpen] = useState(() => !readWelcomeDismissed())
+  // Someone who opens a shared link came to see a drawing, not to be greeted.
+  // The gate used to open on top of the incoming plan and its biggest button
+  // wiped it: 5 rooms to 0, on phone and desktop alike. The gate is for
+  // arrivals with nothing, so it stays out of the way when there is a plan.
+  const [welcomeOpen, setWelcomeOpen] = useState(() => !readWelcomeDismissed() && !decodePlanFromHash(window.location.hash))
   const [tourChapterIndex, setTourChapterIndex] = useState<number | null>(null)
   const [scenariosOpen, setScenariosOpen] = useState(false)
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)

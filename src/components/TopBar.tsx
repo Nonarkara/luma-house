@@ -1,5 +1,5 @@
 import React from 'react'
-import { Copy, Download, FilePlus2, HelpCircle, PanelRight, Settings2 } from 'lucide-react'
+import { Copy, Download, FilePlus2, HelpCircle, PanelRight, Plus, Settings2 } from 'lucide-react'
 import { Logo, IconButton } from './ui'
 
 interface TopBarProps {
@@ -41,11 +41,13 @@ export const TopBar = React.memo(function TopBar({
         {onToggleCatalog && (
           <button
             type="button"
-            className="button secondary"
+            className="button secondary top-action-label"
             onClick={onToggleCatalog}
+            aria-label="Furniture Catalog"
             style={{ fontSize: '0.8rem', padding: '6px 12px' }}
           >
-            + Furniture Catalog
+            <Plus className="top-action-icon" aria-hidden="true" />
+            <span className="btn-label">Furniture Catalog</span>
           </button>
         )}
         {onOpenShortcuts && (
@@ -67,20 +69,24 @@ export const TopBar = React.memo(function TopBar({
         </IconButton>
 
         <button
-          className="button secondary"
+          className="button secondary top-action-label"
           type="button"
           onClick={onNewSketch}
+          aria-label="New sketch"
           title="Start a fresh napkin sketch. Undo brings the current one back."
         >
-          <FilePlus2 /> New sketch
+          <FilePlus2 className="top-action-icon" aria-hidden="true" />
+          <span className="btn-label">New sketch</span>
         </button>
 
         <button
-          className="button secondary"
+          className="button secondary top-action-label"
           type="button"
           onClick={sharePlan}
+          aria-label="Share"
         >
-          <Copy /> Share
+          <Copy className="top-action-icon" aria-hidden="true" />
+          <span className="btn-label">Share</span>
         </button>
 
         <button className="button primary" type="button" onClick={exportPlan}>

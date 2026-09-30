@@ -45,10 +45,50 @@ describe('exteriorWalls', () => {
 })
 
 describe('wallSunForDay', () => {
-  it('hits the south wall hardest in Bangkok at summer solstice', () => {
+  /**
+   * These are the facts a designer in Thailand most needs and most architects
+   * get wrong, so they are asserted rather than assumed.
+   */
+  it('gives a Bangkok south wall ZERO sun at the summer solstice', () => {
+    // Bangkok is 13.76 N and the solstice declination is +23.45, so the noon sun
+    // stands at 90 - 13.76 + 23.45 = 99.7 deg: it passes NORTH of the zenith.
+    // The sun is in the northern half of the sky all day near noon, so a south
+    // wall sees none of it. This test previously asserted the opposite and
+    // passed only because the azimuth was mirrored around 180, manufacturing a
+    // phantom southern sun in the middle of a tropical day.
     const south = wallSunForDay(BANGKOK.latitude, 172, 'S')
     const north = wallSunForDay(BANGKOK.latitude, 172, 'N')
-    expect(south.directMinutes).toBeGreaterThan(north.directMinutes)
+    expect(south.directMinutes).toBe(0)
+    expect(north.directMinutes).toBeGreaterThan(600)
+    expect(north.peakIntensity).toBeGreaterThan(0.9)
+    expect(north.worstHour).toBe(12)
+  })
+
+  it('flips to the south wall in Bangkok winter', () => {
+    // Declination is negative then, so the sun is back in the southern sky.
+    const south = wallSunForDay(BANGKOK.latitude, 355, 'S')
+    const north = wallSunForDay(BANGKOK.latitude, 355, 'N')
+    expect(north.directMinutes).toBe(0)
+    expect(south.directMinutes).toBeGreaterThan(600)
+  })
+
+  it('puts the strongest single-wall sun on the south at a mid-northern latitude', () => {
+    // Shanghai is 31.23 N, north of the tropic: the sun never crosses the
+    // zenith, so the south wall takes the noon sun square on (peak ~1.0). The
+    // north wall still accumulates more total minutes in summer, because the
+    // long summer day gives it four hours of low raking morning and evening
+    // light — which is exactly why north rooms feel cool and pleasant in summer.
+    const shanghai = locations['Shanghai']
+    const south = wallSunForDay(shanghai.latitude, 172, 'S')
+    const north = wallSunForDay(shanghai.latitude, 172, 'N')
+    expect(south.peakIntensity).toBeGreaterThan(0.9)
+    expect(south.worstHour).toBe(12)
+    expect(north.peakIntensity).toBeLessThan(0.3) // raking, not perpendicular
+  })
+
+  it('gives a mid-northern north wall no sun at all in winter', () => {
+    const north = wallSunForDay(locations['Shanghai'].latitude, 355, 'N')
+    expect(north.directMinutes).toBe(0)
   })
 
   it('produces long direct-sun duration on the west wall in tropical summer', () => {
