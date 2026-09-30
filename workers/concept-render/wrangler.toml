@@ -9,5 +9,9 @@ binding = "RATE_LIMIT"
 id = "9ba6e1dcd51f4500b591b245c0acad20"
 
 [vars]
-GEMINI_MODEL = "gemini-2.5-flash-image"
+GEMINI_MODEL = "gemini-3.8-flash-image"
+# gemini-2.5-flash is no longer served to new API accounts, so the old hardcoded
+# vision model 404s for anyone setting this up fresh. Both models live here so
+# a retirement is a config change rather than a code deploy.
+TRACE_MODEL = "gemini-3.8-flash"
 DAILY_IP_LIMIT = "20"

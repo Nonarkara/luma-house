@@ -12,7 +12,21 @@ designon.
 - Frontend default: same URL (overridable via `VITE_CONCEPT_API_URL`)
 - Deploy: `cd workers/concept-render && npx wrangler deploy`
   (the secret below is already set; you do not need to re-put it to deploy code)
-- Latest Worker version (2026-09-30): `18c6f2b9-87a7-4bc6-9bd1-19f1c7ba00fe`
+- Latest Worker version (2026-09-30): `be64c734-cd2d-4960-95a4-df46a2a6f285`
+
+### Models
+
+Both live in `wrangler.toml`, not in the code:
+
+- `TRACE_MODEL = "gemini-3.8-flash"` — vision, structured JSON out, for the plan trace
+- `GEMINI_MODEL = "gemini-3.8-flash-image"` — concept photo generation
+
+`gemini-2.5-flash` is **no longer served to new API accounts** and returns 404
+("no longer available to new users") to a freshly created key, while the older
+borrowed key kept working. A hardcoded model name is therefore a trap: it works
+for whoever set it up first and fails silently for everyone after. If a trace
+ever starts returning "The AI service is temporarily unable to read images",
+check the model before the key.
 
 ### Who may call it
 
@@ -36,18 +50,15 @@ per-IP cap. To add a host, edit `ALLOWED_ORIGINS` in `workers/concept-render/src
   if KV is unreachable the request is refused rather than allowed to spend.
 - Inspect the count: `npx wrangler kv key list --binding RATE_LIMIT --remote`
 
-### The key is borrowed, and that is a risk
+### The key
 
-`GEMINI_API_KEY` is the key from `bots/city-reporter-v2/.env` — it is the only
-valid Gemini key in the workspace, and designon does not own one. It is on the
-free tier with a 20-request cap, so:
+`GEMINI_API_KEY` is set from a **dedicated Gemini API key** (2026-09-30). It
+replaced a key borrowed from `bots/city-reporter-v2/.env`, which meant designon
+and a city-reporting bot shared one 20-request free-tier budget — heavy use of
+either took the other offline, and testing designon exhausted a quota another
+project depended on.
 
-- heavy use of city-reporter-v2 takes the napkin feature offline, and the user
-  sees "The AI service is out of capacity right now";
-- testing designon exhausts a quota that another project also depends on.
-
-**Fix this with a dedicated key** (a Google Cloud API key with the Generative
-Language API enabled), then:
+Rotate it with:
 
 ```bash
 cd workers/concept-render
@@ -55,9 +66,9 @@ printf '%s' "$NEW_KEY" | npx wrangler secret put GEMINI_API_KEY
 npx wrangler deploy
 ```
 
-A dedicated key alone still leaves the image endpoint reachable by anyone who
-obtains it indirectly; if the key ever moves to a paid tier, add a shared secret
-that the frontend must present. See the CORS note above — that stops drive-by
+It is still the free tier. The per-IP cap (20/day) is the real ceiling; the
+browser's 3/day is only a courtesy. If this ever moves to a paid tier, add a
+shared secret the frontend must present — the CORS allowlist stops drive-by
 abuse from other websites, not a determined direct caller.
 
 ## Deploy targets

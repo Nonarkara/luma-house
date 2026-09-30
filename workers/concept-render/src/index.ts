@@ -3,6 +3,8 @@ import { repairTrace, type TracePlan } from './repairTrace'
 export interface Env {
   GEMINI_API_KEY: string
   GEMINI_MODEL?: string
+  /** Vision model for the plan trace. Kept in vars so a retired model is a config change, not a redeploy of code. */
+  TRACE_MODEL?: string
   DAILY_IP_LIMIT?: string
   RATE_LIMIT?: KVNamespace
 }
@@ -65,6 +67,10 @@ function explainUpstream(status: number, detail: string): string {
   if (status === 401 || status === 403 || /API_KEY_INVALID|PERMISSION_DENIED/i.test(detail)) {
     console.error('trace upstream auth failure', status, detail.slice(0, 500))
     return 'The AI service rejected its own credentials. This is a configuration fault, not yours — nothing was charged.'
+  }
+  if (status === 404 || /no longer available|is not found for API key|NOT_FOUND/i.test(detail)) {
+    console.error('trace upstream model unavailable', detail.slice(0, 500))
+    return 'The AI service is temporarily unable to read images — the model it was pointed at is no longer served to new accounts. This is a configuration fault, not yours; nothing was charged.'
   }
   if (status === 400) {
     console.error('trace upstream bad request', detail.slice(0, 500))
@@ -154,7 +160,7 @@ async function handleRender(request: Request, env: Env, cors: Record<string, str
     return json({ error: 'Prompt must be between 20 and 4000 characters' }, 400, cors)
   }
 
-  const model = env.GEMINI_MODEL || 'gemini-2.5-flash-image'
+  const model = env.GEMINI_MODEL || 'gemini-3.8-flash-image'
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`
 
   const upstream = await fetch(url, {
@@ -324,7 +330,7 @@ async function handleTrace(request: Request, env: Env, cors: Record<string, stri
 
   const siteW = body.siteW && body.siteW > 0 ? body.siteW : 14
   const siteH = body.siteH && body.siteH > 0 ? body.siteH : 10
-  const visionModel = 'gemini-2.5-flash' // vision-capable, text output
+  const visionModel = env.TRACE_MODEL || 'gemini-3.8-flash' // vision-capable, text output
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${visionModel}:generateContent?key=${env.GEMINI_API_KEY}`
 
   const upstream = await fetch(url, {
