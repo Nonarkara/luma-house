@@ -95,14 +95,68 @@ describe('repairTrace guards', () => {
     expect(outOfBounds(out)).toEqual([])
   })
 
-  it('keeps a detached opening rather than deleting it', () => {
-    const out = repairTrace({ rooms: [{ id: '1', name: 'R', kind: 'living', x: 40, y: 40, w: 20, h: 20 }], openings: [{ id: 'w', type: 'window', x: 5, y: 5, rotation: 0 }] })
-    expect(out.openings).toHaveLength(1)
+  it('drops an opening it cannot place, but never silently', () => {
+    const out = repairTrace({
+      rooms: [{ id: '1', name: 'R', kind: 'living', x: 40, y: 40, w: 20, h: 20 }],
+      openings: [{ id: 'w', type: 'window', x: 5, y: 5, rotation: 0 }],
+    })
+    expect(out.openings).toHaveLength(0)
+    expect(out.note).toMatch(/could not be placed/i)
   })
 
   it('does not mutate the input plan', () => {
     const input = structuredClone(run5)
     repairTrace(input)
     expect(input).toEqual(run5)
+  })
+})
+
+/**
+ * A real response from the live worker, 2026-09-30. The model returned rooms
+ * that tile only the lower-right of the drawing, then put five windows on the
+ * outer walls the rooms never reach. Seven of the nine openings had no room to
+ * sit on. The editor would have reported every one of them as "does not fit a
+ * wall", which is noise the user cannot act on.
+ */
+const partialCover: TracePlan = {
+  rooms: [
+    { id: 'room-1', name: 'Living room', kind: 'living', x: 27.5, y: 27.5, w: 45, h: 45 },
+    { id: 'room-2', name: 'Bedroom', kind: 'bedroom', x: 72.5, y: 27.5, w: 27.5, h: 45 },
+    { id: 'room-3', name: 'Kitchen', kind: 'kitchen', x: 27.5, y: 72.5, w: 45, h: 27.5 },
+    { id: 'room-5', name: 'Studio', kind: 'studio', x: 77.5, y: 72.5, w: 22.5, h: 27.5 },
+  ],
+  openings: [
+    { id: 'w-1', type: 'window', x: 27.5, y: 5, rotation: 0 },
+    { id: 'w-2', type: 'window', x: 100, y: 35.5, rotation: 90 },
+    { id: 'w-3', type: 'window', x: 100, y: 35.5, rotation: 90 },
+    { id: 'w-4', type: 'window', x: 33.5, y: 100, rotation: 0 },
+    { id: 'w-5', type: 'window', x: 61.25, y: 100, rotation: 0 },
+    { id: 'd-1', type: 'door', x: 50, y: 27.5, rotation: 90 },
+    { id: 'd-2', type: 'door', x: 50, y: 72.5, rotation: 90 },
+    { id: 'd-3', type: 'door', x: 72.5, y: 80.5, rotation: 90 },
+    { id: 'd-4', type: 'door', x: 61.25, y: 50, rotation: 0 },
+  ],
+}
+
+describe('openings with no room to sit on', () => {
+  it('does not ship an opening that still does not fit a wall', () => {
+    expect(detached(repairTrace(partialCover))).toEqual([])
+  })
+
+  it('says how many it dropped, rather than dropping them silently', () => {
+    expect(repairTrace(partialCover).note).toMatch(/could not be placed/i)
+  })
+
+  it('keeps the openings it could place', () => {
+    // The interior doors at 27.5/72.5 sit on real room edges and must survive.
+    expect(repairTrace(partialCover).openings.length).toBeGreaterThan(0)
+    expect(repairTrace(partialCover).openings.every(o => o.type === 'window' || o.type === 'door')).toBe(true)
+  })
+
+  it('still leaves the rooms themselves sound', () => {
+    const out = repairTrace(partialCover)
+    expect(outOfBounds(out)).toEqual([])
+    for (let i = 0; i < out.rooms.length; i++)
+      for (let k = i + 1; k < out.rooms.length; k++) expect(overlaps(out.rooms[i], out.rooms[k])).toBe(false)
   })
 })

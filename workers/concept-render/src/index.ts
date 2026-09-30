@@ -225,11 +225,21 @@ Rules:
 - Coordinates are approximate from the image proportions; precision is not expected.
 
 Layout rules — these are checked against your answer afterwards, and violations are reported to the user as errors:
-- ROOMS MUST NOT OVERLAP. No two rooms may share any area. Measure each room from the picture, then check every pair.
+- ROOMS MUST COVER THE WHOLE DRAWING. The rooms together must reach every drawn
+  wall. Do not leave a margin around the outside of your layout, and do not
+  cluster the rooms in one corner. If the drawing's outer wall is at 5% and
+  100%, the outermost rooms must sit on 5% and 100%.
+- ROOMS MUST NOT OVERLAP. No two rooms may share any area. Measure each room from
+  the picture, then check every pair.
 - ROOMS MUST TOUCH THE OUTLINE. Keep the whole layout inside 0-100 on both axes.
 - Give every room a unique id.
-- Name a room for what is actually drawn. Do not invent a second bedroom, bathroom or kitchen that is not in the picture. If you are unsure, use "studio".
-- AN OPENING MUST FIT ITS WALL. Place x,y on a room's edge, far enough from each corner that the full opening width (about 1.6 m for a window, 0.9 m for a door) still lies on that wall. An opening flush against a corner will be rejected.`
+- Name a room for what is actually drawn. Do not invent a second bedroom,
+  bathroom or kitchen that is not in the picture. If you are unsure, use "studio".
+- AN OPENING MUST SIT ON A ROOM EDGE. A window on an outer wall is only usable if
+  a room actually reaches that wall, so place rooms first. Put x,y on a room's
+  edge, far enough from each corner that the full opening width (about 1.6 m for
+  a window, 0.9 m for a door) still lies on that wall. An opening flush against a
+  corner, or on a wall no room reaches, will be rejected.`
 
 /**
  * Ask for JSON via the API rather than parsing it back out of prose. This is

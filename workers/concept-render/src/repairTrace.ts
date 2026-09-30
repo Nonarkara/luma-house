@@ -109,7 +109,9 @@ export function repairTrace(plan: TracePlan): TracePlan {
   // invented far from where the model actually drew it.
   const EDGE_TOLERANCE = 12 // ~1.7m on a 14m field
   let openingsMoved = 0
-  const openings = plan.openings.map(opening => {
+  const placedOpenings: TraceOpening[] = []
+  let openingsDropped = 0
+  for (const opening of plan.openings || []) {
     const rotation = opening.rotation === 90 ? 90 : 0
     const half = (rotation === 0 ? 1.6 / 14 : 1.6 / 10) * 50
     const x = clamp(num(opening.x, 0), 0, 100)
@@ -132,27 +134,44 @@ export function repairTrace(plan: TracePlan): TracePlan {
         for (const edge of [room.x, room.x + room.w]) if (Math.abs(x - edge) <= EDGE_TOLERANCE) walls.push({ x: edge, y })
       }
     }
+    let done = false
     for (const wall of walls) {
       if (fits(wall.x, wall.y)) {
         if (wall.x !== x || wall.y !== y) openingsMoved++
-        return { ...opening, rotation, x: wall.x, y: wall.y }
+        placedOpenings.push({ ...opening, rotation, x: wall.x, y: wall.y })
+        done = true
+        break
       }
       for (let step = 0.5; step <= 50; step += 0.5) {
         for (const sign of [1, -1]) {
           const probe = rotation === 0
             ? { x: clamp(wall.x + sign * step, 0, 100), y: wall.y }
             : { x: wall.x, y: clamp(wall.y + sign * step, 0, 100) }
-          if (fits(probe.x, probe.y)) { openingsMoved++; return { ...opening, rotation, ...probe } }
+          if (fits(probe.x, probe.y)) {
+            openingsMoved++
+            placedOpenings.push({ ...opening, rotation, ...probe })
+            done = true
+            break
+          }
         }
+        if (done) break
       }
+      if (done) break
     }
-    return { ...opening, rotation, x, y }
-  })
+    // No room reaches this wall, so there is nothing honest to attach it to. A
+    // window floating in space reads as a window in the editor and then fails
+    // every downstream check; dropping it and saying so is the truthful option.
+    if (!done) openingsDropped++
+  }
+  const openings = placedOpenings
 
   const notes: string[] = []
   if (overlapsTrimmed > 0) notes.push(`${overlapsTrimmed} overlapping room edge${overlapsTrimmed > 1 ? 's were' : ' was'} trimmed`)
   if (roomsDropped > 0) notes.push(`${roomsDropped} room${roomsDropped > 1 ? 's' : ''} sat entirely inside another and ${roomsDropped > 1 ? 'were' : 'was'} dropped — add ${roomsDropped > 1 ? 'them' : 'it'} back if the drawing really shows ${roomsDropped > 1 ? 'them' : 'it'}`)
   if (openingsMoved > 0) notes.push(`${openingsMoved} opening${openingsMoved > 1 ? 's were' : ' was'} moved onto the nearest wall`)
+  if (openingsDropped > 0) {
+    notes.push(`${openingsDropped} opening${openingsDropped > 1 ? 's' : ''} could not be placed on any wall and ${openingsDropped > 1 ? 'were' : 'was'} left out — draw ${openingsDropped > 1 ? 'them' : 'it'} in if the photo shows ${openingsDropped > 1 ? 'them' : 'it'}`)
+  }
   return {
     ...plan,
     rooms,

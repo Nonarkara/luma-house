@@ -993,6 +993,20 @@ function App() {
     setToast(`Whole drawing calibrated from ${knownMeters.toFixed(1)} m ${axis === 'w' ? 'width' : 'depth'}`)
   }, [commit, plan.rooms, selectedRoom])
 
+  /**
+   * Start a fresh napkin. This is the second-visit path: without it a returning
+   * user had no way to begin another drawing, because the welcome gate only
+   * shows once and the blank-canvas button lived inside a default-closed panel.
+   * Clears the previous photo underlay too, so a new sketch never inherits the
+   * last trace's drawing. Goes through commit, so undo brings it all back.
+   */
+  const newSketch = useCallback(() => {
+    startBlank()
+    setSketchUrl(null)
+    setSelectedRoom(null)
+    setToast('Fresh napkin — draw it, or upload a photo to trace')
+  }, [startBlank])
+
   // AI trace: read a plan from an uploaded image via the Gemini vision worker.
   const traceFileInputRef = useRef<HTMLInputElement>(null)
   const traceImage = useRef<string | null>(null)
@@ -1165,6 +1179,7 @@ function App() {
         }}
         exportPlan={exportPlan}
         sharePlan={shareProject}
+        onNewSketch={newSketch}
         onOpenShortcuts={() => setShortcutsOpen((prev) => !prev)}
         onToggleCatalog={() => setIsCatalogOpen((prev) => !prev)}
       />

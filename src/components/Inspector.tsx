@@ -277,7 +277,7 @@ export const Inspector = React.memo(function Inspector({
               <Toggle label="Show grid" checked={showGrid} onChange={() => setShowGrid((value) => !value)} />
             </div>
             <button className="button secondary full" type="button" onClick={resetPlan}>
-              <RotateCcw /> Reset plan
+              <RotateCcw /> Load the sample apartment
             </button>
             <input ref={importInputRef} type="file" accept="application/json,.json" onChange={importProject} hidden />
             <button className="button secondary full" type="button" onClick={() => importInputRef.current?.click()}>

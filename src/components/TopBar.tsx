@@ -1,5 +1,5 @@
 import React from 'react'
-import { Copy, Download, HelpCircle, PanelRight, Settings2 } from 'lucide-react'
+import { Copy, Download, FilePlus2, HelpCircle, PanelRight, Settings2 } from 'lucide-react'
 import { Logo, IconButton } from './ui'
 
 interface TopBarProps {
@@ -10,6 +10,7 @@ interface TopBarProps {
   onOpenSettings: () => void
   exportPlan: () => void
   sharePlan: () => void
+  onNewSketch: () => void
   onOpenShortcuts?: () => void
   onToggleCatalog?: () => void
 }
@@ -22,6 +23,7 @@ export const TopBar = React.memo(function TopBar({
   onOpenSettings,
   exportPlan,
   sharePlan,
+  onNewSketch,
   onOpenShortcuts,
   onToggleCatalog,
 }: TopBarProps) {
@@ -63,6 +65,15 @@ export const TopBar = React.memo(function TopBar({
         >
           <PanelRight />
         </IconButton>
+
+        <button
+          className="button secondary"
+          type="button"
+          onClick={onNewSketch}
+          title="Start a fresh napkin sketch. Undo brings the current one back."
+        >
+          <FilePlus2 /> New sketch
+        </button>
 
         <button
           className="button secondary"
