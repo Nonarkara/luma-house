@@ -6,6 +6,7 @@ export default defineConfig({
   base: './',
   test: {
     // Stale branch checkouts live here; they are not part of this codebase.
-    exclude: ['**/node_modules/**', '**/.worktrees/**'],
+    // Playwright specs live in `e2e/` and run via `npm run test:e2e`, not vitest.
+    exclude: ['**/node_modules/**', '**/.worktrees/**', 'e2e/**'],
   },
 })

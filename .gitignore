@@ -10,3 +10,8 @@ coverage/
 .worktrees/
 worker-configuration.d.ts
 .wrangler/
+# Playwright runtime artefacts
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
