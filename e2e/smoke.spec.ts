@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { encodePlanToHash } from '../src/sharePlan'
+import { decodePlanFromHash, encodePlanToHash } from '../src/sharePlan'
 import { initialPlan } from '../src/plan'
 
 /**
@@ -45,16 +45,31 @@ test.describe('shipability smoke', () => {
     expect(roomCount, 'rooms rendered from the share-link payload').toBe(initialPlan.rooms.length)
   })
 
-  test('Share button is wired and reachable', async ({ page }) => {
+  test('Share button writes a valid round-trippable URL to the clipboard', async ({ page }) => {
     await dismissWelcome(page)
-    await page.goto('/')
+    // Open a known plan via the share-link path so we have real rooms to
+    // share. The default landing page renders a blank napkin (no
+    // localStorage = no fallback), which makes the round-trip assertion
+    // tautological.
+    await page.goto(`/#plan=${SAMPLE_PLAN_HASH}`)
     const share = page.getByRole('button', { name: 'Share' })
     await expect(share).toBeVisible()
     await expect(share).toBeEnabled()
-    // Trial click — proves the element is at the top of the stacking order
-    // (no overlay catching the click). We don't fire the real click because
-    // `navigator.clipboard.writeText` is permission-gated in headless.
-    await share.click({ trial: true })
+    // Real click. Playwright grants clipboard-write via the project
+    // permissions, so navigator.clipboard.writeText resolves. The handler
+    // also replaceState's the address bar to the same URL.
+    await share.click()
+    const url = await page.evaluate(() => navigator.clipboard.readText())
+    expect(url, 'clipboard contains a share URL').toMatch(/#plan=[A-Za-z0-9+/=_-]+$/)
+    // The URL must also reflect in the address bar (replaceState on share).
+    expect(page.url(), 'address bar mirrors the share URL').toContain('#plan=')
+    // Round-trip: the encoded payload must decode back to the same plan
+    // we shipped. This catches a regression where sharePlan() encodes a
+    // different payload than the one read back by decodePlanFromHash().
+    const hash = new URL(url).hash
+    const decoded = decodePlanFromHash(hash)
+    expect(decoded, 'shared payload decodes back to a plan').toBeTruthy()
+    expect(decoded!.rooms.length, 'decoded plan has the same rooms').toBe(initialPlan.rooms.length)
   })
 
   test('mobile viewport keeps Share / New sketch / Furniture Catalog reachable', async ({ page }) => {

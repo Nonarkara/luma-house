@@ -32,11 +32,20 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop',
-      use: { viewport: { width: 1280, height: 800 } },
+      use: {
+        viewport: { width: 1280, height: 800 },
+        // Share button calls navigator.clipboard.writeText. Grant the
+        // permission so the test can verify the copy succeeds end-to-end
+        // and the resulting URL decodes back to the same plan.
+        permissions: ['clipboard-read', 'clipboard-write'],
+      },
     },
     {
       name: 'mobile',
-      use: { viewport: { width: 390, height: 844 } },
+      use: {
+        viewport: { width: 390, height: 844 },
+        permissions: ['clipboard-read', 'clipboard-write'],
+      },
     },
   ],
 })
