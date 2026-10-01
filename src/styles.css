@@ -3549,7 +3549,7 @@ select {
   }
 
   .top-actions .button {
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 12px;
   }
 
@@ -6948,3 +6948,77 @@ summary:focus-visible {
 /* Keep physical proportions and source-image coordinates aligned at every size. */
 .plan-viewport { container-type: size; }
 .plan-canvas { width: min(90cqw, calc((100cqh - 78px) * var(--site-ratio, 1.4))); height: auto; aspect-ratio: var(--site-ratio, 1.4); }
+
+/* ---------------------------------------------------------------------------
+ * Touch sizing — kept LAST in the file on purpose.
+ *
+ * These overrides sit at the end so they beat the base rules on source order.
+ * Placed near the top they silently half-applied: `height` survived (no base
+ * rule set it) while `min-width` and `width` lost to the base rule further
+ * down, which is why the value-lens card stayed 152px wide and still covered
+ * the Calibrate button. Same specificity, so position is the tool here — not
+ * selector gymnastics.
+ * --------------------------------------------------------------------------- */
+/**
+ * Touch targets. Measured on an iPhone 13 profile: 27 interactive controls
+ * were under Apple's 44pt minimum — every .icon-button at 36, the Plan /
+ * Spatial / Renders axis at 31, and the Calibrate chip at 22x22, which is
+ * genuinely hard to hit with a thumb while holding a phone in one hand. These
+ * are the controls you actually sketch with, so size them for touch only and
+ * leave the denser desktop layout alone.
+ */
+@media (pointer: coarse) {
+  .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  .top-actions .button {
+    min-height: 44px;
+  }
+  .ruler-arm {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-grid;
+    place-items: center;
+  }
+  .view-switch button,
+  .tool-group button {
+    min-height: 44px;
+  }
+  .zoom-control button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .assistant-cta {
+    min-height: 44px;
+  }
+  /*
+   * The assistant field measured 132x18 with a 13px font on a phone. iOS
+   * Safari zooms the viewport for any input under 16px on focus, which yanks
+   * the canvas out from under the finger you are sketching with. The
+   * attribute selector is needed because a later `.assistant-bar input` rule
+   * sets font-size explicitly and would otherwise win on source order.
+   */
+  .assistant-bar input[type='text'] {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  /*
+   * The 170px "Open value lens" card is anchored top-right and the scale chip
+   * is anchored top-left; on a 358px frame they met in the middle and covered
+   * the right 18px of the Calibrate button. Icon-only on touch clears it, and
+   * the aria-label keeps it named.
+   */
+  .value-lens-launch {
+    min-width: 0;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    grid-template-columns: none;
+  }
+  .value-lens-launch span {
+    display: none;
+  }
+}

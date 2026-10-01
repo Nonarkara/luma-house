@@ -184,7 +184,7 @@ export const ValueLens = React.memo(function ValueLens({
 }) {
   if (active === 'off') {
     return (
-      <button className="value-lens-launch" type="button" onClick={() => setActive('daylight')}>
+      <button className="value-lens-launch" type="button" aria-label="Open value lens" onClick={() => setActive('daylight')}>
         <Eye />
         <span><small>Compare decisions</small><strong>Open value lens</strong></span>
       </button>

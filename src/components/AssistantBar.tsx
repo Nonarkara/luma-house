@@ -26,6 +26,7 @@ export const AssistantBar = React.memo(function AssistantBar({
         <Sparkles />
       </div>
       <input
+        type="text"
         value={assistantText}
         onChange={(event) => setAssistantText(event.target.value)}
         onKeyDown={(event) => event.key === 'Enter' && runQuickAction()}

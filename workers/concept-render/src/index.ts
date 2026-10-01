@@ -239,8 +239,12 @@ Layout rules — these are checked against your answer afterwards, and violation
   the picture, then check every pair.
 - ROOMS MUST TOUCH THE OUTLINE. Keep the whole layout inside 0-100 on both axes.
 - Give every room a unique id.
-- Name a room for what is actually drawn. Do not invent a second bedroom,
-  bathroom or kitchen that is not in the picture. If you are unsure, use "studio".
+- NAME THE ROOMS. Commit to the most likely label for each space: a room with a
+  bed drawn in it is a bedroom, a room with a sink or shower is a bathroom, the
+  largest shared space is the living room, and the one by the front door is the
+  entry. "studio" is a last resort, not a default — five rooms all called
+  Studio tells the user nothing, and renaming costs one tap. Do not invent a
+  room that is not in the picture, but do label the ones that are.
 - AN OPENING MUST SIT ON A ROOM EDGE. A window on an outer wall is only usable if
   a room actually reaches that wall, so place rooms first. Put x,y on a room's
   edge, far enough from each corner that the full opening width (about 1.6 m for
