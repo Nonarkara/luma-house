@@ -164,3 +164,76 @@ test.describe('drawing studio', () => {
     for (const ratio of contrast) expect(ratio).toBeGreaterThanOrEqual(4.5)
   })
 })
+
+/**
+ * PWA installability — Codex's a7b02f6 added the manifest, icons and the
+ * WebAppAccess component with Android / iPhone install guidance. Physical
+ * phone install is hard to test in headless Chromium, but every digital
+ * prerequisite (manifest schema, icon HTTP, install hints, theme color) is
+ * checkable here. A regression that breaks the install path on a real
+ * device will also break one of these.
+ */
+test.describe('PWA installability', () => {
+  test('manifest.webmanifest is reachable and exposes install-required fields', async ({ request }) => {
+    const res = await request.get('/manifest.webmanifest')
+    expect(res.status(), 'manifest status').toBe(200)
+    const manifest = await res.json()
+    // PWA install requires these. Chromium's installability check looks
+    // at them all — drop one and the install prompt never fires.
+    for (const field of ['name', 'short_name', 'start_url', 'scope', 'display']) {
+      expect(manifest[field], `manifest.${field}`).toBeTruthy()
+    }
+    expect(manifest.display, 'manifest.display=standalone so the app launches full-screen').toBe('standalone')
+    expect(Array.isArray(manifest.icons) && manifest.icons.length >= 2, 'manifest declares 192 + 512 icons').toBe(true)
+    for (const size of ['192x192', '512x512']) {
+      expect(
+        manifest.icons.some((icon: { sizes: string }) => icon.sizes === size),
+        `manifest declares a ${size} icon`,
+      ).toBe(true)
+    }
+  })
+
+  test('every manifest icon URL returns 200 with the declared content type', async ({ request }) => {
+    const manifest = await (await request.get('/manifest.webmanifest')).json()
+    for (const icon of manifest.icons as Array<{ src: string; type: string }>) {
+      const res = await request.get(icon.src)
+      expect(res.status(), `${icon.src} status`).toBe(200)
+      const ct = res.headers()['content-type'] ?? ''
+      expect(ct.startsWith(icon.type), `${icon.src} content-type starts with ${icon.type}, got ${ct}`).toBe(true)
+    }
+  })
+
+  test('index.html carries the iOS + theme-color meta a home-screen launch needs', async ({ page }) => {
+    await page.goto('/')
+    const meta = await page.evaluate(() => {
+      const byName = (n: string) => document.querySelector(`meta[name="${n}"]`)?.getAttribute('content') ?? null
+      const appleTouch = document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute('href') ?? null
+      const manifestLink = document.querySelector('link[rel="manifest"]')?.getAttribute('href') ?? null
+      return {
+        appleCapable: byName('apple-mobile-web-app-capable'),
+        appleTitle: byName('apple-mobile-web-app-title'),
+        themeColor: byName('theme-color'),
+        appleTouch,
+        manifestLink,
+      }
+    })
+    expect(meta.appleCapable, 'apple-mobile-web-app-capable=yes').toBe('yes')
+    expect(meta.appleTitle, 'apple-mobile-web-app-title is set').toBeTruthy()
+    expect(meta.themeColor, 'theme-color is set (Android address bar tint)').toBeTruthy()
+    expect(meta.appleTouch, 'apple-touch-icon link is present').toBeTruthy()
+    expect(meta.manifestLink, 'manifest link is present').toBeTruthy()
+  })
+
+  test('WebAppAccess install guidance is reachable in the DOM', async ({ page }) => {
+    await dismissWelcome(page)
+    await page.goto('/')
+    const section = page.locator('.web-app-access')
+    await expect(section, 'install guidance is rendered').toHaveCount(1)
+    // Both platform strings must be present — the audit agent flagged that
+    // the guidance must explicitly cover Android and iPhone, not just one.
+    const text = (await section.innerText()).toLowerCase()
+    expect(text, 'mentions Android').toContain('android')
+    expect(text, 'mentions iPhone').toContain('iphone')
+    expect(text, 'mentions Add to Home Screen').toContain('home screen')
+  })
+})

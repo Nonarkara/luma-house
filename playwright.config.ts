@@ -18,9 +18,15 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4186',
     trace: 'retain-on-failure',
-    actionTimeout: 5_000,
-    navigationTimeout: 15_000,
+    // The theme suite runs ~10 contrast checks against many selectors each
+    // pass, so the per-action budget is generous. Smoke + PWA specs stay
+    // well under 10 s but the theme tests occasionally need the headroom.
+    actionTimeout: 15_000,
+    navigationTimeout: 20_000,
   },
+  // Per-test timeout. themes.spec.ts runs a heavy route per browser; the
+  // others finish in seconds, so this only constrains runaways.
+  timeout: 60_000,
   webServer: {
     command: 'npm run preview -- --port 4186 --strictPort',
     url: 'http://localhost:4186',
