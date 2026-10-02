@@ -148,3 +148,7 @@ dialog, 3D controls and horizontal overflow checks. A fresh independent
 review found legacy inline whites/emeralds; these now use roles and pass its
 recheck across every scheme. Energy badge CSS uses valid roles rather than
 appending alpha digits to a CSS variable expression.
+Final visual sweep also found the Systems energy summary still using a dark
+gradient with light-theme text roles. Its surface now uses the selection role;
+the full 40-test browser gate additionally checks its title, value, units and
+system row text in every scheme and width.

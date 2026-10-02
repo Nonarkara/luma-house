@@ -252,3 +252,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 
 .ab-modal, .shortcuts-modal, .scenario-modal { background: var(--studio-sheet); color: var(--studio-ink); box-shadow: none; }
 :root { --surface: var(--studio-sheet); --citron: var(--accent-primary); --text-faint: var(--text-tertiary); }
+
+/* Systems summary uses the same light surface and text roles as its panel. */
+.energy-hero { background: var(--studio-selection); color: var(--studio-ink); border-radius: 0; box-shadow: none; }
+.energy-hero::after { display: none; }
+.energy-hero strong { text-shadow: none; }
