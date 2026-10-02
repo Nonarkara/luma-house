@@ -99,7 +99,7 @@ export const CodeIssuesPanel: React.FC<CodeIssuesPanelProps> = ({
       })}
       {counts.critical === 0 && counts.warning === 0 && (
         <div className="code-issues-summary" style={{ paddingTop: 8 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--accent-emerald, #10b981)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--success)' }}>
             <Check /> All hard rules pass
           </span>
         </div>

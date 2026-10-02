@@ -128,3 +128,23 @@ Browser tests formerly accepted another project's server on 4173. This project
 now owns preview port 4186 and refuses server reuse. The named axiom-audit npm
 command is unavailable (registry 404); rendered contrast, geometry, responsive
 screenshots and independent adversarial review provide the available evidence.
+
+## Luma illumination schemes — 2026-10-02
+
+The user requests bolder tones and a few selectable schemes. This explicitly
+extends the palette exception above: Solar Pop (Wada209, yellow/orange/Salvia),
+Guava Club (Wada137, Etruscan red/Cinnamon/Pistachio), Violet Hour (Wada235,
+Ivory/Yellow Orange/Grayish Lavender), and Drafting Room (Wada243).
+Solar Pop becomes the default; existing plan and quota keys remain intact.
+A labelled native select remembers the choice locally. CSS roles are shared
+by all schemes, including alpha fills and 3D background/grid; semantic colours
+remain fixed. No theme changes geometry, font metrics, density or interactions.
+Production values adapt the historical intervals for contrast, not printed inks.
+
+Verified: 289 unit tests, lint/build, and 40 Chromium browser checks pass.
+All four schemes are exercised at 375/768/1280px with persisted appearance,
+intact room counts, actual rendered contrast, Draw/Cost inspectors, preset
+dialog, 3D controls and horizontal overflow checks. A fresh independent
+review found legacy inline whites/emeralds; these now use roles and pass its
+recheck across every scheme. Energy badge CSS uses valid roles rather than
+appending alpha digits to a CSS variable expression.

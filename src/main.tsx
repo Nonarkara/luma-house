@@ -8,8 +8,10 @@ import '@fontsource/jetbrains-mono/latin-700.css'
 import './styles.css'
 import './design/studio.css'
 import App from './App'
+import { applyTheme, readTheme } from './design/themes'
 import { trackPageview } from './analytics'
 
+applyTheme(readTheme())
 trackPageview()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

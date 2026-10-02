@@ -343,7 +343,7 @@ export const Inspector = React.memo(function Inspector({
               </button>
             )}
             <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-              <button className="text-button" type="button" onClick={onOpenPresets} style={{ flex: 1.2, color: 'var(--accent-emerald, #10b981)', fontWeight: 600 }}>★ Load layout preset</button>
+              <button className="text-button" type="button" onClick={onOpenPresets} style={{ flex: 1.2, color: 'var(--accent-primary)', fontWeight: 600 }}>★ Load layout preset</button>
               <button className="text-button" type="button" onClick={startBlank} style={{ flex: 1 }}>Blank canvas</button>
               <button className="text-button" type="button" onClick={resetPlan} style={{ flex: 1 }}>Sample</button>
             </div>
@@ -370,18 +370,18 @@ export const Inspector = React.memo(function Inspector({
                       textAlign: 'left',
                       padding: '6px 8px',
                       fontSize: '11px',
-                      borderRadius: '4px',
+                      borderRadius: 0,
                       border: isSelected ? '1px solid var(--accent-primary, #f59e0b)' : '1px solid var(--border)',
-                      background: isSelected ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 255, 255, 0.03)',
-                      color: isSelected ? '#fff' : 'var(--text-secondary)',
+                      background: isSelected ? 'var(--studio-selection)' : 'var(--studio-sheet)',
+                      color: 'var(--text-primary)',
                       cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '2px',
                     }}
                   >
-                    <span style={{ fontWeight: 600, color: isSelected ? 'var(--accent-primary, #f59e0b)' : '#fff' }}>{preset.name}</span>
-                    <span style={{ fontSize: '9px', opacity: 0.6 }}>{preset.category}</span>
+                    <span style={{ fontWeight: 600, color: isSelected ? 'var(--accent-primary)' : 'var(--text-primary)' }}>{preset.name}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{preset.category}</span>
                   </button>
                 )
               })}
@@ -1153,7 +1153,7 @@ export const Inspector = React.memo(function Inspector({
                     </div>
                   ))}
                   <div className="interior-boq-line">
-                    <span><strong style={{ color: '#fff' }}>Room subtotal</strong></span>
+                    <span><strong style={{ color: 'var(--text-primary)' }}>Room subtotal</strong></span>
                     <b>{formatCurrency(r.subtotal, 'THB')}</b>
                   </div>
                 </div>

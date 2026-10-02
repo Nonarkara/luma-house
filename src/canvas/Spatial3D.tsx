@@ -1,3 +1,4 @@
+import { themeTokens, type StudioTheme } from '../design/themes'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { Edges, Grid, Html, OrbitControls, PivotControls, PointerLockControls } from '@react-three/drei'
@@ -547,6 +548,7 @@ function WalkController({
 }
 
 export default function Spatial3D({
+  theme,
   plan,
   sunAzimuth,
   sunAltitude,
@@ -565,6 +567,7 @@ export default function Spatial3D({
   windFrom = 180,
   windSpeed = 3,
 }: {
+  theme: StudioTheme
   plan: PlanState
   sunAzimuth: number
   sunAltitude: number
@@ -584,6 +587,7 @@ export default function Spatial3D({
   windFrom?: number
   windSpeed?: number
 }) {
+  const colors = themeTokens(theme)
   const site = useMemo(() => siteOf(plan), [plan])
   const selected = useMemo(
     () => (ghost ? null : plan.rooms.find((room) => room.id === selectedRoom) ?? null),
@@ -707,7 +711,7 @@ export default function Spatial3D({
         camera={{ position: [12, 9, 12], fov: 45 }}
         onPointerMissed={() => onSelectRoom(null)}
       >
-        <color attach="background" args={['#eee4cf']} />
+        <color attach="background" args={[colors['--studio-support']]} />
         <SunLight azimuth={sunAzimuth} altitude={sunAltitude} />
         <CameraController
           preset={preset}
@@ -732,7 +736,7 @@ export default function Spatial3D({
 
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={handleGroundClick}>
           <planeGeometry args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]} />
-          <meshStandardMaterial color="#d5d0bc" roughness={0.95} metalness={0} />
+          <meshStandardMaterial color={colors['--studio-ground']} roughness={0.95} metalness={0} />
         </mesh>
 
         {/* Section-cut plane — a translucent amber disc at sectionHeight that
@@ -748,8 +752,8 @@ export default function Spatial3D({
         <Grid
           position={[0, 0.005, 0]}
           args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]}
-          cellColor="#b4b5a0"
-          sectionColor="#8d9586"
+          cellColor={colors['--studio-grid']}
+          sectionColor={colors['--studio-border']}
           fadeDistance={30}
           infiniteGrid={false}
         />

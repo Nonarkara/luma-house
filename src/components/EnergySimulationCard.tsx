@@ -12,7 +12,7 @@ export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ ener
   const badgeColor = 'var(--accent, #f59e0b)'
 
   return (
-    <section className="panel-section energy-simulation-card" style={{ background: 'rgba(255, 255, 255, 0.03)', borderRadius: 0, padding: 12, marginBottom: 16 }}>
+    <section className="panel-section energy-simulation-card" style={{ background: 'var(--studio-sheet)', borderRadius: 0, padding: 12, marginBottom: 16 }}>
       <div className="section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Zap style={{ width: 18, height: 18, color: badgeColor }} />
@@ -21,9 +21,9 @@ export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ ener
         <span
           className="badge"
           style={{
-            background: `${badgeColor}22`,
+            background: 'var(--studio-selection)',
             color: badgeColor,
-            border: `1px solid ${badgeColor}55`,
+            border: '1px solid var(--border)',
             fontSize: '0.8rem',
             fontWeight: 700,
             padding: '2px 8px',
@@ -42,7 +42,7 @@ export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ ener
       <details>
         <summary>Inspect illustrative calculations</summary>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-        <div style={{ background: 'rgba(0, 0, 0, 0.18)', padding: 10, borderRadius: 0 }}>
+        <div style={{ background: 'var(--studio-support)', padding: 10, borderRadius: 0 }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', display: 'block' }}>Illustrative EUI</span>
           <strong style={{ fontSize: '1.1rem', color: badgeColor }}>
             {energy.netEuiKwhPerM2Yr.toFixed(1)} <small style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>kWh/m²/yr</small>
@@ -52,9 +52,9 @@ export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ ener
           </small>
         </div>
 
-        <div style={{ background: 'rgba(0, 0, 0, 0.18)', padding: 10, borderRadius: 0 }}>
+        <div style={{ background: 'var(--studio-support)', padding: 10, borderRadius: 0 }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', display: 'block' }}>Carbon payback</span>
-          <strong style={{ fontSize: '1.1rem', color: 'var(--accent-emerald, #10b981)' }}>
+          <strong style={{ fontSize: '1.1rem', color: 'var(--success)' }}>
             Not calculated
           </strong>
           <small style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
@@ -67,16 +67,16 @@ export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ ener
       {/* Breakdown List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span><Flame style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: '#f59e0b' }} /> Heating Demand:</span>
+          <span><Flame style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: 'var(--warning)' }} /> Heating Demand:</span>
           <strong>{energy.heatingDemandKwhPerM2Yr.toFixed(1)} kWh/m²/yr</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span><Wind style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: '#38bdf8' }} /> Cooling Demand:</span>
+          <span><Wind style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: 'var(--analysis-cool)' }} /> Cooling Demand:</span>
           <strong>{energy.coolingDemandKwhPerM2Yr.toFixed(1)} kWh/m²/yr</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span><Sun style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: '#eab308' }} /> Solar PV Yield:</span>
-          <strong style={{ color: '#10b981' }}>−{energy.solarPvGenerationKwhPerM2Yr.toFixed(1)} kWh/m²/yr</strong>
+          <span><Sun style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: 'var(--warning)' }} /> Solar PV Yield:</span>
+          <strong style={{ color: 'var(--success)' }}>−{energy.solarPvGenerationKwhPerM2Yr.toFixed(1)} kWh/m²/yr</strong>
         </div>
       </div>
 
@@ -84,10 +84,10 @@ export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ ener
 
       {/* IAQ CO2 Status if available */}
       {airQuality && (
-        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '0.75rem' }}>
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: '0.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'var(--text-secondary)' }}><Leaf style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: '#10b981' }} /> Assumed CO₂ scenario:</span>
-            <strong style={{ color: airQuality.overallIaq === 'POOR' ? '#ef4444' : airQuality.overallIaq === 'MODERATE' ? '#f59e0b' : '#10b981' }}>
+            <span style={{ color: 'var(--text-secondary)' }}><Leaf style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: 'var(--success)' }} /> Assumed CO₂ scenario:</span>
+            <strong style={{ color: airQuality.overallIaq === 'POOR' ? 'var(--error)' : airQuality.overallIaq === 'MODERATE' ? 'var(--warning)' : 'var(--success)' }}>
               {airQuality.averageCo2Ppm} ppm ({airQuality.overallIaq})
             </strong>
           </div>

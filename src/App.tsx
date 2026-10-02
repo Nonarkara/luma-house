@@ -1,3 +1,5 @@
+import { readTheme, saveTheme } from './design/themes'
+import { ThemePicker } from './components/ThemePicker'
 import { traceSiteFromImage } from './concept/reviewTrace'
 import { LayoutPresetDialog } from './components/LayoutPresetDialog'
 import { TraceReview, type PendingTrace } from './components/TraceReview'
@@ -108,6 +110,7 @@ function readSavedPlan(): PlanState {
 }
 
 function App() {
+  const [theme, setTheme] = useState(readTheme)
   const [plan, setPlan] = useState<PlanState>(readSavedPlan)
   const [past, setPast] = useState<Array<{ state: PlanState; label: string; sketchUrl: string | null }>>([])
   const [future, setFuture] = useState<Array<{ state: PlanState; label: string; sketchUrl: string | null }>>([])
@@ -1199,6 +1202,7 @@ function App() {
               <span><MapPin /> {locations[location as keyof typeof locations].label}</span>
               <span><Ruler /> {budget.area.toFixed(1)} m²</span>
             </div>
+            <ThemePicker theme={theme} onChange={next => { saveTheme(next); setTheme(next) }} />
           </div>
 
           <JourneyRail
@@ -1292,6 +1296,7 @@ function App() {
               <div className="spatial-wrap">
                 <Suspense fallback={<div className="spatial-note">Loading 3D…</div>}>
                   <Spatial3D
+                    theme={theme}
                     plan={plan}
                     sunAzimuth={sun.azimuth}
                     sunAltitude={sun.altitude}

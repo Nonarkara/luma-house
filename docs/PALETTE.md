@@ -26,3 +26,20 @@ quiet text 5.17:1; paper on sienna action 6.23:1; paper on olive index 8.46:1.
 Stage names, check marks, active borders, tool labels and opening line symbols
 carry meaning independently of hue. Browser checks cover 375, 768 and 1280px,
 real add-room/undo actions, calibration reachability and hint/zoom separation.
+
+## Selectable Luma schemes
+
+- [Solar Pop /209](https://colors.nonarkara.org/#plate-209): Ivory Buff,
+  Yellow Orange and Salvia Blue; luminous yellow paper with a blue index.
+- [Guava Club /137](https://colors.nonarkara.org/#plate-137): Etruscan Red,
+  Cinnamon Buff and Pistachio Green; guava paper with a green index.
+- [Violet Hour /235](https://colors.nonarkara.org/#plate-235): Ivory Buff,
+  Yellow Orange and Grayish Lavender B; lavender paper with a violet index.
+- [Drafting Room /243](https://colors.nonarkara.org/#plate-243): original
+  paper/olive/sienna option.
+
+These names and production roles are our interpretation. Historical source
+names and attribution remain as above. `src/design/themes.ts` supplies all
+production colours; CSS aliases those roles instead of defining mood-specific
+component overrides. First paint and 3D use the same selected scheme. The
+user's choice is saved independently from the drawing.

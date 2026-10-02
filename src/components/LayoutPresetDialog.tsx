@@ -20,8 +20,8 @@ export function LayoutPresetDialog({ onClose, onApply }: { onClose: () => void; 
       <label>Enclosed area (m²)<input type="number" min="20" max="1000" value={area} onChange={event => setArea(event.target.value)} /></label>
     </div>
     {result ? <svg viewBox="0 0 100 100" style={{ width: '100%', maxHeight: 260 }} role="img" aria-label="Layout preview">
-      {result.rooms.map(room => <rect key={room.id} x={room.x} y={room.y} width={room.w} height={room.h} fill="none" stroke="#f59e0b" strokeWidth="0.5" />)}
-      {result.openings.map(opening => <circle key={opening.id} cx={opening.x} cy={opening.y} r="0.8" fill="#f59e0b" />)}
+      {result.rooms.map(room => <rect key={room.id} x={room.x} y={room.y} width={room.w} height={room.h} fill="none" stroke="var(--accent-primary)" strokeWidth="0.5" />)}
+      {result.openings.map(opening => <circle key={opening.id} cx={opening.x} cy={opening.y} r="0.8" fill="var(--accent-primary)" />)}
     </svg> : <p role="alert">Enter an enclosed area from 20 to 1000 m².</p>}
     <p>Applying replaces the current plan. Undo restores it.</p>
     <div className="trace-actions"><button className="button secondary" onClick={onClose}>Keep current project</button><button className="button primary" disabled={!result} onClick={() => result && onApply(result)}>Apply layout preset</button></div>
