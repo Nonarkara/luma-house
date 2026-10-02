@@ -257,3 +257,36 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .energy-hero { background: var(--studio-selection); color: var(--studio-ink); border-radius: 0; box-shadow: none; }
 .energy-hero::after { display: none; }
 .energy-hero strong { text-shadow: none; }
+
+/* Supplied logo artwork keeps its own ink; white cut-outs are PNG alpha. */
+.brand { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+.brand-symbol { width: 32px; height: 32px; object-fit: contain; display: block; }
+.brand-wordmark { width: 126px; height: 36px; object-fit: contain; display: block; }
+.welcome-brand { display: flex; gap: 18px; align-items: center; margin-bottom: 20px; }
+.welcome-brand img { object-fit: contain; max-width: 100%; }
+.welcome-card { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.app-platforms { padding: 12px 24px; border-top: 1px solid var(--border); background: var(--studio-sheet); }
+.web-app-access { color: var(--studio-ink); font-size: 14px; }
+.web-app-access summary { cursor: pointer; display: flex; align-items: center; gap: 10px; min-height: 44px; width: fit-content; max-width: 100%; }
+.web-app-access summary::after { content: '+'; margin-left: 12px; font-size: 20px; }
+.web-app-access[open] summary::after { content: '−'; }
+.web-app-access summary img { flex-shrink: 0; object-fit: contain; }
+.web-app-access summary small { display: block; color: var(--text-secondary); }
+.web-app-instructions { max-width: 640px; padding: 8px 0; }
+.web-app-instructions p { margin: 8px 0; line-height: 1.5; }
+.web-app-note { color: var(--text-secondary); }
+.welcome-card .web-app-access { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border); }
+@media (max-width: 767px) {
+  .brand { gap: 6px; }
+  .brand-symbol { width: 26px; height: 26px; }
+  .brand-wordmark { width: 106px; height: 30px; }
+  .welcome-brand { gap: 12px; }
+  .welcome-brand img:first-child { width: 58px; height: 58px; }
+  .welcome-brand img:last-child { width: 174px; height: 52px; }
+  .app-platforms { padding: 12px; }
+}
+/* Reserve the closed guide on desktop; expanded instructions scroll naturally. */
+body { overflow-y: auto; }
+@media (min-width: 701px) {
+  .workspace { height: max(620px, calc(100dvh - 133px)); }
+}

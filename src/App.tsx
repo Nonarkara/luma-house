@@ -42,6 +42,7 @@ import { FloatingToolbar } from './components/FloatingToolbar'
 import { ContextualActionBar } from './components/ContextualActionBar'
 import { FurnitureCatalogDrawer } from './components/FurnitureCatalogDrawer'
 import { WelcomeGate } from './components/WelcomeGate'
+import { WebAppAccess } from './components/WebAppAccess'
 import { ScienceDock } from './components/ScienceDock'
 import { ValueLens, type ValueLensMode } from './components/ValueLens'
 import { IconButton } from './components/ui'
@@ -1629,6 +1630,7 @@ function App() {
           airQualityReport={airQualityReport}
         />
       </div>
+      <footer className="app-platforms"><WebAppAccess /></footer>
       <WelcomeGate
         open={welcomeOpen}
         onStart={() => {

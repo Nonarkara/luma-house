@@ -3,8 +3,8 @@ import React from 'react'
 export function Logo() {
   return (
     <div className="brand" aria-label="designon — Design + Non">
-      <span className="brand-mark"><span /></span>
-      <span>design<span className="brand-light">/on</span></span>
+      <img className="brand-symbol" src="./brand/designon-symbol.png" alt="" width="36" height="36" />
+      <img className="brand-wordmark" src="./brand/designon-wordmark.png" alt="designon" width="126" height="36" />
     </div>
   )
 }

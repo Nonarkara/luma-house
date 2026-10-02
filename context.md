@@ -152,3 +152,22 @@ Final visual sweep also found the Systems energy summary still using a dark
 gradient with light-theme text roles. Its surface now uses the selection role;
 the full 40-test browser gate additionally checks its title, value, units and
 system row text in every scheme and width.
+
+## Supplied house + light identity — 2026-10-02
+
+Design read: the user's own navy house and yellow beam identify the drawing
+studio; transparent cut-outs carry the chosen paper colour. Reference: the
+supplied Designon Logo Concepts Board. Header identity is compact; welcome
+identity precedes the drawing instructions; the platform guide uses the square
+app variant; monochrome is the favicon. Supplied brand colours are an explicit
+user-authorized exception to the interface palette; no CSS tinting. Details
+and asset roles are in docs/BRANDING.md. Core drawing/3D/analysis content remains.
+
+Web-app availability appears in onboarding and a reachable footer, with Chrome
+and Safari home-screen instructions. Relative manifest paths respect Pages'
+/luma-house/ deployment. Dedicated OS icons have paper backing; UI logos have
+true alpha. No offline-cache promise or automatic data-sync claim is made.
+The independent review caught an overflow-hidden desktop footer; the workspace
+now reserves its closed height and natural scrolling exposes expanded guidance.
+Tests check alpha/no white pixels, dimensions, themes, manifest resolution,
+ordinary scrolling and the preserved drawing workspace.

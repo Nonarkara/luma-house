@@ -1,5 +1,6 @@
 import React from 'react'
 import { ArrowRight, Pencil } from 'lucide-react'
+import { WebAppAccess } from './WebAppAccess'
 
 export const WelcomeGate = React.memo(function WelcomeGate({
   open,
@@ -15,6 +16,7 @@ export const WelcomeGate = React.memo(function WelcomeGate({
   return (
     <div className="welcome-gate" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
       <div className="welcome-card">
+        <div className="welcome-brand"><img src="./brand/designon-symbol.png" alt="" width="80" height="80" /><img src="./brand/designon-wordmark.png" alt="designon" width="220" height="64" /></div>
         <p className="eyebrow">Napkin → space → climate</p>
         <h2 id="welcome-title">Draw a wall.<br />See what the sun does.</h2>
         <p className="welcome-lead">A line is a wall. A tick is a door or a window. A box is a room. No CAD language.</p>
@@ -32,6 +34,7 @@ export const WelcomeGate = React.memo(function WelcomeGate({
             Explore the 50 m² sample
           </button>
         </div>
+        <WebAppAccess />
       </div>
     </div>
   )
