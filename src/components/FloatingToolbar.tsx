@@ -1,5 +1,5 @@
 import React from 'react'
-import { MousePointer2, Pencil, PanelLeftClose, DoorOpen, Ruler, Sparkles } from 'lucide-react'
+import { MousePointer2, Pencil, PanelLeftClose, DoorOpen, Ruler, Sparkles, Plus, Armchair } from 'lucide-react'
 import type { PlanTool } from '../types'
 
 interface FloatingToolbarProps {
@@ -8,6 +8,9 @@ interface FloatingToolbarProps {
   isMeasuring?: boolean
   onToggleMeasure?: () => void
   onSynthesize?: () => void
+  onAddRoom?: () => void
+  onFurniture?: () => void
+  furnitureOpen?: boolean
 }
 
 /**
@@ -21,12 +24,15 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   isMeasuring = false,
   onToggleMeasure,
   onSynthesize,
+  onAddRoom,
+  onFurniture,
+  furnitureOpen = false,
 }) => {
   const tools: Array<{ id: PlanTool; label: string; shortcut: string; icon: typeof MousePointer2 }> = [
-    { id: 'select', label: 'Select & Move', shortcut: 'V', icon: MousePointer2 },
+    { id: 'select', label: 'Select', shortcut: 'V', icon: MousePointer2 },
     { id: 'draw', label: 'Pencil', shortcut: 'W', icon: Pencil },
-    { id: 'window', label: 'Place Window', shortcut: 'O', icon: PanelLeftClose },
-    { id: 'door', label: 'Place Door', shortcut: 'D', icon: DoorOpen },
+    { id: 'window', label: 'Window', shortcut: 'O', icon: PanelLeftClose },
+    { id: 'door', label: 'Door', shortcut: 'D', icon: DoorOpen },
   ]
 
   return (
@@ -51,6 +57,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         )
       })}
 
+      {onAddRoom && <button type="button" className="toolbar-pill-btn" onClick={onAddRoom} aria-label="Add room" title="Add room"><Plus className="toolbar-pill-icon" /><span className="toolbar-pill-label">Room</span></button>}
+      {onFurniture && <button type="button" className={`toolbar-pill-btn ${furnitureOpen ? 'is-active' : ''}`} onClick={onFurniture} aria-label="Add furniture" aria-pressed={furnitureOpen} title="Add furniture"><Armchair className="toolbar-pill-icon" /><span className="toolbar-pill-label">Furniture</span></button>}
       <span className="toolbar-divider" aria-hidden="true" />
 
       <button

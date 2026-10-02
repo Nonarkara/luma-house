@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test'
 
 /**
  * Shipability smoke test — runs against `npm run preview` (vite preview on
- * port 4173). The spec uses `webServer` to start + tear down the server
+ * port 4186). The spec uses `webServer` to start + tear down the server
  * itself, so a single `npm run test:e2e` does the whole round trip.
  *
  * The CI gate is the existing GitHub Pages workflow; this smoke test is a
@@ -16,15 +16,15 @@ export default defineConfig({
   fullyParallel: false,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: 'http://localhost:4186',
     trace: 'retain-on-failure',
     actionTimeout: 5_000,
     navigationTimeout: 15_000,
   },
   webServer: {
-    command: 'npm run preview -- --port 4173 --strictPort',
-    url: 'http://localhost:4173',
-    reuseExistingServer: !process.env.CI,
+    command: 'npm run preview -- --port 4186 --strictPort',
+    url: 'http://localhost:4186',
+    reuseExistingServer: false,
     timeout: 60_000,
     stdout: 'ignore',
     stderr: 'pipe',

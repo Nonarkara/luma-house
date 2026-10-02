@@ -3,7 +3,7 @@ import { LayoutPresetDialog } from './components/LayoutPresetDialog'
 import { TraceReview, type PendingTrace } from './components/TraceReview'
 import { updateOpeningDimensions } from './openingGeometry'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { Armchair, Check, DoorOpen, ImagePlus, MapPin, MousePointer2, PanelLeftClose, Pencil, Plus, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
+import { Check, ImagePlus, MapPin, Pencil, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
 import { FloorPlan } from './canvas/FloorPlan'
 import { RenderGallery } from './canvas/RenderGallery'
 import { useCanvasViewport } from './canvas/useCanvasViewport'
@@ -1192,7 +1192,7 @@ function App() {
         <main className="design-stage">
           <div className="stage-head">
             <div>
-              <p className="eyebrow">Decision sequence <span>•</span> {location} · north up</p>
+              <p className="eyebrow">Drawing studio <span>/</span> {location} · north up</p>
               <h1>{projectTitle}</h1>
             </div>
             <div className="stage-meta">
@@ -1212,14 +1212,18 @@ function App() {
           />
 
           <div className="canvas-toolbar" aria-label="Plan tools">
-            <div className="tool-group">
-              <IconButton label="Select and move" className={activeTool === 'select' ? 'active' : ''} onClick={() => setActiveTool('select')}><MousePointer2 /></IconButton>
-              <IconButton label="Draw room" className={activeTool === 'draw' ? 'active' : ''} onClick={() => setActiveTool(activeTool === 'draw' ? 'select' : 'draw')}><Pencil /></IconButton>
-              <IconButton label="Add room" onClick={addRoom}><Plus /></IconButton>
-              <IconButton label="Place window" className={activeTool === 'window' ? 'active' : ''} onClick={() => setActiveTool('window')}><PanelLeftClose /></IconButton>
-              <IconButton label="Place door" className={activeTool === 'door' ? 'active' : ''} onClick={() => setActiveTool('door')}><DoorOpen /></IconButton>
-              <IconButton label="Add furniture" className={furnitureTrayOpen ? 'active' : ''} onClick={() => setFurnitureTrayOpen((open) => !open)}><Armchair /></IconButton>
-            </div>
+            {view === 'plan' && (
+              <FloatingToolbar
+                activeTool={activeTool}
+                setActiveTool={(tool) => { setIsMeasuring(false); setActiveTool(tool) }}
+                isMeasuring={isMeasuring}
+                onToggleMeasure={() => setIsMeasuring(!isMeasuring)}
+                onSynthesize={() => setPresetOpen(true)}
+                onAddRoom={addRoom}
+                onFurniture={() => setFurnitureTrayOpen((open) => !open)}
+                furnitureOpen={furnitureTrayOpen}
+              />
+            )}
             <div className="view-switch" role="group" aria-label="View mode">
               <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>Plan</button>
               <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>Spatial</button>
@@ -1230,6 +1234,18 @@ function App() {
               <IconButton label="Redo" onClick={redo} disabled={!future.length}><Redo2 /></IconButton>
               <IconButton label="Concept photo" onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><ImagePlus /></IconButton>
             </div>
+            {view === 'plan' && (room || selectedOpening) && (
+              <ContextualActionBar
+                room={room}
+                opening={plan.openings.find((item) => item.id === selectedOpening)}
+                site={site}
+                onUpdateRoom={(updates) => updateRoom(updates)}
+                onDeleteRoom={() => deleteRoom()}
+                onUpdateOpening={(id, updates) => updateOpening(id, updates)}
+                onDeleteOpening={() => deleteOpening()}
+              />
+            )}
+
           </div>
 
           <section className="canvas-frame" ref={frameRef} aria-label="House design canvas" onWheel={onWheel}>
@@ -1386,7 +1402,7 @@ function App() {
                 />
                 <small>m / cell</small>
                 <span>·</span>
-                <small>{site.w.toFixed(1)} × {site.h.toFixed(1)} m site</small>
+                <small className="site-dim">{site.w.toFixed(1)} × {site.h.toFixed(1)} m site</small>
                 <span>·</span>
                 <button
                   type="button"
@@ -1494,28 +1510,6 @@ function App() {
                 Rooms overlap — floor area is double-counted and climate analysis is unreliable
               </div>
             )}
-            {view === 'plan' && (
-              <FloatingToolbar
-                activeTool={activeTool}
-                setActiveTool={setActiveTool}
-                isMeasuring={isMeasuring}
-                onToggleMeasure={() => setIsMeasuring(!isMeasuring)}
-                onSynthesize={() => setPresetOpen(true)}
-              />
-            )}
-
-            {view === 'plan' && (room || selectedOpening) && (
-              <ContextualActionBar
-                room={room}
-                opening={plan.openings.find((item) => item.id === selectedOpening)}
-                site={site}
-                onUpdateRoom={(updates) => updateRoom(updates)}
-                onDeleteRoom={() => deleteRoom()}
-                onUpdateOpening={(id, updates) => updateOpening(id, updates)}
-                onDeleteOpening={() => deleteOpening()}
-              />
-            )}
-
             <FurnitureCatalogDrawer
               open={isCatalogOpen}
               onClose={() => setIsCatalogOpen(false)}

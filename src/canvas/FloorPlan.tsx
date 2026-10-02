@@ -12,11 +12,11 @@ import type { ResizeHandle, StrokePoint } from './geometry'
 import type { NapkinCalibrationLine } from './napkinScale'
 
 const roomColors: Record<RoomKind, string> = {
-  living: 'rgba(245, 158, 11, 0.07)',
-  kitchen: 'rgba(245, 158, 11, 0.055)',
-  bedroom: 'rgba(245, 158, 11, 0.04)',
-  bathroom: 'rgba(245, 158, 11, 0.025)',
-  studio: 'rgba(245, 158, 11, 0.045)',
+  living: 'rgba(138, 76, 22, 0.07)',
+  kitchen: 'rgba(138, 76, 22, 0.055)',
+  bedroom: 'rgba(138, 76, 22, 0.04)',
+  bathroom: 'rgba(138, 76, 22, 0.025)',
+  studio: 'rgba(138, 76, 22, 0.045)',
   terrace: 'transparent',
 }
 

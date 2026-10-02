@@ -239,7 +239,7 @@ function OpeningPanel({ opening, site }: { opening: Opening; site: SiteSpec }) {
   const y = FLOOR_THICKNESS + sill + height / 2
   const size: [number, number, number] =
     opening.rotation === 0 ? [width, height, WALL_THICKNESS] : [WALL_THICKNESS, height, width]
-  const color = isWindow ? '#38444d' : '#f59e0b'
+  const color = isWindow ? '#38444d' : '#8a4c16'
 
   return (
     <mesh position={[mx, y, mz]}>
@@ -707,7 +707,7 @@ export default function Spatial3D({
         camera={{ position: [12, 9, 12], fov: 45 }}
         onPointerMissed={() => onSelectRoom(null)}
       >
-        <color attach="background" args={['#0d0f13']} />
+        <color attach="background" args={['#eee4cf']} />
         <SunLight azimuth={sunAzimuth} altitude={sunAltitude} />
         <CameraController
           preset={preset}
@@ -732,7 +732,7 @@ export default function Spatial3D({
 
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={handleGroundClick}>
           <planeGeometry args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]} />
-          <meshStandardMaterial color="#14161b" roughness={0.95} metalness={0} />
+          <meshStandardMaterial color="#d5d0bc" roughness={0.95} metalness={0} />
         </mesh>
 
         {/* Section-cut plane — a translucent amber disc at sectionHeight that
@@ -748,8 +748,8 @@ export default function Spatial3D({
         <Grid
           position={[0, 0.005, 0]}
           args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]}
-          cellColor="#1f232b"
-          sectionColor="#2a2f3a"
+          cellColor="#b4b5a0"
+          sectionColor="#8d9586"
           fadeDistance={30}
           infiniteGrid={false}
         />

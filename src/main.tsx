@@ -6,6 +6,7 @@ import '@fontsource/source-sans-3/latin-700.css'
 import '@fontsource/jetbrains-mono/latin-500.css'
 import '@fontsource/jetbrains-mono/latin-700.css'
 import './styles.css'
+import './design/studio.css'
 import App from './App'
 import { trackPageview } from './analytics'
 

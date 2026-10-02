@@ -107,3 +107,60 @@ test.describe('shipability smoke', () => {
     expect(overflow.scrollWidth, 'no horizontal scroll at 390px').toBeLessThanOrEqual(overflow.clientWidth + 16)
   })
 })
+
+// The studio must reserve the drawing surface for geometry, and controls must
+// still perform real edits after the duplicate toolbars are consolidated.
+test.describe('drawing studio', () => {
+  for (const width of [375, 768, 1280]) {
+    test(`tools stay outside the plan and edits undo at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 })
+      await page.goto(`/#plan=${SAMPLE_PLAN_HASH}`)
+      await expect(page).toHaveTitle(/designon/)
+      const canvas = page.locator('.canvas-frame')
+      const toolbar = page.getByRole('toolbar', { name: 'Plan tools' })
+      await expect(toolbar).toHaveCount(1)
+      const canvasRect = await canvas.boundingBox()
+      const toolbarRect = await toolbar.boundingBox()
+      expect(toolbarRect!.y + toolbarRect!.height).toBeLessThanOrEqual(canvasRect!.y)
+      expect(canvasRect!.height).toBeGreaterThanOrEqual(300)
+      await page.getByRole('button', { name: 'Add room', exact: true }).click()
+      expect(await readRoomCount(page)).toBe(initialPlan.rooms.length + 1)
+      await page.getByRole('button', { name: 'Undo', exact: true }).click()
+      expect(await readRoomCount(page)).toBe(initialPlan.rooms.length)
+      for (const name of ['Tape Measure', 'Layout presets']) {
+        await page.getByRole('button', { name, exact: true }).click({ trial: true })
+      }
+      await page.getByRole('button', { name: 'Calibrate', exact: true }).click({ trial: true })
+      await page.getByRole('button', { name: 'Tape Measure', exact: true }).click()
+      await page.getByRole('button', { name: 'Pencil', exact: true }).click()
+      await expect(page.getByRole('button', { name: 'Tape Measure', exact: true })).toHaveAttribute('aria-pressed', 'false')
+      const hint = await page.locator('.draw-hint').boundingBox()
+      const zoom = await page.locator('.zoom-control').boundingBox()
+      const intersects = hint!.x < zoom!.x + zoom!.width && hint!.x + hint!.width > zoom!.x && hint!.y < zoom!.y + zoom!.height && hint!.y + hint!.height > zoom!.y
+      expect(intersects, 'zoom controls must not cover the drawing grammar').toBe(false)
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+      expect(overflow).toBeLessThanOrEqual(1)
+    })
+  }
+  test('paper, ink, action and index text have readable contrast', async ({ page }) => {
+    await page.goto(`/#plan=${SAMPLE_PLAN_HASH}`)
+    const contrast = await page.evaluate(() => {
+      const luminance = (color: string) => {
+        const rgb = color.match(/[\d.]+/g)!.slice(0, 3).map(Number).map(v => {
+          const n = v / 255
+          return n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4
+        })
+        return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722
+      }
+      return ['.stage-head h1', '.button.primary', '.journey-headline'].map(selector => {
+        const el = document.querySelector(selector)!
+        const fg = luminance(getComputedStyle(el).color)
+        let bgEl: Element | null = el
+        while (bgEl && getComputedStyle(bgEl).backgroundColor === 'rgba(0, 0, 0, 0)') bgEl = bgEl.parentElement
+        const bg = luminance(getComputedStyle(bgEl!).backgroundColor)
+        return (Math.max(fg, bg) + .05) / (Math.min(fg, bg) + .05)
+      })
+    })
+    for (const ratio of contrast) expect(ratio).toBeGreaterThanOrEqual(4.5)
+  })
+})

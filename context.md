@@ -92,3 +92,39 @@ npx wrangler pages deploy dist --project-name=luma-house --commit-dirty=true
 # worker
 cd workers/concept-render && npx tsc --noEmit && npx vitest run && npx wrangler deploy
 ```
+
+## Drawing studio overhaul — 2026-10-02
+
+Design Read: a working architect's drawing sheet occupies the desk; a narrow
+olive index carries the seven decisions, with tools kept outside the drawing.
+Reference: Alvar Aalto's Säynätsalo Town Hall working drawings, for the relationship
+between a dominant plan, strong wall lines and quiet dimensional annotations.
+The plan dominates; the rail supports; 2px walls, 2px active indicators and 1px
+field boundaries have distinct jobs. Source Sans 3 carries commands and reading;
+JetBrains Mono carries dimensions and drawing titles. No new fonts or imagery.
+
+Named, load-bearing exception: the user's October 2 request explicitly selects
+Nonarkara/palette. Wada plate 243 replaces the inherited dark/amber theme with
+Ivory Buff paper, Slate Color ink, an Olive Green decision index, and Raw Sienna
+as the sole action/selection pointer. This is an architectural drawing surface,
+not an operations console. Semantic warnings retain independent labelled colours.
+
+Intent: keep drawing, scale calibration, analysis and model navigation legible.
+Relationship: warm paper and sienna against cool slate ink, with a bounded olive rail.
+Chord: plate 243 — Raw Sienna / Ivory Buff / Olive Green / Slate Color.
+Roles: paper ground / slate ink / olive index / sienna action.
+Budget: roughly 80% paper, 15% index and ink structure, under 5% action.
+Risks: historic digital values are not sufficient for small text contrast;
+production values are adjusted, not described as Wada's exact printed colours.
+Proof: contrast pairs, labelled selected states, grayscale and 375/768/1280 views,
+plus drawing, sharing and undo checks before live deployment.
+Source: https://colors.nonarkara.org/#plate-243 and docs/PALETTE.md.
+
+Release audit: main and all three active agent worktrees were clean before this
+change; the recent worktree tips were already merged. The user's open tab held
+index-CTqnRSDg.js / index-BFji-qKj.css while the server served newer
+index-DIAY16wX.js / index-Brt-1G-m.css. Reload the existing tab after deployment.
+Browser tests formerly accepted another project's server on 4173. This project
+now owns preview port 4186 and refuses server reuse. The named axiom-audit npm
+command is unavailable (registry 404); rendered contrast, geometry, responsive
+screenshots and independent adversarial review provide the available evidence.
