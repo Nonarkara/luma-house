@@ -93,7 +93,9 @@ npm run build        # typecheck + production bundle
 npm run preview
 ```
 
-Node 20 is what the GitHub Pages workflow uses.
+Requires **Node 20.19+ within 20.x, Node 22.13+ within 22.x, or Node 24+**, matching the locked Vite and ESLint requirements.
+`.nvmrc` selects Node 22 for local development. The GitHub Pages workflow’s
+Node 20 selector resolves a current 20.x release.
 
 A learner path that matches the code:
 
