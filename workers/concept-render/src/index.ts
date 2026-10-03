@@ -50,9 +50,11 @@ function isBrowserCall(request: Request): boolean {
 function explainUpstream(status: number, detail: string): string {
   const rateLimited = status === 429 || /quota|rate limit|RESOURCE_EXHAUSTED/i.test(detail)
   if (rateLimited) {
+    console.error('AI upstream error', status)
     return 'The AI service is out of capacity right now — too many requests from this account. Wait a minute and use Try again.'
   }
   if (status === 503 || /UNAVAILABLE|high demand|overloaded/i.test(detail)) {
+    console.error('AI upstream error', status)
     return 'The AI service is busy right now. Wait a moment and use Try again.'
   }
   if (status === 401 || status === 403 || /API_KEY_INVALID|PERMISSION_DENIED/i.test(detail)) {

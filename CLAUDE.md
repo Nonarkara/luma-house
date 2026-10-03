@@ -13,7 +13,7 @@ are all still `luma-house` for deployment inertia. Do not "fix" the mismatch.
 
 - `npm install`
 - `npm run dev` — Vite dev server on :5173
-- `npm test` — vitest, 257 cases across 38 files
+- `npm test` — vitest, 312 cases across 44 files
 - `npm run lint` — ESLint
 - `npm run build` — `tsc -b` then the production bundle
 - `npm run preview` — serve the built bundle
@@ -60,7 +60,8 @@ how an opening is positioned, change the renderer, not the data.
 
 ## AI trace
 
-`POST /trace` on the worker sends the photo to `gemini-2.5-flash` and returns a
+`POST /trace` on the worker sends the photo to the vision model configured in
+`wrangler.toml` (`TRACE_MODEL`, currently `gemini-3.8-flash`) and returns a
 plan draft. Three things you must not break:
 
 - **The secret.** The worker needs `GEMINI_API_KEY`. Without it every AI call
