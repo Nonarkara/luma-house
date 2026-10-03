@@ -2,11 +2,14 @@ name = "luma-concept-render"
 main = "src/index.ts"
 compatibility_date = "2026-04-01"
 
-# Real rate limiting. Without this binding, rateLimit() short-circuits to `true`
-# and the endpoint was an unlimited public proxy to a paid key.
-[[kv_namespaces]]
-binding = "RATE_LIMIT"
-id = "9ba6e1dcd51f4500b591b245c0acad20"
+# One SQLite-backed coordinator reserves quota atomically before upstream calls.
+[[durable_objects.bindings]]
+name = "AI_QUOTA"
+class_name = "AiQuota"
+
+[[migrations]]
+tag = "ai-quota-v1"
+new_sqlite_classes = ["AiQuota"]
 
 [vars]
 GEMINI_MODEL = "gemini-3.8-flash-image"
@@ -15,3 +18,4 @@ GEMINI_MODEL = "gemini-3.8-flash-image"
 # a retirement is a config change rather than a code deploy.
 TRACE_MODEL = "gemini-3.8-flash"
 DAILY_IP_LIMIT = "20"
+DAILY_GLOBAL_LIMIT = "200"

@@ -7,7 +7,7 @@ import { roomAreaFor, siteOf } from '../plan'
 import { DEFAULT_THRESHOLDS, getStandard, type Severity, type Thresholds } from './standards'
 
 export interface CodeIssue {
-  /** Standard code reference, e.g. "IBC 1208.1". */
+  /** Standard code reference, e.g. "2021 IRC R304.1". */
   ref: string
   /** Long standard name. */
   name: string
@@ -88,51 +88,49 @@ export function checkPlan(
 
   // --- per-room rules ---
   for (const room of plan.rooms) {
-    // IBC 1208.1 — minimum habitable area (residential: 6.5 m² / 70 sq ft)
+    // 2021 IRC R304.1 — example minimum habitable-room area.
     if (roomIsHabitable(room)) {
       const area = roomAreaFor(room, site)
       if (area < thresholds.minHabitableAreaM2) {
         add(
-          'IBC-1208.1',
+          'IRC-2021-R304.1',
           'critical',
           room.id,
           null,
-          `${room.name} is below minimum habitable area`,
-          `${fmt(area, 'm²')} is below the ${fmt(thresholds.minHabitableAreaM2, 'm²')} minimum.`,
+          `${room.name} is below the reference room area`,
+          `${fmt(area, 'm²')} is below the ${fmt(thresholds.minHabitableAreaM2, 'm²')} 2021 IRC example; adopted local rules may differ.`,
           undefined,
         )
       }
     }
 
-    // IBC 1208.2 — minimum ceiling height (residential: 2.13 m / 7'-0")
+    // 2021 IRC R305.1 — example minimum habitable-space ceiling height.
     const ceiling = room.wallHeight ?? 2.5
     if (roomIsHabitable(room) && ceiling < thresholds.minCeilingHeightM) {
       add(
-        'IBC-1208.2',
+        'IRC-2021-R305.1',
         'warning',
         room.id,
         null,
-        `${room.name} ceiling is below the habitable minimum`,
-        `${fmt(ceiling, 'm')} ceiling is below the ${fmt(thresholds.minCeilingHeightM, 'm')} minimum.`,
+        `${room.name} ceiling is below the reference height`,
+        `${fmt(ceiling, 'm')} is below the ${fmt(thresholds.minCeilingHeightM, 'm')} 2021 IRC example; verify the adopted local edition.`,
         { type: 'set_ceiling', roomId: room.id, meters: thresholds.minCeilingHeightM },
       )
     }
 
-    // IBC 1005.1 — minimum aisle width. Long rooms whose narrow dimension
-    // falls below 36" read as corridors; surface as a warning so the user
-    // isn't surprised when no furniture fits between facing walls.
+    // 2021 IRC R304.2 — 7 ft minimum horizontal dimension, except kitchens.
+    // This is a direct geometry comparison, not the former corridor heuristic.
     const widthM = (room.w / 100) * site.w
     const depthM = (room.h / 100) * site.h
-    const longRatio = Math.max(widthM, depthM) / Math.max(0.1, Math.min(widthM, depthM))
     const narrowM = Math.min(widthM, depthM)
-    if (longRatio >= 2.5 && narrowM < thresholds.minAisleWidthM) {
+    if (roomIsHabitable(room) && room.kind !== 'kitchen' && narrowM < thresholds.minHabitableDimensionM) {
       add(
-        'IBC-1005.1',
+        'IRC-2021-R304.2',
         'warning',
         room.id,
         null,
-        `${room.name} is too narrow for its length`,
-        `Long-then-narrow ratio ${longRatio.toFixed(1)}:1 with the short wall at ${fmt(narrowM, 'm')}; corridors need ≥ ${fmt(thresholds.minAisleWidthM, 'm')} clear.`,
+        `${room.name} is below the reference room width`,
+        `${fmt(narrowM, 'm')} short side is below the ${fmt(thresholds.minHabitableDimensionM, 'm')} 2021 IRC example (kitchens excepted).`,
       )
     }
 
@@ -146,32 +144,14 @@ export function checkPlan(
           'warning',
           room.id,
           null,
-          `${room.name} cannot fit the ADA turning circle`,
-          `${fmt(narrowM, 'm')} short side is below the ${fmt(thresholds.adaTurningDiameterM, 'm')} ADA turning diameter.`,
-        )
-      }
-    }
-
-    // IBC 1208.4 — efficiency dwelling unit. Studios (single habitable
-    // space) get an info reminder of the 1208.4 minimum area unless the
-    // local AHJ allows less; the threshold table already encodes 6.5 m² so
-    // this only surfaces when the studio is large enough not to flag 1208.1.
-    if (room.kind === 'studio') {
-      const area = roomAreaFor(room, site)
-      if (area >= thresholds.minHabitableAreaM2) {
-        add(
-          'IBC-1208.4',
-          'info',
-          room.id,
-          null,
-          `${room.name} is an efficiency dwelling unit`,
-          `Studios need a sleeping area, kitchen, and bath within one space — confirm cooking + sleeping separations meet local AHJ requirements.`,
+          `${room.name} cannot fit the circular ADA reference envelope`,
+          `${fmt(narrowM, 'm')} short side is below a ${fmt(thresholds.adaTurningDiameterM, 'm')} circle. A compliant T-turn may also work; fixtures, furniture, and project applicability are not modeled.`,
         )
       }
     }
   }
 
-  // IBC 1003.3 — egress connectivity via the door graph. A door symbol on an
+  // Geometry-only route connectivity via the door graph. A door symbol on an
   // interior wall is not egress: the room needs a continuous modeled door
   // path to an exterior door. This reuses the same engine the Escape lens
   // draws on the canvas, so the check and the visualization can't disagree.
@@ -179,12 +159,12 @@ export function checkPlan(
     if (!roomNeedsEgress(route.room)) continue
     if (route.connected) continue
     add(
-      'IBC-1003.3',
+      'MODEL-EGRESS',
       'critical',
       route.room.id,
       null,
-      `${route.room.name} has no door path to the exterior`,
-      `No continuous modeled door route reaches outdoors — a door into another dead-end room is not egress. Add an exterior door or connect this room through doors to one.`,
+      `${route.room.name} has no modeled route outdoors`,
+      `No continuous door graph reaches outdoors. This catches disconnected rooms; it does not evaluate travel distance, occupancy, fire rating, or legal egress compliance.`,
       { type: 'add_exterior_door', roomId: route.room.id },
     )
   }
@@ -199,8 +179,8 @@ export function checkPlan(
         'critical',
         null,
         opening.id,
-        `Door clear width below ADA minimum`,
-        `${fmt(width, 'm')} clear is below the ${fmt(thresholds.minDoorClearWidthM, 'm')} minimum for accessible egress.`,
+        `Door width is below the ADA reference envelope`,
+        `${fmt(width, 'm')} modeled width is below ${fmt(thresholds.minDoorClearWidthM, 'm')}. The tool does not know clear opening or whether accessibility rules apply.`,
         { type: 'enlarge_opening', openingId: opening.id },
       )
     }
@@ -222,73 +202,72 @@ export function checkPlan(
 
   // --- whole-plan rules (aggregated: one row per concern, not per item) ---
 
-  // ASHRAE 62.1 — kitchen exhaust: one row listing the kitchens, not one
+  // ASHRAE 62.2 — kitchen exhaust: one row listing the kitchens, not one
   // identical row per kitchen.
   const kitchens = plan.rooms.filter((room) => room.kind === 'kitchen')
   if (kitchens.length > 0) {
     add(
-      'ASHRAE-62.1-KITCHEN',
+      'ASHRAE-62.2-KITCHEN',
       'info',
       null,
       null,
       `Kitchen exhaust — ${kitchens.map((room) => room.name).join(', ')}`,
-      `Range hoods typically need ${thresholds.kitchenExhaustLs} L/s intermittent (or ${thresholds.kitchenExhaustLs / 2} L/s continuous) exhaust vented to the exterior.`,
+      `Residential reference: ${thresholds.kitchenExhaustLs} L/s intermittent through a vented range hood, or 5 ACH continuous. Verify the adopted ASHRAE 62.2 edition and local exhaust rules.`,
     )
   }
 
-  // ASHRAE 62.1 — bathroom exhaust, aggregated the same way.
+  // ASHRAE 62.2 — bathroom exhaust, aggregated the same way.
   const bathrooms = plan.rooms.filter((room) => room.kind === 'bathroom')
   if (bathrooms.length > 0) {
     add(
-      'ASHRAE-62.1-BATHROOM',
+      'ASHRAE-62.2-BATHROOM',
       'info',
       null,
       null,
       `Bathroom exhaust — ${bathrooms.map((room) => room.name).join(', ')}`,
-      `Bathrooms typically need ${thresholds.bathroomExhaustLs} L/s intermittent exhaust vented outside.`,
+      `Residential reference: ${thresholds.bathroomExhaustLs} L/s intermittent or 10 L/s continuous exhaust to outdoors. Verify the adopted edition and local rules.`,
     )
   }
 
-  // ASHRAE 90.1 — one envelope row for all windows: U-value / SHGC defaults
-  // live in the climate response library, not in this check.
+  // The envelope row reports only what this model actually knows. It is not
+  // an ASHRAE 90.1 determination for a residential project.
   const windows = plan.openings.filter((opening) => opening.type === 'window')
   if (windows.length > 0) {
     add(
-      'ASHRAE-90.1-ENVELOPE',
+      'MODEL-ENVELOPE',
       'info',
       null,
       null,
-      `${windows.length} window${windows.length === 1 ? '' : 's'} — envelope spec`,
-      `Location-specific U-value and SHGC defaults are applied by the climate response library (Systems panel); this check does not rate glazing.`,
+      `${windows.length} modeled window${windows.length === 1 ? '' : 's'} — inspect U-value and SHGC`,
+      `The Systems panel supplies scenario inputs for heat and solar-gain comparisons. No jurisdictional envelope compliance is calculated.`,
     )
   }
 
-  // ASHRAE 62.1 — minimum fresh-air for the whole house
+  // Occupancy is a transparent scenario input, not an ASHRAE 62.2 formula.
   const totalOccupants = plan.rooms.reduce((sum, room) => {
     const occ = thresholds.occupantsPerKind[room.kind] ?? 0
     return sum + occ
   }, 0)
-  const requiredLs = totalOccupants * thresholds.freshAirLsPerPerson
   // We don't have a mechanical ventilation rate in the plan state, so the
   // check is informational: does the plan have a *path* for fresh air?
   const hasAnyOpening = plan.openings.some((op) => op.type === 'window' || op.type === 'door')
   if (totalOccupants > 0 && !hasAnyOpening) {
     add(
-      'ASHRAE-62.1-RESIDENTIAL',
+      'MODEL-VENTILATION',
       'critical',
       null,
       null,
-      'No openable apertures for fresh air',
-      `Plan supports ${totalOccupants} occupants; needs at least one openable window or door.`,
+      'No modeled operable air path',
+      `The ${totalOccupants}-occupant scenario has no window or door. Add an opening for a passive path, then size any mechanical system separately.`,
     )
   } else if (totalOccupants > 0) {
     add(
-      'ASHRAE-62.1-RESIDENTIAL',
+      'ASHRAE-62.2-WHOLE-DWELLING',
       'info',
       null,
       null,
-      `Fresh air target: ${fmt(requiredLs, 'L/s')} (${totalOccupants} occupants × ${thresholds.freshAirLsPerPerson} L/s)`,
-      'Infiltration alone is rarely enough — confirm mechanical supply per ASHRAE 62.1.',
+      'Whole-dwelling ventilation needs more inputs',
+      `The ${totalOccupants}-occupant scenario is not a 62.2 sizing result. Floor area, bedrooms, infiltration credit, system type, and adopted edition must be confirmed by a qualified local professional.`,
     )
   }
 

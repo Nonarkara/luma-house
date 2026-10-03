@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import worker from './index'
 
 const env = { GEMINI_API_KEY: 'k' } as never
-const IMG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+const IMG = 'data:image/png;base64,' + 'AAAA'.repeat(300)
 
 function post(path: string, origin?: string) {
   return new Request(`https://worker.test${path}`, {
@@ -50,9 +50,27 @@ describe('who may call the AI', () => {
   })
 })
 
+describe('the request envelope', () => {
+  it('has no other routes to probe', async () => {
+    const res = await worker.fetch(post('/anything'), env)
+    expect(res.status).toBe(404)
+  })
+
+  it('rejects a body that is not application/json before touching anything else', async () => {
+    const req = new Request('https://worker.test/trace', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: IMG })
+    const res = await worker.fetch(req, env)
+    expect(res.status).toBe(415)
+  })
+
+  it('never caches an AI response', async () => {
+    const res = await worker.fetch(post('/trace'), env)
+    expect(res.headers.get('Cache-Control')).toBe('no-store')
+  })
+})
+
 describe('spending is capped', () => {
   it('refuses when no rate-limit store is bound, rather than spending freely', async () => {
-    // No RATE_LIMIT in env. This must not become an unlimited path to the key.
+    // No AI_QUOTA in env. This must not become an unlimited path to the key.
     const res = await worker.fetch(post('/trace'), env)
     expect(res.status).toBe(429)
   })

@@ -83,7 +83,7 @@ export async function tracePlanFromImage(options: {
     if (!response.ok) {
         const detail = await response.text().catch(() => '')
         let message = detail
-        try { message = (JSON.parse(detail) as { error?: string }).error || detail } catch { /* plain-text error */ }
+        try { const error = (JSON.parse(detail) as { error?: unknown })?.error; if (typeof error === 'string') message = error } catch { /* plain-text error */ }
         if (message.includes('GEMINI_API_KEY is not configured')) message = 'AI tracing is unavailable: the service is not configured. Keep your project and use Manual underlay to trace the image locally.'
         throw new Error(readableServerError(message, response.status))
     }
@@ -97,7 +97,7 @@ export async function tracePlanFromImage(options: {
     return {
         plan: { ...sanitized, site: { w: options.siteW ?? sanitized.site?.w ?? 14, h: options.siteH ?? sanitized.site?.h ?? 10, unit: sanitized.site?.unit ?? 1 } },
         draft: true,
-        note: payload.note || 'AI-read draft — verify walls and openings before costing.',
+        note: typeof payload.note === 'string' && payload.note.length <= 2000 ? payload.note : 'AI-read draft — verify walls and openings before costing.',
         remaining: recordAiTrace(),
     }
 }

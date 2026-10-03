@@ -2,7 +2,7 @@ import React from 'react'
 import type { Severity } from '../codes/standards'
 
 export interface StandardsBadgeProps {
-  /** Standard ref id, e.g. "IBC-1208.2" (catalogued) or already-rendered "IBC 1208.2". */
+  /** Standard ref id, e.g. "IRC-2021-R305.1" (catalogued) or already-rendered "2021 IRC R305.1". */
   codeRef: string
   /** Severity — controls the border + text color. */
   severity: Severity
@@ -13,7 +13,7 @@ export interface StandardsBadgeProps {
 }
 
 /**
- * Small monospace label for a building-code reference ("IBC 1208.2"). Shown
+ * Small monospace label for a building-code reference ("2021 IRC R305.1"). Shown
  * next to the dimension or issue that triggers it, so the user sees the
  * authority behind the number without digging through docs.
  *

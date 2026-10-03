@@ -23,7 +23,7 @@ const SEVERITY_SHORT: Record<CodeIssue['severity'], string> = {
 
 /**
  * The building-standards code-check list. Each row carries a standards
- * reference ("IBC 1208.2"), a one-line title, a one-sentence body with the
+ * reference ("2021 IRC R305.1"), a one-line title, a one-sentence body with the
  * actual measured value, and a one-click fix button when applicable.
  *
  * Per Axiom Design Core: sharp edges, monospace numbers, single accent

@@ -30,7 +30,7 @@ import {
   chinaLightingChannels,
   estimateApartmentCarbon,
 } from './mockups/chinaApartment'
-import { buildShareUrl, decodePlanFromHash, sanitizePlan } from './sharePlan'
+import { buildShareUrl, decodePlanFromHash, sanitizePlan, MAX_PROJECT_BYTES } from './sharePlan'
 import { analyze, analyzeAirQuality, daylightPotential, egressRoutes, heatFlowSnapshot, simulateEnergy, windFlowPotential } from './analysis'
 import type { AnalysisResult, Suggestion } from './analysis'
 import type { CanvasView, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
@@ -776,6 +776,10 @@ function App() {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
+    if (file.size > MAX_PROJECT_BYTES) {
+      setToast('Project file is too large (maximum 2 MB)')
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       try {

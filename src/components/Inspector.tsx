@@ -40,6 +40,7 @@ import {
 } from '../mockups/chinaApartment'
 import { buildDesignBrief, type AnalysisResult, type Suggestion, type EnergySimulationResult, type AirQualityReport } from '../analysis'
 import { type CodeIssue as StandardsCodeIssue } from '../codes/checkPlan'
+import { DEFAULT_THRESHOLDS, getStandard } from '../codes/standards'
 import { StandardsBadge } from './StandardsBadge'
 import { CodeIssuesPanel } from './CodeIssuesPanel'
 import { EnergySimulationCard } from './EnergySimulationCard'
@@ -477,17 +478,19 @@ export const Inspector = React.memo(function Inspector({
                   : issuesForRoom.some((i) => i.severity === 'warning')
                     ? 'warning'
                     : 'info'
-                const areaPasses = areaM2 >= 6.5
-                const ceilingPasses = ceilingM >= 2.13
+                const areaPasses = areaM2 >= DEFAULT_THRESHOLDS.minHabitableAreaM2
+                const ceilingPasses = ceilingM >= DEFAULT_THRESHOLDS.minCeilingHeightM
+                const areaRef = getStandard('IRC-2021-R304.1')
+                const ceilingRef = getStandard('IRC-2021-R305.1')
                 return (
                   <>
                     <div className="room-data-primary">
                       <span className="room-data-number">{areaM2.toFixed(1)}</span>
                       <span className="room-data-unit">m²</span>
                       <StandardsBadge
-                        codeRef="IBC 1208.1"
+                        codeRef={areaRef?.ref ?? 'IRC R304.1'}
                         severity={areaPasses ? 'info' : worstSev}
-                        name="IBC 1208.1 — Minimum Habitable Area"
+                        name={areaRef?.name}
                         inline
                       />
                     </div>
@@ -506,9 +509,9 @@ export const Inspector = React.memo(function Inspector({
                           {ceilingM.toFixed(2)} m
                           {' '}
                           <StandardsBadge
-                            codeRef="IBC 1208.2"
+                            codeRef={ceilingRef?.ref ?? 'IRC R305.1'}
                             severity={ceilingPasses ? 'info' : worstSev}
-                            name="IBC 1208.2 — Minimum Ceiling Height"
+                            name={ceilingRef?.name}
                             inline
                           />
                         </span>

@@ -32,6 +32,7 @@ export async function generateConceptPhoto(options: {
 
   const response = await fetch(endpoint, {
     method: 'POST',
+    signal: AbortSignal.timeout(60000),
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       prompt,
@@ -52,6 +53,9 @@ export async function generateConceptPhoto(options: {
   }
 
   const mime = payload.mimeType || 'image/png'
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(mime) || typeof payload.imageBase64 !== 'string' || payload.imageBase64.length > 16 * 1024 * 1024 || !/^[A-Za-z0-9+/]+={0,2}$/.test(payload.imageBase64)) {
+    throw new Error('The service returned an invalid image. Try again.')
+  }
   const imageDataUrl = `data:${mime};base64,${payload.imageBase64}`
   const remaining = recordConceptImage(imageDataUrl)
   return { imageDataUrl, remaining }

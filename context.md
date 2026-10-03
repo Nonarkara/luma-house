@@ -45,10 +45,15 @@ per-IP cap. To add a host, edit `ALLOWED_ORIGINS` in `workers/concept-render/src
 - Browser daily quota: 3 renders/day, localStorage key `designon:concept-quota`
   (legacy `luma-house:concept-quota` is read once and migrated). This is a
   courtesy limit only — it is client-side and trivially bypassed.
-- Server per-IP daily cap: `DAILY_IP_LIMIT` (20), counted in KV `RATE_LIMIT`
-  (namespace id in `wrangler.toml`). This is the real one. It **fails closed**:
-  if KV is unreachable the request is refused rather than allowed to spend.
-- Inspect the count: `npx wrangler kv key list --binding RATE_LIMIT --remote`
+- Server caps (2026-10-03): one SQLite-backed **Durable Object** (`AI_QUOTA`)
+  now reserves quota atomically before any upstream call — a per-network daily
+  cap (`DAILY_IP_LIMIT`, 20) plus a global daily cap (`DAILY_GLOBAL_LIMIT`,
+  200). The old non-atomic KV `RATE_LIMIT` binding is retired along with its
+  namespace. It **fails closed**: if the coordinator is unreachable the
+  request is refused rather than allowed to spend. Caller IPs are hashed
+  (`day:ip` → SHA-256), never stored.
+- Deploying the worker after this change runs a new-class migration
+  (`ai-quota-v1` in `wrangler.toml`); a plain `npx wrangler deploy` applies it.
 
 ### The key
 

@@ -1,108 +1,73 @@
 /**
- * Architectural standards library.
+ * Architectural reference library.
  *
- * Every rule lives here as data. The values are the conservative residential
- * thresholds; if a project's local code is stricter, raise the numbers. The
- * labels are short enough to fit in a 9px monospace badge ("IBC 1003.3.1").
- *
- * Why these specific ones: residential planning needs egress dimensions
- * (IBC 1003), minimum room sizes + ceiling height (IBC 1208), fresh-air
- * rates (ASHRAE 62.1), envelope performance (ASHRAE 90.1), and accessible
- * door widths (ADA 404). We don't claim to be a code consultant — the UI
- * shows these as references, not as law.
+ * Every cited reference lives here as data. These are deliberately labelled
+ * as US examples rather than universal compliance rules: applicability varies
+ * by jurisdiction, building type, accessibility scope, and adopted edition.
+ * Geometry-only checks use the MODEL body and are never presented as code.
  */
 
 export type Severity = 'info' | 'warning' | 'critical'
 
 export interface Standard {
-  /** Short code reference, e.g. "IBC 1003.3.1". Shown as a 9px monospace badge. */
+  /** Short code reference, e.g. "2021 IRC R304.1". Shown as a 9px monospace badge. */
   ref: string
-  /** Long name, e.g. "International Building Code — Means of Egress". Tooltip. */
+  /** Long name. Tooltip. */
   name: string
-  /** Issuing body, e.g. "IBC", "ASHRAE", "ADA". */
-  body: 'IBC' | 'ASHRAE' | 'ADA' | 'ISO'
+  /** Issuing body, or MODEL for an internal geometry check. */
+  body: 'IRC' | 'IBC' | 'ASHRAE' | 'ADA' | 'MODEL'
 }
 
 /** Catalogue of every standard the app references. */
 export const STANDARDS: Record<string, Standard> = {
-  'IBC-1003.3': {
-    ref: 'IBC 1003.3',
-    name: 'International Building Code — Common Path of Egress Travel',
-    body: 'IBC',
+  'IRC-2021-R304.1': {
+    ref: '2021 IRC R304.1',
+    name: '2021 International Residential Code — Minimum Habitable Room Area',
+    body: 'IRC',
   },
-  'IBC-1003.4': {
-    ref: 'IBC 1003.4',
-    name: 'International Building Code — Aisles',
-    body: 'IBC',
+  'IRC-2021-R304.2': {
+    ref: '2021 IRC R304.2',
+    name: '2021 International Residential Code — Minimum Room Width',
+    body: 'IRC',
   },
-  'IBC-1005.1': {
-    ref: 'IBC 1005.1',
-    name: 'International Building Code — Minimum Aisle Width',
-    body: 'IBC',
+  'IRC-2021-R305.1': {
+    ref: '2021 IRC R305.1',
+    name: '2021 International Residential Code — Minimum Ceiling Height',
+    body: 'IRC',
   },
-  'IBC-1008.1.1': {
-    ref: 'IBC 1008.1.1',
-    name: 'International Building Code — Door Swing',
-    body: 'IBC',
+  'MODEL-EGRESS': {
+    ref: 'MODEL · ROUTE',
+    name: 'Modeled door-graph route to outdoors — geometry only',
+    body: 'MODEL',
   },
-  'IBC-1008.1.9': {
-    ref: 'IBC 1008.1.9',
-    name: 'International Building Code — Door Opening Force',
-    body: 'IBC',
+  'MODEL-ENVELOPE': {
+    ref: 'MODEL · ENVELOPE',
+    name: 'Modeled envelope inputs — not a code rating',
+    body: 'MODEL',
   },
-  'IBC-1009.1': {
-    ref: 'IBC 1009.1',
-    name: 'International Building Code — Stairways',
-    body: 'IBC',
+  'MODEL-VENTILATION': {
+    ref: 'MODEL · AIR PATH',
+    name: 'Modeled operable-air path — geometry only',
+    body: 'MODEL',
   },
   'IBC-1010.1.1': {
     ref: 'IBC 1010.1.1',
     name: 'International Building Code — Door Size',
     body: 'IBC',
   },
-  'IBC-1208.1': {
-    ref: 'IBC 1208.1',
-    name: 'International Building Code — Minimum Room Area',
-    body: 'IBC',
-  },
-  'IBC-1208.2': {
-    ref: 'IBC 1208.2',
-    name: 'International Building Code — Minimum Ceiling Height',
-    body: 'IBC',
-  },
-  'IBC-1208.4': {
-    ref: 'IBC 1208.4',
-    name: 'International Building Code — Efficiency Dwelling Unit',
-    body: 'IBC',
-  },
-  'IBC-1011.5.2': {
-    ref: 'IBC 1011.5.2',
-    name: 'International Building Code — Riser Height',
-    body: 'IBC',
-  },
-  'IBC-1011.5.3': {
-    ref: 'IBC 1011.5.3',
-    name: 'International Building Code — Tread Depth',
-    body: 'IBC',
-  },
-  'ASHRAE-62.1-RESIDENTIAL': {
-    ref: 'ASHRAE 62.1',
-    name: 'ASHRAE 62.1 — Ventilation for Residential',
+  'ASHRAE-62.2-WHOLE-DWELLING': {
+    ref: 'ASHRAE 62.2',
+    name: 'ASHRAE 62.2 — Residential Ventilation (inputs incomplete)',
     body: 'ASHRAE',
   },
-  'ASHRAE-62.1-KITCHEN': {
-    ref: 'ASHRAE 62.1',
-    name: 'ASHRAE 62.1 — Kitchen Exhaust',
+  'ASHRAE-62.2-KITCHEN': {
+    ref: 'ASHRAE 62.2',
+    name: 'ASHRAE 62.2 — Local Kitchen Exhaust',
     body: 'ASHRAE',
   },
-  'ASHRAE-62.1-BATHROOM': {
-    ref: 'ASHRAE 62.1',
-    name: 'ASHRAE 62.1 — Bathroom Exhaust',
-    body: 'ASHRAE',
-  },
-  'ASHRAE-90.1-ENVELOPE': {
-    ref: 'ASHRAE 90.1',
-    name: 'ASHRAE 90.1 — Building Envelope',
+  'ASHRAE-62.2-BATHROOM': {
+    ref: 'ASHRAE 62.2',
+    name: 'ASHRAE 62.2 — Local Bathroom Exhaust',
     body: 'ASHRAE',
   },
   'ADA-404.2.3': {
@@ -115,11 +80,6 @@ export const STANDARDS: Record<string, Standard> = {
     name: 'ADA — Turning Space',
     body: 'ADA',
   },
-  'ISO-7730-COMFORT': {
-    ref: 'ISO 7730',
-    name: 'ISO 7730 — Moderate Thermal Comfort (PMV/PPD)',
-    body: 'ISO',
-  },
 }
 
 /**
@@ -128,41 +88,38 @@ export const STANDARDS: Record<string, Standard> = {
  * the rule is not enforced.
  */
 export interface Thresholds {
-  /** Minimum clear floor area for a habitable room. IBC 1208.1. */
+  /** 2021 IRC R304.1 example: minimum habitable-room floor area. */
   minHabitableAreaM2: number
-  /** Minimum clear ceiling height for a habitable room. IBC 1208.2. */
+  /** 2021 IRC R304.2 example: minimum horizontal dimension. */
+  minHabitableDimensionM: number
+  /** 2021 IRC R305.1 example: minimum habitable-space ceiling height. */
   minCeilingHeightM: number
   /** Minimum door clear opening width. ADA 404.2.3 (815 mm = 32 in). */
   minDoorClearWidthM: number
   /** Minimum door height. IBC 1010.1.1 (2.03 m = 80 in). */
   minDoorHeightM: number
-  /** Minimum clear aisle / corridor width. IBC 1005.1 (0.91 m = 36 in). */
-  minAisleWidthM: number
   /**
    * Turning space diameter for an accessible room. ADA 304.3 requires a
    * 1.5 m (60 in) clear circle inside bathrooms and other accessible rooms.
    */
   adaTurningDiameterM: number
-  /** Minimum fresh-air rate per person, L/s. ASHRAE 62.1. */
-  freshAirLsPerPerson: number
-  /** Kitchen intermittent exhaust, L/s. ASHRAE 62.1. */
+  /** Kitchen intermittent exhaust reference, L/s. ASHRAE 62.2. */
   kitchenExhaustLs: number
-  /** Bathroom intermittent exhaust, L/s. ASHRAE 62.1. */
+  /** Bathroom intermittent exhaust reference, L/s. ASHRAE 62.2. */
   bathroomExhaustLs: number
-  /** Default occupants per room kind. ASHRAE 62.1 default occupancy. */
+  /** Scenario occupancy assumptions; not code-prescribed. */
   occupantsPerKind: Record<string, number>
 }
 
 export const DEFAULT_THRESHOLDS: Thresholds = {
-  minHabitableAreaM2: 6.5,    // 70 sq ft per IBC 1208.1
-  minCeilingHeightM: 2.13,    // 7'-0" per IBC 1208.2
+  minHabitableAreaM2: 6.5,    // 70 sq ft per 2021 IRC R304.1
+  minHabitableDimensionM: 2.13, // 7'-0" per 2021 IRC R304.2
+  minCeilingHeightM: 2.13,    // 7'-0" per 2021 IRC R305.1
   minDoorClearWidthM: 0.81,   // 32 in per ADA 404.2.3
   minDoorHeightM: 2.03,       // 80 in per IBC 1010.1.1
-  minAisleWidthM: 0.91,       // 36 in per IBC 1005.1
   adaTurningDiameterM: 1.5,   // 60 in per ADA 304.3
-  freshAirLsPerPerson: 7.5,   // ASHRAE 62.1 Table 5.5.1 (residential)
-  kitchenExhaustLs: 25,       // ASHRAE 62.1 kitchen intermittent
-  bathroomExhaustLs: 10,      // ASHRAE 62.1 bathroom intermittent
+  kitchenExhaustLs: 50,       // ASHRAE 62.2 intermittent vented range hood
+  bathroomExhaustLs: 25,      // ASHRAE 62.2 intermittent local exhaust
   occupantsPerKind: {
     living: 3,
     kitchen: 2,

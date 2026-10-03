@@ -6,14 +6,14 @@ describe('StandardsBadge', () => {
   it('renders a code reference as data instead of React reserved ref metadata', () => {
     const html = renderToStaticMarkup(
       <StandardsBadge
-        codeRef="IBC 1208.1"
+        codeRef="2021 IRC R304.1"
         severity="info"
         name="Minimum Habitable Area"
         inline
       />,
     )
 
-    expect(html).toContain('IBC 1208.1')
+    expect(html).toContain('2021 IRC R304.1')
     expect(html).toContain('Minimum Habitable Area')
   })
 })

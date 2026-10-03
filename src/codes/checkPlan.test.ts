@@ -33,39 +33,45 @@ function door(over: Partial<Opening> = {}): Opening {
 }
 
 describe('standards library', () => {
-  it('has the four standards bodies (IBC, ASHRAE, ADA, ISO)', () => {
+  it('catalogues only the references checkPlan actually emits', () => {
     const bodies = new Set(Object.values(STANDARDS).map((s) => s.body))
-    expect(bodies).toEqual(new Set(['IBC', 'ASHRAE', 'ADA', 'ISO']))
+    expect(bodies).toEqual(new Set(['IRC', 'IBC', 'ASHRAE', 'ADA', 'MODEL']))
   })
 
   it('every standard ref matches the standard id format', () => {
     for (const [id, s] of Object.entries(STANDARDS)) {
       expect(s.ref).toBe(s.ref.toUpperCase().replace(' ', ' '))
       expect(s.name.length).toBeGreaterThan(8)
+      // MODEL rows encode the body as "MODEL" but the catalog id is "MODEL-…".
+      // Skip the body-key check there.
+      if (s.body === 'MODEL') continue
       expect(id).toContain(s.body)
     }
   })
 
   it('getStandard returns the standard for known ids and null for unknown', () => {
-    expect(getStandard('IBC-1208.1')?.body).toBe('IBC')
+    expect(getStandard('IRC-2021-R304.1')?.body).toBe('IRC')
+    expect(getStandard('MODEL-EGRESS')?.body).toBe('MODEL')
     expect(getStandard('nope')).toBeNull()
   })
 
   it('the default thresholds are physical residential values', () => {
     expect(DEFAULT_THRESHOLDS.minHabitableAreaM2).toBe(6.5)
+    expect(DEFAULT_THRESHOLDS.minHabitableDimensionM).toBeCloseTo(2.13)
     expect(DEFAULT_THRESHOLDS.minCeilingHeightM).toBeCloseTo(2.13)
     expect(DEFAULT_THRESHOLDS.minDoorClearWidthM).toBeCloseTo(0.81)
     expect(DEFAULT_THRESHOLDS.minDoorHeightM).toBeCloseTo(2.03)
-    expect(DEFAULT_THRESHOLDS.freshAirLsPerPerson).toBe(7.5)
+    expect(DEFAULT_THRESHOLDS.kitchenExhaustLs).toBe(50)
+    expect(DEFAULT_THRESHOLDS.bathroomExhaustLs).toBe(25)
   })
 })
 
-describe('checkPlan — area + ceiling rules (IBC 1208)', () => {
+describe('checkPlan — area + ceiling rules (IRC 2021 R304 + R305)', () => {
   it('flags a habitable room smaller than 6.5 m² as critical', () => {
     // 1.5m × 1.5m = 2.25 m² on a 14×10 m site (a tiny box)
     const tiny = withRooms([room({ id: 'a', kind: 'bedroom', x: 0, y: 0, w: 10, h: 10 })])
     const issues = checkPlan(tiny)
-    const areaIssue = issues.find((i) => i.ref === 'IBC-1208.1' && i.roomId === 'a')
+    const areaIssue = issues.find((i) => i.ref === 'IRC-2021-R304.1' && i.roomId === 'a')
     expect(areaIssue?.severity).toBe('critical')
   })
 
@@ -73,25 +79,25 @@ describe('checkPlan — area + ceiling rules (IBC 1208)', () => {
     // 14m × 14m would be way over. Use 1.4m × 4.7m = 6.58 m² (just over the threshold)
     const ok = withRooms([room({ id: 'a', kind: 'bedroom', x: 0, y: 0, w: 10, h: 53 })])
     const issues = checkPlan(ok)
-    expect(issues.find((i) => i.ref === 'IBC-1208.1' && i.roomId === 'a')).toBeUndefined()
+    expect(issues.find((i) => i.ref === 'IRC-2021-R304.1' && i.roomId === 'a')).toBeUndefined()
   })
 
   it('flags a 2.0 m ceiling in a habitable room as a warning', () => {
     const low = withRooms([room({ id: 'a', kind: 'living', wallHeight: 2.0 })])
     const issues = checkPlan(low)
-    const c = issues.find((i) => i.ref === 'IBC-1208.2' && i.roomId === 'a')
+    const c = issues.find((i) => i.ref === 'IRC-2021-R305.1' && i.roomId === 'a')
     expect(c?.severity).toBe('warning')
     expect(c?.fixAction).toEqual({ type: 'set_ceiling', roomId: 'a', meters: 2.13 })
   })
 
   it('does not flag a 2.7 m ceiling', () => {
     const ok = withRooms([room({ id: 'a', kind: 'living', wallHeight: 2.7 })])
-    expect(checkPlan(ok).find((i) => i.ref === 'IBC-1208.2')).toBeUndefined()
+    expect(checkPlan(ok).find((i) => i.ref === 'IRC-2021-R305.1')).toBeUndefined()
   })
 
   it('does not check ceiling for non-habitable rooms (terrace, bath)', () => {
     const bath = withRooms([room({ id: 'a', kind: 'bathroom', wallHeight: 2.0 })])
-    expect(checkPlan(bath).find((i) => i.ref === 'IBC-1208.2')).toBeUndefined()
+    expect(checkPlan(bath).find((i) => i.ref === 'IRC-2021-R305.1')).toBeUndefined()
   })
 })
 
@@ -129,11 +135,11 @@ describe('checkPlan — door + accessibility rules', () => {
   })
 })
 
-describe('checkPlan — egress connectivity (door graph, IBC 1003.3)', () => {
+describe('checkPlan — egress connectivity (door graph, MODEL-EGRESS)', () => {
   it('flags a habitable room with no door at all', () => {
     const plan = withRooms([room({ id: 'a', kind: 'bedroom', x: 0, y: 0, w: 50, h: 100 })])
     const issues = checkPlan(plan)
-    const egress = issues.find((i) => i.ref === 'IBC-1003.3' && i.roomId === 'a')
+    const egress = issues.find((i) => i.ref === 'MODEL-EGRESS' && i.roomId === 'a')
     expect(egress?.severity).toBe('critical')
     expect(egress?.fixAction).toEqual({ type: 'add_exterior_door', roomId: 'a' })
   })
@@ -144,7 +150,7 @@ describe('checkPlan — egress connectivity (door graph, IBC 1003.3)', () => {
       rooms: [room({ id: 'a', kind: 'bedroom', x: 0, y: 0, w: 50, h: 100 })],
       openings: [door({ id: 'd1', type: 'door', x: 25, y: 100, rotation: 0 })],
     }
-    expect(checkPlan(plan).find((i) => i.ref === 'IBC-1003.3' && i.roomId === 'a')).toBeUndefined()
+    expect(checkPlan(plan).find((i) => i.ref === 'MODEL-EGRESS' && i.roomId === 'a')).toBeUndefined()
   })
 
   it('flags a room whose only door leads deeper into a dead-end chain', () => {
@@ -159,8 +165,8 @@ describe('checkPlan — egress connectivity (door graph, IBC 1003.3)', () => {
       openings: [door({ id: 'd1', type: 'door', x: 50, y: 50, rotation: 90 })],
     }
     const issues = checkPlan(plan)
-    expect(issues.find((i) => i.ref === 'IBC-1003.3' && i.roomId === 'a')).toBeDefined()
-    expect(issues.find((i) => i.ref === 'IBC-1003.3' && i.roomId === 'b')).toBeDefined()
+    expect(issues.find((i) => i.ref === 'MODEL-EGRESS' && i.roomId === 'a')).toBeDefined()
+    expect(issues.find((i) => i.ref === 'MODEL-EGRESS' && i.roomId === 'b')).toBeDefined()
   })
 
   it('passes a room connected through an interior door to a room with an exterior door', () => {
@@ -175,33 +181,34 @@ describe('checkPlan — egress connectivity (door graph, IBC 1003.3)', () => {
         door({ id: 'd2', type: 'door', x: 75, y: 100, rotation: 0 }), // b → exterior
       ],
     }
-    expect(checkPlan(plan).find((i) => i.ref === 'IBC-1003.3')).toBeUndefined()
+    expect(checkPlan(plan).find((i) => i.ref === 'MODEL-EGRESS')).toBeUndefined()
   })
 })
 
 describe('checkPlan — ventilation info rows (aggregated)', () => {
-  it('flags a plan with rooms but no openings as critical (no fresh air path)', () => {
+  it('flags a plan with rooms but no openings as critical (no modeled air path)', () => {
     const plan = withRooms([
       room({ id: 'a', kind: 'living' }),
       room({ id: 'b', kind: 'kitchen' }),
     ])
     plan.openings = []
     const issues = checkPlan(plan)
-    const ash = issues.find((i) => i.ref === 'ASHRAE-62.1-RESIDENTIAL' && i.roomId === null)
-    expect(ash?.severity).toBe('critical')
+    const vent = issues.find((i) => i.ref === 'MODEL-VENTILATION' && i.roomId === null)
+    expect(vent?.severity).toBe('critical')
+    expect(vent?.title).toMatch(/operable air path/)
   })
 
-  it('emits an info-level fresh-air target once a window exists', () => {
+  it('emits an info-level ASHRAE 62.2 caveat once a window exists', () => {
     const plan: PlanState = {
       ...initialPlan,
       rooms: [room({ id: 'a', kind: 'living' }), room({ id: 'b', kind: 'bedroom' })],
       openings: [{ id: 'w1', type: 'window', x: 25, y: 0, rotation: 0 }],
     }
     const issues = checkPlan(plan)
-    const ash = issues.find((i) => i.ref === 'ASHRAE-62.1-RESIDENTIAL' && i.severity === 'info')
-    // The title carries the L/s figure; the body says the design consequence.
-    expect(ash?.title).toContain('L/s')
-    expect(ash?.title).toMatch(/\d+ occupants/)
+    const ash = issues.find((i) => i.ref === 'ASHRAE-62.2-WHOLE-DWELLING' && i.severity === 'info')
+    expect(ash?.title).toMatch(/Whole-dwelling ventilation needs more inputs/)
+    // The body carries the occupant count, not the title.
+    expect(ash?.body).toMatch(/\d+-occupant scenario/)
   })
 
   it('aggregates kitchen + bathroom exhaust into one row each, not per room', () => {
@@ -216,14 +223,14 @@ describe('checkPlan — ventilation info rows (aggregated)', () => {
       openings: [{ id: 'w1', type: 'window', x: 25, y: 0, rotation: 0 }],
     }
     const issues = checkPlan(plan)
-    expect(issues.filter((i) => i.ref === 'ASHRAE-62.1-KITCHEN')).toHaveLength(1)
-    expect(issues.filter((i) => i.ref === 'ASHRAE-62.1-BATHROOM')).toHaveLength(1)
-    const kitchenRow = issues.find((i) => i.ref === 'ASHRAE-62.1-KITCHEN')
+    expect(issues.filter((i) => i.ref === 'ASHRAE-62.2-KITCHEN')).toHaveLength(1)
+    expect(issues.filter((i) => i.ref === 'ASHRAE-62.2-BATHROOM')).toHaveLength(1)
+    const kitchenRow = issues.find((i) => i.ref === 'ASHRAE-62.2-KITCHEN')
     expect(kitchenRow?.title).toContain('Kitchen one')
     expect(kitchenRow?.title).toContain('Kitchen two')
   })
 
-  it('emits exactly one envelope info row regardless of window count', () => {
+  it('emits exactly one MODEL envelope info row regardless of window count', () => {
     const plan: PlanState = {
       ...initialPlan,
       rooms: [room({ id: 'a', kind: 'living' })],
@@ -233,7 +240,7 @@ describe('checkPlan — ventilation info rows (aggregated)', () => {
         { id: 'w3', type: 'window', x: 60, y: 0, rotation: 0 },
       ],
     }
-    expect(checkPlan(plan).filter((i) => i.ref === 'ASHRAE-90.1-ENVELOPE')).toHaveLength(1)
+    expect(checkPlan(plan).filter((i) => i.ref === 'MODEL-ENVELOPE')).toHaveLength(1)
   })
 })
 
@@ -314,7 +321,7 @@ describe('checkPlan — ADA 304.3 turning space', () => {
     const issues = checkPlan(plan)
     const ada = issues.find((i) => i.ref === 'ADA-304.3' && i.roomId === 'b1')
     expect(ada?.severity).toBe('warning')
-    expect(ada?.title).toMatch(/ADA turning circle/)
+    expect(ada?.title).toMatch(/ADA reference envelope/)
   })
 
   it('does not flag a bathroom wide enough for the turning circle', () => {
@@ -329,39 +336,27 @@ describe('checkPlan — ADA 304.3 turning space', () => {
   })
 })
 
-describe('checkPlan — IBC 1005.1 minimum aisle width', () => {
-  it('flags a long narrow room whose short side is below 36"', () => {
-    // On the default 14×10 site, w:5 h:50 = 0.7 m × 5.0 m = 7.1:1 ratio,
-    // short side 0.7 m below the 0.91 m aisle threshold.
+describe('checkPlan — IRC 2021 R304.2 minimum room width', () => {
+  it('flags a room whose short side is below 2.13 m (kitchens excepted)', () => {
+    // On the default 14×10 site, w:5 h:50 = 0.7 m × 5.0 m, narrow side 0.7 m.
     const plan = withRooms([room({ id: 'h1', kind: 'living', x: 0, y: 0, w: 5, h: 50 })])
     const issues = checkPlan(plan)
-    const aisle = issues.find((i) => i.ref === 'IBC-1005.1' && i.roomId === 'h1')
-    expect(aisle?.severity).toBe('warning')
+    const dim = issues.find((i) => i.ref === 'IRC-2021-R304.2' && i.roomId === 'h1')
+    expect(dim?.severity).toBe('warning')
   })
 
-  it('does not flag a room whose short side is wide enough', () => {
-    // 2 m × 5 m — short side above 0.91 m threshold
-    const plan = withRooms([room({ id: 'h1', kind: 'living', x: 0, y: 0, w: 14, h: 36 })])
-    expect(checkPlan(plan).find((i) => i.ref === 'IBC-1005.1' && i.roomId === 'h1')).toBeUndefined()
+  it('does not flag a room whose short side is at or above 2.13 m', () => {
+    // 2.8 m × 5 m — narrow side above the 2.13 m threshold
+    const plan = withRooms([room({ id: 'h1', kind: 'living', x: 0, y: 0, w: 20, h: 50 })])
+    expect(checkPlan(plan).find((i) => i.ref === 'IRC-2021-R304.2' && i.roomId === 'h1')).toBeUndefined()
   })
 
-  it('does not flag a square room regardless of size', () => {
-    const plan = withRooms([room({ id: 'h1', kind: 'living', w: 16, h: 16 })])
-    expect(checkPlan(plan).find((i) => i.ref === 'IBC-1005.1' && i.roomId === 'h1')).toBeUndefined()
+  it('does not flag kitchens regardless of narrow side (R304.2 excepts them)', () => {
+    const plan = withRooms([room({ id: 'k1', kind: 'kitchen', w: 8, h: 14 })])
+    expect(checkPlan(plan).find((i) => i.ref === 'IRC-2021-R304.2' && i.roomId === 'k1')).toBeUndefined()
   })
 })
 
-describe('checkPlan — IBC 1208.4 efficiency dwelling unit', () => {
-  it('emits an info row for studios at or above the habitable minimum', () => {
-    // 14 m × 14 m studio on a 14×14 site — way above 6.5 m²
-    const plan = withRooms([room({ id: 's1', kind: 'studio', w: 60, h: 60 })])
-    const issues = checkPlan(plan)
-    expect(issues.find((i) => i.ref === 'IBC-1208.4' && i.roomId === 's1')).toBeDefined()
-  })
-
-  it('does not emit EDU info for sub-threshold studios (already failed 1208.1)', () => {
-    const plan = withRooms([room({ id: 's1', kind: 'studio', w: 8, h: 8 })])
-    const issues = checkPlan(plan)
-    expect(issues.find((i) => i.ref === 'IBC-1208.4' && i.roomId === 's1')).toBeUndefined()
-  })
-})
+// The IBC 1208.4 efficiency-dwelling-unit info row was removed because it
+// could not be derived from the geometry alone. Studios are still covered by
+// IRC R304.1 (minimum area) and R304.2 (minimum room width).

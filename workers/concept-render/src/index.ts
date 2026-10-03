@@ -1,4 +1,6 @@
 import { repairTrace, type TracePlan } from './repairTrace'
+import { readJson, imageInput, siteDimension, traceOutput, InputError, IMAGE_TYPES } from './input'
+export { AiQuota } from './quota'
 
 export interface Env {
   GEMINI_API_KEY: string
@@ -6,19 +8,8 @@ export interface Env {
   /** Vision model for the plan trace. Kept in vars so a retired model is a config change, not a redeploy of code. */
   TRACE_MODEL?: string
   DAILY_IP_LIMIT?: string
-  RATE_LIMIT?: KVNamespace
-}
-
-interface RenderBody {
-  prompt?: string
-  locationLabel?: string
-  hour?: number
-}
-
-interface TraceBody {
-  image?: string
-  siteW?: number
-  siteH?: number
+  AI_QUOTA?: DurableObjectNamespace
+  DAILY_GLOBAL_LIMIT?: string
 }
 
 /**
@@ -54,7 +45,7 @@ function isBrowserCall(request: Request): boolean {
 /**
  * Gemini's failure bodies are JSON meant for a developer console. Passing them
  * straight through put a wall of quoted text in front of the user, so name the
- * failure instead. The technical body goes to the log, never to the screen.
+ * failure instead. Only the status is logged; upstream bodies may contain sensitive details.
  */
 function explainUpstream(status: number, detail: string): string {
   const rateLimited = status === 429 || /quota|rate limit|RESOURCE_EXHAUSTED/i.test(detail)
@@ -65,45 +56,45 @@ function explainUpstream(status: number, detail: string): string {
     return 'The AI service is busy right now. Wait a moment and use Try again.'
   }
   if (status === 401 || status === 403 || /API_KEY_INVALID|PERMISSION_DENIED/i.test(detail)) {
-    console.error('trace upstream auth failure', status, detail.slice(0, 500))
+    console.error('AI upstream error', status)
     return 'The AI service rejected its own credentials. This is a configuration fault, not yours — nothing was charged.'
   }
   if (status === 404 || /no longer available|is not found for API key|NOT_FOUND/i.test(detail)) {
-    console.error('trace upstream model unavailable', detail.slice(0, 500))
+    console.error('AI upstream error', status)
     return 'The AI service is temporarily unable to read images — the model it was pointed at is no longer served to new accounts. This is a configuration fault, not yours; nothing was charged.'
   }
   if (status === 400) {
-    console.error('trace upstream bad request', detail.slice(0, 500))
+    console.error('AI upstream error', status)
     return 'The AI service would not accept this image. Try a clearer, flatter photo of the sketch.'
   }
-  console.error('trace upstream failure', status, detail.slice(0, 500))
+  console.error('AI upstream error', status)
   return 'The AI service could not read that image right now. Try again, or trace the photo by hand with Manual underlay.'
 }
 
 function json(data: unknown, status = 200, cors: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', ...cors },
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...cors },
   })
 }
 
 /**
- * Per-IP daily cap. Fails CLOSED: if KV is unreachable the request is refused,
+ * Atomic per-network and global daily caps. If the coordinator is unreachable,
+ * the request is refused,
  * because an unbounded path to a paid key is worse than a temporarily broken
  * one. Both AI endpoints call this before spending anything.
  */
 async function rateLimit(env: Env, ip: string): Promise<boolean> {
-  if (!env.RATE_LIMIT) return false
-  const day = new Date().toISOString().slice(0, 10)
-  const key = `concept:${day}:${ip}`
-  const limit = Number(env.DAILY_IP_LIMIT || 20)
+  if (!env.AI_QUOTA) return false
   try {
-    const current = Number((await env.RATE_LIMIT.get(key)) || '0')
-    if (current >= limit) return false
-    await env.RATE_LIMIT.put(key, String(current + 1), { expirationTtl: 60 * 60 * 36 })
-    return true
-  } catch (error) {
-    console.error('rate limit unavailable, refusing to spend', error)
+    const day = new Date().toISOString().slice(0, 10)
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${day}:${ip}`))
+    const network = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('')
+    const stub = env.AI_QUOTA.get(env.AI_QUOTA.idFromName('ai-quota-v1'))
+    const response = await stub.fetch(`https://quota.internal/?network=${network}`, { method: 'POST' })
+    return response.status === 204
+  } catch {
+    console.error('AI quota unavailable; refusing upstream call')
     return false
   }
 }
@@ -128,44 +119,49 @@ export default {
     }
 
     const url = new URL(request.url)
+    if (url.pathname !== '/' && url.pathname !== '/trace') return json({ error: 'Not found' }, 404, cors)
+    let body: Record<string, unknown>
+    try { body = await readJson(request) } catch (error) {
+      return json({ error: error instanceof InputError ? error.message : 'Could not read request' }, error instanceof InputError ? error.status : 400, cors)
+    }
+    try {
     // AI floor-plan trace (vision → structured plan JSON).
-    if (url.pathname.endsWith('/trace')) {
-      return handleTrace(request, env, cors)
+    if (url.pathname === '/trace') {
+      return await handleTrace(request, env, cors, body)
     }
 
     // Default: concept photo generation.
-    return handleRender(request, env, cors)
+    return await handleRender(request, env, cors, body)
+    } catch (error) {
+      if (error instanceof InputError) return json({ error: error.message }, error.status, cors)
+      console.error('AI upstream failed without a usable response')
+      return json({ error: 'The AI service could not answer. Try again or use Manual underlay.' }, 502, cors)
+    }
   },
 }
 
-async function handleRender(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
+async function handleRender(request: Request, env: Env, cors: Record<string, string>, body: Record<string, unknown>): Promise<Response> {
   if (!env.GEMINI_API_KEY) {
     return json({ error: 'GEMINI_API_KEY is not configured on the worker' }, 500, cors)
   }
 
-  const ip = request.headers.get('CF-Connecting-IP') || 'unknown'
-  if (!(await rateLimit(env, ip))) {
-    return json({ error: 'Server daily render limit reached for this network' }, 429, cors)
-  }
-
-  let body: RenderBody
-  try {
-    body = (await request.json()) as RenderBody
-  } catch {
-    return json({ error: 'Invalid JSON body' }, 400, cors)
-  }
-
-  const prompt = (body.prompt || '').trim()
+  const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : ''
   if (prompt.length < 20 || prompt.length > 4000) {
     return json({ error: 'Prompt must be between 20 and 4000 characters' }, 400, cors)
   }
 
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown'
+  if (!(await rateLimit(env, ip))) {
+    return json({ error: 'Server daily AI limit reached for this network or app' }, 429, cors)
+  }
+
   const model = env.GEMINI_MODEL || 'gemini-3.8-flash-image'
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
 
   const upstream = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+    signal: AbortSignal.timeout(60000),
     body: JSON.stringify({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
@@ -192,11 +188,13 @@ async function handleRender(request: Request, env: Env, cors: Record<string, str
   }
 
   const parts = payload.candidates?.[0]?.content?.parts ?? []
+  if (!Array.isArray(parts)) throw new Error('Invalid upstream parts')
   const imagePart = parts.find((part) => part.inlineData?.data)
   if (!imagePart?.inlineData?.data) {
     return json({ error: 'Gemini returned no image. Try a shorter prompt.' }, 502, cors)
   }
 
+  if (!IMAGE_TYPES.has(imagePart.inlineData.mimeType ?? 'image/png') || typeof imagePart.inlineData.data !== 'string' || imagePart.inlineData.data.length > 16 * 1024 * 1024) throw new Error('Invalid upstream image')
   return json({
     imageBase64: imagePart.inlineData.data,
     mimeType: imagePart.inlineData.mimeType || 'image/png',
@@ -303,43 +301,26 @@ const TRACE_RESPONSE_SCHEMA = {
   required: ['rooms', 'openings', 'furniture', 'systems'],
 }
 
-async function handleTrace(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
+async function handleTrace(request: Request, env: Env, cors: Record<string, string>, body: Record<string, unknown>): Promise<Response> {
   if (!env.GEMINI_API_KEY) {
     return json({ error: 'GEMINI_API_KEY is not configured on the worker' }, 500, cors)
   }
 
+  const { mimeType, data: base64 } = imageInput(body.image)
+  const siteW = siteDimension(body.siteW, 14)
+  const siteH = siteDimension(body.siteH, 10)
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown'
   if (!(await rateLimit(env, ip))) {
-    return json({ error: 'Server daily AI limit reached for this network' }, 429, cors)
+    return json({ error: 'Server daily AI limit reached for this network or app' }, 429, cors)
   }
 
-  let body: TraceBody
-  try {
-    body = (await request.json()) as TraceBody
-  } catch {
-    return json({ error: 'Invalid JSON body' }, 400, cors)
-  }
-
-  const image = (body.image || '').trim()
-  // Expect a data URL: data:image/...;base64,....
-  const match = image.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/)
-  if (!match) {
-    return json({ error: 'A base64 image data URL is required' }, 400, cors)
-  }
-  const mimeType = match[1]
-  const base64 = match[2]
-  if (base64.length < 1000) {
-    return json({ error: 'Image too small to read a plan from' }, 400, cors)
-  }
-
-  const siteW = body.siteW && body.siteW > 0 ? body.siteW : 14
-  const siteH = body.siteH && body.siteH > 0 ? body.siteH : 10
   const visionModel = env.TRACE_MODEL || 'gemini-3.8-flash' // vision-capable, text output
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${visionModel}:generateContent?key=${env.GEMINI_API_KEY}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${visionModel}:generateContent`
 
   const upstream = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+    signal: AbortSignal.timeout(60000),
     body: JSON.stringify({
       contents: [
         {
@@ -380,7 +361,7 @@ async function handleTrace(request: Request, env: Env, cors: Record<string, stri
   let note = 'AI-read draft — verify walls and openings before costing.'
   if (jsonStart >= 0 && jsonEnd > jsonStart) {
     try {
-      parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1)) as TracePlan
+      parsed = traceOutput(JSON.parse(text.slice(jsonStart, jsonEnd + 1)))
     } catch {
       note = 'AI returned unparseable JSON — the image may not be a clear floor plan.'
     }
@@ -388,7 +369,7 @@ async function handleTrace(request: Request, env: Env, cors: Record<string, stri
     note = 'AI did not return a plan — the image may not be a recognizable floor plan.'
   }
 
-  if (!parsed) return json({ plan: null, note, draft: true }, 200, cors)
+  if (!parsed) return json({ plan: null, note: 'AI returned no usable plan. Try a clearer scan or use Manual underlay.', draft: true }, 200, cors)
   const repaired = repairTrace(parsed)
   return json({ plan: repaired, note: repaired.note ?? note, draft: true }, 200, cors)
 }

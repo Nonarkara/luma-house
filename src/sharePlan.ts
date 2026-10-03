@@ -10,15 +10,18 @@ import type { PlanAssemblies, EnvelopeAssemblies } from './types'
 // localStorage, a share link, or an imported project file.
 // ---------------------------------------------------------------------------
 
+export const MAX_PROJECT_BYTES = 2 * 1024 * 1024
+const COLLECTION_LIMITS = { rooms: 200, openings: 1000, furniture: 1000, walls: 2000 } as const
+
 const ROOM_KINDS: RoomKind[] = ['living', 'kitchen', 'bedroom', 'bathroom', 'studio', 'terrace']
 const FURNITURE_KINDS: Furniture['kind'][] = ['bed', 'sofa', 'dining', 'wardrobe', 'desk', 'wc']
 
 function num(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
+  return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 10000 ? value : null
 }
 
 function str(value: unknown): string | null {
-  return typeof value === 'string' && value.length > 0 ? value : null
+  return typeof value === 'string' && value.length > 0 && value.length <= 256 ? value : null
 }
 
 function sanitizeRoom(raw: unknown): Room | null {
@@ -139,6 +142,13 @@ export function sanitizePlan(raw: unknown): PlanState | null {
   if (typeof raw !== 'object' || raw === null) return null
   const candidate = raw as Record<string, unknown>
   if (!Array.isArray(candidate.rooms)) return null
+  for (const [key, max] of Object.entries(COLLECTION_LIMITS)) {
+    const rows = candidate[key]
+    if (!Array.isArray(rows)) continue
+    if (rows.length > max) return null
+    const ids = rows.map(row => row && typeof row === 'object' ? (row as Record<string, unknown>).id : undefined).filter(id => typeof id === 'string')
+    if (new Set(ids).size !== ids.length) return null
+  }
   const rooms = candidate.rooms.map(sanitizeRoom).filter((room): room is Room => room !== null)
   // Walls alone are a valid napkin: you draw the outline before any room is
   // closed. Only reject when neither survived sanitising.
@@ -198,7 +208,8 @@ export function encodePlanToHash(plan: PlanState): string {
 
 /** Inverse of encodePlanToHash. Returns null on any malformed input. */
 export function decodePlanFromHash(hash: string): PlanState | null {
-  const match = hash.match(/#plan=([A-Za-z0-9_-]+)/)
+  if (hash.length > Math.ceil(MAX_PROJECT_BYTES / 3) * 4 + 6) return null
+  const match = hash.match(/^#plan=([A-Za-z0-9_-]+)$/)
   if (!match) return null
   try {
     return sanitizePlan(JSON.parse(fromBase64Url(match[1])))
