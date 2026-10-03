@@ -12,7 +12,8 @@ designon.
 - Frontend default: same URL (overridable via `VITE_CONCEPT_API_URL`)
 - Deploy: `cd workers/concept-render && npx wrangler deploy`
   (the secret below is already set; you do not need to re-put it to deploy code)
-- Latest Worker version (2026-09-30): `be64c734-cd2d-4960-95a4-df46a2a6f285`
+- Latest Worker version (2026-10-03): `155ce425-1836-4329-ae07-f469ff0adb5f`
+  (KV rate limit → SQLite Durable Object `AI_QUOTA`; see the Quota section)
 
 ### Models
 
