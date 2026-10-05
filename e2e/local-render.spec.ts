@@ -21,7 +21,7 @@ test('renders locally with AI blocked, supports every palette and exports an act
   await expect(page.getByRole('button', { name: 'Shadows', exact: true })).toHaveAttribute('aria-pressed', 'true')
   const canvas = page.locator('.spatial3d-shell canvas')
   await expect(canvas).toBeVisible()
-  await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length)).toBeGreaterThan(10000)
+  await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   for (const theme of themes) {
     await page.getByLabel('Colour scheme', { exact: true }).selectOption(theme.id)
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id)
@@ -43,7 +43,7 @@ test('shadow toggle changes rendered pixels and wireframe remains optional', asy
   await page.goto(`/#plan=${hash}`)
   await page.getByRole('button', { name: 'Spatial', exact: true }).click()
   const canvas = page.locator('.spatial3d-shell canvas')
-  await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length)).toBeGreaterThan(10000)
+  await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   // Default orbit camera is stationary: these pixels must change because of
   // lighting, not a camera animation or the toolbar's pressed state.
   await page.waitForTimeout(300)
@@ -64,7 +64,7 @@ test('sun controls change local geometry lighting without an API request', async
   await page.goto(`/#plan=${hash}`)
   await page.getByRole('button', { name: 'Renders', exact: true }).click()
   const canvas = page.locator('.spatial3d-shell canvas')
-  await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length)).toBeGreaterThan(10000)
+  await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   const day = await canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL())
   await page.context().setOffline(true)
   const adjust = page.getByRole('button', { name: 'Adjust', exact: true })
@@ -72,7 +72,48 @@ test('sun controls change local geometry lighting without an API request', async
   const slider = page.getByLabel('Sun time of day')
   await slider.focus()
   await slider.press('End')
-  await expect(slider).toHaveValue('20')
+  await expect(slider).toHaveValue('24')
   await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL())).not.toBe(day)
   expect(calls).toEqual([])
+})
+
+test('the GPU rests while idle and redraws when the sun changes', async ({ page }) => {
+  await page.addInitScript(() => {
+    const target = window as Window & { studyDraws?: number }
+    target.studyDraws = 0
+    for (const method of ['drawArrays', 'drawElements'] as const) {
+      const original = WebGL2RenderingContext.prototype[method]
+      // Instrument actual GPU drawing, without changing app behavior.
+      WebGL2RenderingContext.prototype[method] = function (...args: never[]) {
+        target.studyDraws = (target.studyDraws ?? 0) + 1
+        return (original as (...values: never[]) => void).apply(this, args)
+      }
+    }
+  })
+  const draws = () => page.evaluate(() => (window as Window & { studyDraws?: number }).studyDraws ?? 0)
+  await page.goto('/#plan=' + encodePlanToHash({ ...plan, site: { w: 30, h: 20, unit: 1 } }))
+  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await expect.poll(draws).toBeGreaterThan(0)
+  await page.waitForTimeout(1500)
+  const idle = await draws()
+  await page.waitForTimeout(600)
+  expect(await draws()).toBe(idle)
+  const adjust = page.getByRole('button', { name: 'Adjust', exact: true })
+  if (await adjust.isVisible()) await adjust.click()
+  await page.getByLabel('Sun time of day').focus()
+  await page.getByLabel('Sun time of day').press('ArrowRight')
+  await expect.poll(draws).toBeGreaterThan(idle)
+  await page.getByRole('button', { name: 'Tour', exact: true }).click()
+  await page.waitForTimeout(3500)
+  const tourIdle = await draws()
+  await page.waitForTimeout(600)
+  expect(await draws()).toBe(tourIdle)
+  await page.getByRole('button', { name: 'Exit Guided Tour', exact: true }).click()
+  await page.getByRole('button', { name: 'Axonometric', exact: true }).click()
+  await page.waitForTimeout(2500)
+  await page.getByRole('button', { name: 'Walk at 1.6 m', exact: true }).click()
+  await page.waitForTimeout(1200)
+  const walkingIdle = await draws()
+  await page.waitForTimeout(600)
+  expect(await draws()).toBe(walkingIdle)
 })

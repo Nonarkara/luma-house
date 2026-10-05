@@ -1,3 +1,6 @@
+import { clockLabel } from '../location/solar'
+import { CityPicker } from './CityPicker'
+import type { ProjectLocation } from '../types'
 import { openingDimensions } from '../openingGeometry'
 import React from 'react'
 import {
@@ -83,9 +86,8 @@ export interface InspectorProps {
   applyVariant: (index: number) => void
   patches: SunPatch[]
   directSunM2: number
-  location: string
-  setLocation: (loc: string) => void
-  locations: Record<string, { label: string, latitude: number }>
+  projectLocation: ProjectLocation
+  setProjectLocation: (location: ProjectLocation) => void
   hour: number
   setHour: (hour: number) => void
   day: number
@@ -150,9 +152,8 @@ export const Inspector = React.memo(function Inspector({
   applyVariant,
   patches,
   directSunM2,
-  location,
-  setLocation,
-  locations,
+  projectLocation,
+  setProjectLocation,
   hour,
   setHour,
   day,
@@ -212,8 +213,8 @@ export const Inspector = React.memo(function Inspector({
 
   const directSunPercent = Math.round((100 * directSunM2) / Math.max(1, budget.area))
   const brief = buildDesignBrief(plan, climateResult, styleKeywords)
-  const lat = locations[location as keyof typeof locations]?.latitude ?? 13.7563
-  const locationLabel = locations[location as keyof typeof locations]?.label ?? location
+  const lat = projectLocation.latitude
+  const locationLabel = projectLocation.label
 
   const calibrateField = (axis: 'w' | 'h', value: number) => {
     if (!Number.isFinite(value) || value <= 0) return
@@ -612,24 +613,17 @@ export const Inspector = React.memo(function Inspector({
               <p>Estimated from {patches.length} window{patches.length === 1 ? '' : 's'} at this hour. Diffuse light not included.</p>
             </div>
           </section>
-          <SunChart latitude={lat} day={day} hour={hour} locationLabel={locationLabel} />
+          <SunChart location={projectLocation} latitude={lat} day={day} hour={hour} locationLabel={locationLabel} />
           <section className="panel-section">
-            <label className="field-label">
-              Project location
-              <select value={location} onChange={(event) => setLocation(event.target.value)}>
-                {Object.keys(locations).map((item) => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </select>
-            </label>
+            <CityPicker location={projectLocation} onChange={setProjectLocation} />
             <label className="range-label">
-              <span><strong>Time of day</strong><b>{hour}:00</b></span>
-              <input type="range" min="6" max="18" value={hour} onChange={(event) => setHour(Number(event.target.value))} />
+              <span><strong>Time of day</strong><b>{clockLabel(hour)}</b></span>
+              <input aria-label="Inspector sun time" type="range" min="0" max="24" step="0.25" value={hour} onChange={(event) => setHour(Number(event.target.value))} />
             </label>
             <div className="season-buttons" aria-label="Season presets">
-              <button type="button" className={day === 355 ? 'active' : ''} onClick={() => setDay(355)}>Winter solstice</button>
+              <button type="button" className={day === 355 ? 'active' : ''} onClick={() => setDay(355)}>December solstice</button>
               <button type="button" className={day === 80 ? 'active' : ''} onClick={() => setDay(80)}>Equinox</button>
-              <button type="button" className={day === 172 ? 'active' : ''} onClick={() => setDay(172)}>Summer solstice</button>
+              <button type="button" className={day === 172 ? 'active' : ''} onClick={() => setDay(172)}>June solstice</button>
             </div>
             <label className="range-label">
               <span><strong>Day of year</strong><b>{day}</b></span>

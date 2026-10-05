@@ -13,7 +13,7 @@ are all still `luma-house` for deployment inertia. Do not "fix" the mismatch.
 
 - `npm install`
 - `npm run dev` — Vite dev server on :5173
-- `npm test` — vitest, 312 cases across 44 files
+- `npm test` — vitest, 327 cases across 47 files
 - `npm run lint` — ESLint
 - `npm run build` — `tsc -b` then the production bundle
 - `npm run preview` — serve the built bundle
@@ -31,6 +31,20 @@ tokens in `src/styles.css`. 3D is `@react-three/fiber` + `@react-three/drei` +
 `three`, lazy-loaded so the 3D chunk does not block first paint. State is
 React; persistence is `localStorage` plus a base64 URL-hash share link. There
 is no backend other than the AI worker.
+
+## Worldwide sun and rendering
+
+The primary perspective is local Three.js geometry, not a generated photo.
+Use demand frames: idle GPU must rest, camera presets must settle within
+OrbitControls limits, and walking suspends preset interpolation. Fixed concept
+photos stay in the labeled references section.
+
+City search uses Open-Meteo / GeoNames; `PlanState.location` stores latitude,
+longitude and IANA zone. Chart and perspective use SunCalc2 through
+`src/location/solar.ts`, interpreted in the city's civil time. DST gaps advance
+with an explanation and repeated hours use the first occurrence. Keep the
+SunCalc BSD notice in `public/licenses/suncalc.txt`. Preserve chosen locations
+through save/share/import, trace acceptance and layout changes.
 
 ## The napkin vocabulary
 

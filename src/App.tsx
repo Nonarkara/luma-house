@@ -1,3 +1,8 @@
+import { CityPicker } from './components/CityPicker'
+import { SunChart } from './canvas/SunChart'
+import { starterLocations } from './location/locations'
+import { citySunPosition, clockLabel, normalizedCivilHour } from './location/solar'
+import type { ProjectLocation } from './types'
 import { readTheme, saveTheme } from './design/themes'
 import { ThemePicker } from './components/ThemePicker'
 import { traceSiteFromImage } from './concept/reviewTrace'
@@ -16,13 +21,12 @@ import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
-import { calibrateSiteFromRoom, defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureRectFor, furnitureSpecFor, roomAreaFor, roomOverlaps, siteOf, solarPosition, sunPatches, locations } from './plan'
+import { calibrateSiteFromRoom, defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureRectFor, furnitureSpecFor, roomAreaFor, roomOverlaps, siteOf, sunPatches } from './plan'
 import { interiorBoq } from './boq/interiorBoq'
 import { tracePlanFromImage } from './concept/tracePlan'
 import type { SiteSpec } from './types'
 import {
   CHINA_PROJECT_KEY,
-  CHINA_PROJECT_LOCATION,
   CHINA_PROJECT_NAME,
   calculateChinaApartmentBudget,
   chinaApartmentPlan,
@@ -103,7 +107,7 @@ function readSavedPlan(): PlanState {
     const saved = localStorage.getItem(CHINA_PROJECT_KEY)
     if (!saved) return blankPlan()
     const next = sanitizePlan(JSON.parse(saved)) ?? blankPlan()
-    if (isStockDemo(next)) return blankPlan()
+    if (isStockDemo(next) && !next.location) return blankPlan()
     return next
   } catch {
     return blankPlan()
@@ -126,7 +130,9 @@ function App() {
   const [rulerArmed, setRulerArmed] = useState(false)
   const [rulerLine, setRulerLine] = useState<NapkinCalibrationLine | null>(null)
   const [rulerMeters, setRulerMeters] = useState('')
-  const [location, setLocation] = useState<string>(CHINA_PROJECT_LOCATION)
+  const projectLocation = plan.location ?? starterLocations[0]
+  const location = projectLocation.name
+  const [locationOpen, setLocationOpen] = useState(false)
   const [styleKeywords, setStyleKeywords] = useState<string>(() => readString('style-keywords:shanghai-50', 'luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
   const [hour, setHour] = useState(10)
   const [day, setDay] = useState(355)
@@ -137,6 +143,13 @@ function App() {
   const [sketchUrl, setSketchUrl] = useState<string | null>(null)
   const [assistantText, setAssistantText] = useState('')
   const [toast, setToast] = useState<string | null>(null)
+  useEffect(() => {
+    const actual = normalizedCivilHour(projectLocation, day, hour)
+    if (actual === hour) return
+    if (actual > 24) { setDay(current => current + 1); setHour(actual - 24) }
+    else setHour(actual)
+    setToast(`That clock time is skipped by daylight saving in ${projectLocation.name}. Showing ${clockLabel(actual > 24 ? actual - 24 : actual)}.`)
+  }, [projectLocation, day, hour])
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [snapGrid, setSnapGrid] = useState(true)
@@ -150,7 +163,7 @@ function App() {
   // The gate used to open on top of the incoming plan and its biggest button
   // wiped it: 5 rooms to 0, on phone and desktop alike. The gate is for
   // arrivals with nothing, so it stays out of the way when there is a plan.
-  const [welcomeOpen, setWelcomeOpen] = useState(() => !readWelcomeDismissed() && !decodePlanFromHash(window.location.hash))
+  const [welcomeOpen, setWelcomeOpen] = useState(() => !readWelcomeDismissed() && readSavedPlan().rooms.length === 0 && !decodePlanFromHash(window.location.hash))
   const [tourChapterIndex, setTourChapterIndex] = useState<number | null>(null)
   const [scenariosOpen, setScenariosOpen] = useState(false)
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
@@ -193,7 +206,7 @@ function App() {
 
   const budget = useMemo(() => calculateChinaApartmentBudget(plan), [plan])
   const site = useMemo<SiteSpec>(() => siteOf(plan), [plan])
-  const sun = useMemo(() => solarPosition(locations[location as keyof typeof locations].latitude, day, hour), [location, day, hour])
+  const sun = useMemo(() => citySunPosition(projectLocation, day, hour), [projectLocation, day, hour])
   const patches = useMemo(() => sunPatches(plan, sun.azimuth, sun.altitude), [plan, sun.azimuth, sun.altitude])
   const directSunM2 = Math.min(budget.area, patches.reduce((sum, patch) => sum + patch.areaM2, 0))
   const heatFlow = useMemo(
@@ -244,11 +257,11 @@ function App() {
   const furnitureConflicts = useMemo(() => furnitureDoorConflicts(plan.furniture, plan.openings, site), [plan.furniture, plan.openings, site])
   const furnitureItem = useMemo(() => plan.furniture.find((item) => item.id === selectedFurniture), [plan.furniture, selectedFurniture])
   const climateResult = useMemo<AnalysisResult>(
-    () => analyze({ plan, location: locations[location as keyof typeof locations] }),
-    [plan, location],
+    () => analyze({ plan, location: projectLocation }),
+    [plan, projectLocation],
   )
   const codeIssues = useMemo(() => checkPlan(plan), [plan])
-  const energySimulation = useMemo(() => simulateEnergy(plan, locations[location as keyof typeof locations]?.latitude ?? 31.23), [plan, location])
+  const energySimulation = useMemo(() => simulateEnergy(plan, projectLocation.latitude), [plan, projectLocation])
   const airQualityReport = useMemo(() => analyzeAirQuality(plan), [plan])
   const carbon = useMemo(() => estimateApartmentCarbon(plan), [plan])
   const overlaps = useMemo(() => roomOverlaps(plan.rooms), [plan.rooms])
@@ -976,7 +989,7 @@ function App() {
 
   // Start from a truly blank napkin — empty dotted canvas.
   const startBlank = useCallback(() => {
-    commit(blankPlan(), 'Start blank canvas')
+    commit({ ...blankPlan(), location: projectLocation }, 'Start blank canvas')
     setSelectedRoom(null)
     setSelectedOpening(null)
     setSelectedFurniture(null)
@@ -985,7 +998,7 @@ function App() {
     setTraceNote(null)
     setStyleKeywords('')
     setToast('Blank canvas — draw a room or upload a plan to trace')
-  }, [commit, resetView])
+  }, [commit, resetView, projectLocation])
 
   // Adjustable scale: change the meters represented by one grid cell.
   const setSiteScale = useCallback((unit: number) => {
@@ -1073,7 +1086,7 @@ function App() {
   }, [isTracing, quotaLeft, startTrace])
   const acceptTrace = (next: PlanState) => {
     if (!pendingTrace || isTracing) return
-    commit(next, 'Accept calibrated trace')
+    commit({ ...next, location: projectLocation }, 'Accept calibrated trace')
     setSketchUrl(pendingTrace.image)
     setSelectedRoom(next.rooms[0]?.id ?? null)
     setSelectedOpening(null)
@@ -1099,7 +1112,7 @@ function App() {
     try {
       const result = await generateConceptPhoto({
         plan,
-        locationLabel: locations[location as keyof typeof locations].label,
+        locationLabel: projectLocation.label,
         hour,
         styleKeywords,
       })
@@ -1111,7 +1124,7 @@ function App() {
     } finally {
       setIsRendering(false)
     }
-  }, [hour, isRendering, location, plan, quotaLeft, styleKeywords])
+  }, [hour, isRendering, projectLocation, plan, quotaLeft, styleKeywords])
 
   const runQuickAction = useCallback(() => {
     const prompt = assistantText.trim().toLowerCase()
@@ -1154,7 +1167,7 @@ function App() {
   }, [addRoom, assistantText, commit, plan.rooms, runConceptRender, selectedRoom, site])
 
   const exportPlan = useCallback(() => {
-    const blob = new Blob([JSON.stringify({ project: projectTitle, location: locations[location as keyof typeof locations], orientation: 'North up', exportedAt: new Date().toISOString(), plan, budget, carbon, lightingChannels: chinaLightingChannels }, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify({ project: projectTitle, location: projectLocation, orientation: 'North up', exportedAt: new Date().toISOString(), plan, budget, carbon, lightingChannels: chinaLightingChannels }, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
@@ -1162,7 +1175,7 @@ function App() {
     anchor.click()
     URL.revokeObjectURL(url)
     setToast('Project file exported')
-  }, [budget, carbon, isAuthoredSample, location, plan, projectTitle])
+  }, [budget, carbon, isAuthoredSample, projectLocation, plan, projectTitle])
 
   const viewportStyle = useMemo(() => ({
     transform: `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`,
@@ -1195,7 +1208,7 @@ function App() {
         onSetWallHeight={setWallHeight}
         hour={hour}
         day={day}
-        locationLabel={locations[location as keyof typeof locations].label}
+        locationLabel={projectLocation.label}
         ghost={isEmpty}
         tourWaypoint={tourChapterIndex !== null ? tourChapters[tourChapterIndex]?.camera : null}
         walkMode={walkMode}
@@ -1212,7 +1225,7 @@ function App() {
     <div className="app-shell">
       <input ref={traceFileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={runTrace} hidden />
       {presetOpen && <LayoutPresetDialog onClose={() => setPresetOpen(false)} onApply={next => {
-        commit(next, 'Apply layout preset')
+        commit({ ...next, location: projectLocation }, 'Apply layout preset')
         setSelectedRoom(next.rooms[0]?.id ?? null)
         setSelectedOpening(null)
         setSelectedFurniture(null)
@@ -1244,13 +1257,19 @@ function App() {
             <div>
               <p className="eyebrow">Drawing studio <span>/</span> {location} · north up</p>
               <h1>{projectTitle}</h1>
+              <button type="button" className="location-toggle" aria-expanded={locationOpen} onClick={() => setLocationOpen(open => !open)}><MapPin /> {projectLocation.label} · Change city</button>
             </div>
             <div className="stage-meta">
-              <span><MapPin /> {locations[location as keyof typeof locations].label}</span>
               <span><Ruler /> {budget.area.toFixed(1)} m²</span>
             </div>
             <ThemePicker theme={theme} onChange={next => { saveTheme(next); setTheme(next) }} />
           </div>
+
+          {locationOpen && <section className="location-workspace" aria-label="Project location and sun chart">
+            <button className="location-close" type="button" onClick={() => setLocationOpen(false)}>Close city search</button>
+            <CityPicker location={projectLocation} onChange={(next: ProjectLocation) => commit(current => ({ ...current, location: next }), 'Change project location')} />
+            <SunChart latitude={projectLocation.latitude} location={projectLocation} day={day} hour={hour} locationLabel={projectLocation.label} />
+          </section>}
 
           <JourneyRail
             stages={journey.stages}
@@ -1371,7 +1390,8 @@ function App() {
                 plan={plan}
                 sun={sun}
                 conceptImages={conceptImages}
-                localView={<>{localSpatialView}{!isEmpty && localLightControls}</>}
+                localView={localSpatialView}
+                localControls={!isEmpty && localLightControls}
                 onRequestConcept={() => void runConceptRender()}
                 isRendering={isRendering}
                 quotaLeft={quotaLeft}
@@ -1602,9 +1622,8 @@ function App() {
           applyVariant={applyVariant}
           patches={patches}
           directSunM2={directSunM2}
-          location={location}
-          setLocation={setLocation}
-          locations={locations}
+          projectLocation={projectLocation}
+          setProjectLocation={next => commit(current => ({ ...current, location: next }), 'Change project location')}
           hour={hour}
           setHour={setHour}
           day={day}
@@ -1683,8 +1702,8 @@ function App() {
           scenarios={CLIMATE_SCENARIOS}
           activeScenarioId={activeScenarioId}
           plan={plan}
-          latitude={locations[location as keyof typeof locations].latitude}
-          locationLabel={locations[location as keyof typeof locations].label}
+          latitude={projectLocation.latitude}
+          locationLabel={projectLocation.label}
           onSelectScenario={(scenario) => {
             setActiveScenarioId(scenario.id)
             setDay(scenario.params.day)

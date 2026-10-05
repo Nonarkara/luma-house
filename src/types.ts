@@ -82,7 +82,17 @@ export interface SiteSpec {
   unit: number
 }
 
+export interface ProjectLocation {
+  name: string
+  label: string
+  latitude: number
+  longitude: number
+  timezone: string
+}
+
 export interface PlanState {
+  /** Coordinates and civil time zone travel with saved, imported and shared drawings. */
+  location?: ProjectLocation
   rooms: Room[]
   openings: Opening[]
   furniture: Furniture[]

@@ -1,3 +1,4 @@
+import { clockLabel } from '../location/solar'
 import { themeTokens, type StudioTheme } from '../design/themes'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
@@ -444,7 +445,7 @@ function SunLight({ azimuth, altitude, site, shadows }: { azimuth: number; altit
         position={position}
         intensity={isNight ? 0 : 2.2}
         castShadow={!isNight && shadows}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0001}
         shadow-normalBias={0.025}
         shadow-camera-near={0.1}
@@ -517,53 +518,50 @@ function HeightHandle({
 
 /** Preserve the same drawing field on narrow canvases, rather than cropping it. */
 function ResponsiveCamera({ walking }: { walking: boolean }) {
-  const { camera, size } = useThree()
+  const { camera, size, invalidate } = useThree()
   useEffect(() => {
     if (!(camera instanceof THREE.PerspectiveCamera)) return
     camera.zoom = walking ? 1 : Math.min(1, size.width / Math.max(1, size.height) / 2)
     camera.updateProjectionMatrix()
-  }, [camera, size.width, size.height, walking])
+    invalidate()
+  }, [camera, size.width, size.height, walking, invalidate])
   return null
 }
 
 function CameraController({
+  walking,
   preset,
   waypoint,
   controlsRef,
 }: {
+  walking: boolean
   preset: CameraPreset
   waypoint?: CameraWaypoint | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   controlsRef: React.RefObject<any>
 }) {
-  const { camera } = useThree()
-
+  const { camera, invalidate } = useThree()
+  useEffect(() => { invalidate() }, [preset, waypoint, walking, invalidate])
   useFrame(() => {
-    if (waypoint) {
-      const targetPos = new THREE.Vector3(...waypoint.position)
-      const targetLook = new THREE.Vector3(...waypoint.target)
-      camera.position.lerp(targetPos, 0.08)
-      if (controlsRef.current?.target) {
-        controlsRef.current.target.lerp(targetLook, 0.08)
-        controlsRef.current.update()
-      }
-      if (camera instanceof THREE.PerspectiveCamera) {
-        camera.fov += (waypoint.fov - camera.fov) * 0.08
-        camera.updateProjectionMatrix()
-      }
-    } else if (preset === 'axonometric') {
-      camera.position.lerp(new THREE.Vector3(16, 16, 16), 0.08)
-      if (controlsRef.current?.target) {
-        controlsRef.current.target.lerp(new THREE.Vector3(0, 1, 0), 0.08)
-        controlsRef.current.update()
-      }
-    } else if (preset === 'topdown') {
-      camera.position.lerp(new THREE.Vector3(0, 24, 0.001), 0.08)
-      if (controlsRef.current?.target) {
-        controlsRef.current.target.lerp(new THREE.Vector3(0, 0, 0), 0.08)
-        controlsRef.current.update()
-      }
+    if (walking) return
+    const position = waypoint?.position ?? (preset === 'axonometric' ? [16, 16, 16] : preset === 'topdown' ? [0, 24, 0.001] : null)
+    if (!position) return
+    const targetPos = new THREE.Vector3(...position as [number, number, number])
+    const targetLook = new THREE.Vector3(...(waypoint?.target ?? (preset === 'topdown' ? [0, 0, 0] : [0, 1, 0])) as [number, number, number])
+    const moving = camera.position.distanceTo(targetPos) > 0.005 ||
+      (controlsRef.current?.target?.distanceTo(targetLook) ?? 0) > 0.005 ||
+      (waypoint && camera instanceof THREE.PerspectiveCamera && Math.abs(camera.fov - waypoint.fov) > 0.01)
+    if (!moving) return
+    camera.position.lerp(targetPos, 0.08)
+    if (controlsRef.current?.target) {
+      controlsRef.current.target.lerp(targetLook, 0.08)
+      controlsRef.current.update()
     }
+    if (waypoint && camera instanceof THREE.PerspectiveCamera) {
+      camera.fov += (waypoint.fov - camera.fov) * 0.08
+      camera.updateProjectionMatrix()
+    }
+    invalidate()
   })
 
   return null
@@ -580,7 +578,7 @@ function WalkController({
   site: SiteSpec
   selectedRoom: string | null
 }) {
-  const { camera } = useThree()
+  const { camera, invalidate } = useThree()
   const pressed = useRef(new Set<string>())
   const direction = useRef(new THREE.Vector3())
 
@@ -595,16 +593,23 @@ function WalkController({
       camera.position.set(0, 1.6, 0)
     }
 
-    const onKeyDown = (event: KeyboardEvent) => activeKeys.add(event.code)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code) || (event.target instanceof HTMLElement && (event.target.matches('input, textarea, select') || event.target.isContentEditable))) return
+      activeKeys.add(event.code); invalidate()
+    }
     const onKeyUp = (event: KeyboardEvent) => activeKeys.delete(event.code)
     window.addEventListener('keydown', onKeyDown)
+    const onBlur = () => activeKeys.clear()
     window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
+    invalidate()
     return () => {
       activeKeys.clear()
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
     }
-  }, [active, camera, plan.rooms, selectedRoom, site])
+  }, [active, camera, plan.rooms, selectedRoom, site, invalidate])
 
   useFrame((_state, delta) => {
     if (!active) return
@@ -615,12 +620,13 @@ function WalkController({
       camera.position,
       direction.current,
       pressed.current,
-      delta * 2.2,
+      Math.min(delta, 0.05) * 2.2,
       { halfWidth: site.w / 2, halfDepth: site.h / 2 },
     )
     camera.position.x = next.x
     camera.position.z = next.z
     camera.position.y = 1.6
+    if (pressed.current.size > 0) invalidate()
   })
 
   return null
@@ -816,6 +822,7 @@ export default function Spatial3D({
         shadows={{ type: THREE.PCFShadowMap }}
         gl={{ antialias: true, preserveDrawingBuffer: true }}
         dpr={1}
+        frameloop="demand"
         camera={{ position: [12, 9, 12], fov: 45 }}
         onPointerMissed={() => onSelectRoom(null)}
       >
@@ -823,6 +830,7 @@ export default function Spatial3D({
         <SunLight azimuth={sunAzimuth} altitude={sunAltitude} site={site} shadows={showShadows} />
         <ResponsiveCamera walking={walkMode} />
         <CameraController
+          walking={walkMode}
           preset={preset}
           waypoint={tourWaypoint}
           controlsRef={controlsRef}
@@ -836,9 +844,9 @@ export default function Spatial3D({
             ref={controlsRef}
             makeDefault
             enableDamping
-            maxPolarAngle={Math.PI * 0.49}
-            minDistance={3}
-            maxDistance={40}
+            maxPolarAngle={tourWaypoint ? Math.PI : Math.PI * 0.49}
+            minDistance={tourWaypoint ? 0.1 : 3}
+            maxDistance={Math.max(40, Math.max(site.w, site.h) * 3)}
             target={[0, 1, 0]}
           />
         )}
@@ -918,7 +926,7 @@ export default function Spatial3D({
         <span className="sun-orb" style={{ opacity: sunAltitude > 0 ? 1 : 0.25 }} />
         <div>
           <small>Local geometry · no AI call · day {day}</small>
-          <strong>{hour}:00 · {sunAltitude.toFixed(1)}° altitude</strong>
+          <strong>{clockLabel(hour)} · {sunAltitude.toFixed(1)}° altitude</strong>
           <em>{sunAzimuth.toFixed(1)}° azimuth · {locationLabel}</em>
         </div>
       </div>

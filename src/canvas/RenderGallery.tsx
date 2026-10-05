@@ -95,23 +95,29 @@ export const RenderGallery = React.memo(function RenderGallery({
   sun,
   conceptImages,
   localView,
+  localControls,
 }: {
   plan: PlanState
   sun: { altitude: number; azimuth: number }
   conceptImages: string[]
   localView: React.ReactNode
+  localControls: React.ReactNode
   onRequestConcept: () => void
   isRendering: boolean
   quotaLeft: number
 }) {
   const views: Array<{ id: ViewId; title: string; note: string; icon: typeof Layers3 }> = [
     { id: 'wireframe', title: 'Your space + light', note: 'Interactive · local · no AI call', icon: Layers3 },
+    { id: 'massing', title: 'Live 3D massing', note: 'Computed from your drawing', icon: Layers3 },
+    { id: 'sunlit', title: 'Sun direction diagram', note: `${sun.altitude.toFixed(0)}° altitude · schematic`, icon: Sun },
+  ]
+  const references = [
     { id: 'interior', title: 'South living room', note: 'Custom elm · winter 10:00', icon: PanelsTopLeft },
     { id: 'joinery', title: 'Joinery detail', note: 'Made-to-measure, not flat-pack', icon: LampDesk },
-    { id: 'massing', title: 'Live 3D massing', note: 'Computed from your drawing', icon: Layers3 },
-    { id: 'sunlit', title: 'Solar volume', note: `${sun.altitude.toFixed(0)}° altitude`, icon: Sun },
     { id: 'night', title: 'Tea scene', note: '2700 K · L05 at 78%', icon: Moon },
   ]
+  const [referenceIndex, setReferenceIndex] = useState(0)
+  const reference = references[referenceIndex]
   const [activeIndex, setActiveIndex] = useState(0)
   const active = views[activeIndex]
   const ActiveIcon = active.icon
@@ -126,13 +132,6 @@ export const RenderGallery = React.memo(function RenderGallery({
         {active.id === 'wireframe' && localView}
         {active.id === 'massing' && <MassingFrame plan={plan} sun={sun} />}
         {active.id === 'sunlit' && <MassingFrame plan={plan} sun={sun} warm />}
-        {(active.id === 'interior' || active.id === 'joinery' || active.id === 'night') && (
-          <img
-            className={`concept-hero authored-interior ${active.id}`}
-            src={conceptImages[0] ?? '/assets/shanghai-apartment-concept.png'}
-            alt={`${active.title} architectural concept visualization`}
-          />
-        )}
         {active.id !== 'wireframe' && <div className="render-meta">
           <span><ActiveIcon /></span>
           <div>
@@ -147,6 +146,7 @@ export const RenderGallery = React.memo(function RenderGallery({
           <button type="button" onClick={() => move(1)} aria-label="Next view"><ChevronRight /></button>
         </div>
       </div>
+      {active.id === 'wireframe' && <div className="render-local-controls">{localControls}</div>}
       <div className="render-thumbs">
         {views.map((item, index) => {
           const Icon = item.icon
@@ -157,6 +157,19 @@ export const RenderGallery = React.memo(function RenderGallery({
           )
         })}
       </div>
+      <details className="render-references">
+        <summary>Concept references · photographs do not represent your drawing</summary>
+        <p><strong>Reference image only.</strong> This authored interior does not change with your rooms, city or sun. Study your actual shadows in “Your space + light” above.</p>
+        <div className="render-thumbs">
+          {references.map((item, index) => {
+            const Icon = item.icon
+            return <button key={item.id} type="button" className={index === referenceIndex ? 'active' : ''} onClick={() => setReferenceIndex(index)}>
+              <Icon /><span><strong>{item.title}</strong><small>{item.note}</small></span>
+            </button>
+          })}
+        </div>
+        <img className={`concept-hero authored-interior ${reference.id}`} src={conceptImages[0] ?? './assets/shanghai-apartment-concept.png'} alt={`${reference.title} — authored reference, unrelated to the current drawing`} />
+      </details>
       <div className="render-disclaimer">
         <Camera /> Local 3D uses your drawing and clear-sky sun angles · Interior references are optional concepts, not a prediction of your plan
       </div>

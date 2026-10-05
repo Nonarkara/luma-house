@@ -1,3 +1,4 @@
+import { clockLabel } from '../location/solar'
 import React from 'react'
 import { ArrowDownRight, ArrowUpRight, CircleHelp, CloudSun, Snowflake, Sun, Thermometer } from 'lucide-react'
 import type { HeatFlowSnapshot } from '../analysis'
@@ -8,8 +9,8 @@ function watts(value: number): string {
 }
 
 function seasonName(day: number): string {
-  if (day === 355) return 'Winter solstice'
-  if (day === 172) return 'Summer solstice'
+  if (day === 355) return 'December solstice'
+  if (day === 172) return 'June solstice'
   if (day === 80 || day === 266) return 'Equinox'
   return `Day ${day}`
 }
@@ -76,8 +77,8 @@ export const ScienceDock = React.memo(function ScienceDock({
 
       <div className="science-controls">
         <label className="sun-scrubber">
-          <span><Sun /> {hour}:00</span>
-          <input aria-label="Sun time of day" type="range" min="5" max="20" step="0.25" value={hour} onChange={(event) => setHour(Number(event.target.value))} />
+          <span><Sun /> {clockLabel(hour)}</span>
+          <input aria-label="Sun time of day" type="range" min="0" max="24" step="0.25" value={hour} onChange={(event) => setHour(Number(event.target.value))} />
           <small>{seasonName(day)}</small>
         </label>
         <div className="science-seasons" aria-label="Season presets">
@@ -99,7 +100,7 @@ export const ScienceDock = React.memo(function ScienceDock({
             <p className="science-caveat">Not included: roof, floor, air leaks, clouds, trees, overhangs, people or equipment. Use it to compare moves—not size an AC system.</p>
             <nav aria-label="Method sources">
               <a href="https://www.energy.gov/cmei/femp/purchasing-energy-efficient-residential-windows-doors-and-skylights" target="_blank" rel="noreferrer">DOE · U-factor & SHGC</a>
-              <a href="https://midcdmz.nrel.gov/spa/" target="_blank" rel="noreferrer">NREL · solar position</a>
+              <a href="https://github.com/mourner/suncalc" target="_blank" rel="noreferrer">SunCalc · solar position</a>
               <a href="https://www.wbdg.org/resources/natural-ventilation" target="_blank" rel="noreferrer">WBDG · ventilation</a>
             </nav>
           </div>

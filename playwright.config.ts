@@ -14,6 +14,9 @@ import { defineConfig } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
+  // Bound simultaneous software-WebGL contexts; automatic CPU-based workers
+  // can overload shader compilation and time out before the first scene frame.
+  workers: 2,
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:4186',

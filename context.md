@@ -206,3 +206,33 @@ and confines Pages write/OIDC permissions to deployment. It also checks the
 worker types and real SQLite quota concurrency via npm run test:quota.
 
 Security review and remaining build dependency risk: docs/security/cso-audit-2026-10-05.md.
+
+
+## Worldwide sun study — 2026-10-05
+
+- The main render is a low-detail Three.js perspective of the actual plan.
+  Camera motion, geometry edits and sun changes request frames; idle views
+  stop drawing. Shadow maps are 1024px with viewport DPR1. Fixed interiors
+  remain under a closed, explicitly labeled **Concept references** section.
+- `src/location/locations.ts` searches cities/postal codes through Open-Meteo
+  Geocoding (GeoNames), with abortable debounced search and a bounded query
+  cache. Exact latitude/longitude plus IANA time zone are available offline.
+- `PlanState.location` carries the city through save, import, undo and sharing.
+  Legacy plans retain Shanghai as the starting city. City changes update all
+  latitude-based climate calculations plus the chart and 3D sun together.
+- `src/location/solar.ts` uses **SunCalc2.1.0**, BSD-2-Clause, bundled locally.
+  License notice ships in `public/licenses/suncalc.txt`. The city clock uses
+  its IANA zone and current calendar year. DST gaps advance with a toast;
+  repeated hours use their first occurrence. The chart covers the whole day,
+  labels sunrise/sunset or polar day/night, and uses the same position engine
+  as the perspective. Annual screening calculations remain approximate solar
+  time models; neither model includes external terrain/building obstructions.
+- No AI call is needed for this perspective, shadow update or sun chart.
+  A network request is used only to look up a new city; chosen locations and
+  manual coordinates work offline. AI tracing and illustrations remain opt-in.
+- Verified:327unit tests,80Playwright desktop/phone checks, lint and production
+  build. Browser checks compare rendered pixels, block AI, exercise offline
+  city coordinates and assert real WebGL draws stop after large-site tours
+  and entering Walk from Axonometric. Test workers are capped at2 to avoid
+  concurrent software-WebGL shader compilation exhausting the first-frame
+  budget. Independent review rechecked DST transitions and camera settlement.

@@ -1,3 +1,4 @@
+import { sanitizeLocation } from './location/locations'
 import type { DrawnWall, Furniture, Opening, PlanState, Room, RoomKind } from './types'
 import { sanitizeSite } from './plan'
 import { ASSEMBLY_PRESETS } from './assemblies/presets'
@@ -182,6 +183,7 @@ export function sanitizePlan(raw: unknown): PlanState | null {
     },
     // Preserve a custom site/scale when present; legacy plans omit it and
     // fall back to the default via siteOf().
+    location: sanitizeLocation(candidate.location),
     site: candidate.site ? sanitizeSite(candidate.site) : undefined,
   }
 }

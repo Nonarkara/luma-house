@@ -1,14 +1,18 @@
+import type { ProjectLocation } from '../types'
+import { citySunPosition, citySunTimes, clockLabel, normalizedCivilHour } from '../location/solar'
 import React, { useMemo } from 'react'
 import { solarPosition } from '../plan'
 
 /** Polar sun-path diagram for one location + day. Horizon at rim, zenith at center. */
 export const SunChart = React.memo(function SunChart({
   latitude,
+  location,
   day,
   hour,
   locationLabel,
 }: {
   latitude: number
+  location?: ProjectLocation
   day: number
   hour: number
   locationLabel: string
@@ -19,24 +23,28 @@ export const SunChart = React.memo(function SunChart({
   const R = 72
 
   const path = useMemo(() => {
-    const points: Array<{ hour: number; x: number; y: number; altitude: number }> = []
-    for (let h = 5; h <= 19; h += 0.5) {
-      const sun = solarPosition(latitude, day, h)
-      if (sun.altitude <= 0) continue
+    const points: Array<{ hour: number; x: number; y: number; altitude: number; start: boolean }> = []
+    let start = true
+    for (let h = 0; h <= 24; h += 0.25) {
+      if (location && normalizedCivilHour(location, day, h) !== h) continue
+      const sun = location ? citySunPosition(location, day, h) : solarPosition(latitude, day, h)
+      if (sun.altitude <= 0) { start = true; continue }
       const r = ((90 - sun.altitude) / 90) * R
       const rad = (sun.azimuth * Math.PI) / 180
       points.push({
+        start,
         hour: h,
         altitude: sun.altitude,
         x: cx + r * Math.sin(rad),
         y: cy - r * Math.cos(rad),
       })
+      start = false
     }
     return points
-  }, [latitude, day, cx, cy, R])
+  }, [latitude, location, day, cx, cy, R])
 
   const now = useMemo(() => {
-    const sun = solarPosition(latitude, day, hour)
+    const sun = location ? citySunPosition(location, day, hour) : solarPosition(latitude, day, hour)
     if (sun.altitude <= 0) return null
     const r = ((90 - sun.altitude) / 90) * R
     const rad = (sun.azimuth * Math.PI) / 180
@@ -45,15 +53,18 @@ export const SunChart = React.memo(function SunChart({
       x: cx + r * Math.sin(rad),
       y: cy - r * Math.cos(rad),
     }
-  }, [latitude, day, hour, cx, cy, R])
+  }, [latitude, location, day, hour, cx, cy, R])
 
   const pathD = path.length > 1
-    ? `M ${path.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ')}`
+    ? path.map((p) => `${p.start ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
     : ''
+
+  const times = useMemo(() => location ? citySunTimes(location, day) : null, [location, day])
+  const formatTime = (date: Date | null) => date && location ? new Intl.DateTimeFormat('en-GB', { timeZone: location.timezone, hour: '2-digit', minute: '2-digit' }).format(date) : '—'
 
   return (
     <div className="sun-chart" aria-label={`Sun chart for ${locationLabel}`}>
-      <svg viewBox={`0 0 ${size} ${size}`} role="img">
+      <svg viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Daily sun path: north at top, horizon at rim, zenith at centre">
         <circle cx={cx} cy={cy} r={R} className="sun-chart-disk" />
         <circle cx={cx} cy={cy} r={R * (2 / 3)} className="sun-chart-ring" />
         <circle cx={cx} cy={cy} r={R / 3} className="sun-chart-ring" />
@@ -75,9 +86,12 @@ export const SunChart = React.memo(function SunChart({
         <strong>{locationLabel}</strong>
         <span>
           {now
-            ? `${hour}:00 · ${now.altitude.toFixed(0)}° alt · ${now.azimuth.toFixed(0)}° az`
-            : `${hour}:00 · sun below horizon`}
+            ? `${clockLabel(hour)} · ${now.altitude.toFixed(0)}° alt · ${now.azimuth.toFixed(0)}° az`
+            : `${clockLabel(hour)} · sun below horizon`}
         </span>
+        {location && <span>{location.timezone} · {location.latitude.toFixed(3)}°, {location.longitude.toFixed(3)}°</span>}
+        {times && <span>{times.alwaysUp ? 'Midnight sun · no sunset' : times.alwaysDown ? 'Polar night · no sunrise' : `Sunrise ${formatTime(times.sunrise)} · Sunset ${formatTime(times.sunset)}`}</span>}
+        <small>Day {day} · {new Date().getFullYear()} · <a href="https://github.com/mourner/suncalc" target="_blank" rel="noreferrer">SunCalc</a> · clear horizon</small>
       </div>
     </div>
   )
