@@ -91,29 +91,33 @@ test('the GPU rests while idle and redraws when the sun changes', async ({ page 
     }
   })
   const draws = () => page.evaluate(() => (window as Window & { studyDraws?: number }).studyDraws ?? 0)
+  const expectIdle = async () => {
+    // Software graphics runners take different amounts of wall time to finish
+    // camera transitions. Require a full quiet interval, with a bounded wait;
+    // a renderer that keeps drawing indefinitely must still fail.
+    await expect.poll(async () => {
+      const before = await draws()
+      await page.waitForTimeout(600)
+      if (await draws() !== before) return false
+      await page.waitForTimeout(600)
+      return await draws() === before
+    }, { timeout: 20000 }).toBe(true)
+    return draws()
+  }
   await page.goto('/#plan=' + encodePlanToHash({ ...plan, site: { w: 30, h: 20, unit: 1 } }))
   await page.getByRole('button', { name: 'Renders', exact: true }).click()
   await expect.poll(draws).toBeGreaterThan(0)
-  await page.waitForTimeout(1500)
-  const idle = await draws()
-  await page.waitForTimeout(600)
-  expect(await draws()).toBe(idle)
+  const idle = await expectIdle()
   const adjust = page.getByRole('button', { name: 'Adjust', exact: true })
   if (await adjust.isVisible()) await adjust.click()
   await page.getByLabel('Sun time of day').focus()
   await page.getByLabel('Sun time of day').press('ArrowRight')
   await expect.poll(draws).toBeGreaterThan(idle)
   await page.getByRole('button', { name: 'Tour', exact: true }).click()
-  await page.waitForTimeout(3500)
-  const tourIdle = await draws()
-  await page.waitForTimeout(600)
-  expect(await draws()).toBe(tourIdle)
+  await expectIdle()
   await page.getByRole('button', { name: 'Exit Guided Tour', exact: true }).click()
   await page.getByRole('button', { name: 'Axonometric', exact: true }).click()
-  await page.waitForTimeout(2500)
+  await expectIdle()
   await page.getByRole('button', { name: 'Walk at 1.6 m', exact: true }).click()
-  await page.waitForTimeout(1200)
-  const walkingIdle = await draws()
-  await page.waitForTimeout(600)
-  expect(await draws()).toBe(walkingIdle)
+  await expectIdle()
 })
