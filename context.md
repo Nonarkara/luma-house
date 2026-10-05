@@ -35,7 +35,8 @@ check the model before the key.
 The Worker has an anonymous public API protected by CORS and quotas. CORS is not authentication. A browser call carrying an
 `Origin` that is not one of these is refused with 403 before anything is spent:
 
-- `https://nonarkara.github.io` (GitHub Pages — the live site)
+- `https://designon.nonarkara.org`, `https://luma.nonarkara.org` (production custom domains)
+- `https://nonarkara.github.io` (GitHub Pages mirror)
 - `https://luma-house.pages.dev` (Cloudflare Pages)
 - `http://localhost:5173`, `http://localhost:4173` (development)
 
@@ -81,10 +82,14 @@ limit upstream request count, not an exact currency spend.
 
 ## Deploy targets
 
-- Frontend: https://nonarkara.github.io/luma-house/ — GitHub Actions deploys on
-  every push to `main`, so a green local build is not a deployment. Check the
-  live URL, and remember a minified bundle strips comments, so a string probe
-  cannot prove a change shipped. Verify behaviour in the browser instead.
+- Production frontend: https://designon.nonarkara.org/ (alias https://luma.nonarkara.org/)
+  is Cloudflare Pages project `luma-house`, production branch `main`, canonical
+  https://luma-house.pages.dev/. It is a direct-upload project: Git pushes do
+  **not** deploy these domains. Run `npm run deploy:pages` after frontend changes.
+- GitHub Pages mirror: https://nonarkara.github.io/luma-house/ — GitHub Actions
+  deploys on every push to `main`. Verify canonical asset bytes first, then
+  the custom domain and its browser behaviour; a green GitHub job only proves
+  the mirror deployed.
 - Repo: https://github.com/Nonarkara/luma-house
 - Optional static: Render (`render.yaml`)
 - AI (trace + concept render): Cloudflare Worker above, deployed separately and
@@ -93,9 +98,10 @@ limit upstream request count, not an exact currency spend.
 ## Deploy commands
 
 ```bash
-# frontend (or just push to main and let Actions do it)
-npm run build
-npx wrangler pages deploy dist --project-name=luma-house --commit-dirty=true
+# production custom domains (worker toolchain supplies pinned Wrangler)
+npm ci --prefix workers/concept-render
+npm run deploy:pages
+# GitHub Pages mirror separately follows pushes to main
 
 # worker
 cd workers/concept-render && npx tsc --noEmit && npx vitest run && npx wrangler deploy

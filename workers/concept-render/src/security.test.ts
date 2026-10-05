@@ -34,6 +34,14 @@ describe('who may call the AI', () => {
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://luma-house.pages.dev')
   })
 
+  it.each(['https://designon.nonarkara.org', 'https://luma.nonarkara.org'])('allows the production custom domain %s', async (origin) => {
+    const res = await worker.fetch(new Request('https://worker.test/trace', {
+      method: 'OPTIONS', headers: { Origin: origin },
+    }), env)
+    expect(res.status).toBe(204)
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(origin)
+  })
+
   it('allows localhost for development', async () => {
     const res = await worker.fetch(post('/trace', 'http://localhost:5173'), env)
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost:5173')

@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "preview": "vite preview",
-    "deploy:pages": "npm run build && wrangler pages deploy dist --project-name=luma-house --commit-dirty=true"
+    "deploy:pages": "npm run build && workers/concept-render/node_modules/.bin/wrangler pages deploy dist --project-name=luma-house --branch=main"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.3.0",

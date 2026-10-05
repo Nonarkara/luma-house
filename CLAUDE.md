@@ -92,6 +92,9 @@ the timeout and the UI copy.
 
 ## Deployment
 
-GitHub Actions deploys to Pages on every push to `main`, so `main` is what
-users get. Check the live URL after pushing; a green build is not a deployment.
+Production https://designon.nonarkara.org/ is Cloudflare Pages project
+`luma-house`, production branch `main`. Run `npm run deploy:pages` after
+pushing: this direct-upload host does not follow Git pushes. GitHub Actions
+updates only the https://nonarkara.github.io/luma-house/ mirror. Verify
+the production custom domain after deploying; a green mirror job is insufficient.
 The AI Worker deploys separately and is not automatic.

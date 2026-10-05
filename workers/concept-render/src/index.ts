@@ -22,6 +22,8 @@ export interface Env {
  * held down by the per-IP rate limit instead.
  */
 const ALLOWED_ORIGINS = new Set([
+  'https://designon.nonarkara.org',
+  'https://luma.nonarkara.org',
   'https://nonarkara.github.io',
   'https://luma-house.pages.dev',
   'http://localhost:5173',
