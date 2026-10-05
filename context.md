@@ -32,7 +32,7 @@ check the model before the key.
 
 ### Who may call it
 
-The Worker holds a paid key, so it is not open. A browser call carrying an
+The Worker has an anonymous public API protected by CORS and quotas. CORS is not authentication. A browser call carrying an
 `Origin` that is not one of these is refused with 403 before anything is spent:
 
 - `https://nonarkara.github.io` (GitHub Pages — the live site)
@@ -53,7 +53,7 @@ per-IP cap. To add a host, edit `ALLOWED_ORIGINS` in `workers/concept-render/src
   200). The old non-atomic KV `RATE_LIMIT` binding is retired along with its
   namespace. It **fails closed**: if the coordinator is unreachable the
   request is refused rather than allowed to spend. Caller IPs are hashed
-  (`day:ip` → SHA-256), never stored.
+  (`day:ip` → SHA-256); raw IPs are never stored in the quota object.
 - Deploying the worker after this change runs a new-class migration
   (`ai-quota-v1` in `wrangler.toml`); a plain `npx wrangler deploy` applies it.
 
@@ -74,9 +74,10 @@ npx wrangler deploy
 ```
 
 It is still the free tier. The per-IP cap (20/day) is the real ceiling; the
-browser's 3/day is only a courtesy. If this ever moves to a paid tier, add a
-shared secret the frontend must present — the CORS allowlist stops drive-by
-abuse from other websites, not a determined direct caller.
+browser's 3/day is only a courtesy. Before enabling a paid tier, require server-verified identity or an abuse challenge.
+A shared secret embedded in the frontend would be public. The CORS allowlist
+limits browser origins; it cannot authenticate a direct caller. Global caps
+limit upstream request count, not an exact currency spend.
 
 ## Deploy targets
 
@@ -178,3 +179,24 @@ The independent review caught an overflow-hidden desktop footer; the workspace
 now reserves its closed height and natural scrolling exposes expanded guidance.
 Tests check alpha/no white pixels, dimensions, themes, manifest resolution,
 ordinary scrolling and the preserved drawing workspace.
+
+## Local rendering (2026-10-05)
+
+Spatial and the first Renders view now use the local Three.js scene by default:
+wireframe, opaque shadow-receiving floors, physical wall/window cutouts, hidden
+ceiling/roof shadow casters, solid toggle, orbit/axonometric/top views, sun
+time/season controls and PNG export. Section cuts alter inspection geometry
+without shortening shadow casters. Roof visibility preserves selected-style
+occlusion and eaves. Window rays are directional guides, not lux measurements.
+Clear-sky shadows omit clouds, surrounding buildings and vegetation; no
+photometric or construction certification is claimed. User-requested AI
+illustrations and sketch tracing remain optional. A quick action saying
+“render” opens the local scene; an explicit “photo”/“image” invokes the API.
+
+Verification: e2e/local-render.spec.ts blocks the AI worker, tests four themes,
+PNG bytes, shadow-pixel changes, a sun-time change with the browser offline,
+and return to the unchanged plan on desktop and phone. CI pins action commits
+and confines Pages write/OIDC permissions to deployment. It also checks the
+worker types and real SQLite quota concurrency via npm run test:quota.
+
+Security review and remaining build dependency risk: docs/security/cso-audit-2026-10-05.md.

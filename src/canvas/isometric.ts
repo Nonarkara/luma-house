@@ -1,5 +1,5 @@
-import { SITE_HEIGHT_METERS, SITE_WIDTH_METERS } from '../plan'
-import type { Opening, PlanState, Room, RoomKind } from '../types'
+import { SITE_HEIGHT_METERS, SITE_WIDTH_METERS, siteOf, roomHeight as physicalRoomHeight } from '../plan'
+import type { Opening, PlanState, Room, RoomKind, SiteSpec } from '../types'
 
 const COS30 = Math.sqrt(3) / 2
 const SIN30 = 0.5
@@ -27,10 +27,10 @@ export function roomHeight(kind: RoomKind): number {
 }
 
 /** Plan % → site meters (origin at NW corner, +x east, +y south). */
-export function toMeters(xPct: number, yPct: number): { mx: number; my: number } {
+export function toMeters(xPct: number, yPct: number, site?: SiteSpec): { mx: number; my: number } {
   return {
-    mx: (xPct / 100) * SITE_WIDTH_METERS,
-    my: (yPct / 100) * SITE_HEIGHT_METERS,
+    mx: (xPct / 100) * (site?.w ?? SITE_WIDTH_METERS),
+    my: (yPct / 100) * (site?.h ?? SITE_HEIGHT_METERS),
   }
 }
 
@@ -42,11 +42,11 @@ export function projectIso(mx: number, my: number, mz = 0, scale = 18): IsoPoint
   }
 }
 
-export function buildIsoBox(room: Room, scale = 18): IsoBox {
-  const { mx, my } = toMeters(room.x, room.y)
-  const w = (room.w / 100) * SITE_WIDTH_METERS
-  const d = (room.h / 100) * SITE_HEIGHT_METERS
-  const h = roomHeight(room.kind)
+export function buildIsoBox(room: Room, scale = 18, site?: SiteSpec): IsoBox {
+  const { mx, my } = toMeters(room.x, room.y, site)
+  const w = (room.w / 100) * (site?.w ?? SITE_WIDTH_METERS)
+  const d = (room.h / 100) * (site?.h ?? SITE_HEIGHT_METERS)
+  const h = room.kind === 'terrace' ? TERRACE_HEIGHT_M : physicalRoomHeight(room)
 
   const nw = { mx, my }
   const ne = { mx: mx + w, my }
@@ -85,13 +85,13 @@ export function buildIsoBox(room: Room, scale = 18): IsoBox {
 
 export function buildMassing(plan: PlanState, scale = 18): IsoBox[] {
   return plan.rooms
-    .map((room) => buildIsoBox(room, scale))
+    .map((room) => buildIsoBox(room, scale, siteOf(plan)))
     .sort((a, b) => a.depth - b.depth)
 }
 
-export function siteFootprint(scale = 18): IsoPoint[] {
-  const w = SITE_WIDTH_METERS
-  const h = SITE_HEIGHT_METERS
+export function siteFootprint(scale = 18, site?: SiteSpec): IsoPoint[] {
+  const w = site?.w ?? SITE_WIDTH_METERS
+  const h = site?.h ?? SITE_HEIGHT_METERS
   return [
     projectIso(0, 0, 0, scale),
     projectIso(w, 0, 0, scale),
@@ -100,9 +100,9 @@ export function siteFootprint(scale = 18): IsoPoint[] {
   ]
 }
 
-export function openingMarkers(openings: Opening[], scale = 18): Array<{ point: IsoPoint; type: Opening['type'] }> {
+export function openingMarkers(openings: Opening[], scale = 18, site?: SiteSpec): Array<{ point: IsoPoint; type: Opening['type'] }> {
   return openings.map((opening) => {
-    const { mx, my } = toMeters(opening.x, opening.y)
+    const { mx, my } = toMeters(opening.x, opening.y, site)
     return {
       type: opening.type,
       point: projectIso(mx, my, WALL_HEIGHT_M * 0.45, scale),
@@ -111,14 +111,14 @@ export function openingMarkers(openings: Opening[], scale = 18): Array<{ point: 
 }
 
 /** Sun ray tip from site center toward the sun's horizontal direction. */
-export function sunDirectionTip(azimuth: number, altitude: number, scale = 18): IsoPoint | null {
+export function sunDirectionTip(azimuth: number, altitude: number, scale = 18, site?: SiteSpec): IsoPoint | null {
   if (altitude <= 0) return null
   const rad = (azimuth * Math.PI) / 180
   // Plan: N=0 → -y, E=90 → +x. Azimuth from north, clockwise in solarPosition.
   const dirX = Math.sin(rad)
   const dirY = -Math.cos(rad)
-  const cx = SITE_WIDTH_METERS / 2
-  const cy = SITE_HEIGHT_METERS / 2
+  const cx = (site?.w ?? SITE_WIDTH_METERS) / 2
+  const cy = (site?.h ?? SITE_HEIGHT_METERS) / 2
   const reach = 6
   return projectIso(cx + dirX * reach, cy + dirY * reach, Math.sin((altitude * Math.PI) / 180) * 4, scale)
 }

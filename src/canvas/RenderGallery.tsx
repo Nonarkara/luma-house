@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { Camera, ChevronLeft, ChevronRight, LampDesk, Layers3, Moon, PanelsTopLeft, Sun } from 'lucide-react'
+import { siteOf } from '../plan'
 import type { PlanState, RoomKind } from '../types'
 import {
   buildMassing,
@@ -19,7 +20,7 @@ const roofFill: Record<RoomKind, string> = {
   terrace: '#6b7a6e',
 }
 
-type ViewId = 'interior' | 'joinery' | 'massing' | 'sunlit' | 'night'
+type ViewId = 'wireframe' | 'interior' | 'joinery' | 'massing' | 'sunlit' | 'night'
 
 function MassingFrame({
   plan,
@@ -33,9 +34,9 @@ function MassingFrame({
   const scale = 22
   const boxes = useMemo(() => buildMassing(plan, scale), [plan])
   const bounds = useMemo(() => massingBounds(boxes, 36), [boxes])
-  const site = useMemo(() => siteFootprint(scale), [])
-  const openings = useMemo(() => openingMarkers(plan.openings, scale), [plan.openings])
-  const sunTip = useMemo(() => sunDirectionTip(sun.azimuth, sun.altitude, scale), [sun])
+  const site = useMemo(() => siteFootprint(scale, siteOf(plan)), [plan])
+  const openings = useMemo(() => openingMarkers(plan.openings, scale, siteOf(plan)), [plan])
+  const sunTip = useMemo(() => sunDirectionTip(sun.azimuth, sun.altitude, scale, siteOf(plan)), [sun, plan])
   const siteCenter = useMemo(() => ({
     x: site.reduce((s, p) => s + p.x, 0) / site.length,
     y: site.reduce((s, p) => s + p.y, 0) / site.length,
@@ -93,18 +94,21 @@ export const RenderGallery = React.memo(function RenderGallery({
   plan,
   sun,
   conceptImages,
+  localView,
 }: {
   plan: PlanState
   sun: { altitude: number; azimuth: number }
   conceptImages: string[]
+  localView: React.ReactNode
   onRequestConcept: () => void
   isRendering: boolean
   quotaLeft: number
 }) {
   const views: Array<{ id: ViewId; title: string; note: string; icon: typeof Layers3 }> = [
+    { id: 'wireframe', title: 'Your space + light', note: 'Interactive · local · no AI call', icon: Layers3 },
     { id: 'interior', title: 'South living room', note: 'Custom elm · winter 10:00', icon: PanelsTopLeft },
     { id: 'joinery', title: 'Joinery detail', note: 'Made-to-measure, not flat-pack', icon: LampDesk },
-    { id: 'massing', title: 'Live 3D massing', note: 'Exact to the 50 m² plan', icon: Layers3 },
+    { id: 'massing', title: 'Live 3D massing', note: 'Computed from your drawing', icon: Layers3 },
     { id: 'sunlit', title: 'Solar volume', note: `${sun.altitude.toFixed(0)}° altitude`, icon: Sun },
     { id: 'night', title: 'Tea scene', note: '2700 K · L05 at 78%', icon: Moon },
   ]
@@ -118,7 +122,8 @@ export const RenderGallery = React.memo(function RenderGallery({
 
   return (
     <div className="render-gallery" aria-label="Plan-driven render gallery">
-      <div className="render-stage">
+      <div className={`render-stage ${active.id === 'wireframe' ? 'is-local-study' : ''}`}>
+        {active.id === 'wireframe' && localView}
         {active.id === 'massing' && <MassingFrame plan={plan} sun={sun} />}
         {active.id === 'sunlit' && <MassingFrame plan={plan} sun={sun} warm />}
         {(active.id === 'interior' || active.id === 'joinery' || active.id === 'night') && (
@@ -128,14 +133,14 @@ export const RenderGallery = React.memo(function RenderGallery({
             alt={`${active.title} architectural concept visualization`}
           />
         )}
-        <div className="render-meta">
+        {active.id !== 'wireframe' && <div className="render-meta">
           <span><ActiveIcon /></span>
           <div>
             <small>View 0{activeIndex + 1}</small>
             <strong>{active.title}</strong>
             <em>{active.note}</em>
           </div>
-        </div>
+        </div>}
         <div className="render-nav">
           <button type="button" onClick={() => move(-1)} aria-label="Previous view"><ChevronLeft /></button>
           <span>{activeIndex + 1} / {views.length}</span>
@@ -153,7 +158,7 @@ export const RenderGallery = React.memo(function RenderGallery({
         })}
       </div>
       <div className="render-disclaimer">
-        <Camera /> 3D massing matches the plan · Photoreal views are authored concept visualizations, not construction documents
+        <Camera /> Local 3D uses your drawing and clear-sky sun angles · Interior references are optional concepts, not a prediction of your plan
       </div>
     </div>
   )

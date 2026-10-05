@@ -7022,3 +7022,26 @@ summary:focus-visible {
     display: none;
   }
 }
+
+/* Local light study: controls retain their labels and stay clear of the model. */
+.spatial-tb-btn { flex: 0 0 auto; white-space: nowrap; }
+.spatial-tb-btn.toggle { width: auto; height: auto; overflow: visible; }
+.render-stage.is-local-study .render-nav { top: auto; bottom: 128px; z-index: 11; }
+.render-stage.is-local-study .spatial-orbit-note { bottom: 128px; left: 12px; right: auto; max-width: calc(100% - 155px); }
+.render-gallery { grid-template-rows: minmax(0, 1fr) auto auto; }
+.render-gallery:has(.is-local-study) .render-thumbs { display: flex; overflow-x: auto; }
+.render-gallery:has(.is-local-study) .render-thumbs button { min-width: 160px; flex: 0 0 auto; }
+.spatial-sun-hud { max-width: calc(100% - 28px); }
+@media (max-width: 720px) {
+  .spatial-orbit-note { font-size: 9px; max-width: calc(100% - 28px); }
+  .spatial-sun-hud { padding: 7px 9px; }
+}
+
+@media (max-width: 720px) {
+  .render-stage.is-local-study .render-nav,
+  .render-stage.is-local-study .spatial-orbit-note { bottom: 84px; }
+  .is-local-study:has(.science-dock.is-mobile-expanded) .render-nav,
+  .is-local-study:has(.science-dock.is-mobile-expanded) .spatial-orbit-note { visibility: hidden; }
+}
+
+.render-stage.is-local-study .render-nav { border-radius: 0; }

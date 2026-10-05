@@ -1141,7 +1141,10 @@ function App() {
     } else if (prompt.includes('energy') || prompt.includes('smart')) {
       setMode('systems')
       setToast('Opened intelligent systems')
-    } else if (prompt.includes('photo') || prompt.includes('render') || prompt.includes('image')) {
+    } else if (prompt.includes('render') || prompt.includes('wireframe') || prompt.includes('3d') || prompt.includes('shadow')) {
+      setView('spatial')
+      setToast('Local 3D light study opened — no AI request')
+    } else if (prompt.includes('photo') || prompt.includes('image')) {
       setView('spatial')
       void runConceptRender()
     } else {
@@ -1165,6 +1168,45 @@ function App() {
     transform: `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`,
     transformOrigin: 'center center',
   }), [viewport.panX, viewport.panY, viewport.zoom])
+
+  const localLightControls = (
+    <ScienceDock
+      heat={heatFlow}
+      directSunM2={directSunM2}
+      floorAreaM2={budget.area}
+      hour={hour}
+      setHour={setHour}
+      day={day}
+      setDay={setDay}
+      outsideC={outsideC}
+      setOutsideC={setOutsideC}
+    />
+  )
+
+  const localSpatialView = (
+    <Suspense fallback={<div className="spatial-note">Loading 3D…</div>}>
+      <Spatial3D
+        theme={theme}
+        plan={plan}
+        sunAzimuth={sun.azimuth}
+        sunAltitude={sun.altitude}
+        selectedRoom={selectedRoom}
+        onSelectRoom={setSelectedRoom}
+        onSetWallHeight={setWallHeight}
+        hour={hour}
+        day={day}
+        locationLabel={locations[location as keyof typeof locations].label}
+        ghost={isEmpty}
+        tourWaypoint={tourChapterIndex !== null ? tourChapters[tourChapterIndex]?.camera : null}
+        walkMode={walkMode}
+        onToggleWalkMode={() => setWalkMode((prev) => !prev)}
+        onStartTour={() => { setTourChapterIndex(0); setSelectedRoom(null); setWalkMode(false); setToast('Your drawing in 3D · 1 of 4') }}
+        onOpenScenarios={() => { setSelectedRoom(null); setScenariosOpen(true) }}
+        windFrom={windFrom}
+        windSpeed={windSpeed}
+      />
+    </Suspense>
+  )
 
   return (
     <div className="app-shell">
@@ -1299,28 +1341,7 @@ function App() {
               />
             ) : view === 'spatial' ? (
               <div className="spatial-wrap">
-                <Suspense fallback={<div className="spatial-note">Loading 3D…</div>}>
-                  <Spatial3D
-                    theme={theme}
-                    plan={plan}
-                    sunAzimuth={sun.azimuth}
-                    sunAltitude={sun.altitude}
-                    selectedRoom={selectedRoom}
-                    onSelectRoom={setSelectedRoom}
-                    onSetWallHeight={setWallHeight}
-                    hour={hour}
-                    day={day}
-                    locationLabel={locations[location as keyof typeof locations].label}
-                    ghost={isEmpty}
-                    tourWaypoint={tourChapterIndex !== null ? tourChapters[tourChapterIndex]?.camera : null}
-                    walkMode={walkMode}
-                    onToggleWalkMode={() => setWalkMode((prev) => !prev)}
-                    onStartTour={() => { setTourChapterIndex(0); setSelectedRoom(null); setWalkMode(false); setToast('Your drawing in 3D · 1 of 4') }}
-                    onOpenScenarios={() => { setSelectedRoom(null); setScenariosOpen(true) }}
-                    windFrom={windFrom}
-                    windSpeed={windSpeed}
-                  />
-                </Suspense>
+                {localSpatialView}
                 {isEmpty && (
                   <div className="spatial-ghost-note" role="status">
                     <p>Draw a room in Plan to see it in 3D</p>
@@ -1350,25 +1371,14 @@ function App() {
                 plan={plan}
                 sun={sun}
                 conceptImages={conceptImages}
+                localView={<>{localSpatialView}{!isEmpty && localLightControls}</>}
                 onRequestConcept={() => void runConceptRender()}
                 isRendering={isRendering}
                 quotaLeft={quotaLeft}
               />
             )}
             {view !== 'renders' && !isEmpty && (
-              view === 'spatial' || (mode === 'light' && valueLens === 'off') ? (
-                <ScienceDock
-                  heat={heatFlow}
-                  directSunM2={directSunM2}
-                  floorAreaM2={budget.area}
-                  hour={hour}
-                  setHour={setHour}
-                  day={day}
-                  setDay={setDay}
-                  outsideC={outsideC}
-                  setOutsideC={setOutsideC}
-                />
-              ) : valueLens === 'off' ? (
+              view === 'spatial' || (mode === 'light' && valueLens === 'off') ? localLightControls : valueLens === 'off' ? (
                 <button className="science-preview" type="button" onClick={() => setMode('light')}>
                   <span className="science-live" />
                   <span><small>Live sun + heat</small><strong>{Math.abs(heatFlow.netW) >= 1000 ? `${(Math.abs(heatFlow.netW) / 1000).toFixed(1)} kW` : `${Math.round(Math.abs(heatFlow.netW))} W`} {heatFlow.mode === 'heat-out' ? 'leaving' : 'entering'}</strong></span>

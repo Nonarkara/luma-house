@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { PlanState, SiteSpec } from '../types'
 import { buildGableGeometry, type RoofStyle } from './roofGeometry'
@@ -18,7 +19,7 @@ function toMeters(xPct: number, yPct: number, site: SiteSpec): { mx: number; mz:
 }
 
 export function Roof3D({ plan, site, style = 'flat', visible = true, onClick }: Roof3DProps) {
-  if (!visible || plan.rooms.length === 0) return null
+  if (plan.rooms.length === 0) return null
 
   // Compute bounding box envelope of all rooms
   let minX = Infinity
@@ -49,14 +50,16 @@ export function Roof3D({ plan, site, style = 'flat', visible = true, onClick }: 
   const basePosY = maxHeight + 0.1
 
   return (
-    <group position={[cx, basePosY, cz]} onClick={onClick}>
+    <group position={[cx, basePosY, cz]} onClick={visible ? onClick : undefined}>
       {style === 'flat' || style === 'green' ? (
         <>
           {/* Main Flat Roof Slab */}
-          <mesh position={[0, 0.05, 0]} castShadow receiveShadow>
+          <mesh position={[0, 0.05, 0]} castShadow receiveShadow raycast={visible ? undefined : () => {}}>
             <boxGeometry args={[width, 0.12, depth]} />
             <meshStandardMaterial
               color={style === 'green' ? '#3f6212' : '#334155'}
+              colorWrite={visible}
+              depthWrite={visible}
               roughness={0.8}
               metalness={0.1}
             />
@@ -65,7 +68,7 @@ export function Roof3D({ plan, site, style = 'flat', visible = true, onClick }: 
           {/* Low Parapet Perimeter Cap */}
           <mesh position={[0, 0.2, 0]}>
             <boxGeometry args={[width + 0.1, 0.18, depth + 0.1]} />
-            <meshStandardMaterial color="#475569" roughness={0.7} />
+            <meshStandardMaterial color="#475569" roughness={0.7} colorWrite={visible} depthWrite={visible} />
           </mesh>
 
           {/* Rooftop Solar PV Panels Array if Solar System is active */}
@@ -73,27 +76,35 @@ export function Roof3D({ plan, site, style = 'flat', visible = true, onClick }: 
             <group position={[0, 0.15, 0]}>
               <mesh position={[-width * 0.2, 0.02, 0]} rotation={[-0.25, 0, 0]}>
                 <boxGeometry args={[width * 0.4, 0.04, depth * 0.5]} />
-                <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.1} />
+                <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.1} colorWrite={visible} depthWrite={visible} />
               </mesh>
               <mesh position={[width * 0.2, 0.02, 0]} rotation={[-0.25, 0, 0]}>
                 <boxGeometry args={[width * 0.4, 0.04, depth * 0.5]} />
-                <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.1} />
+                <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.1} colorWrite={visible} depthWrite={visible} />
               </mesh>
             </group>
           )}
         </>
       ) : style === 'shed' ? (
         // Shed Monopitch Roof (Sloped from North to South)
-        <mesh position={[0, 0.4, 0]} rotation={[0.15, 0, 0]} castShadow receiveShadow>
+        <mesh position={[0, 0.4, 0]} rotation={[0.15, 0, 0]} castShadow receiveShadow raycast={visible ? undefined : () => {}}>
           <boxGeometry args={[width, 0.12, depth * 1.05]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.4} metalness={0.6} />
+          <meshStandardMaterial color="#1e293b" roughness={0.4} metalness={0.6} colorWrite={visible} depthWrite={visible} />
         </mesh>
       ) : (
         // Gable roof — real triangular-prism volume, ridge along the long axis.
-        <mesh geometry={buildGableGeometry(width, depth)} castShadow receiveShadow>
-          <meshStandardMaterial color="#78350f" roughness={0.7} />
-        </mesh>
+        <GableRoof width={width} depth={depth} visible={visible} />
       )}
     </group>
+  )
+}
+
+function GableRoof({ width, depth, visible }: { width: number; depth: number; visible: boolean }) {
+  const geometry = useMemo(() => buildGableGeometry(width, depth), [width, depth])
+  useEffect(() => () => geometry.dispose(), [geometry])
+  return (
+    <mesh geometry={geometry} castShadow receiveShadow raycast={visible ? undefined : () => {}}>
+      <meshStandardMaterial color="#78350f" roughness={0.7} colorWrite={visible} depthWrite={visible} />
+    </mesh>
   )
 }

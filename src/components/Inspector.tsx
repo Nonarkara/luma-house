@@ -353,10 +353,10 @@ export const Inspector = React.memo(function Inspector({
 
           <section className="panel-section">
             <div className="section-title">
-              <h3>Concept visualization</h3>
+              <h3>Optional AI illustration</h3>
               <span className="badge">{quotaLeft} left</span>
             </div>
-            <p className="section-intro">Select an architectural style or customize keywords to drive concept renders and finish estimates.</p>
+            <p className="section-intro">Spatial and Renders build your geometry locally. Use this optional API only when you want a separate style illustration.</p>
             
             <div className="style-preset-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', marginBottom: '10px' }}>
               {ARCHITECTURAL_STYLE_PRESETS.map((preset) => {
@@ -407,7 +407,7 @@ export const Inspector = React.memo(function Inspector({
               {isRendering ? (
                 <><RotateCcw className="spin" /> Rendering…</>
               ) : (
-                <><ImagePlus /> Generate concept</>
+                <><ImagePlus /> Generate AI illustration</>
               )}
             </button>
             {conceptImages[0] && (

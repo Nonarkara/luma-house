@@ -215,13 +215,13 @@ export const STAGES: StageDef[] = [
     label: 'Picture',
     principle: 'peak-end',
     nav: { view: 'renders', inspector: false },
-    metric: (ctx) => (ctx.hasConcept ? 'Concept ready' : '5 views'),
+    metric: (ctx) => (ctx.hasConcept ? 'Concept ready' : 'Local light study'),
     // Like every other stage, "picture" cannot claim completion over an empty
     // canvas — there is nothing to picture until a room exists.
     isComplete: (ctx) => (ctx.visited.has('picture') || ctx.hasConcept) && ctx.plan.rooms.length >= 1,
     coach: () => ({
       title: 'Close on a picture you can share',
-      body: 'Pick a view or generate a concept photo. The walkthrough ends when you can show someone else what you decided.',
+      body: 'Orbit your drawing, move the sun and save a view. No AI photo is needed to show someone what you decided.',
       cta: 'Back to plan',
       why: 'Social proof · design that can be shown',
       nav: { mode: 'plan', view: 'plan', inspector: true },
