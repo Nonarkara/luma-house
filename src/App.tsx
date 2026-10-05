@@ -452,15 +452,22 @@ function App() {
     if (window.location.hash.startsWith('#plan=')) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search)
     }
-    const timeout = window.setTimeout(() => {
+    const save = () => {
       try {
         localStorage.setItem(CHINA_PROJECT_KEY, JSON.stringify(plan))
         // Never claim a save that did not happen. Without storage the plan lives
         // only in memory and in the Share link, and the user must be told.
         setLastSaved(storageIsPersistent() ? 'Saved locally' : 'Not saved — use Share to keep it')
       } catch { setLastSaved('Not saved — use Share to keep it') }
-    }, 300)
-    return () => window.clearTimeout(timeout)
+    }
+    const timeout = window.setTimeout(save, 300)
+    // Finish a pending edit before a quick reload or navigation can discard
+    // the debounce timer. This also preserves the latest chosen city.
+    window.addEventListener('pagehide', save)
+    return () => {
+      window.clearTimeout(timeout)
+      window.removeEventListener('pagehide', save)
+    }
   }, [plan])
 
   useEffect(() => {

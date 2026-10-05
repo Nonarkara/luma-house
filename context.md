@@ -220,7 +220,8 @@ Security review and remaining build dependency risk: docs/security/cso-audit-202
 - `PlanState.location` carries the city through save, import, undo and sharing.
   Legacy plans retain Shanghai as the starting city. City changes update all
   latitude-based climate calculations plus the chart and 3D sun together.
-- `src/location/solar.ts` uses **SunCalc2.1.0**, BSD-2-Clause, bundled locally.
+  Pending debounced saves flush on `pagehide`, preserving immediate reloads.
+- `src/location/solar.ts` uses **SunCalc 2.1.0**, BSD-2-Clause, bundled locally.
   License notice ships in `public/licenses/suncalc.txt`. The city clock uses
   its IANA zone and current calendar year. DST gaps advance with a toast;
   repeated hours use their first occurrence. The chart covers the whole day,
@@ -230,9 +231,11 @@ Security review and remaining build dependency risk: docs/security/cso-audit-202
 - No AI call is needed for this perspective, shadow update or sun chart.
   A network request is used only to look up a new city; chosen locations and
   manual coordinates work offline. AI tracing and illustrations remain opt-in.
-- Verified:327unit tests,80Playwright desktop/phone checks, lint and production
+- Verified: 327 unit tests, 82 Playwright desktop/phone checks, lint and production
   build. Browser checks compare rendered pixels, block AI, exercise offline
   city coordinates and assert real WebGL draws stop after large-site tours
-  and entering Walk from Axonometric. Test workers are capped at2 to avoid
+  and entering Walk from Axonometric. Idle assertions wait for two consecutive
+  quiet intervals rather than guessing camera settlement time. Test workers
+  are capped at 2 to avoid
   concurrent software-WebGL shader compilation exhausting the first-frame
   budget. Independent review rechecked DST transitions and camera settlement.

@@ -60,3 +60,13 @@ test('a relocated sample survives reload instead of being discarded as an old de
   await expect(page.getByRole('button', { name: /Bangkok, Thailand.*Change city/ })).toBeVisible()
   await expect(page.getByRole('dialog', { name: /Draw a wall/ })).toHaveCount(0)
 })
+
+test('immediate reload keeps a city change before the saved indicator appears', async ({ page }) => {
+  await page.goto('/#plan=' + encodePlanToHash(initialPlan))
+  await page.getByRole('button', { name: /Change city/ }).click()
+  await page.getByRole('button', { name: /Bangkok, Thailand.*Asia\/Bangkok/ }).click()
+  // Do not wait for the debounced "Saved locally" indicator.
+  await page.reload()
+  await expect(page.getByRole('button', { name: /Bangkok, Thailand.*Change city/ })).toBeVisible()
+  await expect(page.locator('button.room')).toHaveCount(initialPlan.rooms.length)
+})
