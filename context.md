@@ -277,3 +277,7 @@ Tool limitation: `npx axiom-audit . --strict` and its `dist` equivalent are
 unavailable (npm registry 404; no installed workspace binary). Do not record
 them as passed. Existing palette contrast checks now also inspect the saved-view
 and sheet dialogs across all four schemes and three viewport widths.
+Those additional checks exposed Spatial's absolute climate panel intercepting
+study buttons at 768px and 1280px. Both Spatial and Renders now keep that panel
+in a separate row below the model; its controls remain available through the
+canvas scroll area.

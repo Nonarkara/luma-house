@@ -7093,6 +7093,9 @@ summary:focus-visible {
 }
 
 .spatial3d-shell { isolation: isolate; }
+.canvas-frame:has(> .spatial-wrap) { display: grid; grid-template-rows: minmax(320px, 1fr) auto; overflow: auto; }
+.canvas-frame > .spatial-wrap { position: relative; inset: auto; min-height: 320px; }
+.canvas-frame:has(> .spatial-wrap) > .science-dock { position: relative; inset: auto; width: 100%; margin: 0; }
 .render-disclaimer { position: static; padding: 8px 12px; font-size: 10px; line-height: 1.4; text-shadow: none; }
 
 /* Drawing presentation: model first; saved views and print sheets support it. */
@@ -7148,6 +7151,7 @@ summary:focus-visible {
   .study-paper header > img { width: 90px; }
   .study-launchers { bottom: 80px; right: 8px; }
   .render-gallery:has(.is-local-study) { grid-template-rows: minmax(440px, 1fr) auto auto auto auto; }
+  .canvas-frame:has(> .spatial-wrap) { grid-template-rows: minmax(440px, 1fr) auto; }
 }
 @page study { size: A4 landscape; margin: 8mm; }
 @media print {
