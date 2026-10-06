@@ -22,6 +22,9 @@ A Vite + React + TypeScript browser prototype. You draw rooms with a mouse or fi
 
 - 2D plan editing (rooms, windows, doors, furniture, tape measure)
 - lazy-loaded 3D massing and an optional walk-through
+- architectural cutaways, parallel Axonometric/Top-Down views and local sun shadows
+- saved viewpoints with date, time and city, plus morning/noon/afternoon comparisons
+- A4 study sheets with a scaled vector plan and wall section, actual model view and sun chart
 - a **Value Lens** for daylight reach, shade, airflow, escape connectivity, and envelope heat
 - living checks, climate what-ifs, A/B comparison, and a guided tour
 - a concept bill of quantities that responds to area, openings, and systems
@@ -32,6 +35,13 @@ The bundled sample is **South Light 50 · 向阳之家** — a 50.0 m² Shanghai
 Optional cloud (off by default): AI plan-trace and concept imagery, both labeled as drafts, sharing a browser-visible three-use daily quota. The worker lives in `workers/concept-render/`. Keys stay in the operator’s environment.
 
 Persistence is `localStorage`. `data/schema.sql` is a prototype SQLite sketch for later sync — it is not a running database in this app. Analytics is a local pageview queue.
+
+Use **Renders → Saved views** to save the current camera or compare 09:00,
+12:00 and 15:00 from the same viewpoint. Six view settings travel with the
+project and its Share link; preview images remain cached on the original
+device. **Study sheet** captures the current model and opens a printable A4
+page. Move section A–A to inspect another slice, then print at 100% for the
+stated plan/section scale. These views use Three.js and SunCalc locally.
 
 **This repo is not:**
 

@@ -56,6 +56,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   measureStart,
   measureEnd,
   onRoomPointerDown,
+  onRoomSelect,
   onOpeningPointerDown,
   onFurniturePointerDown,
   onGesturePointerMove,
@@ -93,6 +94,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   measureStart?: { x: number; y: number } | null
   measureEnd?: { x: number; y: number } | null
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
+  onRoomSelect: (room: Room) => void
   onOpeningPointerDown: (event: ReactPointerEvent, opening: Opening) => void
   onFurniturePointerDown: (event: ReactPointerEvent, item: Furniture) => void
   onGesturePointerMove: (event: ReactPointerEvent) => void
@@ -194,7 +196,10 @@ export const FloorPlan = React.memo(function FloorPlan({
               style={{ left: `${room.x}%`, top: `${room.y}%`, width: `${room.w}%`, height: `${room.h}%`, background: roomColors[room.kind] }}
               onPointerDown={(event) => onRoomPointerDown(event, room)}
               onClick={(event) => {
-                if (activeTool === 'select') event.stopPropagation()
+                if (activeTool === 'select') {
+                  event.stopPropagation()
+                  if (event.detail === 0) onRoomSelect(room)
+                }
               }}
               aria-label={`${room.name}, ${roomAreaFor(room, site).toFixed(1)} square meters`}
             >

@@ -239,3 +239,41 @@ Security review and remaining build dependency risk: docs/security/cso-audit-202
   are capped at 2 to avoid
   concurrent software-WebGL shader compilation exhausting the first-frame
   budget. Independent review rechecked DST transitions and camera settlement.
+
+## Architectural communication — 2026-10-06
+
+Design Read: a measured drawing should make room boundaries, openings and sun
+shadows readable before the user needs to inspect every edge. Reference:
+IngeTrazo's separate drawing styles, classified drawing pens and sheet composer
+(reviewed at 6be29fe); implement these ideas in our existing Three.js stack.
+The actual model is the dominant element; saved views and sheet tools support it.
+Cut edges carry the heaviest ink, walls carry medium ink, furniture carries fine
+ink. Existing palette choices and interactive tools remain available.
+
+Invariant: presentation cuts, projection and display style never remove the
+full building's shadow casters. Camera movement reuses the light's shadow map.
+Implemented true orthographic Axonometric/Top-Down views, an opaque architectural
+style with filled horizontal cuts, bounded saved view metadata in the project,
+locally cached previews labeled when the drawing changes, and a print study
+sheet with vector plan/section, a live captured view and the city's sun chart.
+No IngeTrazo source or desktop runtime is incorporated. GLB interchange is a
+separate future integration.
+
+Verified locally: 336 unit tests across 48 files and all 92 desktop/phone browser
+checks, including orthographic pose/year/time restoration, share/reload,
+three distinct offline sun frames from one camera, actual offscreen shadow
+draw reuse, stale-preview labels and Undo. A4 PDFs retain calibrated vector
+dimensions and fit one page; independent sample/small-site print review found
+no footer overlap. Phone and tablet screenshot review led to more model space,
+wrapped plan labels, a stacked phone sheet header and 44px study buttons.
+The preview-history test exposed an existing room keyboard defect: Enter/Space
+now selects a room through the same selection state, without starting a drag.
+Software-WebGL browser checks use one worker to avoid concurrent GPU startup
+timeouts. Lint, type/build, Worker type/quota checks and the production dependency
+audit pass. The source/bundle provenance scan found no provider client hosts,
+key literals, builder branding, generator meta or localhost URLs.
+
+Tool limitation: `npx axiom-audit . --strict` and its `dist` equivalent are
+unavailable (npm registry 404; no installed workspace binary). Do not record
+them as passed. Existing palette contrast checks now also inspect the saved-view
+and sheet dialogs across all four schemes and three viewport widths.

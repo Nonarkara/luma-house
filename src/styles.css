@@ -7094,3 +7094,82 @@ summary:focus-visible {
 
 .spatial3d-shell { isolation: isolate; }
 .render-disclaimer { position: static; padding: 8px 12px; font-size: 10px; line-height: 1.4; text-shadow: none; }
+
+/* Drawing presentation: model first; saved views and print sheets support it. */
+.study-launchers { position: absolute; right: 12px; bottom: 54px; z-index: 11; display: flex; gap: 6px; }
+.study-launchers button, .study-dialog button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--studio-border); background: var(--studio-sheet); color: var(--studio-ink); font-weight: 600; }
+.study-launchers button:hover, .study-dialog button:hover { background: var(--studio-support); }
+.study-dialog button:disabled { opacity: .5; cursor: default; }
+.study-dialog { width: 900px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); margin: auto; padding: 20px; border: 2px solid var(--studio-ink); background: var(--bg-elevated); color: var(--text-primary); overflow: auto; }
+.study-dialog::backdrop { background: rgb(15 23 42 / .55); }
+.study-dialog-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.study-dialog-controls > strong { margin-right: auto; font: 700 18px 'JetBrains Mono', monospace; }
+.study-dialog-controls > span, .study-save-actions > span { font-size: 12px; }
+.study-dialog-controls label { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px; max-width: 100%; }
+.study-scene-inputs { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin: 16px 0; }
+.study-scene-inputs label { display: grid; gap: 6px; font-size: 12px; }
+.study-scene-inputs input { min-width: 0; min-height: 44px; padding: 8px; border: 1px solid var(--studio-border); color: var(--studio-ink); background: var(--studio-sheet); }
+.study-save-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.study-scene-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.study-scene-grid article { min-width: 0; display: grid; align-content: start; gap: 8px; border-top: 2px solid var(--studio-ink); padding-top: 8px; }
+.study-scene-grid article > img { width: 100%; aspect-ratio: 1.6; object-fit: contain; background: var(--studio-support); }
+.study-scene-grid article > span, .study-scene-grid article > small { font-size: 12px; overflow-wrap: anywhere; }
+.study-scene-grid article > div:last-child { display: flex; flex-wrap: wrap; gap: 6px; }
+.study-no-preview, .study-empty { padding: 18px; border: 1px dashed var(--studio-border); font-size: 12px; }
+.study-sheet-dialog { width: 1120px; }
+.study-paper { background: white; color: #15202b; padding: 20px; }
+.study-paper header { display: flex; align-items: center; gap: 18px; padding-bottom: 12px; border-bottom: 2px solid #15202b; }
+.study-paper header > img { width: 110px; height: auto; }
+.study-paper header > div { min-width: 0; flex: 1; }
+.study-paper h1 { margin: 0 0 4px; font-size: 18px; }
+.study-paper p { margin: 0; font-size: 12px; }
+.study-paper header > strong { font-size: 12px; }
+.study-sheet-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px 20px; margin: 14px 0; }
+.study-sheet-grid section { min-width: 0; }
+.study-paper h2 { font-size: 12px; margin: 0 0 10px; border-bottom: 1px solid #68717a; padding-bottom: 5px; }
+.study-sheet-grid .study-captured-view { width: 100%; max-height: 280px; object-fit: contain; }
+.study-sheet-grid .sun-chart { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 12px; color: #15202b; }
+.study-sheet-grid .sun-chart svg { width: 120px; height: 120px; }
+.study-sheet-grid .sun-chart-caption, .study-sheet-grid .sun-chart-caption > * { color: #15202b; font-size: 12px; }
+.study-sheet-grid .sun-chart-disk { fill: white; stroke: #68717a; }
+.study-sheet-grid .sun-chart-ring, .study-sheet-grid .sun-chart-axis { stroke: #c3c7ca; }
+.study-sheet-grid .sun-chart-path, .study-sheet-grid .sun-chart-beam { stroke: #15202b; }
+.study-sheet-grid .sun-chart-now { fill: #15202b; }
+.study-sheet-grid .sun-chart-cardinal { fill: #15202b; }
+.study-paper footer { border-top: 2px solid #15202b; padding-top: 10px; font-size: 12px; }
+@media screen { .study-plan-drawing, .study-section-drawing { width: 100%; height: auto; max-height: 290px; } }
+@media (max-width: 640px) {
+  .study-dialog { padding: 12px; }
+  .study-scene-inputs { grid-template-columns: 1fr 1fr; }
+  .study-scene-inputs label:first-child { grid-column: 1 / -1; }
+  .study-scene-grid, .study-sheet-grid { grid-template-columns: 1fr; }
+  .study-paper { padding: 12px; }
+  .study-paper header { flex-wrap: wrap; }
+  .study-paper header > img { width: 90px; }
+  .study-launchers { bottom: 80px; right: 8px; }
+  .render-gallery:has(.is-local-study) { grid-template-rows: minmax(440px, 1fr) auto auto auto auto; }
+}
+@page study { size: A4 landscape; margin: 8mm; }
+@media print {
+  body:has(.study-sheet-dialog) > :not(.study-sheet-dialog) { display: none !important; }
+  .study-sheet-dialog { position: static; inset: auto; width: auto; max-width: none; height: auto; max-height: none; overflow: visible; margin: 0; padding: 0; border: 0; background: white; }
+  .study-sheet-dialog::backdrop { display: none; }
+  .study-dialog-controls { display: none; }
+  .study-paper { page: study; width: 281mm; height: 190mm; display: grid; grid-template-rows: 20mm 146mm 16mm; gap: 4mm; padding: 0; margin: 0; break-inside: avoid; }
+  .study-paper header { padding-bottom: 3mm; gap: 5mm; flex-wrap: nowrap; }
+  .study-paper header > img { width: 30mm; }
+  .study-paper h1 { font-size: 14pt; }
+  .study-paper p, .study-paper h2, .study-paper header > strong, .study-paper footer { font-size: 8pt; }
+  .study-sheet-grid { grid-template-columns: 145mm 128mm; grid-template-rows: 88mm 52mm; gap: 6mm 8mm; margin: 0; }
+  .study-sheet-grid section { break-inside: avoid; }
+  .study-paper h2 { line-height: 1.1; padding-bottom: 1mm; margin-bottom: 1mm; }
+  .study-sheet-grid .study-captured-view { width: 128mm; height: 76mm; max-height: none; }
+  .study-sheet-grid .sun-chart { grid-template-columns: 40mm 1fr; gap: 3mm; padding: 1mm; margin: 0; }
+  .study-sheet-grid .sun-chart svg { width: 40mm; height: 40mm; }
+  .study-sheet-grid .sun-chart-caption, .study-sheet-grid .sun-chart-caption > * { font-size: 8pt; }
+  .study-paper footer { padding-top: 3mm; }
+}
+@media screen and (max-width: 700px) {
+  .study-paper header > div { flex-basis: 100%; order: 2; }
+  .study-paper header > strong { margin-left: auto; }
+}

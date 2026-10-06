@@ -1,3 +1,5 @@
+import type { StudyScene } from './study/types'
+
 export type RoomKind = 'living' | 'kitchen' | 'bedroom' | 'bathroom' | 'studio' | 'terrace'
 
 export interface Room {
@@ -91,6 +93,8 @@ export interface ProjectLocation {
 }
 
 export interface PlanState {
+  /** Camera and sun settings; cached preview images are never put in share URLs. */
+  studyScenes?: StudyScene[]
   /** Coordinates and civil time zone travel with saved, imported and shared drawings. */
   location?: ProjectLocation
   rooms: Room[]

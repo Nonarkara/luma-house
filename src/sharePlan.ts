@@ -1,4 +1,5 @@
 import { sanitizeLocation } from './location/locations'
+import { sanitizeStudyScenes } from './study/scenes'
 import type { DrawnWall, Furniture, Opening, PlanState, Room, RoomKind } from './types'
 import { sanitizeSite } from './plan'
 import { ASSEMBLY_PRESETS } from './assemblies/presets'
@@ -167,9 +168,11 @@ export function sanitizePlan(raw: unknown): PlanState | null {
     ? candidate.systems
     : {}) as Record<string, unknown>
   const assemblies = sanitizeAssemblies(candidate.assemblies)
+  const studyScenes = sanitizeStudyScenes(candidate.studyScenes)
   const envelope = sanitizeEnvelope(systemsRaw.assemblies)
   return {
     ...(assemblies ? { assemblies } : {}),
+    ...(studyScenes ? { studyScenes } : {}),
     rooms,
     openings,
     furniture,

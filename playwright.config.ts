@@ -16,7 +16,7 @@ export default defineConfig({
   fullyParallel: false,
   // Bound simultaneous software-WebGL contexts; automatic CPU-based workers
   // can overload shader compilation and time out before the first scene frame.
-  workers: 2,
+  workers: 1,
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:4186',

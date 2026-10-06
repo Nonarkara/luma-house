@@ -1,6 +1,6 @@
 import { clockLabel } from '../location/solar'
 import { themeTokens, type StudioTheme } from '../design/themes'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { Edges, Grid, Html, OrbitControls, PivotControls, PointerLockControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -16,7 +16,6 @@ const WIREEDGE_COLOR = '#0e1014' // Axiom ink
 const WIREFILL_COLOR = '#faf7f1' // Axiom paper
 import { furnitureRectFor, roomHeight, siteOf, sunVector } from '../plan'
 import type { Furniture, FurnitureKind, Opening, PlanState, Room, SiteSpec } from '../types'
-import { openingsForRoomWall } from '../analysis/walls'
 import { windFlowPotential } from '../analysis'
 import type { Compass } from '../analysis'
 import type { CameraWaypoint } from '../tour/guidedTour'
@@ -25,6 +24,12 @@ import { openingDimensions } from '../openingGeometry'
 import { solarShadowCamera, windowSunRay } from './solarScene'
 import { Roof3D } from './Roof3D'
 import { ROOF_STYLES, type RoofStyle } from './roofGeometry'
+import type { OrbitControls as OrbitControl } from 'three-stdlib'
+import { CameraRig } from '../study/CameraRig'
+import { StudyPanel } from '../study/StudyPanel'
+import { cutPart, modelBounds, physicalGeometryKey, wallParts } from '../study/geometry'
+import type { DisplayStyle, StudyCamera, StudyCapture, StudyScene, StudySettings } from '../study/types'
+import type { ProjectLocation } from '../types'
 
 const HEIGHT_MIN = 2.2
 const HEIGHT_MAX = 4.5
@@ -82,7 +87,9 @@ function Wall({
   wireframe,
   edgeColor,
   sectionHeight,
+  architectural = false,
 }: {
+  architectural?: boolean
   position: [number, number, number]
   size: [number, number, number]
   emissiveIntensity: number
@@ -91,18 +98,18 @@ function Wall({
   edgeColor: string
   sectionHeight?: number
 }) {
-  const bottom = position[1] - size[1] / 2
-  const visibleHeight = Math.max(0, Math.min(size[1], (sectionHeight ?? Infinity) - bottom))
+  const cut = cutPart({ key: 'wall', position, size }, sectionHeight ?? Infinity)
+  const visibleHeight = cut.height
   return (
     <group>
       <mesh position={position} castShadow raycast={() => {}}>
         <boxGeometry args={size} />
         <meshBasicMaterial colorWrite={false} depthWrite={false} />
       </mesh>
-      {visibleHeight > 0 && <mesh position={[position[0], bottom + visibleHeight / 2, position[2]]} receiveShadow onClick={onClick}>
+      {visibleHeight > 0 && <mesh position={[position[0], cut.y, position[2]]} receiveShadow onClick={onClick}>
       <boxGeometry args={[size[0], visibleHeight, size[2]]} />
       <meshStandardMaterial
-        color={wireframe ? WIREFILL_COLOR : '#dfe0da'}
+        color={wireframe || architectural ? WIREFILL_COLOR : '#dfe0da'}
         roughness={0.9}
         metalness={0}
         emissive="#f59e0b"
@@ -111,97 +118,29 @@ function Wall({
         depthWrite={!wireframe}
         opacity={wireframe ? WIREFILL_OPACITY : 1}
       />
-      {wireframe && <Edges color={edgeColor} threshold={1} />}
+      {(wireframe || architectural) && <Edges color={edgeColor} threshold={1} lineWidth={architectural ? 1.4 : 1} />}
     </mesh>}
+      {architectural && cut.capped && <mesh position={[position[0], sectionHeight! + 0.002, position[2]]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => {}}>
+        <planeGeometry args={[size[0], size[2]]} />
+        <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} />
+        <Edges color={edgeColor} lineWidth={2.5} />
+      </mesh>}
     </group>
   )
 }
 
 type Footprint = ReturnType<typeof roomFootprint>
 
-function SegmentedWall({
-  compass,
-  footprint,
-  height,
-  openings,
-  site,
-  emissiveIntensity,
-  onClick,
-  wireframe,
-  edgeColor,
-  sectionHeight,
-}: {
-  compass: Compass
-  footprint: Footprint
-  height: number
-  openings: Opening[]
-  site: SiteSpec
-  emissiveIntensity: number
-  onClick: (event: ThreeEvent<MouseEvent>) => void
-  wireframe: boolean
-  edgeColor: string
-  sectionHeight?: number
+function SegmentedWall({ compass, room, plan, emissiveIntensity, onClick, wireframe, edgeColor, sectionHeight, architectural }: {
+  compass: Compass; room: Room; plan: PlanState; emissiveIntensity: number
+  onClick: (event: ThreeEvent<MouseEvent>) => void; wireframe: boolean
+  edgeColor: string; sectionHeight?: number; architectural: boolean
 }) {
-  const horizontal = compass === 'N' || compass === 'S'
-  const wallStart = horizontal ? footprint.minX : footprint.minZ
-  const wallEnd = horizontal ? footprint.maxX : footprint.maxZ
-  const fixed = horizontal
-    ? (compass === 'N' ? footprint.minZ : footprint.maxZ)
-    : (compass === 'W' ? footprint.minX : footprint.maxX)
-
-  const cuts = openings
-    .map((opening) => {
-      const center = toMeters(opening.x, opening.y, site)
-      const centerAxis = horizontal ? center.mx : center.mz
-      const { width } = openingDimensions(opening)
-      return {
-        opening,
-        start: Math.max(wallStart, centerAxis - width / 2),
-        end: Math.min(wallEnd, centerAxis + width / 2),
-      }
-    })
-    .filter((cut) => cut.end - cut.start > 0.05)
-    .sort((a, b) => a.start - b.start)
-
-  const pieces: Array<{ key: string; start: number; length: number; y: number; h: number }> = []
-  let cursor = wallStart
-  cuts.forEach((cut, index) => {
-    if (cut.start > cursor) {
-      pieces.push({ key: `pier-${index}`, start: cursor, length: cut.start - cursor, y: 0, h: height })
-    }
-    const dimensions = openingDimensions(cut.opening)
-    const sill = Math.min(height, dimensions.sill)
-    const openingHeight = dimensions.height
-    const width = cut.end - cut.start
-    if (sill > 0) pieces.push({ key: `sill-${cut.opening.id}`, start: cut.start, length: width, y: 0, h: sill })
-    const headStart = Math.min(height, sill + openingHeight)
-    if (height > headStart) pieces.push({ key: `head-${cut.opening.id}`, start: cut.start, length: width, y: headStart, h: height - headStart })
-    cursor = Math.max(cursor, cut.end)
-  })
-  if (cursor < wallEnd) pieces.push({ key: 'pier-end', start: cursor, length: wallEnd - cursor, y: 0, h: height })
-
-  if (pieces.length === 0) {
-    pieces.push({ key: 'whole', start: wallStart, length: wallEnd - wallStart, y: 0, h: height })
-  }
-
-  return (
-    <group>
-      {pieces.map((piece) => (
-        <Wall
-          key={piece.key}
-          position={horizontal
-            ? [piece.start + piece.length / 2, FLOOR_THICKNESS + piece.y + piece.h / 2, fixed]
-            : [fixed, FLOOR_THICKNESS + piece.y + piece.h / 2, piece.start + piece.length / 2]}
-          size={horizontal ? [piece.length, piece.h, WALL_THICKNESS] : [WALL_THICKNESS, piece.h, piece.length]}
-          emissiveIntensity={emissiveIntensity}
-          onClick={onClick}
-          wireframe={wireframe}
-          edgeColor={edgeColor}
-          sectionHeight={sectionHeight}
-        />
-      ))}
-    </group>
-  )
+  return <group>{wallParts(room, compass, plan).map(piece => <Wall
+    key={piece.key} position={piece.position} size={piece.size}
+    emissiveIntensity={emissiveIntensity} onClick={onClick} wireframe={wireframe}
+    edgeColor={edgeColor} sectionHeight={sectionHeight} architectural={architectural}
+  />)}</group>
 }
 
 function RoomVolume({
@@ -213,7 +152,9 @@ function RoomVolume({
   sectionHeight,
   wireframe,
   edgeColor,
+  architectural,
 }: {
+  architectural: boolean
   room: Room
   plan: PlanState
   site: SiteSpec
@@ -225,7 +166,6 @@ function RoomVolume({
 }) {
   const footprint = useMemo(() => roomFootprint(room, site), [room, site])
   const fullHeight = roomHeight(room)
-  const height = fullHeight
 
   const handleSelect = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
@@ -244,13 +184,13 @@ function RoomVolume({
       >
         <boxGeometry args={[footprint.width, TERRACE_THICKNESS, footprint.depth]} />
         <meshStandardMaterial
-          color={wireframe ? WIREFILL_COLOR : '#23262d'}
+          color={wireframe || architectural ? WIREFILL_COLOR : '#23262d'}
           roughness={0.9}
           metalness={0}
           transparent={false}
           opacity={1}
         />
-        {wireframe && <Edges color={edgeColor} threshold={1} />}
+        {(wireframe || architectural) && <Edges color={edgeColor} threshold={1} lineWidth={architectural ? 1.3 : 1} />}
       </mesh>
     )
   }
@@ -270,22 +210,21 @@ function RoomVolume({
       >
         <boxGeometry args={[footprint.width, FLOOR_THICKNESS, footprint.depth]} />
         <meshStandardMaterial
-          color={wireframe ? WIREFILL_COLOR : (room.kind === 'bathroom' ? '#2a2c30' : '#1b1e24')}
+          color={wireframe || architectural ? WIREFILL_COLOR : (room.kind === 'bathroom' ? '#2a2c30' : '#1b1e24')}
           roughness={0.9}
           metalness={0}
           transparent={false}
           opacity={1}
         />
-        {wireframe && <Edges color={edgeColor} threshold={1} />}
+        {(wireframe || architectural) && <Edges color={edgeColor} threshold={1} lineWidth={architectural ? 1.3 : 1} />}
       </mesh>
       {(['N', 'S', 'W', 'E'] as Compass[]).map((compass) => (
         <SegmentedWall
           key={compass}
           compass={compass}
-          footprint={footprint}
-          height={height}
-          openings={openingsForRoomWall(plan, room.id, compass)}
-          site={site}
+          room={room}
+          plan={plan}
+          architectural={architectural}
           emissiveIntensity={emissiveIntensity}
           onClick={handleSelect}
           wireframe={wireframe}
@@ -297,10 +236,12 @@ function RoomVolume({
   )
 }
 
-function OpeningPanel({ opening, site, wireframe, edgeColor }: { opening: Opening; site: SiteSpec; wireframe: boolean; edgeColor: string }) {
+function OpeningPanel({ opening, site, wireframe, edgeColor, architectural, sectionHeight }: { opening: Opening; site: SiteSpec; wireframe: boolean; edgeColor: string; architectural: boolean; sectionHeight: number }) {
   const { mx, mz } = toMeters(opening.x, opening.y, site)
   const isWindow = opening.type === 'window'
-  const { width, height, sill } = openingDimensions(opening)
+  const { width, height: fullHeight, sill } = openingDimensions(opening)
+  const height = Math.max(0, Math.min(fullHeight, sectionHeight - FLOOR_THICKNESS - sill))
+  if (height <= 0) return null
   const y = FLOOR_THICKNESS + sill + height / 2
   const size: [number, number, number] =
     opening.rotation === 0 ? [width, height, WALL_THICKNESS] : [WALL_THICKNESS, height, width]
@@ -310,7 +251,7 @@ function OpeningPanel({ opening, site, wireframe, edgeColor }: { opening: Openin
     <mesh position={[mx, y, mz]}>
       <boxGeometry args={size} />
       <meshStandardMaterial
-        color={wireframe ? WIREFILL_COLOR : color}
+        color={wireframe || architectural ? WIREFILL_COLOR : color}
         roughness={0.9}
         metalness={0}
         transparent={wireframe || isWindow}
@@ -318,31 +259,37 @@ function OpeningPanel({ opening, site, wireframe, edgeColor }: { opening: Openin
         emissive={isWindow ? '#f59e0b' : '#000000'}
         emissiveIntensity={isWindow ? 0.06 : 0}
       />
-      {wireframe && <Edges color={edgeColor} threshold={1} />}
+      {(wireframe || architectural) && <Edges color={edgeColor} threshold={1} lineWidth={1} />}
     </mesh>
   )
 }
 
 
-function FurniturePiece({ item, site, wireframe, edgeColor }: { item: Furniture; site: SiteSpec; wireframe: boolean; edgeColor: string }) {
+function FurniturePiece({ item, site, wireframe, edgeColor, architectural, sectionHeight }: { item: Furniture; site: SiteSpec; wireframe: boolean; edgeColor: string; architectural: boolean; sectionHeight: number }) {
   const rect = useMemo(() => furnitureRectFor(item, site), [item, site])
   const widthM = (rect.w / 100) * site.w
   const depthM = (rect.h / 100) * site.h
   const { mx, mz } = toMeters(rect.x + rect.w / 2, rect.y + rect.h / 2, site)
-  const height = FURNITURE_HEIGHTS[item.kind]
+  const fullHeight = FURNITURE_HEIGHTS[item.kind]
+  const height = Math.max(0, Math.min(fullHeight, sectionHeight - FLOOR_THICKNESS))
 
   return (
-    <mesh position={[mx, FLOOR_THICKNESS + height / 2, mz]} castShadow>
+    <group>
+    <mesh position={[mx, FLOOR_THICKNESS + fullHeight / 2, mz]} castShadow raycast={() => {}}>
+      <boxGeometry args={[widthM, fullHeight, depthM]} /><meshBasicMaterial colorWrite={false} depthWrite={false} />
+    </mesh>
+    <mesh position={[mx, FLOOR_THICKNESS + height / 2, mz]}>
       <boxGeometry args={[widthM, height, depthM]} />
       <meshStandardMaterial
-        color={wireframe ? WIREFILL_COLOR : '#8b8f98'}
+        color={wireframe || architectural ? WIREFILL_COLOR : '#8b8f98'}
         roughness={0.9}
         metalness={0}
         transparent={wireframe}
         opacity={wireframe ? WIREFILL_OPACITY : 1}
       />
-      {wireframe && <Edges color={edgeColor} threshold={1} />}
+      {(wireframe || architectural) && <Edges color={edgeColor} threshold={1} lineWidth={architectural ? 0.7 : 1} />}
     </mesh>
+    </group>
   )
 }
 
@@ -431,7 +378,13 @@ function AirflowPathVectors({
 }
 
 
-function SunLight({ azimuth, altitude, site, shadows }: { azimuth: number; altitude: number; site: SiteSpec; shadows: boolean }) {
+function SunLight({ azimuth, altitude, site, shadows, geometryKey }: { azimuth: number; altitude: number; site: SiteSpec; shadows: boolean; geometryKey: string }) {
+  const light = useRef<THREE.DirectionalLight>(null)
+  const invalidate = useThree(state => state.invalidate)
+  useLayoutEffect(() => {
+    if (light.current) light.current.shadow.needsUpdate = true
+    invalidate()
+  }, [geometryKey, azimuth, altitude, shadows, invalidate])
   const direction = useMemo(() => sunVector(azimuth, altitude), [azimuth, altitude])
   const isNight = altitude <= 0
   const shadow = solarShadowCamera(site)
@@ -442,6 +395,8 @@ function SunLight({ azimuth, altitude, site, shadows }: { azimuth: number; altit
     <>
       <ambientLight intensity={0.35} />
       <directionalLight
+        ref={light}
+        shadow-autoUpdate={false}
         position={position}
         intensity={isNight ? 0 : 2.2}
         castShadow={!isNight && shadows}
@@ -516,18 +471,6 @@ function HeightHandle({
   )
 }
 
-/** Preserve the same drawing field on narrow canvases, rather than cropping it. */
-function ResponsiveCamera({ walking }: { walking: boolean }) {
-  const { camera, size, invalidate } = useThree()
-  useEffect(() => {
-    if (!(camera instanceof THREE.PerspectiveCamera)) return
-    camera.zoom = walking ? 1 : Math.min(1, size.width / Math.max(1, size.height) / 2)
-    camera.updateProjectionMatrix()
-    invalidate()
-  }, [camera, size.width, size.height, walking, invalidate])
-  return null
-}
-
 function CameraController({
   walking,
   preset,
@@ -537,14 +480,13 @@ function CameraController({
   walking: boolean
   preset: CameraPreset
   waypoint?: CameraWaypoint | null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  controlsRef: React.RefObject<any>
+  controlsRef: React.RefObject<OrbitControl>
 }) {
   const { camera, invalidate } = useThree()
   useEffect(() => { invalidate() }, [preset, waypoint, walking, invalidate])
   useFrame(() => {
     if (walking) return
-    const position = waypoint?.position ?? (preset === 'axonometric' ? [16, 16, 16] : preset === 'topdown' ? [0, 24, 0.001] : null)
+    const position = waypoint?.position ?? null
     if (!position) return
     const targetPos = new THREE.Vector3(...position as [number, number, number])
     const targetLook = new THREE.Vector3(...(waypoint?.target ?? (preset === 'topdown' ? [0, 0, 0] : [0, 1, 0])) as [number, number, number])
@@ -651,8 +593,15 @@ export default function Spatial3D({
   onOpenScenarios,
   windFrom = 180,
   windSpeed = 3,
+  projectTitle, location, year, onScenesChange, onRecallScene, onStudyTimeChange,
 
 }: {
+  projectTitle: string
+  location: ProjectLocation
+  year: number
+  onScenesChange: (scenes: StudyScene[]) => void
+  onRecallScene: (scene: StudyScene) => void
+  onStudyTimeChange: (day: number, hour: number, year: number) => void
   theme: StudioTheme
   plan: PlanState
   sunAzimuth: number
@@ -681,7 +630,9 @@ export default function Spatial3D({
     [ghost, plan.rooms, selectedRoom],
   )
 
-  const [wireframe, setWireframe] = useState(true)
+  const [displayStyle, setDisplayStyle] = useState<DisplayStyle>('architectural')
+  const wireframe = displayStyle === 'wireframe'
+  const architectural = displayStyle === 'architectural'
   const [showShadows, setShowShadows] = useState(true)
   const shellRef = useRef<HTMLDivElement>(null)
   const [exportError, setExportError] = useState('')
@@ -690,13 +641,13 @@ export default function Spatial3D({
     if (!canvas) return
     try {
       const link = document.createElement('a')
-      link.download = `designon-${hour}h-${wireframe ? 'wireframe' : 'solid'}.png`
+      link.download = `designon-${hour}h-${displayStyle}.png`
       link.href = canvas.toDataURL('image/png')
       link.click()
       setExportError('')
     } catch { setExportError('Could not export this view. Try another browser.') }
   }
-  const [preset, setPreset] = useState<CameraPreset>('orbit')
+  const [preset, setPreset] = useState<CameraPreset>('axonometric')
   const [showSunRays, setShowSunRays] = useState(true)
   const [showAirPaths, setShowAirPaths] = useState(false)
   const [showRoof, setShowRoof] = useState(false)
@@ -704,9 +655,27 @@ export default function Spatial3D({
   // Section plane height in meters — anything above this Y is clipped in the
   // 3D view, which makes it easy to read the plan by slicing through the
   // walls. Default 4.5 m = no clipping (most single-storey plans).
-  const [sectionHeight, setSectionHeight] = useState(4.5)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const controlsRef = useRef<any>(null)
+  const [sectionHeight, setSectionHeight] = useState(1.4)
+  const controlsRef = useRef<OrbitControl>(null)
+  const captureRef = useRef<(() => Promise<StudyCapture>) | null>(null)
+  const [cameraRequest, setCameraRequest] = useState<{ id: number; camera: StudyCamera } | null>(null)
+  const geometryKey = physicalGeometryKey(plan, roofStyle)
+  const { rooms: frameRooms, site: frameSite } = plan
+  const target = useMemo(() => cameraRequest?.camera.target ?? modelBounds({ rooms: frameRooms, site: frameSite }).getCenter(new THREE.Vector3()).toArray() as [number, number, number], [cameraRequest, frameRooms, frameSite])
+  const settings: StudySettings = { preset, style: displayStyle, sectionHeight, roofStyle, showRoof, shadows: showShadows, sunRays: showSunRays, airPaths: showAirPaths }
+  const applyScene = (scene: StudyScene) => {
+    const s = scene.settings
+    setPreset(s.preset); setDisplayStyle(s.style); setSectionHeight(s.sectionHeight)
+    setRoofStyle(s.roofStyle); setShowRoof(s.showRoof); setShowShadows(s.shadows)
+    setShowSunRays(s.sunRays); setShowAirPaths(s.airPaths)
+    setCameraRequest({ id: Date.now(), camera: scene.camera })
+    onRecallScene(scene)
+  }
+  const captureView = async () => {
+    if (!captureRef.current) throw new Error('The 3D view is still loading.')
+    return captureRef.current()
+  }
+  const visibleCut = walkMode || tourWaypoint ? 6 : sectionHeight
 
   const handleGroundClick = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
@@ -717,27 +686,27 @@ export default function Spatial3D({
   )
 
   return (
-    <div className="spatial3d-shell" ref={shellRef} aria-label="Local 3D light study">
+    <div className="spatial3d-shell" ref={shellRef} aria-label="Local 3D light study" data-style={displayStyle} data-projection={walkMode || tourWaypoint ? 'perspective' : cameraRequest?.camera.projection ?? (preset === 'orbit' ? 'perspective' : 'orthographic')}>
       <div className="spatial-toolbar">
         <div className="preset-group">
           <button
             type="button"
             className={`spatial-tb-btn ${preset === 'orbit' && !walkMode ? 'active' : ''}`}
-            onClick={() => { setPreset('orbit'); if (walkMode && onToggleWalkMode) onToggleWalkMode() }}
+            onClick={() => { setCameraRequest(null); setPreset('orbit'); if (walkMode && onToggleWalkMode) onToggleWalkMode() }}
           >
             3D Orbit
           </button>
           <button
             type="button"
             className={`spatial-tb-btn ${preset === 'axonometric' ? 'active' : ''}`}
-            onClick={() => { setPreset('axonometric'); if (walkMode && onToggleWalkMode) onToggleWalkMode() }}
+            onClick={() => { setCameraRequest(null); setPreset('axonometric'); if (walkMode && onToggleWalkMode) onToggleWalkMode() }}
           >
             Axonometric
           </button>
           <button
             type="button"
             className={`spatial-tb-btn ${preset === 'topdown' ? 'active' : ''}`}
-            onClick={() => { setPreset('topdown'); if (walkMode && onToggleWalkMode) onToggleWalkMode() }}
+            onClick={() => { setCameraRequest(null); setPreset('topdown'); if (walkMode && onToggleWalkMode) onToggleWalkMode() }}
           >
             Top-Down
           </button>
@@ -751,6 +720,7 @@ export default function Spatial3D({
         </div>
 
         <div className="vector-group">
+          <button type="button" className={`spatial-tb-btn ${architectural ? 'active-layer' : ''}`} aria-pressed={architectural} onClick={() => setDisplayStyle('architectural')}>Architectural</button>
           <button type="button" className="spatial-tb-btn" onClick={onStartTour} disabled={ghost}>
             Tour
           </button>
@@ -774,14 +744,14 @@ export default function Spatial3D({
           <button
             type="button"
             className={`spatial-tb-btn toggle ${showRoof ? 'active-layer' : ''}`}
-            onClick={() => setShowRoof(!showRoof)}
+            onClick={() => { setShowRoof(!showRoof); if (!showRoof) setSectionHeight(4.5) }}
           >
             3D Roof
           </button>
           <button
               type="button"
               className={`spatial-tb-btn toggle ${wireframe ? 'active-layer' : ''}`}
-              onClick={() => setWireframe(value => !value)}
+              onClick={() => setDisplayStyle(wireframe ? 'solid' : 'wireframe')}
               aria-pressed={wireframe}
               title="Toggle architectural wireframe (sharp edges, paper fill) vs solid render"
             >
@@ -809,6 +779,7 @@ export default function Spatial3D({
               max="4.5"
               step="0.1"
               value={sectionHeight}
+              disabled={walkMode || !!tourWaypoint}
               onChange={(event) => setSectionHeight(Number(event.target.value))}
               title={`3D section cut at ${sectionHeight.toFixed(1)} m — anything above is clipped`}
               aria-label="3D section cut height"
@@ -827,8 +798,8 @@ export default function Spatial3D({
         onPointerMissed={() => onSelectRoom(null)}
       >
         <color attach="background" args={[colors['--studio-support']]} />
-        <SunLight azimuth={sunAzimuth} altitude={sunAltitude} site={site} shadows={showShadows} />
-        <ResponsiveCamera walking={walkMode} />
+        <SunLight azimuth={sunAzimuth} altitude={sunAltitude} site={site} shadows={showShadows} geometryKey={geometryKey} />
+        <CameraRig plan={plan} preset={preset} walking={walkMode} touring={!!tourWaypoint} request={cameraRequest} controlsRef={controlsRef} captureRef={captureRef} />
         <CameraController
           walking={walkMode}
           preset={preset}
@@ -844,10 +815,13 @@ export default function Spatial3D({
             ref={controlsRef}
             makeDefault
             enableDamping
-            maxPolarAngle={tourWaypoint ? Math.PI : Math.PI * 0.49}
+            maxPolarAngle={tourWaypoint || preset === 'topdown' ? Math.PI : Math.PI * 0.49}
             minDistance={tourWaypoint ? 0.1 : 3}
-            maxDistance={Math.max(40, Math.max(site.w, site.h) * 3)}
-            target={[0, 1, 0]}
+            maxDistance={Math.max(40, Math.max(...modelBounds(plan).getSize(new THREE.Vector3()).toArray()) * 20)}
+            target={target}
+            enableRotate={preset !== 'topdown' || !!tourWaypoint}
+            maxZoom={30}
+            minZoom={0.1}
           />
         )}
 
@@ -860,8 +834,8 @@ export default function Spatial3D({
             signals "anything above this height is conceptually clipped". The
             geometry below the plane stays visible; the plane is a visual
             indicator + can be used to read interior volumes. */}
-        {sectionHeight < 4.4 && (
-          <mesh position={[0, sectionHeight, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={1}>
+        {!architectural && visibleCut < 4.4 && (
+          <mesh position={[0, visibleCut, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={1}>
             <planeGeometry args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]} />
             <meshBasicMaterial color="#f59e0b" transparent opacity={0.18} depthWrite={false} />
           </mesh>
@@ -895,16 +869,17 @@ export default function Spatial3D({
                 site={site}
                 isSelected={room.id === selectedRoom}
                 onSelectRoom={onSelectRoom}
-                sectionHeight={sectionHeight}
+                sectionHeight={visibleCut}
+                architectural={architectural}
                 wireframe={wireframe}
                 edgeColor={edgeColor}
               />
             ))}
         {!ghost && plan.openings.map((opening) => (
-          <OpeningPanel key={opening.id} opening={opening} site={site} wireframe={wireframe} edgeColor={edgeColor} />
+          <OpeningPanel key={opening.id} opening={opening} site={site} wireframe={wireframe} edgeColor={edgeColor} architectural={architectural} sectionHeight={visibleCut} />
         ))}
         {!ghost && plan.furniture.map((item) => (
-          <FurniturePiece key={item.id} item={item} site={site} wireframe={wireframe} edgeColor={edgeColor} />
+          <FurniturePiece key={item.id} item={item} site={site} wireframe={wireframe} edgeColor={edgeColor} architectural={architectural} sectionHeight={visibleCut} />
         ))}
 
         {!ghost && showSunRays && (
@@ -913,7 +888,7 @@ export default function Spatial3D({
         {!ghost && showAirPaths && (
           <AirflowPathVectors plan={plan} site={site} windFrom={windFrom} windSpeed={windSpeed} />
         )}
-        <Roof3D plan={plan} site={site} visible={showRoof} style={roofStyle} />
+        <Roof3D plan={plan} site={site} visible={showRoof && visibleCut >= Math.max(0, ...plan.rooms.map(roomHeight)) + FLOOR_THICKNESS} style={roofStyle} />
 
         {selected && <HeightHandle room={selected} site={site} onSetWallHeight={onSetWallHeight} />}
 
@@ -922,10 +897,12 @@ export default function Spatial3D({
         </Html>
       </Canvas>
 
+      <StudyPanel plan={plan} title={projectTitle} location={location} day={day} hour={hour} year={year} settings={settings}
+        capture={captureView} restore={applyScene} onScenesChange={onScenesChange} onTimeChange={onStudyTimeChange} disabled={ghost || walkMode || !!tourWaypoint} />
       <div className="spatial-sun-hud" aria-live="polite">
         <span className="sun-orb" style={{ opacity: sunAltitude > 0 ? 1 : 0.25 }} />
         <div>
-          <small>Local geometry · no AI call · day {day}</small>
+          <small>{displayStyle} · {year} · day {day} · local geometry</small>
           <strong>{clockLabel(hour)} · {sunAltitude.toFixed(1)}° altitude</strong>
           <em>{sunAzimuth.toFixed(1)}° azimuth · {locationLabel}</em>
         </div>
@@ -934,7 +911,7 @@ export default function Spatial3D({
       <div className="spatial-orbit-note">
         {walkMode
           ? 'Eye-level walk · click model to look · WASD moves · Esc exits · concept view has no wall collision'
-          : 'Drag to orbit · window + wall shadows · clear-sky approximation'}
+          : `${preset === 'topdown' ? 'North-up parallel view' : 'Drag to orbit'} · ${architectural ? 'cut faces filled · ' : ''}${showShadows ? 'full building in shadow model' : 'shadows off'}`}
       </div>
     </div>
   )

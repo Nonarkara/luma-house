@@ -1,8 +1,7 @@
 import * as THREE from 'three'
 
-export type RoofStyle = 'flat' | 'gable' | 'shed' | 'green'
-
-export const ROOF_STYLES: RoofStyle[] = ['flat', 'gable', 'shed', 'green']
+export type { RoofStyle } from './roofStyles'
+export { ROOF_STYLES } from './roofStyles'
 
 /**
  * A gable roof's ridge runs along the building's longer plan axis; the two

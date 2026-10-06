@@ -13,7 +13,7 @@ are all still `luma-house` for deployment inertia. Do not "fix" the mismatch.
 
 - `npm install`
 - `npm run dev` — Vite dev server on :5173
-- `npm test` — vitest, 327 cases across 47 files
+- `npm test` — vitest, 336 cases across 48 files
 - `npm run lint` — ESLint
 - `npm run build` — `tsc -b` then the production bundle
 - `npm run preview` — serve the built bundle
@@ -45,6 +45,19 @@ longitude and IANA zone. Chart and perspective use SunCalc2 through
 with an explanation and repeated hours use the first occurrence. Keep the
 SunCalc BSD notice in `public/licenses/suncalc.txt`. Preserve chosen locations
 through save/share/import, trace acceptance and layout changes.
+
+Architectural presentation defaults to opaque cut faces and a true parallel
+Axonometric camera; Top-Down is north up. Section cuts and drawing styles keep
+the full building's shadow casters. The directional light updates its cached
+shadow map only when physical geometry, sun direction or shadows change.
+`src/study/` owns camera framing, bounded scene validation, previews and A4
+study sheets. `PlanState.studyScenes` stores six views with camera, style,
+city and civil date/time/year; JPEG previews stay in a separate device cache,
+never in share hashes. Preserve scenes through layout and trace changes, and
+label previews when their geometry differs. Print plan and wall section SVGs
+in physical millimetres, at the same standard scale, alongside the actual
+captured view and city sun chart. Roof vocabularies used by sanitizers belong
+in pure `roofStyles.ts`, so validation cannot eagerly load Three.js.
 
 ## The napkin vocabulary
 

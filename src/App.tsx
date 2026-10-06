@@ -3,6 +3,7 @@ import { SunChart } from './canvas/SunChart'
 import { starterLocations } from './location/locations'
 import { citySunPosition, clockLabel, normalizedCivilHour } from './location/solar'
 import type { ProjectLocation } from './types'
+import type { StudyScene } from './study/types'
 import { readTheme, saveTheme } from './design/themes'
 import { ThemePicker } from './components/ThemePicker'
 import { traceSiteFromImage } from './concept/reviewTrace'
@@ -107,7 +108,7 @@ function readSavedPlan(): PlanState {
     const saved = localStorage.getItem(CHINA_PROJECT_KEY)
     if (!saved) return blankPlan()
     const next = sanitizePlan(JSON.parse(saved)) ?? blankPlan()
-    if (isStockDemo(next) && !next.location) return blankPlan()
+    if (isStockDemo(next) && !next.location && !next.studyScenes?.length) return blankPlan()
     return next
   } catch {
     return blankPlan()
@@ -136,6 +137,7 @@ function App() {
   const [styleKeywords, setStyleKeywords] = useState<string>(() => readString('style-keywords:shanghai-50', 'luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
   const [hour, setHour] = useState(10)
   const [day, setDay] = useState(355)
+  const [studyYear, setStudyYear] = useState(() => new Date().getFullYear())
   const [outsideC, setOutsideC] = useState(34)
   const [valueLens, setValueLens] = useState<ValueLensMode>('off')
   const [windFrom, setWindFrom] = useState(180)
@@ -144,12 +146,12 @@ function App() {
   const [assistantText, setAssistantText] = useState('')
   const [toast, setToast] = useState<string | null>(null)
   useEffect(() => {
-    const actual = normalizedCivilHour(projectLocation, day, hour)
+    const actual = normalizedCivilHour(projectLocation, day, hour, studyYear)
     if (actual === hour) return
     if (actual > 24) { setDay(current => current + 1); setHour(actual - 24) }
     else setHour(actual)
     setToast(`That clock time is skipped by daylight saving in ${projectLocation.name}. Showing ${clockLabel(actual > 24 ? actual - 24 : actual)}.`)
-  }, [projectLocation, day, hour])
+  }, [projectLocation, day, hour, studyYear])
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [snapGrid, setSnapGrid] = useState(true)
@@ -206,7 +208,7 @@ function App() {
 
   const budget = useMemo(() => calculateChinaApartmentBudget(plan), [plan])
   const site = useMemo<SiteSpec>(() => siteOf(plan), [plan])
-  const sun = useMemo(() => citySunPosition(projectLocation, day, hour), [projectLocation, day, hour])
+  const sun = useMemo(() => citySunPosition(projectLocation, day, hour, studyYear), [projectLocation, day, hour, studyYear])
   const patches = useMemo(() => sunPatches(plan, sun.azimuth, sun.altitude), [plan, sun.azimuth, sun.altitude])
   const directSunM2 = Math.min(budget.area, patches.reduce((sum, patch) => sum + patch.areaM2, 0))
   const heatFlow = useMemo(
@@ -1093,7 +1095,7 @@ function App() {
   }, [isTracing, quotaLeft, startTrace])
   const acceptTrace = (next: PlanState) => {
     if (!pendingTrace || isTracing) return
-    commit({ ...next, location: projectLocation }, 'Accept calibrated trace')
+    commit({ ...next, location: projectLocation, studyScenes: plan.studyScenes }, 'Accept calibrated trace')
     setSketchUrl(pendingTrace.image)
     setSelectedRoom(next.rooms[0]?.id ?? null)
     setSelectedOpening(null)
@@ -1217,6 +1219,16 @@ function App() {
         day={day}
         locationLabel={projectLocation.label}
         ghost={isEmpty}
+        location={projectLocation}
+        projectTitle={projectTitle}
+        year={studyYear}
+        onStudyTimeChange={(d: number, h: number, y: number) => { setDay(d); setHour(h); setStudyYear(y) }}
+        onScenesChange={(scenes: StudyScene[]) => commit(current => ({ ...current, studyScenes: scenes.length ? scenes : undefined }), 'Save study views')}
+        onRecallScene={(scene: StudyScene) => {
+          setDay(scene.day); setHour(scene.hour); setStudyYear(scene.year)
+          setWalkMode(false); setTourChapterIndex(null); setSelectedRoom(null)
+          if (JSON.stringify(scene.location) !== JSON.stringify(projectLocation)) commit(current => ({ ...current, location: scene.location }), 'Recall study location')
+        }}
         tourWaypoint={tourChapterIndex !== null ? tourChapters[tourChapterIndex]?.camera : null}
         walkMode={walkMode}
         onToggleWalkMode={() => setWalkMode((prev) => !prev)}
@@ -1232,7 +1244,7 @@ function App() {
     <div className="app-shell">
       <input ref={traceFileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={runTrace} hidden />
       {presetOpen && <LayoutPresetDialog onClose={() => setPresetOpen(false)} onApply={next => {
-        commit({ ...next, location: projectLocation }, 'Apply layout preset')
+        commit(current => ({ ...next, location: projectLocation, studyScenes: current.studyScenes }), 'Apply layout preset')
         setSelectedRoom(next.rooms[0]?.id ?? null)
         setSelectedOpening(null)
         setSelectedFurniture(null)
@@ -1275,7 +1287,7 @@ function App() {
           {locationOpen && <section className="location-workspace" aria-label="Project location and sun chart">
             <button className="location-close" type="button" onClick={() => setLocationOpen(false)}>Close city search</button>
             <CityPicker location={projectLocation} onChange={(next: ProjectLocation) => commit(current => ({ ...current, location: next }), 'Change project location')} />
-            <SunChart latitude={projectLocation.latitude} location={projectLocation} day={day} hour={hour} locationLabel={projectLocation.label} />
+            <SunChart latitude={projectLocation.latitude} location={projectLocation} day={day} hour={hour} year={studyYear} locationLabel={projectLocation.label} />
           </section>}
 
           <JourneyRail
@@ -1354,6 +1366,7 @@ function App() {
                 measureStart={measureStart}
                 measureEnd={measureEnd}
                 onRoomPointerDown={onRoomPointerDown}
+                onRoomSelect={room => { setSelectedRoom(room.id); setSelectedOpening(null); setSelectedFurniture(null) }}
                 onOpeningPointerDown={onOpeningPointerDown}
                 onFurniturePointerDown={onFurniturePointerDown}
                 onGesturePointerMove={onGesturePointerMove}
