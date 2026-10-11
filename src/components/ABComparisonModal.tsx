@@ -14,8 +14,9 @@ export function ABComparisonModal({
   onClose: () => void
   onApplyProposedAsBaseline?: () => void
 }) {
-  const formatDelta = (val: number, unit: string, invertIsGood = false) => {
+  const formatDelta = (val: number, unit: string, invertIsGood = false, grade = true) => {
     if (Math.abs(val) < 0.01) return <span className="delta-neutral">No change</span>
+    if (!grade) return <span className="delta-neutral">{val > 0 ? '+' : ''}{val.toFixed(1)} {unit}</span>
     const isIncrease = val > 0
     const isGood = invertIsGood ? !isIncrease : isIncrease
     const sign = isIncrease ? '+' : ''
@@ -48,6 +49,7 @@ export function ABComparisonModal({
         <p className="ab-comparison-context"><strong>Shared conditions: {result.context.label}</strong><br />
           Sun {result.context.sunAzimuth.toFixed(0)}° azimuth / {result.context.sunAltitude.toFixed(0)}° altitude · outside {result.context.outsideC}°C · wind from {result.context.windFrom}° at {result.context.windSpeed} m/s.
           {' '}Clear-sky sun; temperature and wind are selected assumptions, not live weather. Daylight reach uses window geometry only. Budget uses the China concept rate card, not local supplier prices.
+          {' '}Positive heat flow enters the interior; negative heat flow leaves it. The thermal difference has no better/worse colour grade.
         </p>
         <div className="ab-table-wrapper">
           <table className="ab-table">
@@ -95,10 +97,10 @@ export function ABComparisonModal({
                 <td>{formatDelta(result.delta.daylightCoveragePct, '%')}</td>
               </tr>
               <tr>
-                <td>Net Thermal Load</td>
+                <td>Net Heat Flow (signed)</td>
                 <td>{Math.round(result.baseline.netHeatWatts)} W</td>
                 <td>{Math.round(result.proposed.netHeatWatts)} W</td>
-                <td>{formatDelta(result.delta.netHeatWatts, 'W', true)}</td>
+                <td>{formatDelta(result.delta.netHeatWatts, 'W', false, false)}</td>
               </tr>
               <tr>
                 <td>Avg Room Air Exchange</td>

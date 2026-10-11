@@ -80,3 +80,9 @@ braces/micromatch/selector-parser chain and source-map-js). This release does no
 claim a clean full frontend development audit. Tailwind's suggested major
 migration needs its own visual regression work; the existing production audit
 gate remains enabled.
+
+Final climate presentation correction: net heat flow is signed (entering positive,
+leaving negative). A lower signed value can mean more heat loss in cold conditions,
+so the thermal variance is now shown neutrally, with that sign convention explained.
+Cold-night and hot-night rendering tests check both signs without a good/bad grade.
+The remaining comparison metrics retain their existing presentation.
