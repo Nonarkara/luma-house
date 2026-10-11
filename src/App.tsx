@@ -72,10 +72,12 @@ import { ScenarioPickerModal } from './components/ScenarioPickerModal'
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal'
 import { comparePlans } from './analysis/abComparison'
 import { ABComparisonModal } from './components/ABComparisonModal'
+import { applyRoomOption } from './options/roomOptions'
 import type { ABComparisonState, CurrencyCode, Opening } from './types'
 import { readString, storageIsPersistent } from './storage/keys'
 import { checkPlan, exteriorDoorPlacement, type CodeIssue as StandardsCodeIssue } from './codes/checkPlan'
 
+const RoomOptionsDialog = lazy(() => import('./components/RoomOptionsDialog'))
 const DRAW_HINT = 'Line = wall · tick on a wall = door or window · box = room or furniture'
 
 /** A truly blank plan — the napkin / tissue-paper starting point. */
@@ -176,6 +178,7 @@ function App() {
   const [currency, setCurrency] = useState<CurrencyCode>('CNY')
   const [pinnedBaseline, setPinnedBaseline] = useState<ABComparisonState | null>(null)
   const [abComparisonModalOpen, setABComparisonModalOpen] = useState(false)
+  const [roomOptionsOpen, setRoomOptionsOpen] = useState(false)
   const frameRef = useRef<HTMLDivElement>(null!)
 
   const stageRef = useRef<HTMLDivElement>(null!)
@@ -368,8 +371,11 @@ function App() {
 
   const abComparisonResult = useMemo(() => {
     if (!pinnedBaseline) return null
-    return comparePlans(pinnedBaseline.baselinePlan, plan)
-  }, [pinnedBaseline, plan])
+    return comparePlans(pinnedBaseline.baselinePlan, plan, {
+      label: `${projectLocation.label} · ${new Date(Date.UTC(studyYear, 0, day)).toISOString().slice(0, 10)} · ${clockLabel(hour)} · ${projectLocation.timezone}`,
+      sunAzimuth: sun.azimuth, sunAltitude: sun.altitude, outsideC, windFrom, windSpeed,
+    })
+  }, [pinnedBaseline, plan, projectLocation, studyYear, day, hour, sun.azimuth, sun.altitude, outsideC, windFrom, windSpeed])
 
 
   const journey = useMemo(
@@ -1323,6 +1329,7 @@ function App() {
               <IconButton label="Redo" onClick={redo} disabled={!future.length}><Redo2 /></IconButton>
               <IconButton label="Concept photo" onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><ImagePlus /></IconButton>
             </div>
+            {view === 'plan' && <button type="button" className="room-options-launch" disabled={isEmpty} onClick={() => setRoomOptionsOpen(true)}>Room options</button>}
             {view === 'plan' && (room || selectedOpening) && (
               <ContextualActionBar
                 room={room}
@@ -1752,6 +1759,19 @@ function App() {
           onApplyProposedAsBaseline={handleApplyProposedAsBaseline}
         />
       )}
+
+      {roomOptionsOpen && <Suspense fallback={<div role="status" className="toast">Loading room options…</div>}><RoomOptionsDialog
+        plan={plan}
+        initialRoomId={selectedRoom}
+        onClose={() => setRoomOptionsOpen(false)}
+        onApply={(selected, option) => {
+          const next = applyRoomOption(plan, selected, option)
+          if (!next) { setToast('This option is no longer valid. Reopen room options to compare the current drawing.'); return }
+          commit(next, `Apply ${option.title} in ${selected.name}`)
+          setRoomOptionsOpen(false)
+          setToast(`${option.title} applied — Undo restores the previous arrangement. Open Spatial for sun and shadows.`)
+        }}
+      /></Suspense>}
 
       {toast && <div className="toast" role="status"><Check /> {toast}</div>}
     </div>

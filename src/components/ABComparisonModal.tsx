@@ -45,6 +45,10 @@ export function ABComparisonModal({
           </button>
         </div>
 
+        <p className="ab-comparison-context"><strong>Shared conditions: {result.context.label}</strong><br />
+          Sun {result.context.sunAzimuth.toFixed(0)}° azimuth / {result.context.sunAltitude.toFixed(0)}° altitude · outside {result.context.outsideC}°C · wind from {result.context.windFrom}° at {result.context.windSpeed} m/s.
+          {' '}Clear-sky sun; temperature and wind are selected assumptions, not live weather. Daylight reach uses window geometry only. Budget uses the China concept rate card, not local supplier prices.
+        </p>
         <div className="ab-table-wrapper">
           <table className="ab-table">
             <thead>
@@ -85,7 +89,7 @@ export function ABComparisonModal({
                 <td>{formatDelta(result.delta.carbonKg, 'kg', true)}</td>
               </tr>
               <tr>
-                <td>Daylight Coverage</td>
+                <td>Window Daylight Reach (rule of thumb)</td>
                 <td>{result.baseline.daylightCoveragePct.toFixed(0)}%</td>
                 <td>{result.proposed.daylightCoveragePct.toFixed(0)}%</td>
                 <td>{formatDelta(result.delta.daylightCoveragePct, '%')}</td>

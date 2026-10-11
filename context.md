@@ -281,3 +281,40 @@ Those additional checks exposed Spatial's absolute climate panel intercepting
 study buttons at 768px and 1280px. Both Spatial and Renders now keep that panel
 in a separate row below the model; its controls remain available through the
 canvas scroll area.
+
+## SIC room arrangements — 2026-10-11
+
+Design Read: the decision is whether the same furniture fits this measured room
+better elsewhere; compare its footprints before committing a change. Reference:
+SpaceFactor / HomeFactor's same-space arrangement workflow, independently
+implemented (see `docs/SPACEFACTOR-SIC-REVIEW.md`). The measured comparison pair
+is the dominant element. Room edges use 3px ink, furniture 1px ink, openings
+5px accent, door buffers 1px dashed accent. Preserve the four authored palettes,
+Source Sans 3 and JetBrains Mono. Named comparison exception: equal plan
+viewports are load-bearing here because a larger preview would falsely imply
+a larger room. They are one comparative drawing, with matching scale and bounds.
+
+Scope/invariant: the local bounded search proposes only furniture poses. Sizes,
+IDs, room boundaries, openings, other rooms, WC fixtures and systems survive.
+Preview is separate from Apply; one accepted arrangement is one undo transaction.
+Vector footprints describe geometry, not lux, routes or code compliance. The
+accepted plan feeds existing local 3D and sun studies. No source, models or assets
+are copied from SpaceFactor. Credits identify workflow inspiration and acknowledge
+Shouheng Chen as the source of the reference.
+
+Verified before release: 348 unit tests /49 files, all 98 desktop/phone browser
+checks, lint, type/build, Worker type/quota checks and production dependency audit
+(zero vulnerabilities). Browser cases cover inert preview, keyboard Delete/Esc,
+single-step Apply/Undo, reload/share, impossible and empty rooms, selected city
+context, all four palettes' contrast and 44px controls at 375/768/1280px. Screenshot
+review replaced stacked phone diagrams with equal adjacent viewports and numbered
+footprints with a readable metric inventory. Independent review found/fixed altered
+proposal acceptance, stale room selection after Undo, and global inventory in the
+beam; its 100 custom-size fuzz cases /108 proposals passed independent containment,
+collision and fixed-size checks. The 1,000-piece stress case fell from 5,303ms to
+154ms; a regression test enforces a bounded local search with remote pieces intact.
+The shared verified lesson was captured in SecondBrain before this local record.
+`axiom-audit` remains unavailable for both source and dist (registry 404).
+The impossible-fit walkthrough also exposed FloorPlan's accessible furniture
+labels using generic catalog sizes. They now use each piece's actual footprint
+and orientation; the custom-desk Apply test checks those dimensions before/after.

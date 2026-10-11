@@ -6,7 +6,22 @@ import { heatFlowSnapshot } from './heatFlow'
 import { windFlowPotential } from './windFlow'
 
 
+export interface ComparisonContext {
+  label: string
+  sunAzimuth: number
+  sunAltitude: number
+  outsideC: number
+  windFrom: number
+  windSpeed: number
+}
+
+const REFERENCE_CONTEXT: ComparisonContext = {
+  label: 'Reference conditions (no project context supplied)',
+  sunAzimuth: 180, sunAltitude: 45, outsideC: 34, windFrom: 180, windSpeed: 3.5,
+}
+
 export interface ABComparisonResult {
+  context: ComparisonContext
   baseline: {
     areaM2: number
     totalCost: number
@@ -33,13 +48,13 @@ export interface ABComparisonResult {
   }
 }
 
-export function comparePlans(baseline: PlanState, proposed: PlanState): ABComparisonResult {
+export function comparePlans(baseline: PlanState, proposed: PlanState, context: ComparisonContext = REFERENCE_CONTEXT): ABComparisonResult {
   const getMetrics = (plan: PlanState) => {
     const b = calculateChinaApartmentBudget(plan)
     const c = estimateApartmentCarbon(plan)
     const dl = daylightPotential(plan)
-    const h = heatFlowSnapshot({ plan, sunAzimuth: 180, sunAltitude: 45, outsideC: 34 })
-    const w = windFlowPotential(plan, 180, 3.5)
+    const h = heatFlowSnapshot({ plan, sunAzimuth: context.sunAzimuth, sunAltitude: context.sunAltitude, outsideC: context.outsideC })
+    const w = windFlowPotential(plan, context.windFrom, context.windSpeed)
 
     const avgDlCoverage =
       dl.length > 0 ? (dl.reduce((sum, d) => sum + d.planCoverage, 0) / dl.length) * 100 : 0
@@ -60,6 +75,7 @@ export function comparePlans(baseline: PlanState, proposed: PlanState): ABCompar
   const propMetrics = getMetrics(proposed)
 
   return {
+    context: { ...context },
     baseline: baseMetrics,
     proposed: propMetrics,
     delta: {

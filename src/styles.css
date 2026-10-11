@@ -7177,3 +7177,53 @@ summary:focus-visible {
   .study-paper header > div { flex-basis: 100%; order: 2; }
   .study-paper header > strong { margin-left: auto; }
 }
+
+/* SIC room decisions: comparable measured drawings, with existing palette roles. */
+.room-options-launch { min-height: 44px; padding: 8px 12px; border: 1px solid var(--studio-border); background: var(--studio-sheet); color: var(--studio-ink); font-weight: 600; }
+.room-options-launch:disabled { opacity: .5; }
+.room-options-dialog { width: 1040px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: auto; margin: auto; padding: 24px; border: 2px solid var(--studio-ink); background: var(--studio-sheet); color: var(--studio-ink); }
+.room-options-dialog::backdrop { background: rgb(15 23 42 / .55); }
+.room-options-dialog header, .room-options-dialog footer, .room-options-dialog footer > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.room-options-dialog h2 { margin: 0; font: 700 24px 'JetBrains Mono', monospace; }
+.room-options-dialog p { font-size: 14px; line-height: 1.5; margin: 12px 0; }
+.room-options-dialog .room-options-kicker { margin: 0 0 4px; font-size: 12px; }
+.room-options-dialog button, .room-options-dialog select { min-height: 44px; max-width: 100%; padding: 8px 12px; border: 1px solid var(--studio-border); background: var(--studio-sheet); color: var(--studio-ink); font-weight: 600; border-radius: 0; }
+.room-options-dialog button:hover { background: var(--studio-support); }
+.room-options-dialog button:focus-visible, .room-options-dialog select:focus-visible, .room-options-launch:focus-visible { outline: 2px solid var(--studio-sienna); outline-offset: 3px; }
+.room-options-dialog button:disabled { opacity: .5; cursor: default; }
+.room-options-chooser { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 16px 0; font-weight: 600; }
+.room-option-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
+.room-option-choices button { display: flex; text-align: left; align-items: center; gap: 12px; }
+.room-option-choices button[aria-pressed="true"] { border: 2px solid var(--studio-sienna); background: var(--studio-selection); }
+.room-option-choices span { font-family: 'JetBrains Mono', monospace; }
+.room-option-drawings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.room-option-drawings figure { margin: 0; min-width: 0; border: 1px solid var(--studio-border); background: var(--studio-paper); }
+.room-option-drawings figcaption { padding: 10px 12px; border-bottom: 1px solid var(--studio-border); font-weight: 600; }
+.room-option-drawings svg { display: block; width: 100%; height: 280px; }
+.room-option-drawings text { fill: var(--studio-ink); font-family: 'Source Sans 3', sans-serif; }
+.option-room-outline { fill: var(--studio-sheet); stroke: var(--studio-ink); stroke-width: 3px; vector-effect: non-scaling-stroke; }
+.option-furniture-outline { fill: var(--studio-selection); stroke: var(--studio-ink); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.option-opening { stroke: var(--studio-sienna); stroke-width: 5px; vector-effect: non-scaling-stroke; }
+.option-opening-door { stroke-dasharray: 4 3; }
+.option-door-buffer { fill: none; stroke: var(--studio-sienna); stroke-width: 1px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.option-centre { fill: var(--studio-ink); }
+.room-option-metrics { width: 100%; border-collapse: collapse; margin: 20px 0 12px; font-size: 14px; }
+.room-option-metrics caption { text-align: left; margin-bottom: 8px; font-weight: 600; }
+.room-option-metrics th, .room-option-metrics td { text-align: left; padding: 10px; border-bottom: 1px solid var(--studio-border); overflow-wrap: anywhere; }
+.room-options-dialog .room-option-method { font-size: 12px; }
+.room-option-warning { padding: 12px; border-left: 3px solid var(--studio-sienna); background: var(--studio-paper); }
+.room-options-dialog footer { border-top: 1px solid var(--studio-border); margin-top: 20px; padding-top: 16px; }
+.room-options-dialog footer a { color: var(--studio-ink); font-size: 12px; text-decoration: underline; }
+.room-options-dialog .room-option-apply { background: var(--studio-sienna); color: var(--studio-sheet); border-color: var(--studio-sienna); }
+.room-options-dialog .room-option-apply:hover { background: var(--studio-action-hover); }
+.ab-comparison-context { margin: 16px 24px; color: var(--text-primary); font-size: 13px; line-height: 1.5; }
+@media (max-width: 640px) {
+  .room-options-dialog { padding: 14px; }
+  .room-option-choices button { flex-direction: column; justify-content: center; align-items: flex-start; gap: 4px; padding: 8px; font-size: 14px; }
+  .room-option-drawings { gap: 8px; }
+  .room-option-drawings figcaption { min-height: 52px; padding: 8px; font-size: 12px; }
+  .room-option-drawings svg { height: 170px; }
+  .room-option-metrics { font-size: 12px; }
+  .room-option-metrics th, .room-option-metrics td { padding: 8px 5px; }
+  .room-options-dialog footer > div { width: 100%; }
+}

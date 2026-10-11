@@ -25,6 +25,7 @@ A Vite + React + TypeScript browser prototype. You draw rooms with a mouse or fi
 - architectural cutaways, parallel Axonometric/Top-Down views and local sun shadows
 - saved viewpoints with date, time and city, plus morning/noon/afternoon comparisons
 - A4 study sheets with a scaled vector plan and wall section, actual model view and sun chart
+- local room furniture options with measured vector comparisons and one-step Apply/Undo
 - a **Value Lens** for daylight reach, shade, airflow, escape connectivity, and envelope heat
 - living checks, climate what-ifs, A/B comparison, and a guided tour
 - a concept bill of quantities that responds to area, openings, and systems
@@ -43,6 +44,16 @@ device. **Study sheet** captures the current model and opens a printable A4
 page. Move section A–A to inspect another slice, then print at 100% for the
 stated plan/section scale. These views use Three.js and SunCalc locally.
 
+Use **Plan → Room options** to compare arrangements of a room's existing pieces.
+The local search keeps footprints, walls, openings and WC fixtures fixed. Choose
+Open centre, Window side or Along walls, inspect measured distances, then Apply;
+Undo restores the whole arrangement. The search is bounded to eight movable
+pieces, may return fewer than three alternatives, and reports when it finds none.
+These distances describe geometry, not illuminance or accessible walking routes.
+Applied arrangements save/share as ordinary furniture and feed the same 3D model.
+The A/B climate comparison now uses the selected city's sun and the selected
+temperature/wind assumptions for both plans; it does not fetch live weather.
+
 **This repo is not:**
 
 - A CAD package, energy model, moisture analysis, CFD tool, or procurement system
@@ -54,7 +65,7 @@ Related studio writing: the [Axiom Design Core](src/design/AxiomCore.md) in this
 
 Architectural drawing and study-sheet workflow inspiration: [IngeTrazo](https://ingetrazo.com/en/) by Marco Sumari Tellez and contributors. These features are independently implemented in designon; no IngeTrazo source code is included. The [reuse review](docs/INGETRAZO-REUSE-REVIEW.md) records further opportunities, sources and attribution requirements.
 
-Product-workflow research: [SpaceFactor（空间因子）](https://spacefactor.cn/), with acknowledgment to Shouheng Chen for the reference. The [SIC review](docs/SPACEFACTOR-SIC-REVIEW.md) proposes room-layout comparisons, furnishing choices and a fuller design package; these remain future improvements.
+Room-arrangement workflow inspiration: [SpaceFactor（空间因子）](https://spacefactor.cn/), with acknowledgment to Shouheng Chen for the reference. The local room-options implementation is independently written; no SpaceFactor code, models or assets are incorporated. The [SIC review](docs/SPACEFACTOR-SIC-REVIEW.md) records the research; supplier furnishing choices and a fuller design package remain future work.
 
 ---
 
