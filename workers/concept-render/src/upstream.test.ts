@@ -5,6 +5,8 @@ const IMG = 'data:image/png;base64,' + 'AAAA'.repeat(300)
 
 const quotaEnv = {
   GEMINI_API_KEY: 'k',
+  GEMINI_MODEL: 'gemini-2.0-flash',
+  TRACE_MODEL: 'gemini-2.0-flash',
   AI_QUOTA: {
     idFromName: () => 'id',
     get: () => ({ fetch: async () => new Response(null, { status: 204 }) }),

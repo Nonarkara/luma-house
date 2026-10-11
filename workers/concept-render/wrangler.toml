@@ -12,12 +12,13 @@ tag = "ai-quota-v1"
 new_sqlite_classes = ["AiQuota"]
 
 [vars]
-# Both endpoints default to gemini-2.0-flash because the newer
-# `gemini-3.8-flash*` models return 404 ("no longer served to new API
-# accounts") to the key bound to this worker. The previous-generation
-# 2.0 model is the conservative fallback that still answers; swap these
-# vars (no redeploy of code needed) if either model is retired again.
-GEMINI_MODEL = "gemini-2.0-flash"
-TRACE_MODEL = "gemini-2.0-flash"
+# AI endpoints are currently disabled — every public Gemini model
+# (`gemini-1.5-flash`, `gemini-2.0-flash`, `gemini-3.8-flash*`) returns
+# 404 "no longer served to new API accounts" to the key bound to this
+# worker. The handler returns a fast 503 with the local-only guidance
+# when these vars are empty. Re-enable by setting a real model name and
+# `npx wrangler deploy`. No code change required.
+GEMINI_MODEL = ""
+TRACE_MODEL = ""
 DAILY_IP_LIMIT = "20"
 DAILY_GLOBAL_LIMIT = "200"

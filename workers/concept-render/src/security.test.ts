@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import worker from './index'
 
-const env = { GEMINI_API_KEY: 'k' } as never
+const env = { GEMINI_API_KEY: 'k', GEMINI_MODEL: 'gemini-2.0-flash', TRACE_MODEL: 'gemini-2.0-flash' } as never
 const IMG = 'data:image/png;base64,' + 'AAAA'.repeat(300)
 
 function post(path: string, origin?: string) {
@@ -87,5 +87,25 @@ describe('spending is capped', () => {
     const res = await worker.fetch(post('/trace'), env)
     const text = await res.text()
     expect(text).not.toMatch(/"code":\s*\d+/)
+  })
+})
+
+describe('AI disabled at the source', () => {
+  // When the model var is empty we want the user to get a fast, clear 503 —
+  // not a 60-second wait followed by a 404 from upstream. Local rendering,
+  // study sheets and the manual underlay still work.
+  const envDisabled = { GEMINI_API_KEY: 'k', TRACE_MODEL: '', GEMINI_MODEL: '' } as never
+  it('returns 503 on /trace when TRACE_MODEL is empty', async () => {
+    const res = await worker.fetch(post('/trace'), envDisabled)
+    expect(res.status).toBe(503)
+    const text = await res.text()
+    expect(text).toMatch(/AI plan tracing is temporarily disabled/)
+  })
+
+  it('returns 503 on / when GEMINI_MODEL is empty', async () => {
+    const res = await worker.fetch(post('/'), envDisabled)
+    expect(res.status).toBe(503)
+    const text = await res.text()
+    expect(text).toMatch(/AI concept photos are temporarily disabled/)
   })
 })

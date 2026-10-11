@@ -148,6 +148,12 @@ async function handleRender(request: Request, env: Env, cors: Record<string, str
   if (!env.GEMINI_API_KEY) {
     return json({ error: 'GEMINI_API_KEY is not configured on the worker' }, 500, cors)
   }
+  // Fast-fail when AI is intentionally disabled (empty model name). Avoids
+  // making the user wait the full upstream timeout for a route we know won't
+  // answer. The local Renders view + study sheet work without this.
+  if (!env.GEMINI_MODEL) {
+    return json({ error: 'AI concept photos are temporarily disabled. Use the local light study or the printable study sheet — both work without the AI service.' }, 503, cors)
+  }
 
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : ''
   if (prompt.length < 20 || prompt.length > 4000) {
@@ -308,6 +314,11 @@ const TRACE_RESPONSE_SCHEMA = {
 async function handleTrace(request: Request, env: Env, cors: Record<string, string>, body: Record<string, unknown>): Promise<Response> {
   if (!env.GEMINI_API_KEY) {
     return json({ error: 'GEMINI_API_KEY is not configured on the worker' }, 500, cors)
+  }
+  // Fast-fail when AI is intentionally disabled (empty model name). The user
+  // can still draw the plan by hand and trace it manually.
+  if (!env.TRACE_MODEL) {
+    return json({ error: 'AI plan tracing is temporarily disabled. Trace the image by hand with Manual underlay.' }, 503, cors)
   }
 
   const { mimeType, data: base64 } = imageInput(body.image)
