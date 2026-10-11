@@ -52,6 +52,8 @@ stated plan/section scale. These views use Three.js and SunCalc locally.
 
 Related studio writing: the [Axiom Design Core](src/design/AxiomCore.md) in this tree, and the public [Axiom-Design-Core](https://github.com/Nonarkara/Axiom-Design-Core) repo.
 
+Architectural drawing and study-sheet workflow inspiration: [IngeTrazo](https://ingetrazo.com/en/) by Marco Sumari Tellez and contributors. These features are independently implemented in designon; no IngeTrazo source code is included. The [reuse review](docs/INGETRAZO-REUSE-REVIEW.md) records further opportunities, sources and attribution requirements.
+
 ---
 
 ## Philosophy
