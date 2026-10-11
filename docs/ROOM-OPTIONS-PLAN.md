@@ -60,3 +60,23 @@ fuzzing checked 100 room cases and 108 proposals. Screenshot review covered
 375×812, 768×1024 and 1280×900 and led to equal adjacent phone diagrams and numbered
 footprints linked to readable dimensions. Source/dist `axiom-audit` is unavailable
 (npm registry 404); it is not a passed gate.
+
+Release blocker, 2026-10-11: the mirror's existing Worker-toolchain audit fails
+on sharp/librsvg (GHSA-wq5f-xc86-pv6w), inherited through Miniflare and Wrangler.
+The approved security/ship scope includes updating those development dependencies
+and the lockfile to patched releases, retaining the audit gate, then verifying
+Worker types, concurrency/global quota and the complete hosted CI pipeline.
+This does not change Worker source, model configuration, origins or secrets.
+
+Patched toolchain verification: Wrangler 4.149.0 and pinned Miniflare
+5.20261006.1-alpha resolve sharp 0.35.5; the full Worker dependency audit reports
+zero vulnerabilities. Worker TypeScript, all 52 input/security/upstream/quota/trace
+unit tests, and the SQLite concurrent/global quota proof pass. Advisory source:
+https://github.com/advisories/GHSA-wq5f-xc86-pv6w.
+
+The frontend production dependency audit also reports zero. Its full development
+audit still reports eight CSS-build dependency advisories (Tailwind 3's
+braces/micromatch/selector-parser chain and source-map-js). This release does not
+claim a clean full frontend development audit. Tailwind's suggested major
+migration needs its own visual regression work; the existing production audit
+gate remains enabled.
