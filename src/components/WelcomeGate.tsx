@@ -22,10 +22,10 @@ export const WelcomeGate = React.memo(function WelcomeGate({
         <p className="welcome-lead">A line is a wall. A tick is a door or a window. A box is a room. No CAD language.</p>
         <ol className="welcome-steps">
           <li><span>01</span><b>Draw</b><small>Walls, rooms, a bed, a WC — one pencil.</small></li>
-          <li><span>02</span><b>See</b><small>A simple 3D massing, not a fake photo.</small></li>
+          <li><span>02</span><b>See</b><small>Your plan becomes a real-time 3D study with sun, shadow and section cuts — local, no AI wait.</small></li>
           <li><span>03</span><b>Know</b><small>Light, heat and cost in plain language.</small></li>
         </ol>
-        <p className="welcome-note">A concept model appears in seconds. A professional still verifies structure, code and final energy performance.</p>
+        <p className="welcome-note">Concept photos and AI plan traces are opt-in add-ons — the building study, sun hours and printable study sheets are all local.</p>
         <div className="welcome-actions">
           <button type="button" className="button primary" onClick={onStart}>
             <Pencil /> Start from a blank page <ArrowRight />
