@@ -3,13 +3,13 @@ import type { PlanState, ProjectLocation } from '../types'
 import { clockLabel } from '../location/solar'
 import { geometryFingerprint } from './geometry'
 import { MAX_STUDY_SCENES, readPreviews, savePreview } from './scenes'
-import type { StudyCapture, StudyScene, StudySettings } from './types'
+import type { StudyCapture, StudyScene, StudySettings, StudyTime } from './types'
 import { StudyDialog, StudySheet } from './StudySheet'
 
 const previewId = (scene: StudyScene) => `${scene.id}-${Date.parse(scene.capturedAt)}`
 export function StudyPanel({ plan, title, location, day, hour, year, settings, capture, restore, onScenesChange, onTimeChange, disabled }: {
   plan: PlanState; title: string; location: ProjectLocation; day: number; hour: number; year: number
-  settings: StudySettings; capture: () => Promise<StudyCapture>; restore: (scene: StudyScene) => void
+  settings: StudySettings; capture: (time?: StudyTime) => Promise<StudyCapture>; restore: (scene: StudyScene) => void
   onScenesChange: (scenes: StudyScene[]) => void; onTimeChange: (day: number, hour: number, year: number) => void; disabled: boolean
 }) {
   const [open, setOpen] = useState(false), [sheet, setSheet] = useState<StudyCapture | null>(null)
@@ -42,7 +42,7 @@ export function StudyPanel({ plan, title, location, day, hour, year, settings, c
       let saved = true
       for (const [label, time] of [['Morning', 9], ['Midday', 12], ['Afternoon', 15]] as const) {
         onTimeChange(day, time, year)
-        const view = await capture()
+        const view = await capture({ day, hour: time, year })
         const scene = makeScene(view, `${label} ${clockLabel(time)}`, time)
         saved = remember(scene, view.image) && saved
         added.push(scene)

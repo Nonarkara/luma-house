@@ -28,7 +28,8 @@ import type { OrbitControls as OrbitControl } from 'three-stdlib'
 import { CameraRig } from '../study/CameraRig'
 import { StudyPanel } from '../study/StudyPanel'
 import { cutPart, modelBounds, physicalGeometryKey, wallParts } from '../study/geometry'
-import type { DisplayStyle, StudyCamera, StudyCapture, StudyScene, StudySettings } from '../study/types'
+import type { DisplayStyle, ReadyStudyCapture, StudyCamera, StudyScene, StudySettings, StudyTime } from '../study/types'
+import { captureWhenReady } from '../study/capture'
 import type { ProjectLocation } from '../types'
 
 const HEIGHT_MIN = 2.2
@@ -657,7 +658,7 @@ export default function Spatial3D({
   // walls. Default 4.5 m = no clipping (most single-storey plans).
   const [sectionHeight, setSectionHeight] = useState(1.4)
   const controlsRef = useRef<OrbitControl>(null)
-  const captureRef = useRef<(() => Promise<StudyCapture>) | null>(null)
+  const captureRef = useRef<ReadyStudyCapture | null>(null)
   const [cameraRequest, setCameraRequest] = useState<{ id: number; camera: StudyCamera } | null>(null)
   const geometryKey = physicalGeometryKey(plan, roofStyle)
   const { rooms: frameRooms, site: frameSite } = plan
@@ -671,10 +672,7 @@ export default function Spatial3D({
     setCameraRequest({ id: Date.now(), camera: scene.camera })
     onRecallScene(scene)
   }
-  const captureView = async () => {
-    if (!captureRef.current) throw new Error('The 3D view is still loading.')
-    return captureRef.current()
-  }
+  const captureView = (time: StudyTime = { day, hour, year }) => captureWhenReady(() => captureRef.current, time)
   const visibleCut = walkMode || tourWaypoint ? 6 : sectionHeight
 
   const handleGroundClick = useCallback(
@@ -799,7 +797,7 @@ export default function Spatial3D({
       >
         <color attach="background" args={[colors['--studio-support']]} />
         <SunLight azimuth={sunAzimuth} altitude={sunAltitude} site={site} shadows={showShadows} geometryKey={geometryKey} />
-        <CameraRig plan={plan} preset={preset} walking={walkMode} touring={!!tourWaypoint} request={cameraRequest} controlsRef={controlsRef} captureRef={captureRef} />
+        <CameraRig plan={plan} preset={preset} walking={walkMode} touring={!!tourWaypoint} request={cameraRequest} controlsRef={controlsRef} captureRef={captureRef} time={{ day, hour, year }} />
         <CameraController
           walking={walkMode}
           preset={preset}

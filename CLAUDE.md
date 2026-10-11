@@ -13,7 +13,7 @@ are all still `luma-house` for deployment inertia. Do not "fix" the mismatch.
 
 - `npm install`
 - `npm run dev` — Vite dev server on :5173
-- `npm test` — vitest, 350 cases across 50 files
+- `npm test` — vitest, 354 cases across 51 files
 - `npm run lint` — ESLint
 - `npm run build` — `tsc -b` then the production bundle
 - `npm run preview` — serve the built bundle
@@ -58,6 +58,9 @@ label previews when their geometry differs. Print plan and wall section SVGs
 in physical millimetres, at the same standard scale, alongside the actual
 captured view and city sun chart. Roof vocabularies used by sanitizers belong
 in pure `roofStyles.ts`, so validation cannot eagerly load Three.js.
+Capture waits for the Three.js tree's committed day/hour/year, including cold
+start, and uses an independent deadline even if animation frames are suspended.
+Never substitute a frame-count delay for acknowledgement of requested sun inputs.
 
 ## The napkin vocabulary
 

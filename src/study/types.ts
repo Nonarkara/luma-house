@@ -34,3 +34,5 @@ export interface StudyScene {
   settings: StudySettings
 }
 export interface StudyCapture { camera: StudyCamera; image: string }
+export interface StudyTime { day: number; hour: number; year: number }
+export interface ReadyStudyCapture { time: StudyTime; capture: () => Promise<StudyCapture> }

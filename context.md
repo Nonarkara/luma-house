@@ -29,6 +29,14 @@ populated plans and the room comparison. Fresh review found wheel ownership
 and inherited small header targets; both were repaired. Source/dist axiom-audit
 remains unavailable (registry 404), so this is not recorded as a passed gate.
 
+The hosted publish gate also exposed two existing saved-view races: immediate
+capture before CameraRig registration and a three-clock comparison containing
+only two distinct images. Capture now waits for the R3F-committed day/hour/year
+and includes an independent deadline for suspended animation frames. All 354
+unit tests and all ten study browser checks pass, including distinct real sun
+frames, shared camera, persistence and Undo. Fresh review confirmed the timeout
+repair and found no remaining confirmed capture issue.
+
 The product is named **designon** (Design + Non). It is the first product under
 the Axiom Design Core. The repo URL is kept as `luma-house` for GitHub Pages
 inertia; the product name in the UI, in storage, and in user-facing copy is
