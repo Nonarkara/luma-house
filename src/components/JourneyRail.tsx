@@ -29,6 +29,7 @@ export const JourneyRail = React.memo(function JourneyRail({
             className={`journey-step is-${stage.status}${stage.complete ? ' is-complete' : ''}`}
             onClick={() => onGo(stage.def.nav, stage.def.id)}
             aria-current={stage.status === 'current' ? 'step' : undefined}
+            title={`${stage.def.label}: ${stage.metric}`}
           >
             <small>
               {stage.complete ? <Check aria-hidden="true" /> : stage.def.step}

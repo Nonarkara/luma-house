@@ -202,9 +202,8 @@ export const FloorPlan = React.memo(function FloorPlan({
                 }
               }}
               aria-label={`${room.name}, ${roomAreaFor(room, site).toFixed(1)} square meters`}
+              title={`${room.name} · ${roomAreaFor(room, site).toFixed(1)} m²`}
             >
-              <span className="room-name">{room.name}</span>
-              <span className="room-area">{roomAreaFor(room, site).toFixed(1)} m²</span>
               {selectedRoom === room.id && HANDLES.map((handle) => (
                 <span
                   key={handle}
@@ -318,6 +317,7 @@ export const FloorPlan = React.memo(function FloorPlan({
                   if (activeTool === 'select') event.stopPropagation()
                 }}
                 aria-label={`${spec.label}, ${item.rotated ? dimensions.d : dimensions.w} by ${item.rotated ? dimensions.w : dimensions.d} meters${furnitureConflicts.has(item.id) ? ', blocks a door swing' : ''}`}
+                title={`${spec.label} · ${dimensions.w} × ${dimensions.d} m`}
               >
                 <span>{item.kind === 'wc' ? 'WC' : spec.label}</span>
               </button>
@@ -428,6 +428,8 @@ export const FloorPlan = React.memo(function FloorPlan({
               </svg>
             )
           })()}
+          {plan.rooms.map((room, index) => <span key={`label-${room.id}`} className="room-number" aria-hidden="true"
+            style={{ left: `calc(${room.x}% + 4px)`, top: `calc(${room.y}% + 4px)` }}>{index + 1}</span>)}
           <div className="dimension dimension-x"><span>{Math.round(site.w * 1000).toLocaleString()}</span></div>
           <div className="dimension dimension-y"><span>{Math.round(site.h * 1000).toLocaleString()}</span></div>
         </div>

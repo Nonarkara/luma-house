@@ -5,14 +5,14 @@ Source-verified Sanzo Wada combination 243 from
 
 | Historical colour | Credited digital conversion | Production role |
 | --- | --- | --- |
-| Ivory Buff | #ebd3a2 | paper, lightened to #f6f0e3 for the working sheet |
+| Ivory Buff | #ebd3a2 | restrained paper ground #eeefea; drawing sheet #fcfcf8 |
 | Slate Color | #34454c | ink, deepened to #26383f |
-| Olive Green | #6b7140 | decision index, deepened to #41482b with paper text |
+| Olive Green | #6b7140 | companion #41482b retained for the 3D environment |
 | Raw Sienna | #bb7125 | action and selection, deepened to #8a4c16 |
 
 The screen values adapt the relationship for interface contrast. They do not
 claim fidelity to the book's printed inks. The paper/ink ramp carries reading;
-olive stays within the decision index; sienna marks actions and selection.
+the decision index uses paper and ink; sienna marks actions and selection.
 Analysis colours continue to report the model's actual states.
 
 Historical colour names and combinations: Sanzo Wada. Digital conversions:
@@ -21,8 +21,8 @@ Dain M. Blodorn Kim's earlier compilation. Palette's independent exhibition,
 selection and role interpretation: Dr Non. Applicable licence reproduced in
 PALETTE-NOTICES.md.
 
-Measured production contrast: slate on paper 10.75:1; secondary text 6.41:1;
-quiet text 5.17:1; paper on sienna action 6.23:1; paper on olive index 8.46:1.
+Production checks require at least 4.5:1 for reading and action text and 3:1
+for control boundaries, including the selected and support surfaces in every scheme.
 Stage names, check marks, active borders, tool labels and opening line symbols
 carry meaning independently of hue. Browser checks cover 375, 768 and 1280px,
 real add-room/undo actions, calibration reachability and hint/zoom separation.
@@ -30,13 +30,18 @@ real add-room/undo actions, calibration reachability and hint/zoom separation.
 ## Selectable Luma schemes
 
 - [Solar Pop /209](https://colors.nonarkara.org/#plate-209): Ivory Buff,
-  Yellow Orange and Salvia Blue; luminous yellow paper with a blue index.
+  Yellow Orange and Salvia Blue; warm neutral paper, blue ink, sienna actions.
 - [Guava Club /137](https://colors.nonarkara.org/#plate-137): Etruscan Red,
-  Cinnamon Buff and Pistachio Green; guava paper with a green index.
+  Cinnamon Buff and Pistachio Green; a restrained rose ground with red actions.
 - [Violet Hour /235](https://colors.nonarkara.org/#plate-235): Ivory Buff,
-  Yellow Orange and Grayish Lavender B; lavender paper with a violet index.
+  Yellow Orange and Grayish Lavender B; a restrained lavender ground and ink.
 - [Drafting Room /243](https://colors.nonarkara.org/#plate-243): original
-  paper/olive/sienna option.
+  neutral paper, slate ink and sienna actions; the default for new users.
+
+The October 11 request for a serious MoMA-informed workspace reduces the
+coloured surface budget in all four schemes. Saved scheme IDs are preserved.
+The drawing remains the dominant surface; palettes share identical geometry,
+spacing and type, and no scheme changes the saved plan.
 
 These names and production roles are our interpretation. Historical source
 names and attribution remain as above. `src/design/themes.ts` supplies all

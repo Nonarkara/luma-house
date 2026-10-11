@@ -22,9 +22,10 @@ describe('studio colour schemes', () => {
       expect(contrast(tokens['--studio-border'], theme.sheet)).toBeGreaterThanOrEqual(3)
     })
   }
-  it('an unknown or missing saved scheme falls back to Solar Pop', () => {
-    expect(resolveTheme(null).id).toBe('solar-pop')
-    expect(resolveTheme('unexpected').id).toBe('solar-pop')
+  it('an unknown or missing saved scheme falls back to Drafting Room', () => {
+    expect(resolveTheme(null).id).toBe('drafting-room')
+    expect(resolveTheme('unexpected').id).toBe('drafting-room')
+    expect(resolveTheme('solar-pop').id).toBe('solar-pop')
     expect(resolveTheme('drafting-room').id).toBe('drafting-room')
   })
 })

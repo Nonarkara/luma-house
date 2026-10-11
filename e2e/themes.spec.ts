@@ -15,6 +15,46 @@ for (const theme of themes) for (const width of [375, 768, 1280]) {
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id)
     await expect(page.getByLabel('Colour scheme', { exact: true })).toHaveValue(theme.id)
     await expect(page.locator('button.room')).toHaveCount(initialPlan.rooms.length)
+    const typeRoles = await page.evaluate(() => ['.stage-head h1', '.theme-picker select', '.project-picker strong', '.zoom-control .zoom-label', '.top-actions button[aria-label="Furniture Catalog"]'].map(selector => getComputedStyle(document.querySelector(selector)!).fontSize))
+    for (const size of typeRoles) expect(['22px', '16px', '12px']).toContain(size)
+    const plot = await page.locator('.plan-viewport').boundingBox()
+    const sheet = await page.locator('.plan-canvas').boundingBox()
+    expect(sheet!.width, 'the physical drawing must not collapse inside a size container').toBeGreaterThan(200)
+    expect(sheet!.height).toBeGreaterThan(140)
+    expect(sheet!.width / sheet!.height).toBeCloseTo(1.4, 1)
+    for (const selector of ['.scale-chip', '.zoom-control', '.science-preview', '.value-lens-launch', '.plan-room-key']) {
+      const r = await page.locator(selector).boundingBox()
+      const intersects = r!.x < plot!.x + plot!.width && r!.x + r!.width > plot!.x && r!.y < plot!.y + plot!.height && r!.y + r!.height > plot!.y
+      expect(intersects, `${selector} stays outside the drawing viewport`).toBe(false)
+    }
+    const calibrate = await page.getByRole('button', { name: 'Calibrate', exact: true }).boundingBox()
+    const lens = await page.getByRole('button', { name: 'Open value lens', exact: true }).boundingBox()
+    expect(calibrate!.x + calibrate!.width, 'the value-lens button must not cover Calibrate').toBeLessThanOrEqual(lens!.x)
+    await expect(page.locator('.plan-room-key button')).toHaveCount(initialPlan.rooms.length)
+    await expect(page.locator('.plan-room-key .room-name')).toHaveText(initialPlan.rooms.map(room => room.name))
+    for (const selector of ['.journey-step', '.toolbar-pill-btn', '.plan-room-key button', '.top-actions button']) {
+      for (const button of await page.locator(selector).all()) {
+        const r = await button.boundingBox()
+        expect(r!.x).toBeGreaterThanOrEqual(0)
+        expect(r!.x + r!.width).toBeLessThanOrEqual(width)
+        expect(r!.height).toBeGreaterThanOrEqual(44)
+        expect(r!.width).toBeGreaterThanOrEqual(44)
+      }
+    }
+    await page.locator('.plan-room-key button').first().focus()
+    await page.keyboard.press('Enter')
+    await expect(page.locator('.plan-room-key button').first()).toHaveAttribute('aria-pressed', 'true')
+    const history = await page.getByRole('button', { name: 'Undo', exact: true }).boundingBox()
+    const context = await page.locator('.contextual-action-bar').boundingBox()
+    expect(context!.y).toBeGreaterThanOrEqual(history!.y + history!.height)
+    await page.locator('.plan-room-key').hover()
+    await page.mouse.wheel(0, -80)
+    await expect(page.getByRole('button', { name: 'Fit plan to view', exact: true })).toHaveText('Fit')
+    expect(await page.locator('.plan-room-key').evaluate(el => {
+      const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -80 })
+      el.dispatchEvent(event)
+      return event.defaultPrevented
+    }), 'margin scrolling is not captured by the drawing').toBe(false)
     const check = async (selectors: string[]) => {
       const result = await page.evaluate(selectors => {
         const rgba = (color: string) => color.match(/[\d.]+/g)!.map(Number)

@@ -2,18 +2,18 @@ import { readString, writeString } from '../storage/keys'
 
 /** Screen adaptations of verified Wada combinations; see docs/PALETTE.md. */
 export const themes = [
-  { id: 'solar-pop', name: 'Solar Pop', plate: 209, paper: '#fff0bf', sheet: '#fff8e5', ink: '#263454', rail: '#2e447c', action: '#a33b0b' },
-  { id: 'guava-club', name: 'Guava Club', plate: 137, paper: '#ffe1db', sheet: '#fff2ed', ink: '#3b2631', rail: '#245543', action: '#a12848' },
-  { id: 'violet-hour', name: 'Violet Hour', plate: 235, paper: '#eaddfa', sheet: '#f8f0ff', ink: '#342347', rail: '#52256d', action: '#963b0c' },
-  { id: 'drafting-room', name: 'Drafting Room', plate: 243, paper: '#f6f0e3', sheet: '#faf6ed', ink: '#26383f', rail: '#41482b', action: '#8a4c16' },
+  { id: 'solar-pop', name: 'Solar Pop', plate: 209, paper: '#f3f1e9', sheet: '#fffdf6', ink: '#263454', rail: '#2e447c', action: '#a33b0b' },
+  { id: 'guava-club', name: 'Guava Club', plate: 137, paper: '#f3eeeb', sheet: '#fffaf7', ink: '#3b2631', rail: '#245543', action: '#a12848' },
+  { id: 'violet-hour', name: 'Violet Hour', plate: 235, paper: '#f0eef3', sheet: '#fcfaff', ink: '#342347', rail: '#52256d', action: '#963b0c' },
+  { id: 'drafting-room', name: 'Drafting Room', plate: 243, paper: '#eeefea', sheet: '#fcfcf8', ink: '#26383f', rail: '#41482b', action: '#8a4c16' },
 ] as const
 export type ThemeId = typeof themes[number]['id']
 export type StudioTheme = typeof themes[number]
 export const STATUS_COLORS = { success: '#285733', warning: '#713c10', error: '#92271f' } as const
-export const DEFAULT_THEME: ThemeId = 'solar-pop'
+export const DEFAULT_THEME: ThemeId = 'drafting-room'
 
 export function resolveTheme(id: string | null): StudioTheme {
-  return themes.find(theme => theme.id === id) ?? themes[0]
+  return themes.find(theme => theme.id === id) ?? themes.find(theme => theme.id === DEFAULT_THEME)!
 }
 export function readTheme(): StudioTheme {
   return resolveTheme(readString('appearance', 'luma-house:appearance'))
@@ -41,8 +41,8 @@ export function themeTokens(theme: StudioTheme): Record<string, string> {
     '--studio-secondary': mix(theme.ink, theme.paper, .88),
     '--studio-quiet': mix(theme.ink, theme.paper, .8),
     '--studio-border': mix(theme.ink, theme.paper, .6),
-    '--studio-support': mix(theme.paper, theme.rail, .87),
-    '--studio-selection': mix(theme.paper, theme.action, .88),
+    '--studio-support': mix(theme.paper, theme.ink, .96),
+    '--studio-selection': mix(theme.sheet, theme.action, .94),
     '--studio-action-hover': mix(theme.action, theme.ink, .75),
     '--studio-rail-hover': mix(theme.rail, theme.paper, .9),
     '--studio-rail-track': mix(theme.rail, theme.paper, .75),

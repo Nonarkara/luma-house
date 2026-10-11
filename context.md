@@ -1,5 +1,34 @@
 # designon (Design + Non) — live context
 
+## Serious drawing studio — 2026-10-11
+
+Design Read: the calibrated plan is the working sheet; a numbered room key and
+aligned control margins make every room readable without printing words over
+furniture. Reference: MoMA's exhibition-label hierarchy and Aalto's measured
+working drawings. The plan dominates, navigation is a quiet index, and the sole
+scheme accent identifies selection. Structural rules are 2px, control boundaries
+1px, and drawing furniture lines stay lighter than walls. VARIANCE 2, MOTION 1,
+DENSITY 6: compact commands, restrained colour, feedback only. Three workspace
+type roles: 22px title, 16px command/reading, 12px annotation; mono is for numbers.
+Keep the four user-requested palette choices and every drawing/analysis action.
+The default becomes Drafting Room; stored choices remain valid, with quieter
+grounds. No plan geometry, persistence or calculation changes. Numbered rooms
+have an external name/area key; calibration, zoom and sun data occupy margins.
+Native scroll exposes longer inventories and analysis without covering geometry.
+The equal-scale room-option drawings remain a named comparison exception: they
+are peers whose physical sizes must be directly comparable. Door-swing arcs,
+point markers and data gauges retain geometric curves; UI surfaces are square.
+
+Verification: 350 unit tests, lint, build and production dependency audit pass.
+The expanded 24 palette/width browser checks cover actual sheet dimensions and
+ratio, control/plot separation, Calibrate/lens separation, 44px header/tool/index
+targets, keyboard room selection, uncancelled margin scrolling, active room
+controls and text contrast. The complete 98 browser checks remain the publish
+gate. Three screenshot rounds inspected desktop, tablet, phone, empty and
+populated plans and the room comparison. Fresh review found wheel ownership
+and inherited small header targets; both were repaired. Source/dist axiom-audit
+remains unavailable (registry 404), so this is not recorded as a passed gate.
+
 The product is named **designon** (Design + Non). It is the first product under
 the Axiom Design Core. The repo URL is kept as `luma-house` for GitHub Pages
 inertia; the product name in the UI, in storage, and in user-facing copy is

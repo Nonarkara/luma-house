@@ -44,7 +44,6 @@ export const TopBar = React.memo(function TopBar({
             className="button secondary top-action-label"
             onClick={onToggleCatalog}
             aria-label="Furniture Catalog"
-            style={{ fontSize: '0.8rem', padding: '6px 12px' }}
           >
             <Plus className="top-action-icon" aria-hidden="true" />
             <span className="btn-label">Furniture Catalog</span>
@@ -89,8 +88,8 @@ export const TopBar = React.memo(function TopBar({
           <span className="btn-label">Share</span>
         </button>
 
-        <button className="button primary" type="button" onClick={exportPlan}>
-          <Download /> Export
+        <button className="button primary" type="button" onClick={exportPlan} aria-label="Export">
+          <Download /><span className="btn-label">Export</span>
         </button>
       </div>
     </header>

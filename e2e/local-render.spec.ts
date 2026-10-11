@@ -55,7 +55,7 @@ test('shadow toggle changes rendered pixels and wireframe remains optional', asy
   await expect(page.getByRole('button', { name: 'Wireframe', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Plan', exact: true }).click()
   await expect(page.locator('button.room')).toHaveCount(1)
-  await expect(page.getByRole('button', { name: 'Sun room, 28.8 square meters' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sun room, 28.8 square meters', exact: true })).toBeVisible()
 })
 
 test('sun controls change local geometry lighting without an API request', async ({ page }) => {

@@ -46,7 +46,7 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
     setViewport((current) => {
       const nextZoom = clampZoom(current.zoom + delta)
       if (nextZoom === current.zoom) return current
-      const frame = frameRef.current
+      const frame = frameRef.current?.querySelector<HTMLElement>('.plan-viewport')
       if (originX === undefined || originY === undefined) {
         return constrainViewport({ ...current, zoom: nextZoom }, frame?.clientWidth ?? 0, frame?.clientHeight ?? 0)
       }
@@ -65,9 +65,9 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
 
   const onWheel = useCallback(
     (event: ReactWheelEvent) => {
+      const frame = frameRef.current?.querySelector<HTMLElement>('.plan-viewport')
+      if (!frame || !(event.target instanceof Node) || !frame.contains(event.target)) return
       event.preventDefault()
-      const frame = frameRef.current
-      if (!frame) return
       const bounds = frame.getBoundingClientRect()
       const originX = event.clientX - bounds.left
       const originY = event.clientY - bounds.top
@@ -95,7 +95,7 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
   const movePan = useCallback((event: ReactPointerEvent) => {
     const pan = panRef.current
     if (!pan || pan.pointerId !== event.pointerId) return
-    const frame = frameRef.current
+    const frame = frameRef.current?.querySelector<HTMLElement>('.plan-viewport')
     setViewport((current) => constrainViewport({
       ...current,
       panX: pan.originX + (event.clientX - pan.startX),
@@ -150,7 +150,7 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
         const pts = [...pinch.pointers.values()]
         const distance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
         const nextZoom = clampZoom(pinch.startZoom * (distance / pinch.startDistance))
-        const frame = frameRef.current
+        const frame = frameRef.current?.querySelector<HTMLElement>('.plan-viewport')
         if (frame) {
           const bounds = frame.getBoundingClientRect()
           const midX = (pts[0].x + pts[1].x) / 2 - bounds.left
@@ -191,7 +191,8 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
     const frame = frameRef.current
     if (!frame) return
     const prevent = (event: WheelEvent) => {
-      if (event.ctrlKey || Math.abs(event.deltaY) > 0) event.preventDefault()
+      const drawing = frame.querySelector<HTMLElement>('.plan-viewport')
+      if (drawing && event.target instanceof Node && drawing.contains(event.target) && (event.ctrlKey || Math.abs(event.deltaY) > 0)) event.preventDefault()
     }
     frame.addEventListener('wheel', prevent, { passive: false })
     return () => frame.removeEventListener('wheel', prevent)
@@ -201,11 +202,14 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
     const frame = frameRef.current
     if (!frame) return
     const fitToBounds = () => {
-      setViewport((current) => constrainViewport(current, frame.clientWidth, frame.clientHeight))
+      const drawing = frame.querySelector<HTMLElement>('.plan-viewport')
+      if (drawing) setViewport((current) => constrainViewport(current, drawing.clientWidth, drawing.clientHeight))
     }
     fitToBounds()
     const observer = new ResizeObserver(fitToBounds)
     observer.observe(frame)
+    const drawing = frame.querySelector<HTMLElement>('.plan-viewport')
+    if (drawing) observer.observe(drawing)
     return () => observer.disconnect()
   }, [frameRef])
 

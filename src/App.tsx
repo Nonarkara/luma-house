@@ -43,6 +43,7 @@ import { TopBar } from './components/TopBar'
 import { AssistantBar } from './components/AssistantBar'
 import { Inspector } from './components/Inspector'
 import { JourneyRail } from './components/JourneyRail'
+import { PlanRoomKey } from './components/PlanRoomKey'
 import { FloatingToolbar } from './components/FloatingToolbar'
 import { ContextualActionBar } from './components/ContextualActionBar'
 import { FurnitureCatalogDrawer } from './components/FurnitureCatalogDrawer'
@@ -134,7 +135,6 @@ function App() {
   const [rulerLine, setRulerLine] = useState<NapkinCalibrationLine | null>(null)
   const [rulerMeters, setRulerMeters] = useState('')
   const projectLocation = plan.location ?? starterLocations[0]
-  const location = projectLocation.name
   const [locationOpen, setLocationOpen] = useState(false)
   const [styleKeywords, setStyleKeywords] = useState<string>(() => readString('style-keywords:shanghai-50', 'luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
   const [hour, setHour] = useState(10)
@@ -1280,13 +1280,13 @@ function App() {
         <main className="design-stage">
           <div className="stage-head">
             <div>
-              <p className="eyebrow">Drawing studio <span>/</span> {location} · north up</p>
+              <p className="eyebrow">Drawing studio</p>
               <h1>{projectTitle}</h1>
-              <button type="button" className="location-toggle" aria-expanded={locationOpen} onClick={() => setLocationOpen(open => !open)}><MapPin /> {projectLocation.label} · Change city</button>
             </div>
             <div className="stage-meta">
               <span><Ruler /> {budget.area.toFixed(1)} m²</span>
             </div>
+            <button type="button" className="location-toggle" title={projectLocation.label} aria-label={`${projectLocation.label} · Change city`} aria-expanded={locationOpen} onClick={() => setLocationOpen(open => !open)}><MapPin /><span>{projectLocation.name}</span><small>Change city</small></button>
             <ThemePicker theme={theme} onChange={next => { saveTheme(next); setTheme(next) }} />
           </div>
 
@@ -1344,7 +1344,7 @@ function App() {
 
           </div>
 
-          <section className="canvas-frame" ref={frameRef} aria-label="House design canvas" onWheel={onWheel}>
+          <section className={`canvas-frame${view === 'plan' ? ' is-plan' : ''}`} ref={frameRef} aria-label="House design canvas" onWheel={onWheel}>
             {view === 'plan' ? (
               <FloorPlan
                 plan={plan}
@@ -1613,6 +1613,8 @@ function App() {
                 <button type="button" onClick={zoomIn} aria-label="Zoom in" disabled={!canZoomIn}>+</button>
               </div>
             )}
+            {view === 'plan' && <PlanRoomKey rooms={plan.rooms} site={site} selectedRoom={selectedRoom}
+              onSelect={room => { setSelectedRoom(room.id); setSelectedOpening(null); setSelectedFurniture(null) }} />}
           </section>
 
           <AssistantBar
