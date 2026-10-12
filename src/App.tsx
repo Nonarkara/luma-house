@@ -1478,6 +1478,10 @@ function App() {
         onChangeLocation={() => setLocationOpen(true)}
         locationName={projectLocation.name}
         menuExtra={<>
+          {narrow && <>
+            <button type="button" className="menu-history" aria-label="Undo" disabled={past.length === 0} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); undo() }}>Undo</button>
+            <button type="button" className="menu-history" aria-label="Redo" disabled={future.length === 0} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); redo() }}>Redo</button>
+          </>}
           <ThemePicker theme={theme} onChange={next => { saveTheme(next); setTheme(next) }} />
           <WebAppAccess />
         </>}

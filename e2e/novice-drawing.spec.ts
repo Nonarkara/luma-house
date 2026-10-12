@@ -11,6 +11,7 @@ test('blank page, room drag, window and door land on the walls', async ({ page }
     if (message.type() === 'warning' && /Clock/.test(message.text())) clock.push(message.text())
   })
   await page.goto('/')
+  await page.waitForTimeout(500)
   await expect(page.getByText('Drag a box to make a room. Then click a wall to add a window.')).toBeVisible()
   const size = page.viewportSize()
   if (size && size.width <= 720) {
@@ -33,26 +34,28 @@ test('blank page, room drag, window and door land on the walls', async ({ page }
   await page.mouse.move(sheet!.x + sheet!.width * 0.72, sheet!.y + sheet!.height * 0.72, { steps: 10 })
   await page.mouse.up()
   await expect(page.locator('button.room')).toHaveCount(1)
-  const label = await page.locator('button.room').getAttribute('aria-label')
-  expect(label).not.toMatch(/0\.0 square meters/)
+  const label = (await page.locator('button.room').getAttribute('aria-label')) ?? ''
+  const area = Number(label.match(/([\d.]+) square meters/)?.[1] ?? '0')
+  expect(area).toBeGreaterThan(0)
 
   await page.getByRole('button', { name: 'Window', exact: true }).click()
   const room = await page.locator('button.room').boundingBox()
   await page.mouse.move(room!.x + room!.width / 2, room!.y + 2)
   await expect(page.locator('.opening.is-ghost')).toBeVisible()
   await page.mouse.click(room!.x + room!.width / 2, room!.y + 2)
-  await expect(page.locator('.opening-window')).toHaveCount(1)
-  await expect(page.locator('.opening-window')).toHaveAttribute('data-rotation', '0')
+  await expect(page.locator('button.opening-window')).toHaveCount(1)
+  await expect(page.locator('button.opening-window')).toHaveAttribute('data-rotation', '0')
 
   await page.mouse.click(room!.x + room!.width - 2, room!.y + room!.height / 2)
-  await expect(page.locator('.opening-window[data-rotation="90"]')).toHaveCount(1)
+  await expect(page.locator('button.opening-window[data-rotation="90"]')).toHaveCount(1)
 
-  await page.getByRole('button', { name: 'Door', exact: true }).click()
+  await page.locator('.canvas-tools').getByRole('button', { name: 'Door', exact: true }).click()
   await page.mouse.click(room!.x + 2, room!.y + room!.height / 2)
-  await expect(page.locator('.opening-door')).toHaveCount(1)
-  await expect(page.locator('.opening-door')).toHaveAttribute('data-rotation', '90')
+  await expect(page.locator('button.opening-door')).toHaveCount(1)
+  await expect(page.locator('button.opening-door')).toHaveAttribute('data-rotation', '90')
 
-  await page.mouse.click(sheet!.x + 8, sheet!.y + 8)
+  const settled = await page.locator('.plan-canvas').boundingBox()
+  await page.mouse.click(settled!.x + 8, settled!.y + 8)
   await expect(page.getByText('Click a wall', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Spatial', exact: true }).click()
@@ -63,18 +66,25 @@ test('blank page, room drag, window and door land on the walls', async ({ page }
 
 test('four pencil lines close a room with area', async ({ page }) => {
   await page.goto('/')
-  const sheet = await page.locator('.plan-canvas').boundingBox()
-  const point = (x: number, y: number) => ({ x: sheet!.x + sheet!.width * x, y: sheet!.y + sheet!.height * y })
-  const line = async (a: { x: number; y: number }, b: { x: number; y: number }) => {
+  await page.waitForTimeout(500)
+  const point = async (x: number, y: number) => {
+    const sheet = await page.locator('.plan-canvas').boundingBox()
+    return { x: sheet!.x + sheet!.width * x, y: sheet!.y + sheet!.height * y }
+  }
+  const line = async (ax: number, ay: number, bx: number, by: number) => {
+    const a = await point(ax, ay)
+    const b = await point(bx, by)
     await page.mouse.move(a.x, a.y)
     await page.mouse.down()
     await page.mouse.move(b.x, b.y, { steps: 6 })
     await page.mouse.up()
   }
-  await line(point(0.25, 0.3), point(0.62, 0.31))
-  await line(point(0.635, 0.32), point(0.635, 0.68))
-  await line(point(0.62, 0.7), point(0.25, 0.7))
-  await line(point(0.23, 0.68), point(0.23, 0.3))
+  // Ends sit within 0.3 m of the metre grid on the 14 × 10 m site, so the
+  // four corners join instead of stopping a cell short of each other.
+  await line(0.28, 0.30, 0.72, 0.30)
+  await line(0.70, 0.28, 0.70, 0.72)
+  await line(0.72, 0.70, 0.28, 0.70)
+  await line(0.30, 0.72, 0.30, 0.28)
   await expect(page.locator('button.room')).toHaveCount(1)
   const label = (await page.locator('button.room').getAttribute('aria-label')) ?? ''
   const area = Number(label.match(/([\d.]+) square meters/)?.[1] ?? '0')

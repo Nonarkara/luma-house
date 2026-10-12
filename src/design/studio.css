@@ -375,6 +375,20 @@ body { overflow-y: auto; }
 .web-app-access { font-size: var(--font-body); }
 .web-app-access small { font-size: var(--font-note); }
 .toast { position: static; width: 100%; transform: none; margin: 0; padding: var(--space-2) var(--space-3); font-size: var(--font-note); border: 0; border-top: var(--rule-control) solid var(--studio-border); }
+/* A status line must not become a grid row. app-shell is a fixed two-row
+   frame, so an in-flow toast shrinks the drawing between strokes. */
+.app-shell > .toast {
+  position: fixed;
+  z-index: 40;
+  left: 128px;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: 48px;
+  margin: 0;
+  transform: none;
+  pointer-events: none;
+}
 .room-options-dialog h2 { font-size: var(--font-title); font-family: var(--type-body) !important; }
 .room-options-dialog p, .room-options-dialog button, .room-options-dialog select, .room-option-metrics { font-size: var(--font-body); }
 .room-options-dialog .room-options-kicker, .room-options-dialog .room-option-method, .room-options-dialog footer a { font-size: var(--font-note); }
@@ -725,11 +739,11 @@ body { overflow-y: auto; }
 .app-shell .canvas-frame.is-plan {
   height: 100%;
   min-height: 0;
-  grid-template-rows: minmax(0, 1fr) repeat(12, auto);
+  grid-template-rows: auto minmax(0, 1fr) repeat(12, auto);
   align-content: stretch;
   overflow: auto;
 }
-.app-shell .is-plan > .plan-viewport { grid-row: 1; height: 100%; min-height: 240px; }
+.app-shell .is-plan > .plan-viewport { grid-row: 2; height: 100%; min-height: 240px; }
 .app-shell .journey-rail-wrap { padding: 0; }
 
 /* Wide screens: the numbered room key sits beside the drawing, not under it,
@@ -744,7 +758,7 @@ body { overflow-y: auto; }
   .app-shell .is-plan > .zoom-control { grid-column: 1; justify-self: end; }
   .app-shell .is-plan > .plan-room-key {
     grid-column: 2;
-    grid-row: 1 / span 13;
+    grid-row: 2 / span 12;
     grid-template-columns: minmax(0, 1fr);
     align-content: start;
     overflow-y: auto;
@@ -809,8 +823,9 @@ body { overflow-y: auto; }
 @media (max-width: 720px) {
   .app-shell .journey-step { min-height: 44px; }
   .app-shell .journey-step span { font-size: var(--font-note); }
-  .app-shell .canvas-frame.is-plan { grid-template-rows: minmax(55dvh, 1fr) repeat(12, auto); }
-  .app-shell .is-plan > .plan-viewport { min-height: 55dvh; }
+  .app-shell .canvas-frame.is-plan { grid-template-rows: auto minmax(55dvh, 1fr) repeat(12, auto); }
+  .app-shell .is-plan > .plan-viewport { grid-row: 2; min-height: 55dvh; }
+  .app-shell > .toast { left: 0; top: 48px; right: 0; bottom: auto; height: 44px; }
   .app-shell .canvas-tools { display: block; overflow: visible; min-height: 44px; }
   .app-shell .canvas-tools .floating-island-toolbar { display: flex; flex-direction: row; flex-wrap: nowrap; width: 100%; }
   .app-shell .canvas-tools .toolbar-pill-btn { flex: 1 1 0; min-width: 44px; width: auto; min-height: 44px; }
@@ -867,3 +882,5 @@ body { overflow-y: auto; }
   .app-shell .canvas-tools .toolbar-divider { display: none; }
   .app-shell .canvas-tools .room-options-launch { margin-top: auto; height: 48px; min-height: 48px; box-sizing: border-box; }
 }
+.app-shell .menu-history { display: flex; align-items: center; width: 100%; min-height: 44px; padding: 0 12px; border: 0; background: transparent; color: var(--text-primary); font: 600 12px/1 var(--type-body); text-align: left; cursor: pointer; }
+.app-shell .menu-history:disabled { color: var(--text-tertiary); cursor: default; }
