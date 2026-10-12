@@ -387,6 +387,7 @@ body { overflow-y: auto; }
   height: 48px;
   margin: 0;
   transform: none;
+  animation: none;
   pointer-events: none;
 }
 .room-options-dialog h2 { font-size: var(--font-title); font-family: var(--type-body) !important; }
@@ -825,7 +826,7 @@ body { overflow-y: auto; }
   .app-shell .journey-step span { font-size: var(--font-note); }
   .app-shell .canvas-frame.is-plan { grid-template-rows: auto minmax(55dvh, 1fr) repeat(12, auto); }
   .app-shell .is-plan > .plan-viewport { grid-row: 2; min-height: 55dvh; }
-  .app-shell > .toast { left: 8px; right: 8px; top: auto; bottom: 52px; height: auto; min-height: 44px; width: auto; }
+  .app-shell > .toast { left: 8px; right: 8px; top: auto; bottom: 52px; height: auto; min-height: 44px; width: auto; transform: none; animation: none; }
   .app-shell .canvas-tools { display: block; overflow: visible; min-height: 44px; }
   .app-shell .canvas-tools .floating-island-toolbar { display: flex; flex-direction: row; flex-wrap: nowrap; width: 100%; }
   .app-shell .canvas-tools .toolbar-pill-btn { flex: 1 1 0; min-width: 44px; width: auto; min-height: 44px; }
@@ -859,9 +860,9 @@ body { overflow-y: auto; }
   }
 }
 @media (max-width: 720px) {
-  .app-shell .design-stage { position: relative; }
+  /* Fixed, not a grid item: an absolute grid item is positioned in the collapsed selection row and lands under the top bar. */
   .app-shell .canvas-selection {
-    position: absolute;
+    position: fixed;
     left: 0;
     right: 0;
     bottom: 48px;
