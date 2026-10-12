@@ -6,8 +6,12 @@ import { MIN_ROOM, clampRoom, snapOpeningToWall, strokeToRoomRect, type StrokePo
 const SHORT_MAX = 8
 const LINE_ASPECT = 3.2
 const MIN_WALL = 8
-/** Endpoints and the metre grid join when they are at most this far apart. */
-const SNAP_M = 0.3
+/** Metre-grid snap. Kept tighter than corner join so 4.4 m and 4.6 m do not leap to different metres. */
+const GRID_SNAP_M = 0.3
+/** Endpoint join for a hand-drawn box. About 0.5 m of miss still closes. */
+const CORNER_SNAP_M = 0.6
+/** A loop this close, but still open, is a missed corner rather than a new wall. */
+const CORNER_NOTE_M = 1.5
 const OPENING_MAX_M = 2.2
 
 export type NapkinResult = {
@@ -17,6 +21,8 @@ export type NapkinResult = {
   selectRoom?: string
   selectOpening?: string
   selectFurniture?: string
+  /** Percent point of a gap that did not close, for the on-canvas note. */
+  cornerNote?: { x: number; y: number }
 }
 
 function nid(prefix: string): string {
@@ -78,16 +84,16 @@ function snapPointToGrid(point: StrokePoint, site: SiteSpec): StrokePoint {
   const gx = Math.round(mx / unit) * unit
   const gy = Math.round(my / unit) * unit
   return {
-    x: ((Math.abs(mx - gx) <= SNAP_M ? gx : mx) / site.w) * 100,
-    y: ((Math.abs(my - gy) <= SNAP_M ? gy : my) / site.h) * 100,
+    x: ((Math.abs(mx - gx) <= GRID_SNAP_M ? gx : mx) / site.w) * 100,
+    y: ((Math.abs(my - gy) <= GRID_SNAP_M ? gy : my) / site.h) * 100,
   }
 }
 
 /**
- * Join a new wall to existing endpoints, then to the metre grid, within 0.3 m.
- * Endpoint joins win so a corner that is already drawn is not pulled onto a
- * different grid line. IngeTrazo's wall snap is the reference idea; this
- * implementation is independent (docs/INGETRAZO-REUSE-REVIEW.md).
+ * Join a new wall to existing endpoints within 0.6 m, then to the metre grid
+ * within 0.3 m. Endpoint joins win so a corner that is already drawn is not
+ * pulled onto a different grid line. IngeTrazo's wall snap is the reference
+ * idea; this implementation is independent (docs/INGETRAZO-REUSE-REVIEW.md).
  */
 function snapWallToSketch(wall: DrawnWall, plan: PlanState, site: SiteSpec): DrawnWall {
   const anchors: StrokePoint[] = []
@@ -105,7 +111,7 @@ function snapWallToSketch(wall: DrawnWall, plan: PlanState, site: SiteSpec): Dra
   const snapEnd = (x: number, y: number): StrokePoint => {
     const point = { x, y }
     let best = point
-    let bestDist = SNAP_M
+    let bestDist = CORNER_SNAP_M
     for (const anchor of anchors) {
       const dist = metresBetween(point, anchor, site)
       if (dist <= bestDist) {
@@ -140,9 +146,9 @@ function covers(intervals: Array<[number, number]>, start: number, end: number, 
   return cursor >= end - tol
 }
 
-function closedRoomsFromWalls(walls: DrawnWall[], site: SiteSpec): Array<Pick<Room, 'x' | 'y' | 'w' | 'h'>> {
-  const tolX = (SNAP_M / site.w) * 100
-  const tolY = (SNAP_M / site.h) * 100
+function closedRoomsFromWalls(walls: DrawnWall[], site: SiteSpec, snapM = CORNER_SNAP_M): Array<Pick<Room, 'x' | 'y' | 'w' | 'h'>> {
+  const tolX = (snapM / site.w) * 100
+  const tolY = (snapM / site.h) * 100
   const xs = [...new Set(walls.flatMap((wall) => [wall.x1, wall.x2]))].sort((a, b) => a - b)
   const ys = [...new Set(walls.flatMap((wall) => [wall.y1, wall.y2]))].sort((a, b) => a - b)
   const rooms: Array<Pick<Room, 'x' | 'y' | 'w' | 'h'>> = []
@@ -178,6 +184,24 @@ function closedRoomsFromWalls(walls: DrawnWall[], site: SiteSpec): Array<Pick<Ro
     }
   }
   return rooms
+}
+
+/** Midpoint of the widest missed corner, between the join distance and 1.5 m. */
+function cornerGapPoint(walls: DrawnWall[], site: SiteSpec): { x: number; y: number } | null {
+  const ends = walls.flatMap((wall, index) => [
+    { x: wall.x1, y: wall.y1, wall: index },
+    { x: wall.x2, y: wall.y2, wall: index },
+  ])
+  let best: { x: number; y: number; dist: number } | null = null
+  for (let i = 0; i < ends.length; i += 1) {
+    for (let j = i + 1; j < ends.length; j += 1) {
+      if (ends[i].wall === ends[j].wall) continue
+      const dist = metresBetween(ends[i], ends[j], site)
+      if (dist <= CORNER_SNAP_M || dist > CORNER_NOTE_M) continue
+      if (!best || dist > best.dist) best = { dist, x: (ends[i].x + ends[j].x) / 2, y: (ends[i].y + ends[j].y) / 2 }
+    }
+  }
+  return best ? { x: best.x, y: best.y } : null
 }
 
 function wallConsumedByRoom(wall: DrawnWall, room: Pick<Room, 'x' | 'y' | 'w' | 'h'>): boolean {
@@ -330,7 +354,7 @@ function inferOpening(plan: PlanState, site: SiteSpec, seed: Opening, lengthM: n
     opening = slideOntoWallSpan(plan, opening, site)
     matches = roomsForOpening(plan, opening)
   }
-  if (matches.length === 0) return { plan: null, toast: 'Tick a wall for a door or window' }
+  if (matches.length === 0) return { plan: null, toast: 'Click a wall for a door or window' }
   const interior = matches.length >= 2
   const host = matches[0].room
   const floorLevel = opening.y >= host.y + host.h * 0.75
@@ -463,9 +487,25 @@ export function applyNapkinStroke(plan: PlanState, points: StrokePoint[], site: 
       }
     }
 
+    const loose = closedRoomsFromWalls(walls, site, CORNER_NOTE_M)
+    const almost = loose.some((rect) =>
+      !plan.rooms.some((room) =>
+        Math.abs(room.x - rect.x) < 2 && Math.abs(room.y - rect.y) < 2 && Math.abs(room.w - rect.w) < 2 && Math.abs(room.h - rect.h) < 2,
+      ),
+    )
+    const cornerNote = cornerGapPoint(walls, site)
+    if (cornerNote && (almost || walls.length >= 3)) {
+      return {
+        plan: { ...plan, walls },
+        toast: "Corners don't meet",
+        label: 'Sketch wall',
+        cornerNote,
+      }
+    }
+
     return {
       plan: { ...plan, walls },
-      toast: 'Wall. Draw the other three sides to close a room, or tick this wall for a window.',
+      toast: 'Wall. Draw the other three sides to close a room, or click this wall for a window.',
       label: 'Sketch wall',
     }
   }
