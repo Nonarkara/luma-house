@@ -15,6 +15,10 @@ for (const theme of themes) for (const width of [375, 1280]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
     await welcome.getByRole('button', { name: 'Explore the 50 m² sample' }).click()
     await openMore(page)
+    const themeRect = await page.locator('.top-more-extra .theme-picker').boundingBox()
+    const installRect = await page.locator('.top-more-extra .web-app-access').boundingBox()
+    expect(installRect!.y).toBeGreaterThanOrEqual(themeRect!.y + themeRect!.height)
+    expect(installRect!.width).toBeGreaterThan(240)
     const images = page.locator('.brand img, .top-more-extra .web-app-access img')
     await expect(images).toHaveCount(3)
     const assetChecks = await images.evaluateAll(async imgs => Promise.all(imgs.map(async node => {

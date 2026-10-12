@@ -5,7 +5,9 @@ exports. Corrected wall topology with a bounded exact cuboid union, aperture
 orientation, mixed-height exterior spans, overlapping-aperture beam length and
 thickened model size. Wet bands now deduct intersecting openings and respect
 actual wall height. More exposes city selection and save status on phones;
-all tools keep labels and 44px targets. Native keyboard/scrolling remain.
+all tools keep labels and 44px targets. Native keyboard/scrolling remain. A live menu check caught inherited stage-grid
+placement; More now resets its palette/install children into one column,
+verified by 18 branding/manifest browser cases across all four schemes.
 No plan schema, persisted drawings, palettes or local sun calculation changed.
 Design reference and dominant drawing sheet remain the serious-studio read below.
 Cloudflare response headers restrict script and network destinations; development

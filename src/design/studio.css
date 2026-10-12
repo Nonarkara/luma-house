@@ -830,3 +830,6 @@ body { overflow-y: auto; }
 @media (max-width: 720px) {
   .app-shell .is-plan > .plan-room-key { scroll-snap-type: none; }
 }
+/* Header facts no longer occupy their old stage-grid columns inside More. */
+.app-shell .top-more-extra { grid-template-columns: minmax(0, 1fr); }
+.app-shell .top-more-extra > * { grid-column: 1; grid-row: auto; min-width: 0; }
