@@ -624,7 +624,12 @@ function App() {
     const points = strokePointsRef.current
     strokePointsRef.current = []
     setDraftStroke(null)
-    const result = applyNapkinStroke(plan, points, site)
+    const sheet = stageRef.current
+    const result = applyNapkinStroke(plan, points, site, sheet ? {
+      widthPx: sheet.clientWidth,
+      heightPx: sheet.clientHeight,
+      zoom: viewport.zoom,
+    } : undefined)
     if (!result.plan) {
       setCornerNote(null)
       setToast(result.toast)
@@ -639,7 +644,7 @@ function App() {
     if (result.selectRoom) setSettingsOpen(false)
     if (result.selectOpening) setWallNote(false)
     setToast(result.toast)
-  }, [commit, plan, site])
+  }, [commit, plan, site, viewport.zoom])
 
   const handleCanvasPointerDown = useCallback((event: ReactPointerEvent) => {
     if (rulerArmed) {
@@ -819,6 +824,19 @@ function App() {
     onViewportPointerUp(event)
   }, [finalizeDrawnRoom, finalizeRulerLine, onViewportPointerUp])
 
+  const commitOpeningAt = useCallback((clientX: number, clientY: number) => {
+    const opening = placeOpeningAt(clientX, clientY)
+    if (!opening) {
+      setWallNote(true)
+      return
+    }
+    setWallNote(false)
+    commit((current) => ({ ...current, openings: [...current.openings, opening] }), `Place ${opening.type}`)
+    setSelectedOpening(opening.id)
+    setSelectedRoom(null)
+    setSelectedFurniture(null)
+  }, [commit, placeOpeningAt])
+
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (panMovedRef.current || isGesturing()) {
       if (activeTool !== 'window' && activeTool !== 'door') return
@@ -854,17 +872,8 @@ function App() {
       }
       return
     }
-    const opening = placeOpeningAt(event.clientX, event.clientY)
-    if (!opening) {
-      setWallNote(true)
-      return
-    }
-    setWallNote(false)
-    commit((current) => ({ ...current, openings: [...current.openings, opening] }), `Place ${opening.type}`)
-    setSelectedOpening(opening.id)
-    setSelectedRoom(null)
-    setSelectedFurniture(null)
-  }, [activeTool, commit, isGesturing, isMeasuring, measureStart, placeOpeningAt, site.h, site.w])
+    commitOpeningAt(event.clientX, event.clientY)
+  }, [activeTool, commitOpeningAt, isGesturing, isMeasuring, measureStart, site.h, site.w])
 
   const deleteRoom = useCallback(() => {
     if (!selectedRoom) return
@@ -1587,6 +1596,7 @@ function App() {
                 cornerNote={cornerNote}
                 showEmptyHint={isEmpty && !hasNapkinWalls && !draftStroke && !rulerArmed && !rulerLine && !roomDraft}
                 onSetOpeningType={(id, type) => updateOpening(id, { type })}
+                onPlaceOpening={commitOpeningAt}
                 onRoomPointerDown={onRoomPointerDown}
                 onRoomSelect={room => { setSelectedRoom(room.id); setSelectedOpening(null); setSelectedFurniture(null) }}
                 onOpeningPointerDown={onOpeningPointerDown}
@@ -1751,7 +1761,7 @@ function App() {
               </div>
             )}
             {view === 'plan' && selectedOpening && !furnitureItem && (
-              <div className="furniture-chip" role="status">
+              <div className="furniture-chip is-overlay" role="status">
                 <span>
                   <strong>{plan.openings.find((item) => item.id === selectedOpening)?.type === 'door' ? 'Door' : 'Window'}</strong>
                   <small>Drag along the wall · Delete key removes</small>

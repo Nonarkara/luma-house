@@ -63,6 +63,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   cornerNote = null,
   showEmptyHint = false,
   onSetOpeningType,
+  onPlaceOpening,
   onRoomPointerDown,
   onRoomSelect,
   onOpeningPointerDown,
@@ -108,6 +109,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   cornerNote?: { x: number; y: number } | null
   showEmptyHint?: boolean
   onSetOpeningType?: (id: string, type: Opening['type']) => void
+  onPlaceOpening?: (clientX: number, clientY: number) => void
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
   onRoomSelect: (room: Room) => void
   onOpeningPointerDown: (event: ReactPointerEvent, opening: Opening, end?: 'start' | 'end') => void
@@ -400,7 +402,11 @@ export const FloorPlan = React.memo(function FloorPlan({
                 const bounds = stageRef.current?.getBoundingClientRect()
                 const point = bounds ? clientToPercent(event.clientX, event.clientY, bounds) : null
                 const hit = point && bounds ? nearestWallHit(point, plan.rooms, bounds) : null
-                if (hit && bounds && !hitIsSelectedOpening(hit, opening, site, bounds)) return
+                if (hit && bounds && !hitIsSelectedOpening(hit, opening, site, bounds)) {
+                  event.stopPropagation()
+                  onPlaceOpening?.(event.clientX, event.clientY)
+                  return
+                }
               }
               event.stopPropagation()
               onSetOpeningType?.(opening.id, type)

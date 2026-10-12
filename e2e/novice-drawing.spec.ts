@@ -148,6 +148,88 @@ test('a wall click with the Window · Door chip open places the next window', as
   await expect(page.locator('button.opening-window[data-rotation="0"]')).toHaveCount(2)
 })
 
+test('one overshot pencil loop is a single room', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForTimeout(400)
+  const canvas = page.locator('.plan-canvas')
+  const box = await canvas.boundingBox()
+  const view = page.viewportSize()!
+  const left = Math.max(box!.x, 8)
+  const top = Math.max(box!.y, 8)
+  const right = Math.min(box!.x + box!.width, view.width - 8)
+  const bottom = Math.min(box!.y + box!.height, view.height - 8)
+  const overM = view.width <= 720 ? 0.5 : 0.7
+  const pxPerMx = box!.width / 14
+  const pxPerMy = box!.height / 10
+  const ox = overM * pxPerMx
+  const oy = overM * pxPerMy
+  const margin = Math.max(ox, oy) + 16
+  const x1 = left + margin
+  const x2 = right - margin
+  const y1 = top + margin
+  const y2 = bottom - margin
+  expect(x2 - x1).toBeGreaterThan(80)
+  expect(y2 - y1).toBeGreaterThan(60)
+  const line = async (ax: number, ay: number, bx: number, by: number) => {
+    await page.mouse.move(ax, ay)
+    await page.mouse.down()
+    await page.mouse.move(bx, by, { steps: 8 })
+    await page.mouse.up()
+    await page.waitForTimeout(60)
+  }
+  await line(x1 - ox, y1, x2 + ox, y1)
+  await line(x2, y1 - oy, x2, y2 + oy)
+  await line(x2 + ox, y2, x1 - ox, y2)
+  await line(x1, y2 + oy, x1, y1 - oy)
+  await expect(page.locator('button.room')).toHaveCount(1)
+  await expect(page.locator('.overlap-warning')).toHaveCount(0)
+  await expect(page.locator('.napkin-wall')).toHaveCount(0)
+  const label = (await page.locator('button.room').getAttribute('aria-label')) ?? ''
+  const area = Number(label.match(/([\d.]+) square meters/)?.[1] ?? '0')
+  const innerArea = ((x2 - x1) / box!.width) * 14 * ((y2 - y1) / box!.height) * 10
+  expect(area).toBeGreaterThan(innerArea * 0.75)
+  expect(area).toBeLessThan(innerArea * 1.2)
+})
+
+test('every wall accepts a window after one is already on the right', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForTimeout(400)
+  await clickTool(page, 'Room')
+  const sheet = await page.locator('.plan-canvas').boundingBox()
+  await page.mouse.move(sheet!.x + sheet!.width * 0.22, sheet!.y + sheet!.height * 0.2)
+  await page.mouse.down()
+  await page.mouse.move(sheet!.x + sheet!.width * 0.78, sheet!.y + sheet!.height * 0.78, { steps: 8 })
+  await page.mouse.up()
+  await expect(page.locator('button.room')).toHaveCount(1)
+
+  await page.locator('.canvas-tools').getByRole('button', { name: 'Window', exact: true }).click()
+  const before = await page.locator('button.room').boundingBox()
+  const right = { x: before!.x + before!.width - 2, y: before!.y + before!.height / 2 }
+  const bottom = { x: before!.x + before!.width / 2, y: before!.y + before!.height - 2 }
+  const top = { x: before!.x + before!.width / 2, y: before!.y + 2 }
+  const left = { x: before!.x + 2, y: before!.y + before!.height / 2 }
+  await page.mouse.click(right.x, right.y)
+  await expect(page.locator('button.opening-window')).toHaveCount(1)
+  await expect(page.locator('.opening-toggle')).toBeVisible()
+
+  const settled = await page.locator('button.room').boundingBox()
+  expect(Math.abs((settled!.y + settled!.height) - (before!.y + before!.height))).toBeLessThan(8)
+
+  await page.mouse.click(bottom.x, bottom.y)
+  await expect(page.locator('.wall-note')).toHaveCount(0)
+  await expect(page.locator('button.opening-window')).toHaveCount(2)
+  await page.mouse.click(bottom.x - Math.min(36, before!.width / 4), bottom.y)
+  await expect(page.locator('.wall-note')).toHaveCount(0)
+  await expect(page.locator('button.opening-window[data-rotation="0"]')).toHaveCount(2)
+
+  await page.mouse.click(top.x, top.y)
+  await page.mouse.click(left.x, left.y)
+  await expect(page.locator('.wall-note')).toHaveCount(0)
+  await expect(page.locator('button.opening-window')).toHaveCount(5)
+  const rotations = await page.locator('button.opening-window').evaluateAll((els) => els.map((el) => el.getAttribute('data-rotation')).sort())
+  expect(rotations).toEqual(['0', '0', '0', '90', '90'])
+})
+
 test('Escape leaves only Select active in the tool rail', async ({ page }) => {
   await page.goto('/')
   await page.waitForTimeout(300)

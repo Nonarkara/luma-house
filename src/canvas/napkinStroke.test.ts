@@ -102,6 +102,33 @@ describe('applyNapkinStroke', () => {
     expect(result.plan!.furniture[0].kind).toBe('wc')
   })
 
+  it.each([0.5, 0.7])('one loop with %s m corner overshoot is exactly one room', (over) => {
+    const at = (mx: number, my: number) => ({ x: (mx / site.w) * 100, y: (my / site.h) * 100 })
+    const x1 = 4
+    const x2 = 9
+    const y1 = 3
+    const y2 = 7
+    const strokes = [
+      [at(x1 - over, y1), at(x2 + over, y1)],
+      [at(x2, y1 - over), at(x2, y2 + over)],
+      [at(x2 + over, y2), at(x1 - over, y2)],
+      [at(x1, y2 + over), at(x1, y1 - over)],
+    ]
+    let current = plan()
+    for (const stroke of strokes) {
+      const next = applyNapkinStroke(current, stroke, site)
+      expect(next.plan).not.toBeNull()
+      current = next.plan!
+    }
+    expect(current.rooms).toHaveLength(1)
+    expect(current.walls ?? []).toHaveLength(0)
+    const room = current.rooms[0]
+    const area = (room.w / 100) * site.w * (room.h / 100) * site.h
+    expect(area).toBeGreaterThan(15)
+    expect(area).toBeLessThan(36)
+    expect(current.rooms[0].name).toBe('Living')
+  })
+
   it('closes four walls whose corners miss by about 0.5 m', () => {
     const at = (mx: number, my: number) => ({ x: (mx / site.w) * 100, y: (my / site.h) * 100 })
     let current = plan()
