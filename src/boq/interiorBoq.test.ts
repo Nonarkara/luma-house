@@ -83,6 +83,27 @@ describe('interiorBoq', () => {
         expect(windows!.amount).toBe(12000)
     })
 
+    it('nets windows only from the wet band they intersect and clips it to wall height', () => {
+        const room = { id: 'b', name: 'Bath', kind: 'bathroom' as const, x: 10, y: 10, w: 40, h: 40, wallHeight: 1.2 }
+        const opening = { id: 'w', type: 'window' as const, x: 30, y: 10, rotation: 0 as const, widthM: 1, sillHeightM: 0.9, heightM: 1.2 }
+        const baseline = interiorBoq(makePlan([room]), site).rooms[0]
+        const withWindow = interiorBoq(makePlan([room], [opening]), site).rooms[0]
+        const tiles = (r: typeof baseline) => r.lines.find(line => line.label === 'Wet-wall tiles')!.quantity
+        expect(tiles(baseline) - tiles(withWindow)).toBeCloseTo(0.3, 6)
+        expect(tiles(withWindow)).toBeCloseTo(withWindow.wallM2, 6)
+        expect(withWindow.lines.some(line => line.label === 'Wall paint')).toBe(false)
+    })
+
+    it('does not subtract an opening from a perpendicular wall near a corner', () => {
+        const a = { id: 'a', name: 'A', kind: 'living' as const, x: 10, y: 10, w: 40, h: 40 }
+        const b = { ...a, id: 'b', x: 50 }
+        const op = { id: 'w', type: 'window' as const, x: 49, y: 10, rotation: 0 as const, widthM: 0.2 }
+        const base = interiorBoq(makePlan([a, b]), site)
+        const cut = interiorBoq(makePlan([a, b], [op]), site)
+        expect(cut.rooms[1].wallM2).toBe(base.rooms[1].wallM2)
+        expect(cut.rooms[0].wallM2).toBeLessThan(base.rooms[0].wallM2)
+    })
+
     it('subtotal equals sum of category amounts', () => {
         const boq = interiorBoq(chinaApartmentPlan, site)
         const sum = boq.categories.reduce((s, c) => s + c.amount, 0)

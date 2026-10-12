@@ -19,6 +19,8 @@ interface TopBarProps {
   meta?: React.ReactNode
   /** Rarely used content placed at the bottom of the More menu. */
   menuExtra?: React.ReactNode
+  onChangeLocation?: () => void
+  locationName?: string
 }
 
 export const TopBar = React.memo(function TopBar({
@@ -35,10 +37,19 @@ export const TopBar = React.memo(function TopBar({
   center,
   meta,
   menuExtra,
+  onChangeLocation,
+  locationName,
 }: TopBarProps) {
   const menuRef = React.useRef<HTMLDetailsElement>(null)
   const close = () => menuRef.current?.removeAttribute('open')
   const run = (action?: () => void) => () => { close(); action?.() }
+  React.useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) close()
+    }
+    document.addEventListener('pointerdown', dismiss)
+    return () => document.removeEventListener('pointerdown', dismiss)
+  }, [])
 
   return (
     <header className="topbar">
@@ -53,27 +64,31 @@ export const TopBar = React.memo(function TopBar({
       {center && <div className="topbar-center">{center}</div>}
 
       <div className="top-actions">
-        <details className="top-more" ref={menuRef}>
-          <summary className="icon-button" aria-label="More actions" title="More actions">
+        <details className="top-more" ref={menuRef} onKeyDown={event => {
+          if (event.key === 'Escape') { close(); menuRef.current?.querySelector('summary')?.focus() }
+        }}>
+          <summary role="button" className="icon-button" aria-label="More actions" title="More actions">
             <MoreHorizontal aria-hidden="true" />
           </summary>
-          <div className="top-more-menu" role="menu">
+          <div className="top-more-menu">
+            <p className="menu-project-name">{projectName}<small>{lastSaved}</small></p>
+            {onChangeLocation && <button type="button" className="menu-location" onClick={run(onChangeLocation)}>Change city · {locationName}</button>}
             {onToggleCatalog && (
-              <button type="button" role="menuitem" onClick={run(onToggleCatalog)}>
+              <button type="button" aria-label="Furniture Catalog" onClick={run(onToggleCatalog)}>
                 <Plus aria-hidden="true" /> Furniture catalog
               </button>
             )}
-            <button type="button" role="menuitem" className="top-more-share" onClick={run(sharePlan)}>
+            <button type="button" className="top-more-share" aria-label="Share" onClick={run(sharePlan)}>
               <Copy aria-hidden="true" /> Share link
             </button>
-            <button type="button" role="menuitem" onClick={run(onNewSketch)} title="Start a fresh napkin sketch. Undo brings the current one back.">
+            <button type="button" onClick={run(onNewSketch)} title="Start a fresh napkin sketch. Undo brings the current one back.">
               <FilePlus2 aria-hidden="true" /> New sketch
             </button>
-            <button type="button" role="menuitem" onClick={run(onOpenSettings)}>
+            <button type="button" onClick={run(onOpenSettings)}>
               <Settings2 aria-hidden="true" /> Workspace settings
             </button>
             {onOpenShortcuts && (
-              <button type="button" role="menuitem" onClick={run(onOpenShortcuts)}>
+              <button type="button" onClick={run(onOpenShortcuts)}>
                 <HelpCircle aria-hidden="true" /> Shortcuts and legend <kbd>?</kbd>
               </button>
             )}

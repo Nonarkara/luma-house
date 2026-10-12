@@ -1,7 +1,7 @@
 // Mesh file writers: binary STL, 3MF (stored zip) and GLB.
 // Adapted from earthtojake/text-to-cad, packages/core/src/lib/export/meshFormats.js
 // and packageMeshExport.js — MIT License, Copyright (c) 2026 Thompson Labs LLC.
-// Ported to TypeScript and reduced to what designon exports; no third-party code.
+// Ported to TypeScript and reduced to what designon exports; no third-party runtime dependency.
 
 /** One coloured part: a flat list of triangles, 9 numbers per triangle. */
 export interface MeshPart {

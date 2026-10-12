@@ -1,4 +1,5 @@
 import { openingDimensions } from '../openingGeometry'
+import { openingCompassForRoom } from '../analysis/walls'
 import type { CurrencyCode, Opening, PlanState, RegionalRateCard, Room, SiteSpec } from '../types'
 import { roomHeight } from '../plan'
 
@@ -112,18 +113,8 @@ function line(label: string, quantity: number, unit: string, rate: number, waste
   return { label, quantity, unit, rate, waste, orderQuantity, amount: orderQuantity * rate, basis }
 }
 
-function openingsInRoom(openings: Opening[], room: Room): Opening[] {
-  const left = room.x
-  const top = room.y
-  const right = room.x + room.w
-  const bottom = room.y + room.h
-  return openings.filter((o) => {
-    const onX = Math.abs(o.x - left) < 1.5 || Math.abs(o.x - right) < 1.5
-    const onY = Math.abs(o.y - top) < 1.5 || Math.abs(o.y - bottom) < 1.5
-    const inSpanX = o.x >= left - 1.5 && o.x <= right + 1.5
-    const inSpanY = o.y >= top - 1.5 && o.y <= bottom + 1.5
-    return (onX && inSpanY) || (onY && inSpanX)
-  })
+function openingsInRoom(openings: Opening[], room: Room, site: SiteSpec): Opening[] {
+  return openings.filter(opening => openingCompassForRoom(room, opening, site) !== null)
 }
 
 function buildRoomBoq(room: Room, openings: Opening[], owned: Set<string>, site: SiteSpec): RoomInteriorBoq {
@@ -134,22 +125,26 @@ function buildRoomBoq(room: Room, openings: Opening[], owned: Set<string>, site:
   const isWet = WET_KINDS.has(room.kind)
   // Every opening on this room's walls cuts this room's faces; a door on a
   // shared wall cuts both sides. Units are counted once, by the owning room.
-  const roomOpenings = openingsInRoom(openings, room)
+  const roomOpenings = openingsInRoom(openings, room, site)
   const doors = roomOpenings.filter((o) => o.type === 'door')
-  const doorWidth = doors.reduce((acc, o) => acc + openingDimensions(o).width, 0)
+  const doorWidth = doors.reduce((acc, o) => acc + (openingDimensions(o).sill <= 0 ? openingDimensions(o).width : 0), 0)
   const ownedDoors = doors.filter((o) => owned.has(o.id)).length
   const ownedWindows = roomOpenings.filter((o) => o.type === 'window' && owned.has(o.id)).length
 
   const openingM2 = roomOpenings.reduce((acc, op) => {
     const dims = openingDimensions(op)
-    return acc + dims.width * dims.height
+    return acc + dims.width * Math.max(0, Math.min(height, dims.head) - Math.max(0, dims.sill))
   }, 0)
 
   const grossWallM2 = perimeter * height
   const wallM2 = Math.max(0, grossWallM2 - openingM2)
   const runLessDoors = Math.max(0, perimeter - doorWidth)
-  // ponytail: windows inside the 1.5 m tile band are not netted from the band; refine when sill heights vary.
-  const wetWallTileM2 = isWet ? runLessDoors * WET_WALL_TILE_HEIGHT : 0
+  const tileHeight = Math.min(height, WET_WALL_TILE_HEIGHT)
+  const tileOpeningsM2 = roomOpenings.reduce((sum, opening) => {
+    const dims = openingDimensions(opening)
+    return sum + dims.width * Math.max(0, Math.min(tileHeight, dims.head) - Math.max(0, dims.sill))
+  }, 0)
+  const wetWallTileM2 = isWet ? Math.max(0, perimeter * tileHeight - tileOpeningsM2) : 0
   const paintableWallM2 = Math.max(0, wallM2 - wetWallTileM2)
   const faceBasis = `${w.toFixed(2)} × ${d.toFixed(2)} m to inner wall face`
   const runBasis = `${perimeter.toFixed(2)} m run − ${doorWidth.toFixed(2)} m doors`
@@ -165,7 +160,7 @@ function buildRoomBoq(room: Room, openings: Opening[], owned: Set<string>, site:
       `${perimeter.toFixed(2)} m × ${height.toFixed(2)} m − ${openingM2.toFixed(1)} m² openings${isWet ? ' − tile band' : ''}`))
   }
   if (wetWallTileM2 > 0) {
-    lines.push(line('Wet-wall tiles', wetWallTileM2, 'm²', BASE_RATE.wallTileWet, WASTE.wallTile, `${runBasis} × ${WET_WALL_TILE_HEIGHT} m band`))
+    lines.push(line('Wet-wall tiles', wetWallTileM2, 'm²', BASE_RATE.wallTileWet, WASTE.wallTile, `${perimeter.toFixed(2)} m × ${tileHeight.toFixed(2)} m band − ${tileOpeningsM2.toFixed(2)} m² openings`))
   }
   lines.push(line('Ceiling paint', area, 'm²', BASE_RATE.ceilingPaint, WASTE.none, faceBasis))
   if (runLessDoors > 0) lines.push(line('Skirting', runLessDoors, 'lin.m', BASE_RATE.skirting, WASTE.skirting, runBasis))
@@ -208,7 +203,7 @@ export function interiorBoq(plan: PlanState, site: SiteSpec, currency: CurrencyC
   // so a shared door is one door set, not one per side.
   const owned = new Map<string, Set<string>>()
   for (const opening of plan.openings) {
-    const owner = plan.rooms.find((room) => openingsInRoom([opening], room).length > 0)
+    const owner = plan.rooms.find((room) => openingsInRoom([opening], room, site).length > 0)
     if (!owner) continue
     if (!owned.has(owner.id)) owned.set(owner.id, new Set())
     owned.get(owner.id)!.add(opening.id)

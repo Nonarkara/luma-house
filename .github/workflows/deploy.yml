@@ -27,6 +27,8 @@ jobs:
         working-directory: workers/concept-render
       - run: npm run check
         working-directory: workers/concept-render
+      - run: npx vitest run
+        working-directory: workers/concept-render
       - run: npm run test:quota
         working-directory: workers/concept-render
       - run: npm audit --audit-level=high

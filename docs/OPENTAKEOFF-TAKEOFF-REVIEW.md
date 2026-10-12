@@ -1,14 +1,13 @@
 # OpenTakeoff takeoff review
 
 Studied: [Kentucky-ai/opentakeoff](https://github.com/Kentucky-ai/opentakeoff),
-default branch as of 2026-10-11. Open-source PDF takeoff for construction and
+revision `9624be84c60dc1f7f2ac403e0f05a873ba26b486` checked on 2026-10-12. Open-source PDF takeoff for construction and
 flooring, AGPL-3.0.
 
 ## Licence decision
 
-OpenTakeoff is AGPL-3.0. designon is MIT and served publicly, so copying its
-code would put the whole site under AGPL's network-use terms. Nothing was
-copied. The ideas below were reimplemented against designon's own plan model,
+OpenTakeoff is AGPL-3.0; designon remains MIT. Its estimator conventions were
+implemented independently, without incorporating OpenTakeoff source code. The ideas below were reimplemented against designon's own plan model,
 and the credit lives in the README.
 
 ## What we took
@@ -48,6 +47,8 @@ fails on the previous code with 7 against 4.
 
 ## Known limit
 
-Windows inside the 1.5 m wet-room tile band are not netted from the band.
+The October 12 review now nets the exact opening intersection with the wet-room
+tile band, clips the band and opening deductions to the actual wall height, and
+uses opening orientation and full-width fit when assigning a wall face.
 The 0.15 m wall is one thickness for every wall; real exterior walls are
 often thicker.

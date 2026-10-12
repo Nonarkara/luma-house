@@ -1,3 +1,4 @@
+import { chooseTheme } from './workspace'
 import { test, expect } from '@playwright/test'
 import { encodePlanToHash } from '../src/sharePlan'
 import type { PlanState } from '../src/types'
@@ -23,7 +24,7 @@ test('renders locally with AI blocked, supports every palette and exports an act
   await expect(canvas).toBeVisible()
   await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   for (const theme of themes) {
-    await page.getByLabel('Colour scheme', { exact: true }).selectOption(theme.id)
+    await chooseTheme(page, theme.id)
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id)
     await expect(canvas).toBeVisible()
   }

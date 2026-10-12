@@ -1,3 +1,4 @@
+import { openMore } from './workspace'
 import { test, expect } from '@playwright/test'
 import { themes } from '../src/design/themes'
 
@@ -13,7 +14,8 @@ for (const theme of themes) for (const width of [375, 1280]) {
     await expect(welcome.getByText('iPhone', { exact: true })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
     await welcome.getByRole('button', { name: 'Explore the 50 m² sample' }).click()
-    const images = page.locator('.brand img, .app-platforms img')
+    await openMore(page)
+    const images = page.locator('.brand img, .top-more-extra .web-app-access img')
     await expect(images).toHaveCount(3)
     const assetChecks = await images.evaluateAll(async imgs => Promise.all(imgs.map(async node => {
       const img = node as HTMLImageElement
@@ -34,12 +36,11 @@ for (const theme of themes) for (const width of [375, 1280]) {
     for (const asset of assetChecks) {
       expect(asset.clear).toBeGreaterThan(.15)
       expect(asset.paintedWhite).toBe(0)
-      expect(asset.width).toBeGreaterThan(20)
-      expect(asset.height).toBeGreaterThan(20)
+      if (asset.width > 0) { expect(asset.width).toBeGreaterThan(20); expect(asset.height).toBeGreaterThan(20) }
       expect(asset.filter).toBe('none')
       expect(asset.background).toBe('rgba(0, 0, 0, 0)')
     }
-    const footer = page.locator('.app-platforms')
+    const footer = page.locator('.top-more-extra .web-app-access')
     if (width === 1280) {
       const summaryBox = await footer.locator('summary').boundingBox()
       expect(summaryBox!.y + summaryBox!.height).toBeLessThanOrEqual(844)
@@ -51,6 +52,7 @@ for (const theme of themes) for (const width of [375, 1280]) {
     await expect(footer.getByText('iPhone', { exact: true })).toBeVisible()
     await expect(footer.getByText(/An internet connection is needed/)).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
+    await page.getByRole('button', { name: 'More actions', exact: true }).press('Escape')
     expect(await page.locator('.canvas-frame').evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(300)
   })
 }

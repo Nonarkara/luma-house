@@ -2,6 +2,7 @@ import { openingDimensions } from '../openingGeometry'
 import { roomHeight, siteOf } from '../plan'
 import type { PlanState } from '../types'
 import type { MeshPart } from './formats'
+import { unionBoxes, type SolidBox } from './unionBoxes'
 
 /** Same 0.15 m the 3D view and the BOQ use. */
 export const WALL_M = 0.15
@@ -52,19 +53,16 @@ export function wallRuns(plan: PlanState): Run[] {
   for (const r of raw) groups.set(key(r), [...(groups.get(key(r)) ?? []), r])
   const merged: Run[] = []
   for (const runs of groups.values()) {
-    runs.sort((a, b) => a.from - b.from)
-    let current = { ...runs[0] }
-    for (const r of runs.slice(1)) {
-      if (r.from <= current.to + 1e-6) {
-        current.to = Math.max(current.to, r.to)
-        // ponytail: a merged run takes the tallest room's height; per-segment heights if mixed ceilings matter.
-        current.height = Math.max(current.height, r.height)
-      } else {
-        merged.push(current)
-        current = { ...r }
-      }
+    const points = [...new Set(runs.flatMap(run => [run.from, run.to]))].sort((a, b) => a - b)
+    for (let i = 0; i < points.length - 1; i++) {
+      const from = points[i], to = points[i + 1], middle = (from + to) / 2
+      const covering = runs.filter(run => middle >= run.from && middle <= run.to)
+      if (!covering.length) continue
+      const height = Math.max(...covering.map(run => run.height))
+      const previous = merged[merged.length - 1]
+      if (previous && previous.horizontal === runs[0].horizontal && previous.line === runs[0].line && previous.to === from && previous.height === height) previous.to = to
+      else merged.push({ ...runs[0], from, to, height })
     }
-    merged.push(current)
   }
   return merged
 }
@@ -81,13 +79,14 @@ export interface HouseMesh {
  * The plan as a roofless architectural model: walls with real door and window
  * holes on a base plate. Units are metres, x east, y north, z up.
  */
-export function houseMesh(plan: PlanState, options: { wallM?: number; baseM?: number } = {}): HouseMesh {
+export function houseMesh(plan: PlanState, options: { wallM?: number; baseM?: number; boundsOnly?: boolean } = {}): HouseMesh {
   const site = siteOf(plan)
   const t = options.wallM ?? WALL_M
   const baseT = options.baseM ?? 0.2
   const runs = wallRuns(plan)
-  const walls: number[] = []
+  const wallBoxes: SolidBox[] = []
   let longestLintelM = 0
+  const lintelGroups = new Map<string, Array<{ start: number; end: number; sill: number; head: number }>>()
 
   for (const run of runs) {
     const openings = plan.openings
@@ -98,30 +97,50 @@ export function houseMesh(plan: PlanState, options: { wallM?: number; baseM?: nu
         const along = run.horizontal ? ox : oy
         return { o, across, along }
       })
-      .filter(({ across, along }) => Math.abs(across - run.line) <= ON_WALL_M && along >= run.from - 0.05 && along <= run.to + 0.05)
+      .filter(({ o, across }) => (o.rotation === 0) === run.horizontal && Math.abs(across - run.line) <= ON_WALL_M)
       .map(({ o, along }) => {
         const d = openingDimensions(o)
         return { start: Math.max(run.from, along - d.width / 2), end: Math.min(run.to, along + d.width / 2), sill: d.sill, head: Math.min(d.head, run.height) }
       })
+      .filter(gap => gap.end > gap.start)
       .sort((a, b) => a.start - b.start)
 
     const piece = (a: number, b: number, z0: number, z1: number) => {
       if (b - a <= 1e-6 || z1 - z0 <= 1e-6) return
-      if (run.horizontal) pushBox(walls, a, run.line - t / 2, z0, b, run.line + t / 2, z1)
-      else pushBox(walls, run.line - t / 2, a, z0, run.line + t / 2, b, z1)
+      if (run.horizontal) wallBoxes.push([a, run.line - t / 2, z0, b, run.line + t / 2, z1])
+      else wallBoxes.push([run.line - t / 2, a, z0, run.line + t / 2, b, z1])
     }
 
-    // Solid wall between openings; extend the run by half a wall so corners close.
-    let cursor = run.from - t / 2
-    for (const gap of openings) {
-      if (gap.start < cursor) continue // ponytail: overlapping openings — later one dropped; fine for concept plans.
-      piece(cursor, gap.start, 0, run.height)
-      piece(gap.start, gap.end, 0, gap.sill) // sill below a window; zero for doors
-      piece(gap.start, gap.end, gap.head, run.height) // lintel above
-      if (gap.head < run.height) longestLintelM = Math.max(longestLintelM, gap.end - gap.start)
-      cursor = gap.end
+    // Partition the run at all aperture edges. Unioned openings remove the
+    // same material regardless of their order, including partial overlaps.
+    const collinear = runs.filter(other => other !== run && other.horizontal === run.horizontal && Math.abs(other.line - run.line) < 1e-8)
+    const from = run.from - (collinear.some(other => Math.abs(other.to - run.from) < 1e-8) ? 0 : t / 2)
+    const to = run.to + (collinear.some(other => Math.abs(other.from - run.to) < 1e-8) ? 0 : t / 2)
+    const along = [...new Set([from, to, ...openings.flatMap(gap => [gap.start, gap.end])])].sort((a, b) => a - b)
+    const levels = [...new Set([0, run.height, ...openings.flatMap(gap => [Math.min(run.height, gap.sill), gap.head])])].sort((a, b) => a - b)
+    const key = `${run.horizontal}:${run.line.toFixed(3)}`
+    lintelGroups.set(key, [...(lintelGroups.get(key) ?? []), ...openings.filter(gap => gap.head < run.height)])
+    for (let i = 0; i < along.length - 1; i++) for (let j = 0; j < levels.length - 1; j++) {
+      const center = (along[i] + along[i + 1]) / 2, z = (levels[j] + levels[j + 1]) / 2
+      if (openings.some(gap => center >= gap.start && center <= gap.end && z >= gap.sill && z <= gap.head)) continue
+      piece(along[i], along[i + 1], levels[j], levels[j + 1])
     }
-    piece(cursor, run.to + t / 2, 0, run.height)
+  }
+
+  // A continuous unsupported span can contain more than one overlapping
+  // aperture. Measure their union at each height, across adjacent wall runs.
+  for (const gaps of lintelGroups.values()) {
+    const levels = [...new Set(gaps.flatMap(gap => [gap.sill, gap.head]))].sort((a, b) => a - b)
+    for (let i = 0; i < levels.length - 1; i++) {
+      const z = (levels[i] + levels[i + 1]) / 2
+      const spans = gaps.filter(gap => z > gap.sill && z < gap.head).sort((a, b) => a.start - b.start)
+      let start = 0, end = 0, active = false
+      for (const span of spans) {
+        if (!active || span.start > end + 1e-8) { start = span.start; end = span.end; active = true }
+        else end = Math.max(end, span.end)
+        longestLintelM = Math.max(longestLintelM, end - start)
+      }
+    }
   }
 
   const xs = runs.flatMap((r) => (r.horizontal ? [r.from, r.to] : [r.line]))
@@ -137,7 +156,7 @@ export function houseMesh(plan: PlanState, options: { wallM?: number; baseM?: nu
   return {
     parts: [
       { name: 'Base', color: '#8A8F98', positions: base },
-      { name: 'Walls', color: '#F4F1EA', positions: walls },
+      { name: 'Walls', color: '#F4F1EA', positions: options.boundsOnly ? [] : unionBoxes(wallBoxes) },
     ],
     bounds,
     longestLintelM,

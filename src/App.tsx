@@ -1320,6 +1320,8 @@ function App() {
           <span className="stage-area"><Ruler /> {budget.area.toFixed(1)} m²</span>
           <button type="button" className="location-toggle" title={projectLocation.label} aria-label={`${projectLocation.label} · Change city`} aria-expanded={locationOpen} onClick={() => setLocationOpen(open => !open)}><MapPin /><span>{projectLocation.name}</span></button>
         </>}
+        onChangeLocation={() => setLocationOpen(true)}
+        locationName={projectLocation.name}
         menuExtra={<>
           <ThemePicker theme={theme} onChange={next => { saveTheme(next); setTheme(next) }} />
           <WebAppAccess />

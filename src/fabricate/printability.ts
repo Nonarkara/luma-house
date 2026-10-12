@@ -44,7 +44,7 @@ export function checkPrint(plan: PlanState, denominator: number, process: PrintP
   const wallMm = WALL_M * k
   const thickened = thicken && wallMm < limits.minUnsupportedWallMm
   const printedWallMm = thickened ? limits.minUnsupportedWallMm : wallMm
-  const mesh = houseMesh(plan)
+  const mesh = houseMesh(plan, { wallM: printedWallMm / k, boundsOnly: true })
   const margin = 0.5 * 2
   const sizeMm = {
     x: (mesh.bounds.maxX - mesh.bounds.minX + margin) * k,

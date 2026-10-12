@@ -1,3 +1,4 @@
+import { openMore } from './workspace'
 import { test, expect, type Page } from '@playwright/test'
 import { decodePlanFromHash, encodePlanToHash } from '../src/sharePlan'
 import { initialPlan } from '../src/plan'
@@ -53,6 +54,7 @@ test.describe('shipability smoke', () => {
     // tautological.
     await page.goto(`/#plan=${SAMPLE_PLAN_HASH}`)
     const share = page.getByRole('button', { name: 'Share' })
+    if (!await share.isVisible()) await openMore(page)
     await expect(share).toBeVisible()
     await expect(share).toBeEnabled()
     // Real click. Playwright grants clipboard-write via the project
@@ -80,7 +82,8 @@ test.describe('shipability smoke', () => {
     // `.top-actions .button.secondary`. The fix made them icon-only with
     // aria-label intact, so `getByRole('button', { name: ... })` resolves.
     for (const label of ['Share', 'New sketch', 'Furniture Catalog']) {
-      const button = page.getByRole('button', { name: label })
+      await openMore(page)
+      const button = page.getByRole('button', { name: label, exact: true })
       await expect(button, `${label} must be in the DOM on mobile`).toHaveCount(1)
       await expect(button, `${label} must be visible on mobile`).toBeVisible()
       await button.click({ trial: true })
@@ -121,11 +124,12 @@ test.describe('drawing studio', () => {
       await expect(toolbar).toHaveCount(1)
       const canvasRect = await canvas.boundingBox()
       const toolbarRect = await toolbar.boundingBox()
-      expect(toolbarRect!.y + toolbarRect!.height).toBeLessThanOrEqual(canvasRect!.y)
+      const overlap = toolbarRect!.x < canvasRect!.x + canvasRect!.width && toolbarRect!.x + toolbarRect!.width > canvasRect!.x && toolbarRect!.y < canvasRect!.y + canvasRect!.height && toolbarRect!.y + toolbarRect!.height > canvasRect!.y
+      expect(overlap, 'drawing tools stay outside the frame').toBe(false)
       expect(canvasRect!.height).toBeGreaterThanOrEqual(300)
       await page.getByRole('button', { name: 'Add room', exact: true }).click()
       expect(await readRoomCount(page)).toBe(initialPlan.rooms.length + 1)
-      await page.getByRole('button', { name: 'Undo', exact: true }).click()
+      await page.getByRole('button', { name: 'Undo', exact: true }).filter({ visible: true }).click()
       expect(await readRoomCount(page)).toBe(initialPlan.rooms.length)
       for (const name of ['Tape Measure', 'Layout presets']) {
         await page.getByRole('button', { name, exact: true }).click({ trial: true })
@@ -152,7 +156,7 @@ test.describe('drawing studio', () => {
         })
         return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722
       }
-      return ['.stage-head h1', '.button.primary', '.journey-headline'].map(selector => {
+      return ['.project-picker strong', '.button.primary', '.journey-step span'].map(selector => {
         const el = document.querySelector(selector)!
         const fg = luminance(getComputedStyle(el).color)
         let bgEl: Element | null = el
@@ -227,7 +231,8 @@ test.describe('PWA installability', () => {
   test('WebAppAccess install guidance is reachable in the DOM', async ({ page }) => {
     await dismissWelcome(page)
     await page.goto('/')
-    const section = page.locator('.web-app-access')
+    await openMore(page)
+    const section = page.locator('.top-more-extra .web-app-access')
     await expect(section, 'install guidance is rendered').toHaveCount(1)
     // Both platform strings must be present — the audit agent flagged that
     // the guidance must explicitly cover Android and iPhone, not just one.

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { containsPoint } from './meshTestHelpers'
 import { chinaApartmentPlan } from '../mockups/chinaApartment'
 import type { PlanState } from '../types'
 import { meshTo3mf, meshToBinaryStl, meshToGlb, triangleNormal } from './formats'
@@ -9,21 +10,6 @@ const site = { w: 10, h: 10, unit: 1 }
 const systems = { solar: false, insulation: false, climate: false, lighting: false }
 const plan = (rooms: PlanState['rooms'], openings: PlanState['openings'] = []): PlanState => ({ site, rooms, openings, furniture: [], systems })
 
-type Box = { min: number[]; max: number[] }
-function boxes(positions: number[]): Box[] {
-  const out: Box[] = []
-  for (let i = 0; i < positions.length; i += 108) {
-    const min = [Infinity, Infinity, Infinity]
-    const max = [-Infinity, -Infinity, -Infinity]
-    for (let j = i; j < i + 108; j += 3) for (let k = 0; k < 3; k += 1) {
-      min[k] = Math.min(min[k], positions[j + k])
-      max[k] = Math.max(max[k], positions[j + k])
-    }
-    out.push({ min, max })
-  }
-  return out
-}
-const inside = (p: number[], b: Box) => p.every((v, k) => v > b.min[k] + 1e-9 && v < b.max[k] - 1e-9)
 
 describe('house mesh', () => {
   it('writes closed boxes whose faces all point outward', () => {
@@ -50,11 +36,11 @@ describe('house mesh', () => {
       [{ id: 'a', name: 'A', kind: 'living', x: 10, y: 10, w: 40, h: 40 }],
       [{ id: 'd', type: 'door', x: 30, y: 50, rotation: 0 }],
     ))
-    const walls = boxes(mesh.parts[1].positions)
+    const walls = mesh.parts[1].positions
     // Door centre at x = 3 m on the south wall (plan y 50% → model y 5 m).
-    expect(walls.some((b) => inside([3, 5, 1.0], b))).toBe(false)
-    expect(walls.some((b) => inside([3, 5, 2.4], b))).toBe(true)
-    expect(walls.some((b) => inside([1.5, 5, 1.0], b))).toBe(true)
+    expect(containsPoint(walls, [3, 5, 1.0])).toBe(false)
+    expect(containsPoint(walls, [3, 5, 2.4])).toBe(true)
+    expect(containsPoint(walls, [1.5, 5, 1.0])).toBe(true)
     expect(mesh.longestLintelM).toBeCloseTo(0.9, 6)
   })
 

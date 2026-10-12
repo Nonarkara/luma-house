@@ -1,7 +1,7 @@
 # text-to-cad review
 
 Studied: [earthtojake/text-to-cad](https://github.com/earthtojake/text-to-cad),
-default branch on 2026-10-12. MIT, Copyright (c) 2026 Thompson Labs LLC.
+`24573128ceaab564f497d7c12f995c41784c9539` on 2026-10-12. MIT, Copyright (c) 2026 Thompson Labs LLC.
 19k stars. A plugin that lets coding agents generate CAD (build123d and
 OpenCascade, in Python), check it for manufacturing, and send it to 3D
 printing, sheet-metal and CNC services, with a three.js viewer.
@@ -50,5 +50,21 @@ New in designon, not in text-to-cad:
 
 ## Known limits
 
-Roofless model; terraces get no walls. A merged wall run takes the tallest
-adjoining room's height. Overlapping openings on one wall keep the first.
+Roofless model; terraces get no walls. At a shared wall the taller adjacent
+room sets its height; exterior height changes remain segmented. Overlapping
+apertures are cut as a union, and their combined unsupported spans request
+supports. Perpendicular dividers remain physical walls at junctions.
+
+## Review corrections — 2026-10-12
+
+A valid file header and a successful reader load do not prove a printable mesh.
+The first port joined independently closed boxes; corner and lintel edges then
+had four incident triangles in the indexed 3MF. Exact cuboid union now removes
+internal faces before export, with conforming outward triangles. Regression
+checks require two oppositely directed incidences on every edge, after scale
+rounding too. The independent review checked 240 surfaces from 30 layouts.
+Opening orientation prevents accidental perpendicular cuts. Heights vary per
+span, and the size verdict measures the wall thickness actually exported.
+The model remains a concept model for slicer review: this is not a printer or
+material-specific certification. Complex unions are bounded to two million
+cells and report an export error instead of attempting an unbounded allocation.

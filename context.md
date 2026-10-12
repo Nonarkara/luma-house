@@ -1,3 +1,29 @@
+## SIC upgrade audit — 2026-10-12
+
+Retained Claude’s canvas-first workspace, measured/order BOQ and model/print
+exports. Corrected wall topology with a bounded exact cuboid union, aperture
+orientation, mixed-height exterior spans, overlapping-aperture beam length and
+thickened model size. Wet bands now deduct intersecting openings and respect
+actual wall height. More exposes city selection and save status on phones;
+all tools keep labels and 44px targets. Native keyboard/scrolling remain.
+No plan schema, persisted drawings, palettes or local sun calculation changed.
+Design reference and dominant drawing sheet remain the serious-studio read below.
+Cloudflare response headers restrict script and network destinations; development
+source-map dependency patched. Seven development-only advisories remain.
+Review and upstream credits: docs/security/cso-audit-2026-10-12.md,
+docs/TEXT-TO-CAD-REVIEW.md, docs/OPENTAKEOFF-TAKEOFF-REVIEW.md.
+
+Verification: 383 frontend unit cases, 54 Worker unit cases, lint/types/build,
+production and Worker audits, and the SQLite concurrency proof pass. The full
+browser run passed 100/102; its two old-footer install checks passed after
+opening the new menu. Hosted CI reruns all 102 before mirror publication.
+Axiom audit remains unavailable (npm 404); no passed automated design gate is
+claimed. Responsive screenshots and computed geometry/contrast checks passed.
+
+The optional AI routes are disabled by empty TRACE_MODEL/GEMINI_MODEL variables.
+The production `/trace` probe confirms immediate 503/manual-underlay guidance.
+Older model notes below are historical, not current configuration.
+
 # designon (Design + Non) — live context
 
 ## Serious drawing studio — 2026-10-11

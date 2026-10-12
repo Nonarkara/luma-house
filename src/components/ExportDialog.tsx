@@ -23,6 +23,11 @@ export function ExportDialog({ plan, baseName, onClose, onExportProject, onDone 
   onDone: (message: string) => void
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
+  const [error, setError] = useState('')
+  const save = (makeBytes: () => Uint8Array, filename: string, mime: string, message: string) => {
+    try { download(makeBytes(), filename, mime); onDone(message) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not export this model. Review the plan and try again.') }
+  }
   const [process, setProcess] = useState<PrintProcess>('fdm')
   const [thicken, setThicken] = useState(true)
   const recommended = useMemo(() => recommendScale(plan, process, thicken), [plan, process, thicken])
@@ -41,6 +46,7 @@ export function ExportDialog({ plan, baseName, onClose, onExportProject, onDone 
 
   return <dialog ref={dialog} className="trace-review export-dialog" aria-labelledby="export-title" onCancel={event => { event.preventDefault(); onClose() }}>
     <h2 id="export-title">Take the design out</h2>
+    {error && <p role="alert">{error}</p>}
 
     <section className="export-option">
       <div><h3>Project file</h3><p>Everything you drew, for designon. Reopen it with Import.</p></div>
@@ -50,21 +56,20 @@ export function ExportDialog({ plan, baseName, onClose, onExportProject, onDone 
     <section className="export-option">
       <div><h3>3D model</h3><p>Walls with real door and window openings, in metres. Opens in Blender, Windows 3D Viewer and online model viewers. No roof, so you can look in.</p></div>
       <button className="button secondary" type="button" disabled={!hasWalls} onClick={() => {
-        download(meshToGlb(houseMesh(plan).parts, baseName), `${baseName}.glb`, 'model/gltf-binary')
-        onDone('3D model downloaded (.glb, metres)')
+        save(() => meshToGlb(houseMesh(plan).parts, baseName), `${baseName}.glb`, 'model/gltf-binary', '3D model downloaded (.glb, metres)')
       }}>.glb</button>
     </section>
 
     <section className="export-option export-print">
       <div>
         <h3>3D print a scale model</h3>
-        <p>A roofless model on a {BASE_PRINT_MM} mm base, ready for a slicer such as Bambu Studio, PrusaSlicer or Cura.</p>
+        <p>A roofless model on a {BASE_PRINT_MM} mm base, for review in a slicer such as Bambu Studio, PrusaSlicer or Cura.</p>
       </div>
       <div className="trace-fields">
-        <label>Scale<select value={scale} onChange={event => setScale(Number(event.target.value))}>
+        <label>Scale<select aria-label="Scale" value={scale} onChange={event => setScale(Number(event.target.value))}>
           {PRINT_SCALES.map(d => <option key={d} value={d}>1:{d}{recommended?.denominator === d ? ' (recommended)' : ''}</option>)}
         </select></label>
-        <label>Printer<select value={process} onChange={event => setProcess(event.target.value as PrintProcess)}>
+        <label>Printer<select aria-label="Printer" value={process} onChange={event => setProcess(event.target.value as PrintProcess)}>
           {(Object.keys(PROCESS_LIMITS) as PrintProcess[]).map(p => <option key={p} value={p}>{PROCESS_LIMITS[p].label}</option>)}
         </select></label>
       </div>
@@ -76,7 +81,7 @@ export function ExportDialog({ plan, baseName, onClose, onExportProject, onDone 
         </li>
         <li className={check.wallOk ? 'is-ok' : 'is-fail'}>
           {check.thickened
-            ? `Walls thickened from ${mm(check.wallMm)} to ${mm(check.printedWallMm)} mm so they print. The model is not true to scale in wall thickness.`
+            ? `Walls thickened from ${mm(check.wallMm)} to ${mm(check.printedWallMm)} mm to meet the thickness default. The model is not true to scale in wall thickness.`
             : `Walls ${mm(check.wallMm)} mm, true to scale — ${check.wallOk ? `above the ${limits.minUnsupportedWallMm} mm minimum` : `below the ${limits.minUnsupportedWallMm} mm minimum; they may break or not print`}`}
         </li>
         {check.bridgeMm > 0 && <li className={check.bridgeOk ? 'is-ok' : 'is-warn'}>
@@ -84,15 +89,13 @@ export function ExportDialog({ plan, baseName, onClose, onExportProject, onDone 
         </li>}
       </ul> : <p role="alert">Draw at least one room with walls to print a model.</p>}
 
-      <p className="export-source">Limits are conservative defaults from the design-for-printing guide in text-to-cad (Hubs and Formlabs guides, ISO/ASTM 52910). The {BUILD_PLATE_MM} mm plate is an assumption; check your printer.</p>
+      <p className="export-source">Limits are conservative defaults from the design-for-printing guide in text-to-cad (Hubs and Formlabs guides, ISO/ASTM 52910). The {BUILD_PLATE_MM} mm plate is an assumption; check your printer’s width, depth and height. This checks dimensions and wall thickness, not print success. Review supports and toolpaths in your slicer.</p>
       <div className="trace-actions">
         <button className="button secondary" type="button" disabled={!hasWalls || !check.ok} onClick={() => {
-          download(meshToBinaryStl(printParts(), baseName), `${fileStem}.stl`, 'model/stl')
-          onDone(`Scale model 1:${scale} downloaded (.stl)`)
+          save(() => meshToBinaryStl(printParts(), baseName), `${fileStem}.stl`, 'model/stl', `Scale model 1:${scale} downloaded (.stl)`)
         }}>.stl</button>
         <button className="button primary" type="button" disabled={!hasWalls || !check.ok} onClick={() => {
-          download(meshTo3mf(printParts(), baseName), `${fileStem}.3mf`, 'model/3mf')
-          onDone(`Scale model 1:${scale} downloaded (.3mf)`)
+          save(() => meshTo3mf(printParts(), baseName), `${fileStem}.3mf`, 'model/3mf', `Scale model 1:${scale} downloaded (.3mf)`)
         }}>Download .3mf</button>
       </div>
     </section>

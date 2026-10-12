@@ -1,3 +1,4 @@
+import { clickAction } from './workspace'
 import { expect, test, type Page } from '@playwright/test'
 import { decodePlanFromHash, encodePlanToHash } from '../src/sharePlan'
 import { CHINA_PROJECT_KEY, chinaApartmentPlan } from '../src/mockups/chinaApartment'
@@ -51,7 +52,7 @@ test('preview is inert; Apply is one undo step, persists and shares without AI',
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled()
   await page.getByRole('button', { name: 'Redo', exact: true }).click()
   await expect.poll(() => saved(page)).toEqual(applied)
-  await page.getByRole('button', { name: 'Share', exact: true }).click()
+  await clickAction(page, 'Share')
   const url = await page.evaluate(() => navigator.clipboard.readText())
   expect(decodePlanFromHash(new URL(url).hash)?.furniture).toEqual(applied.furniture)
   await page.reload()

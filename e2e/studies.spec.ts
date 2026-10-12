@@ -1,3 +1,4 @@
+import { clickAction } from './workspace'
 import { test, expect } from '@playwright/test'
 import { initialPlan } from '../src/plan'
 import { chinaApartmentPlan, CHINA_PROJECT_KEY } from '../src/mockups/chinaApartment'
@@ -25,7 +26,7 @@ test('parallel architectural views preserve camera, civil time and styles across
   expect(scene.camera.position[2]).toBeCloseTo(scene.camera.target[2], 8)
   expect(scene.year).toBe(2025); expect(scene.day).toBe(172); expect(scene.hour).toBe(9.25)
   await page.getByRole('button', { name: 'Close saved views', exact: true }).click()
-  await page.getByRole('button', { name: 'Share', exact: true }).click()
+  await clickAction(page, 'Share')
   const url = await page.evaluate(() => navigator.clipboard.readText())
   expect(decodePlanFromHash(new URL(url).hash)?.studyScenes).toEqual([scene])
   await page.reload()

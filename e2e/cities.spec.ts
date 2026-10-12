@@ -1,3 +1,5 @@
+import { expectSaved } from './workspace'
+import { openCity, expectCity } from './workspace'
 import { chinaApartmentPlan } from '../src/mockups/chinaApartment'
 import { test, expect } from '@playwright/test'
 import { encodePlanToHash } from '../src/sharePlan'
@@ -15,7 +17,7 @@ test('worldwide city updates its chart and actual shadows, persists through relo
   await expect.poll(() => canvas.evaluate(c => (c as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   await page.waitForTimeout(500)
   const before = await canvas.evaluate(c => (c as HTMLCanvasElement).toDataURL())
-  await page.getByRole('button', { name: /Change city/ }).click()
+  await openCity(page)
   await page.getByLabel('Search any city', { exact: true }).fill('Cape Town')
   await page.getByRole('button', { name: /Cape Town, Western Cape, South Africa/ }).click()
   const chart = page.getByLabel('Sun chart for Cape Town, Western Cape, South Africa', { exact: true })
@@ -27,8 +29,8 @@ test('worldwide city updates its chart and actual shadows, persists through relo
   // Shared URL must now reflect this city, not replay the original hash after a reload.
   await page.getByRole('button', { name: 'Plan', exact: true }).click()
   await page.reload()
-  await expect(page.getByRole('button', { name: /Cape Town.*Change city/ })).toBeVisible()
-  await page.getByRole('button', { name: /Change city/ }).click()
+  await expectCity(page, 'Cape Town')
+  await openCity(page)
   await page.context().setOffline(true)
   await page.getByText('Use exact coordinates · works offline', { exact: true }).click()
   await page.getByLabel('Site latitude', { exact: true }).fill('69.6492')
@@ -51,22 +53,22 @@ test('fixed interior images are labeled references and never the default render'
 
 test('a relocated sample survives reload instead of being discarded as an old demo', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(chinaApartmentPlan))
-  await page.getByRole('button', { name: /Change city/ }).click()
+  await openCity(page)
   await page.getByRole('button', { name: /Bangkok, Thailand.*Asia\/Bangkok/ }).click()
   await page.getByRole('button', { name: 'Close city search' }).click()
-  await expect(page.getByText('Saved locally', { exact: true })).toBeVisible()
+  await expectSaved(page)
   await page.reload()
   await expect(page.locator('button.room')).toHaveCount(chinaApartmentPlan.rooms.length)
-  await expect(page.getByRole('button', { name: /Bangkok, Thailand.*Change city/ })).toBeVisible()
+  await expectCity(page, 'Bangkok')
   await expect(page.getByRole('dialog', { name: /Draw a wall/ })).toHaveCount(0)
 })
 
 test('immediate reload keeps a city change before the saved indicator appears', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(initialPlan))
-  await page.getByRole('button', { name: /Change city/ }).click()
+  await openCity(page)
   await page.getByRole('button', { name: /Bangkok, Thailand.*Asia\/Bangkok/ }).click()
   // Do not wait for the debounced "Saved locally" indicator.
   await page.reload()
-  await expect(page.getByRole('button', { name: /Bangkok, Thailand.*Change city/ })).toBeVisible()
+  await expectCity(page, 'Bangkok')
   await expect(page.locator('button.room')).toHaveCount(initialPlan.rooms.length)
 })

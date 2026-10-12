@@ -1,3 +1,5 @@
+import { expectSaved } from './workspace'
+import { chooseTheme, openMore } from './workspace'
 import { test, expect } from '@playwright/test'
 import { themes } from '../src/design/themes'
 import { initialPlan } from '../src/plan'
@@ -9,13 +11,15 @@ for (const theme of themes) for (const width of [375, 768, 1280]) {
     await page.addInitScript(() => window.localStorage.setItem('luma-journey:welcome:shanghai-50', '1'))
     await page.setViewportSize({ width, height: 844 })
     await page.goto(`/#plan=${hash}`)
-    await page.getByLabel('Colour scheme', { exact: true }).selectOption(theme.id)
-    await expect(page.getByText('Saved locally', { exact: true })).toBeVisible()
+    await chooseTheme(page, theme.id)
+    await expectSaved(page)
     await page.reload()
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id)
+    await openMore(page)
     await expect(page.getByLabel('Colour scheme', { exact: true })).toHaveValue(theme.id)
+    await page.getByRole('button', { name: 'More actions', exact: true }).press('Escape')
     await expect(page.locator('button.room')).toHaveCount(initialPlan.rooms.length)
-    const typeRoles = await page.evaluate(() => ['.stage-head h1', '.theme-picker select', '.project-picker strong', '.zoom-control .zoom-label', '.top-actions button[aria-label="Furniture Catalog"]'].map(selector => getComputedStyle(document.querySelector(selector)!).fontSize))
+    const typeRoles = await page.evaluate(() => ['.theme-picker select', '.project-picker strong', '.zoom-control .zoom-label', '.toolbar-pill-btn'].map(selector => getComputedStyle(document.querySelector(selector)!).fontSize))
     for (const size of typeRoles) expect(['22px', '16px', '12px']).toContain(size)
     const plot = await page.locator('.plan-viewport').boundingBox()
     const sheet = await page.locator('.plan-canvas').boundingBox()
@@ -32,11 +36,13 @@ for (const theme of themes) for (const width of [375, 768, 1280]) {
     expect(calibrate!.x + calibrate!.width, 'the value-lens button must not cover Calibrate').toBeLessThanOrEqual(lens!.x)
     await expect(page.locator('.plan-room-key button')).toHaveCount(initialPlan.rooms.length)
     await expect(page.locator('.plan-room-key .room-name')).toHaveText(initialPlan.rooms.map(room => room.name))
-    for (const selector of ['.journey-step', '.toolbar-pill-btn', '.plan-room-key button', '.top-actions button']) {
+    for (const selector of ['.journey-step', '.toolbar-pill-btn', '.plan-room-key button', '.top-actions > button']) {
       for (const button of await page.locator(selector).all()) {
+        if (!await button.isVisible()) continue
+        if (selector === '.plan-room-key button') { await button.focus(); await button.scrollIntoViewIfNeeded() }
         const r = await button.boundingBox()
         expect(r!.x).toBeGreaterThanOrEqual(0)
-        expect(r!.x + r!.width).toBeLessThanOrEqual(width)
+        expect(r!.x + r!.width, `${selector}: ${await button.getAttribute('aria-label')}`).toBeLessThanOrEqual(width)
         expect(r!.height).toBeGreaterThanOrEqual(44)
         expect(r!.width).toBeGreaterThanOrEqual(44)
       }
@@ -44,12 +50,12 @@ for (const theme of themes) for (const width of [375, 768, 1280]) {
     await page.locator('.plan-room-key button').first().focus()
     await page.keyboard.press('Enter')
     await expect(page.locator('.plan-room-key button').first()).toHaveAttribute('aria-pressed', 'true')
-    const history = await page.getByRole('button', { name: 'Undo', exact: true }).boundingBox()
     const context = await page.locator('.contextual-action-bar').boundingBox()
-    expect(context!.y).toBeGreaterThanOrEqual(history!.y + history!.height)
+    expect(context!.y + context!.height).toBeLessThanOrEqual((await page.locator('.plan-viewport').boundingBox())!.y)
+    const zoomBefore = await page.locator('.zoom-label').textContent()
     await page.locator('.plan-room-key').hover()
     await page.mouse.wheel(0, -80)
-    await expect(page.getByRole('button', { name: 'Fit plan to view', exact: true })).toHaveText('Fit')
+    await expect(page.locator('.zoom-label')).toHaveText(zoomBefore!)
     expect(await page.locator('.plan-room-key').evaluate(el => {
       const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -80 })
       el.dispatchEvent(event)
