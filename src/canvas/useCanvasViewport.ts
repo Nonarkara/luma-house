@@ -27,6 +27,36 @@ export function constrainViewport(viewport: ViewportState, width: number, height
   }
 }
 
+export interface PercentBox { x: number; y: number; w: number; h: number }
+
+/** Frame a content box (percent of the sheet) inside the viewport. The sheet is
+ * centred in the viewport and scaled about the viewport centre, so the box
+ * centre is panned to the middle after scaling. Margin leaves room around it. */
+export function fitViewportToContent(
+  box: PercentBox,
+  sheet: { width: number; height: number },
+  view: { width: number; height: number },
+  margin = 0.88,
+): ViewportState {
+  if (box.w <= 0 || box.h <= 0 || sheet.width <= 0 || sheet.height <= 0) return { zoom: MIN_ZOOM, panX: 0, panY: 0 }
+  const boxW = (box.w / 100) * sheet.width
+  const boxH = (box.h / 100) * sheet.height
+  const zoom = clampZoom(Math.min((view.width * margin) / boxW, (view.height * margin) / boxH))
+  const cx = ((box.x + box.w / 2 - 50) / 100) * sheet.width
+  const cy = ((box.y + box.h / 2 - 50) / 100) * sheet.height
+  return constrainViewport({ zoom, panX: -cx * zoom, panY: -cy * zoom }, view.width, view.height)
+}
+
+/** Bounding box of everything drawn, in sheet percent; null when nothing is. */
+export function contentBox(items: PercentBox[]): PercentBox | null {
+  if (items.length === 0) return null
+  const x = Math.min(...items.map((i) => i.x))
+  const y = Math.min(...items.map((i) => i.y))
+  const right = Math.max(...items.map((i) => i.x + i.w))
+  const bottom = Math.max(...items.map((i) => i.y + i.h))
+  return { x, y, w: right - x, h: bottom - y }
+}
+
 export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
   const [viewport, setViewport] = useState<ViewportState>({ zoom: 1, panX: 0, panY: 0 })
   const panRef = useRef<{
@@ -62,6 +92,13 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
   const zoomIn = useCallback(() => zoomBy(ZOOM_STEP), [zoomBy])
   const zoomOut = useCallback(() => zoomBy(-ZOOM_STEP), [zoomBy])
   const resetView = useCallback(() => setViewport({ zoom: 1, panX: 0, panY: 0 }), [])
+  const fitToContent = useCallback((box: PercentBox | null) => {
+    const view = frameRef.current?.querySelector<HTMLElement>('.plan-viewport')
+    const sheet = frameRef.current?.querySelector<HTMLElement>('.plan-canvas')
+    if (!view || !sheet) return
+    if (!box) { setViewport({ zoom: 1, panX: 0, panY: 0 }); return }
+    setViewport(fitViewportToContent(box, { width: sheet.clientWidth, height: sheet.clientHeight }, { width: view.clientWidth, height: view.clientHeight }))
+  }, [frameRef])
 
   const onWheel = useCallback(
     (event: ReactWheelEvent) => {
@@ -221,6 +258,7 @@ export function useCanvasViewport(frameRef: RefObject<HTMLElement>) {
     zoomIn,
     zoomOut,
     resetView,
+    fitToContent,
     onWheel,
     onViewportPointerDown,
     onViewportPointerMove,

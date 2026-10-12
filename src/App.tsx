@@ -14,7 +14,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { Check, ImagePlus, MapPin, Pencil, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
 import { FloorPlan } from './canvas/FloorPlan'
 import { RenderGallery } from './canvas/RenderGallery'
-import { useCanvasViewport } from './canvas/useCanvasViewport'
+import { contentBox, useCanvasViewport } from './canvas/useCanvasViewport'
 import { useRoomGestures } from './canvas/useRoomGestures'
 import { appendStrokePoint, clientToPercent, moveOpening, moveRoom, type StrokePoint } from './canvas/geometry'
 import { applyNapkinStroke } from './canvas/napkinStroke'
@@ -203,11 +203,29 @@ function App() {
     zoomIn,
     zoomOut,
     resetView,
+    fitToContent,
     onWheel,
     onViewportPointerDown,
     onViewportPointerMove,
     onViewportPointerUp,
   } = useCanvasViewport(frameRef)
+
+  // Frame the building, not the whole sheet: on first load and whenever a
+  // whole plan arrives (sample, accepted trace, import), and from Fit.
+  const [fitRequest, setFitRequest] = useState(1)
+  const [fitting, setFitting] = useState(false)
+  const fitRoomsRef = useRef(plan.rooms)
+  fitRoomsRef.current = plan.rooms
+  const fitBuilding = useCallback(() => {
+    if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) setFitting(true)
+    fitToContent(contentBox(fitRoomsRef.current))
+    window.setTimeout(() => setFitting(false), 320)
+  }, [fitToContent])
+  useEffect(() => {
+    if (!fitRequest) return
+    const frame = requestAnimationFrame(() => fitBuilding())
+    return () => cancelAnimationFrame(frame)
+  }, [fitRequest, fitBuilding])
 
   const budget = useMemo(() => calculateChinaApartmentBudget(plan), [plan])
   const site = useMemo<SiteSpec>(() => siteOf(plan), [plan])
@@ -827,6 +845,7 @@ function App() {
         setSelectedOpening(null)
         setSelectedFurniture(null)
         setToast('Project imported')
+        setFitRequest((n) => n + 1)
       } catch {
         setToast('Could not read that project file')
       }
@@ -997,10 +1016,10 @@ function App() {
     commit(chinaApartmentPlan, 'Restore sample apartment')
     setSelectedRoom('living')
     setSelectedOpening(null)
-    resetView()
+    setFitRequest((n) => n + 1)
     setStyleKeywords(SAMPLE_STYLE_KEYWORDS)
     setToast('Shanghai 50 m² apartment restored')
-  }, [commit, resetView])
+  }, [commit])
 
   // Start from a truly blank napkin — empty dotted canvas.
   const startBlank = useCallback(() => {
@@ -1112,6 +1131,7 @@ function App() {
     setInspectorOpen(true)
     setStyleKeywords('')
     setTraceNote('Accepted AI draft. Check room boundaries, openings and assumed dimensions before analysis.')
+    setFitRequest((n) => n + 1)
     setToast('Calibrated draft accepted — undo restores the previous plan')
     cancelTrace()
   }
@@ -1195,7 +1215,8 @@ function App() {
   const viewportStyle = useMemo(() => ({
     transform: `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`,
     transformOrigin: 'center center',
-  }), [viewport.panX, viewport.panY, viewport.zoom])
+    transition: fitting ? 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1)' : undefined,
+  }), [viewport.panX, viewport.panY, viewport.zoom, fitting])
 
   const localLightControls = (
     <ScienceDock
@@ -1274,22 +1295,30 @@ function App() {
         onNewSketch={newSketch}
         onOpenShortcuts={() => setShortcutsOpen((prev) => !prev)}
         onToggleCatalog={() => setIsCatalogOpen((prev) => !prev)}
+        center={<>
+          <div className="view-switch" role="group" aria-label="View mode">
+            <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>Plan</button>
+            <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>Spatial</button>
+            <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>Renders</button>
+          </div>
+          <div className="tool-group history-tools">
+            <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
+            <IconButton label="Redo" onClick={redo} disabled={!future.length}><Redo2 /></IconButton>
+            <IconButton label="Concept photo" onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><ImagePlus /></IconButton>
+          </div>
+        </>}
+        meta={<>
+          <span className="stage-area"><Ruler /> {budget.area.toFixed(1)} m²</span>
+          <button type="button" className="location-toggle" title={projectLocation.label} aria-label={`${projectLocation.label} · Change city`} aria-expanded={locationOpen} onClick={() => setLocationOpen(open => !open)}><MapPin /><span>{projectLocation.name}</span></button>
+        </>}
+        menuExtra={<>
+          <ThemePicker theme={theme} onChange={next => { saveTheme(next); setTheme(next) }} />
+          <WebAppAccess />
+        </>}
       />
 
       <div className="workspace">
         <main className="design-stage">
-          <div className="stage-head">
-            <div>
-              <p className="eyebrow">Drawing studio</p>
-              <h1>{projectTitle}</h1>
-            </div>
-            <div className="stage-meta">
-              <span><Ruler /> {budget.area.toFixed(1)} m²</span>
-            </div>
-            <button type="button" className="location-toggle" title={projectLocation.label} aria-label={`${projectLocation.label} · Change city`} aria-expanded={locationOpen} onClick={() => setLocationOpen(open => !open)}><MapPin /><span>{projectLocation.name}</span><small>Change city</small></button>
-            <ThemePicker theme={theme} onChange={next => { saveTheme(next); setTheme(next) }} />
-          </div>
-
           {locationOpen && <section className="location-workspace" aria-label="Project location and sun chart">
             <button className="location-close" type="button" onClick={() => setLocationOpen(false)}>Close city search</button>
             <CityPicker location={projectLocation} onChange={(next: ProjectLocation) => commit(current => ({ ...current, location: next }), 'Change project location')} />
@@ -1306,7 +1335,7 @@ function App() {
             }}
           />
 
-          <div className="canvas-toolbar" aria-label="Plan tools">
+          <div className="canvas-tools" aria-label="Plan tools">
             {view === 'plan' && (
               <FloatingToolbar
                 activeTool={activeTool}
@@ -1319,18 +1348,15 @@ function App() {
                 furnitureOpen={furnitureTrayOpen}
               />
             )}
-            <div className="view-switch" role="group" aria-label="View mode">
-              <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>Plan</button>
-              <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>Spatial</button>
-              <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>Renders</button>
-            </div>
-            <div className="tool-group history-tools">
+            {view === 'plan' && <button type="button" className="room-options-launch" disabled={isEmpty} onClick={() => setRoomOptionsOpen(true)}>Room options</button>}
+            <div className="dock-history" aria-label="History">
               <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
               <IconButton label="Redo" onClick={redo} disabled={!future.length}><Redo2 /></IconButton>
-              <IconButton label="Concept photo" onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><ImagePlus /></IconButton>
             </div>
-            {view === 'plan' && <button type="button" className="room-options-launch" disabled={isEmpty} onClick={() => setRoomOptionsOpen(true)}>Room options</button>}
-            {view === 'plan' && (room || selectedOpening) && (
+          </div>
+
+          {view === 'plan' && (room || selectedOpening) && (
+            <div className="canvas-selection">
               <ContextualActionBar
                 room={room}
                 opening={plan.openings.find((item) => item.id === selectedOpening)}
@@ -1340,9 +1366,8 @@ function App() {
                 onUpdateOpening={(id, updates) => updateOpening(id, updates)}
                 onDeleteOpening={() => deleteOpening()}
               />
-            )}
-
-          </div>
+            </div>
+          )}
 
           <section className={`canvas-frame${view === 'plan' ? ' is-plan' : ''}`} ref={frameRef} aria-label="House design canvas" onWheel={onWheel}>
             {view === 'plan' ? (
@@ -1609,7 +1634,7 @@ function App() {
             {view === 'plan' && (
               <div className="zoom-control">
                 <button type="button" onClick={zoomOut} aria-label="Zoom out" disabled={!canZoomOut}>−</button>
-                <button type="button" className="zoom-label" onClick={resetView} aria-label="Fit plan to view">{zoomPercent === 100 ? 'Fit' : `${zoomPercent}%`}</button>
+                <button type="button" className="zoom-label" onClick={fitBuilding} aria-label="Fit the building to the view" title="Fit the building to the view">{zoomPercent === 100 ? 'Fit' : `${zoomPercent}%`}</button>
                 <button type="button" onClick={zoomIn} aria-label="Zoom in" disabled={!canZoomIn}>+</button>
               </div>
             )}
@@ -1692,7 +1717,6 @@ function App() {
           airQualityReport={airQualityReport}
         />
       </div>
-      <footer className="app-platforms"><WebAppAccess /></footer>
       <WelcomeGate
         open={welcomeOpen}
         onStart={() => {

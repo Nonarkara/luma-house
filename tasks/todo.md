@@ -264,3 +264,37 @@ duplicate .welcome-* CSS blocks (v1 lines 499-556 + v2 3839-4006) are
 intertwined cascade — the component still uses .welcome-note and .welcome-steps b
 from the v1 block — so merging needs in-browser visual QA, which was unavailable
 this session (browser tool policy check down). Do it with eyes on the page.
+
+## Canvas-first composition — 2026-10-12 (Opus)
+
+Measured before: desktop 1440×900 drawing surface 884×450 (31% of screen),
+starting at y=395. Phone 390×844: drawing starts at y=719, below the fold;
+page scrolls to 1533 px. Chrome stack: topbar, title block, journey, 164–261 px
+toolbar, selection row, install footer.
+
+Preserve (move, never remove): every tool, journey stages, city + sun chart,
+colour scheme, contextual room/opening editing, undo/redo, concept photo,
+room options, coach CTA + quick action, inspector, install instructions.
+
+- [x] TopBar: one 48 px row; view switch + undo/redo in the bar; secondary actions in a More menu (catalog, help, settings, new sketch, install)
+- [x] Remove duplicate title block; area · city · colour scheme become a canvas HUD chip
+- [x] Tools float over the canvas: vertical palette (desktop), bottom thumb dock (phone)
+- [x] Contextual selection bar floats at the top of the canvas only when something is selected
+- [x] Coach + quick action float at the canvas bottom
+- [x] Journey: slim 56 px numbered rail (desktop), one 40 px strip (phone)
+- [x] City search opens as an overlay sheet instead of pushing the canvas down
+- [x] Workspace = 100dvh, no page scroll; canvas fills the rest
+- [x] Measure again: target canvas ≥ 75% desktop, ≥ 70% phone, above the fold
+- [x] Gates + screenshots at 1440 and 390, CDPT
+
+Measured after (sample plan loaded):
+- Desktop 1440×900: drawing 1072×575 (was 884×450), building fills 88% of
+  drawing height via zoom-to-content (was ~40%); 3D canvas 1312×658.
+- Phone 390×844: drawing starts at y≈200 (was 719, below the fold), no page
+  scroll; building spans 95% of screen width.
+- Tablet 820×1180: one 48 px bar, drawing 692×728, no page scroll.
+Research: tldraw (custom licence: ideas only), Excalidraw (MIT), Penpot
+(MPL-2.0), Onlook, pascalorg/editor. Canvas-dominant layout, thin phone bars,
+selection-only actions and zoom-to-fit came from that study.
+Remaining: perfect-freehand strokes, overflow tool promotion, focus mode,
+"back to content" pill, stylus palm rejection.
