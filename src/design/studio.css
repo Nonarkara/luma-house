@@ -774,3 +774,23 @@ body { overflow-y: auto; }
     border-right: var(--rule-control) solid var(--studio-border);
   }
 }
+
+/* Export dialog: project file, 3D model, 3D print. */
+.export-dialog { width: min(640px, calc(100vw - 24px)); }
+.export-option { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 0; border-top: 1px solid var(--studio-border, var(--border)); }
+.export-option h3 { margin: 0 0 4px; font-size: 16px; }
+.export-option p { margin: 0; font-size: 12px; color: var(--text-secondary); }
+.export-option > .button { min-width: 72px; min-height: 44px; border-radius: 0; font-family: 'JetBrains Mono', monospace; }
+.export-print { grid-template-columns: minmax(0, 1fr); }
+.export-print .trace-fields { grid-template-columns: 1fr 1fr; margin: 4px 0; }
+.export-check { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 12px; }
+.export-check input { width: 18px; height: 18px; accent-color: var(--accent-primary); }
+.export-verdict { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.export-verdict li { font-size: 12px; line-height: 1.45; padding: 6px 8px 6px 10px; border-left: 3px solid var(--studio-border, var(--border)); }
+.export-verdict li.is-ok { border-left-color: #3f7a4a; }
+.export-verdict li.is-warn { border-left-color: var(--accent-primary); }
+.export-verdict li.is-fail { border-left-color: #b3261e; }
+.export-source { font-size: 12px; color: var(--text-tertiary); }
+.export-print .trace-actions { margin-top: 4px; }
+.export-print .trace-actions .button { font-family: 'JetBrains Mono', monospace; }
+@media (max-width: 720px) { .export-print .trace-fields { grid-template-columns: 1fr; } }

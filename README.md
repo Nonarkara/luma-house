@@ -69,6 +69,8 @@ Room-arrangement workflow inspiration: [SpaceFactor（空间因子）](https://s
 
 Quantity takeoff inspiration: [OpenTakeoff](https://github.com/Kentucky-ai/opentakeoff) by Kentucky-ai and contributors (AGPL-3.0). Its estimator conventions shaped the interior BOQ: finishes measured to the inner wall face, every quantity carrying how it was measured, and a buy quantity kept separate from the measured one. designon is MIT-licensed, so these ideas are independently implemented and no OpenTakeoff code is included. The [takeoff review](docs/OPENTAKEOFF-TAKEOFF-REVIEW.md) records what was studied, what changed, and what remains.
 
+3D model and print export: adapted from [text-to-cad](https://github.com/earthtojake/text-to-cad) by earthtojake and contributors, Copyright Thompson Labs LLC (MIT). The binary STL, stored-zip and 3MF writers are ported from its `packages/core/src/lib/export`, and the printability limits come from its `dfam-check` process-limits table, which cites the Hubs and Formlabs guides and ISO/ASTM 52910. The MIT notice is kept in [`public/licenses/text-to-cad.txt`](public/licenses/text-to-cad.txt); [the review](docs/TEXT-TO-CAD-REVIEW.md) records what was taken and what was left.
+
 ---
 
 ## Philosophy

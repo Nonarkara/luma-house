@@ -49,6 +49,7 @@ import { ContextualActionBar } from './components/ContextualActionBar'
 import { FurnitureCatalogDrawer } from './components/FurnitureCatalogDrawer'
 import { WelcomeGate } from './components/WelcomeGate'
 import { WebAppAccess } from './components/WebAppAccess'
+import { ExportDialog } from './components/ExportDialog'
 import { ScienceDock } from './components/ScienceDock'
 import { ValueLens, type ValueLensMode } from './components/ValueLens'
 import { IconButton } from './components/ui'
@@ -212,6 +213,7 @@ function App() {
 
   // Frame the building, not the whole sheet: on first load and whenever a
   // whole plan arrives (sample, accepted trace, import), and from Fit.
+  const [exportOpen, setExportOpen] = useState(false)
   const [fitRequest, setFitRequest] = useState(1)
   const [fitting, setFitting] = useState(false)
   const fitRoomsRef = useRef(plan.rooms)
@@ -1280,6 +1282,13 @@ function App() {
         setPresetOpen(false)
         setToast('Layout preset applied — undo restores the previous plan')
       }} />}
+      {exportOpen && <ExportDialog
+        plan={plan}
+        baseName={isAuthoredSample ? 'south-light-shanghai-50' : 'designon-sketch'}
+        onClose={() => setExportOpen(false)}
+        onExportProject={exportPlan}
+        onDone={(message) => { setToast(message); setExportOpen(false) }}
+      />}
       {pendingTrace && <TraceReview draft={pendingTrace} busy={isTracing} onCancel={cancelTrace} onAccept={acceptTrace} onRetry={retryTrace} />}
       <TopBar
         projectName={projectTitle}
@@ -1290,7 +1299,7 @@ function App() {
           setSettingsOpen(true)
           setInspectorOpen(true)
         }}
-        exportPlan={exportPlan}
+        exportPlan={() => setExportOpen(true)}
         sharePlan={shareProject}
         onNewSketch={newSketch}
         onOpenShortcuts={() => setShortcutsOpen((prev) => !prev)}
