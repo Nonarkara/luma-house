@@ -13,8 +13,9 @@ const MID = 46.4285714286
 const SOUTH = 78.5714285714
 
 export const chinaApartmentRooms: Room[] = [
-  { id: 'bedroom', name: 'Quiet bedroom', kind: 'bedroom', x: 18.75, y: NORTH, w: 26, h: 25, wallHeight: 2.75 },
-  { id: 'study', name: 'Tea + study niche', kind: 'studio', x: 44.75, y: NORTH, w: 17, h: 25, wallHeight: 2.75 },
+  { id: 'bedroom', name: 'Quiet bedroom', kind: 'bedroom', x: 18.75, y: NORTH, w: 28, h: 25, wallHeight: 2.75 },
+  // The bedroom/study partition shares the living/kitchen line (46.75%) so the two bands read as one wall.
+  { id: 'study', name: 'Tea + study niche', kind: 'studio', x: 46.75, y: NORTH, w: 15, h: 25, wallHeight: 2.75 },
   { id: 'bath', name: 'Dry / wet bath', kind: 'bathroom', x: 61.75, y: NORTH, w: 19.5, h: 25, wallHeight: 2.75 },
   { id: 'living', name: 'South living room', kind: 'living', x: 18.75, y: MID, w: 28, h: SOUTH - MID, wallHeight: 2.75 },
   { id: 'kitchen', name: 'Kitchen + dining', kind: 'kitchen', x: 46.75, y: MID, w: 21, h: SOUTH - MID, wallHeight: 2.75 },
@@ -38,7 +39,7 @@ export const chinaApartmentPlan: PlanState = {
   furniture: [
     { id: 'f-bed', kind: 'bed', x: 19, y: 25, rotated: false },
     { id: 'f-robe', kind: 'wardrobe', x: 29, y: 22, rotated: false },
-    { id: 'f-desk', kind: 'desk', x: 46, y: 23, rotated: false },
+    { id: 'f-desk', kind: 'desk', x: 48, y: 23, rotated: false },
     { id: 'f-sofa', kind: 'sofa', x: 23, y: 57, rotated: false },
     { id: 'f-dining', kind: 'dining', x: 50, y: 60, rotated: true },
   ],

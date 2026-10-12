@@ -9,10 +9,17 @@ import {
   scaleRoomFromCenter,
   snap,
   snapOpeningToWall,
+  alignEdges,
+  alignMovedRect,
+  alignTolerance,
+  edgesForHandle,
+  resizeOpening,
+  type AlignGuides,
   type ResizeHandle,
 } from './geometry'
+import { openingDimensions } from '../openingGeometry'
 
-type GestureKind = 'move-room' | 'resize-room' | 'pinch-room' | 'move-opening' | 'move-furniture'
+type GestureKind = 'move-room' | 'resize-room' | 'pinch-room' | 'move-opening' | 'resize-opening' | 'move-furniture'
 
 interface ActiveGesture {
   kind: GestureKind
@@ -29,6 +36,8 @@ interface ActiveGesture {
   startOpening?: Opening
   startFurniture?: Furniture
   startDistance?: number
+  openingEnd?: 'start' | 'end'
+  startWidthM?: number
 }
 
 export function useRoomGestures({
@@ -41,6 +50,7 @@ export function useRoomGestures({
   activeTool,
   snapGrid,
   stageRef,
+  onGuides,
 }: {
   plan: PlanState
   setPlan: (updater: PlanState | ((current: PlanState) => PlanState)) => void
@@ -51,12 +61,19 @@ export function useRoomGestures({
   activeTool: PlanTool
   snapGrid: boolean
   stageRef: RefObject<HTMLElement>
+  /** Alignment guides while a room is dragged; null when nothing is locked. */
+  onGuides?: (guides: AlignGuides | null) => void
 }) {
   const gestureRef = useRef<ActiveGesture | null>(null)
   const planRef = useRef(plan)
   const snapRef = useRef(snapGrid)
   planRef.current = plan
   snapRef.current = snapGrid
+  const guidesRef = useRef(onGuides)
+  guidesRef.current = onGuides
+  // Rooms other than the one being edited, for magnetic alignment.
+  const otherRooms = (id: string) => planRef.current.rooms.filter((r) => r.id !== id)
+  const report = (guides: AlignGuides | null) => guidesRef.current?.(guides && (guides.x.length || guides.y.length) ? guides : null)
 
   const stageBounds = useCallback(() => stageRef.current?.getBoundingClientRect() ?? null, [stageRef])
 
@@ -85,7 +102,12 @@ export function useRoomGestures({
       const dy = ((clientY - gesture.originY) / bounds.height) * 100
 
       if (gesture.kind === 'move-room' && gesture.roomId && gesture.startRoom) {
-        const next = moveRoom(gesture.startRoom, dx, dy, snapRef.current)
+        let next = moveRoom(gesture.startRoom, dx, dy, snapRef.current)
+        if (snapRef.current) {
+          const aligned = alignMovedRect(next, otherRooms(gesture.roomId), alignTolerance(siteOf(planRef.current)))
+          next = { ...next, ...aligned.rect }
+          report(aligned.guides)
+        }
         setPlan((current) => ({
           ...current,
           rooms: current.rooms.map((item) => (item.id === gesture.roomId ? { ...item, ...next } : item)),
@@ -94,7 +116,12 @@ export function useRoomGestures({
       }
 
       if (gesture.kind === 'resize-room' && gesture.roomId && gesture.startRoom && gesture.handle) {
-        const next = resizeRoom(gesture.startRoom, gesture.handle, dx, dy, snapRef.current)
+        let next = resizeRoom(gesture.startRoom, gesture.handle, dx, dy, snapRef.current)
+        if (snapRef.current) {
+          const aligned = alignEdges(next, edgesForHandle(gesture.handle), otherRooms(gesture.roomId), alignTolerance(siteOf(planRef.current)))
+          next = { ...next, ...aligned.rect }
+          report(aligned.guides)
+        }
         setPlan((current) => ({
           ...current,
           rooms: current.rooms.map((item) => (item.id === gesture.roomId ? { ...item, ...next } : item)),
@@ -110,6 +137,16 @@ export function useRoomGestures({
         setPlan((current) => ({
           ...current,
           furniture: current.furniture.map((item) => (item.id === gesture.furnitureId ? { ...item, x, y } : item)),
+        }))
+        return
+      }
+
+      if (gesture.kind === 'resize-opening' && gesture.openingId && gesture.startOpening && gesture.openingEnd && gesture.startWidthM) {
+        const along = gesture.startOpening.rotation === 0 ? dx : dy
+        const next = resizeOpening(gesture.startOpening, gesture.openingEnd, along, siteOf(planRef.current), gesture.startWidthM)
+        setPlan((current) => ({
+          ...current,
+          openings: current.openings.map((item) => (item.id === gesture.openingId ? next : item)),
         }))
         return
       }
@@ -132,6 +169,7 @@ export function useRoomGestures({
       gesture.points.delete(pointerId)
       gesture.pointerIds = gesture.pointerIds.filter((id) => id !== pointerId)
       if (gesture.pointerIds.length === 0) {
+        report(null)
         commitSnapshot(gesture.snapshot)
         gestureRef.current = null
       } else if (gesture.kind === 'pinch-room') {
@@ -200,14 +238,17 @@ export function useRoomGestures({
   )
 
   const onOpeningPointerDown = useCallback(
-    (event: ReactPointerEvent, opening: Opening) => {
-      if (activeTool !== 'select') return
+    (event: ReactPointerEvent, opening: Opening, end?: 'start' | 'end') => {
+      // Doors and windows are grabbable with the pencil too: it is the default tool.
+      if (activeTool !== 'select' && activeTool !== 'draw') return
       event.stopPropagation()
       setSelectedOpening(opening.id)
       setSelectedRoom(null)
       setSelectedFurniture(null)
       gestureRef.current = {
-        kind: 'move-opening',
+        kind: end ? 'resize-opening' : 'move-opening',
+        openingEnd: end,
+        startWidthM: openingDimensions(opening).width,
         pointerIds: [event.pointerId],
         points: new Map([[event.pointerId, { x: event.clientX, y: event.clientY }]]),
         originX: event.clientX,

@@ -175,6 +175,7 @@ function App() {
   const [walkMode, setWalkMode] = useState(false)
   /** Live room rect being dragged, for the in-canvas dimension readout. */
   const [liveDragRect, setLiveDragRect] = useState<{ id: string; x: number; y: number; w: number; h: number } | null>(null)
+  const [alignGuides, setAlignGuides] = useState<{ x: number[]; y: number[] } | null>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [currency, setCurrency] = useState<CurrencyCode>('CNY')
   const [pinnedBaseline, setPinnedBaseline] = useState<ABComparisonState | null>(null)
@@ -472,6 +473,7 @@ function App() {
     activeTool,
     snapGrid,
     stageRef,
+    onGuides: setAlignGuides,
   })
 
   useEffect(() => {
@@ -1406,6 +1408,7 @@ function App() {
                 napkinRuler={rulerLine}
                 rulerArmed={rulerArmed}
                 liveDragRect={liveDragRect}
+                alignGuides={alignGuides}
                 measureStart={measureStart}
                 measureEnd={measureEnd}
                 onRoomPointerDown={onRoomPointerDown}

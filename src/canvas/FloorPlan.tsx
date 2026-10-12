@@ -53,6 +53,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   napkinRuler,
   rulerArmed,
   liveDragRect,
+  alignGuides,
   measureStart,
   measureEnd,
   onRoomPointerDown,
@@ -91,11 +92,12 @@ export const FloorPlan = React.memo(function FloorPlan({
   napkinRuler?: NapkinCalibrationLine | null
   rulerArmed?: boolean
   liveDragRect?: { id: string; x: number; y: number; w: number; h: number } | null
+  alignGuides?: { x: number[]; y: number[] } | null
   measureStart?: { x: number; y: number } | null
   measureEnd?: { x: number; y: number } | null
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
   onRoomSelect: (room: Room) => void
-  onOpeningPointerDown: (event: ReactPointerEvent, opening: Opening) => void
+  onOpeningPointerDown: (event: ReactPointerEvent, opening: Opening, end?: 'start' | 'end') => void
   onFurniturePointerDown: (event: ReactPointerEvent, item: Furniture) => void
   onGesturePointerMove: (event: ReactPointerEvent) => void
   onGesturePointerUp: (event: ReactPointerEvent) => void
@@ -136,6 +138,12 @@ export const FloorPlan = React.memo(function FloorPlan({
           style={{ '--site-ratio': site.w / site.h, '--grid-cell-x': `${gridCellX}%`, '--grid-cell-y': `${gridCellY}%` } as CSSProperties}
         >
           {sketchUrl && <img className="sketch-underlay" src={sketchUrl} alt="Uploaded sketch tracing layer" />}
+          {alignGuides && (
+            <svg className="align-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              {alignGuides.x.map((x) => <line key={`x${x}`} x1={x} y1={0} x2={x} y2={100} className="align-line" vectorEffect="non-scaling-stroke" />)}
+              {alignGuides.y.map((y) => <line key={`y${y}`} x1={0} y1={y} x2={100} y2={y} className="align-line" vectorEffect="non-scaling-stroke" />)}
+            </svg>
+          )}
           {liveDragRect && (
             <svg className="snap-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
               <line
@@ -327,12 +335,15 @@ export const FloorPlan = React.memo(function FloorPlan({
             const w = openingDimensions(opening).width
             const h = openingDimensions(opening).height
             const isSel = selectedOpening === opening.id
+            // Real width: the sheet keeps the site's aspect ratio, so a width as a
+            // percentage of sheet width is right on both axes (vertical walls rotate).
+            const spanPct = (w / site.w) * 100
             return (
               <button
                 key={opening.id}
                 type="button"
                 className={`opening opening-${opening.type} rotate-${opening.rotation} ${isSel ? 'is-selected' : ''}`}
-                style={{ left: `${opening.x}%`, top: `${opening.y}%` }}
+                style={{ left: `${opening.x}%`, top: `${opening.y}%`, width: `${spanPct}%` }}
                 title={`${opening.type} (${w.toFixed(1)}m × ${h.toFixed(1)}m)`}
                 aria-label={`${opening.type} opening ${w.toFixed(1)} by ${h.toFixed(1)} meters`}
                 onPointerDown={(event) => onOpeningPointerDown(event, opening)}
@@ -342,9 +353,13 @@ export const FloorPlan = React.memo(function FloorPlan({
               >
                 {opening.type === 'door' && <i />}
                 {isSel && (
-                  <span className="opening-dim-badge">
-                    {w.toFixed(1)}×{h.toFixed(1)}m
-                  </span>
+                  <>
+                    <span className="opening-handle is-start" aria-hidden="true" onPointerDown={(event) => onOpeningPointerDown(event, opening, 'start')} />
+                    <span className="opening-handle is-end" aria-hidden="true" onPointerDown={(event) => onOpeningPointerDown(event, opening, 'end')} />
+                    <span className="opening-dim-badge">
+                      {w.toFixed(2)} m
+                    </span>
+                  </>
                 )}
               </button>
             )

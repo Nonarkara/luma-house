@@ -1,7 +1,7 @@
 import { boundarySpans, roomsForOpening } from '../analysis/walls'
 import { roomAreaFor, siteOf } from '../plan'
 import type { DrawnWall, Furniture, FurnitureKind, Opening, PlanState, Room, RoomKind, SiteSpec } from '../types'
-import { MIN_ROOM, clampRoom, snap, snapOpeningToWall, strokeToRoomRect, type StrokePoint } from './geometry'
+import { MIN_ROOM, alignEdges, alignTolerance, clampRoom, snap, snapOpeningToWall, strokeToRoomRect, type StrokePoint } from './geometry'
 
 const SHORT_MAX = 8
 const LINE_ASPECT = 3.2
@@ -213,7 +213,9 @@ function splitRoom(room: Room, wall: DrawnWall): [Room, Room] | null {
   return null
 }
 
-function mintRoom(rect: Pick<Room, 'x' | 'y' | 'w' | 'h'>, plan: PlanState, site: SiteSpec): Room {
+function mintRoom(drawn: Pick<Room, 'x' | 'y' | 'w' | 'h'>, plan: PlanState, site: SiteSpec): Room {
+  // A hand-drawn edge a few centimetres off a neighbour's wall is meant to be that wall.
+  const rect = alignEdges(drawn, ['left', 'right', 'top', 'bottom'], plan.rooms, alignTolerance(site)).rect
   const area = roomAreaFor({ id: 'tmp', name: '', kind: 'studio', ...rect }, site)
   const kind = inferRoomKind(area, plan.rooms)
   return { id: nid('room'), name: roomName(kind, plan.rooms), kind, ...rect }
