@@ -8,9 +8,9 @@ import type { DaylightBand, RoomEgressRoute, RoomWindPotential } from '../analys
 import { exteriorWalls } from '../analysis'
 import type { ValueLensMode } from '../components/ValueLens'
 import type { Compass } from '../analysis'
-import type { ResizeHandle, StrokePoint } from './geometry'
+import { clientToPercent, type ResizeHandle, type StrokePoint } from './geometry'
 import type { NapkinCalibrationLine } from './napkinScale'
-import type { WallHit } from './wallHost'
+import { hitIsSelectedOpening, nearestWallHit, type WallHit } from './wallHost'
 
 const roomColors: Record<RoomKind, string> = {
   living: 'rgba(var(--studio-action-rgb, 138, 76, 22), 0.07)',
@@ -59,6 +59,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   openingGhost = null,
   roomDraft = null,
   wallNote = false,
+  cornerNote = null,
   showEmptyHint = false,
   onSetOpeningType,
   onRoomPointerDown,
@@ -102,6 +103,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   openingGhost?: WallHit | null
   roomDraft?: { x: number; y: number; w: number; h: number } | null
   wallNote?: boolean
+  cornerNote?: { x: number; y: number } | null
   showEmptyHint?: boolean
   onSetOpeningType?: (id: string, type: Opening['type']) => void
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
@@ -377,7 +379,18 @@ export const FloorPlan = React.memo(function FloorPlan({
           {roomDraft && roomDraft.w > 0 && roomDraft.h > 0 && (
             <div className="room-draft" style={{ left: `${roomDraft.x}%`, top: `${roomDraft.y}%`, width: `${roomDraft.w}%`, height: `${roomDraft.h}%` }} aria-hidden="true" />
           )}
-          {plan.openings.filter((opening) => opening.id === selectedOpening).map((opening) => (
+          {plan.openings.filter((opening) => opening.id === selectedOpening).map((opening) => {
+            const chooseType = (type: Opening['type']) => (event: React.MouseEvent<HTMLButtonElement>) => {
+              if (activeTool === 'window' || activeTool === 'door') {
+                const bounds = stageRef.current?.getBoundingClientRect()
+                const point = bounds ? clientToPercent(event.clientX, event.clientY, bounds) : null
+                const hit = point && bounds ? nearestWallHit(point, plan.rooms, bounds) : null
+                if (hit && bounds && !hitIsSelectedOpening(hit, opening, site, bounds)) return
+              }
+              event.stopPropagation()
+              onSetOpeningType?.(opening.id, type)
+            }
+            return (
             <div
               key={`${opening.id}-toggle`}
               className="opening-toggle"
@@ -385,14 +398,19 @@ export const FloorPlan = React.memo(function FloorPlan({
               aria-label="Window · Door"
               style={{ left: `calc(${opening.x}% + 24px)`, top: `calc(${opening.y}% - 22px)` }}
               onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => event.stopPropagation()}
             >
-              <button type="button" aria-pressed={opening.type === 'window'} onClick={() => onSetOpeningType?.(opening.id, 'window')}>Window</button>
-              <button type="button" aria-pressed={opening.type === 'door'} onClick={() => onSetOpeningType?.(opening.id, 'door')}>Door</button>
+              <button type="button" aria-pressed={opening.type === 'window'} onClick={chooseType('window')}>Window</button>
+              <button type="button" aria-pressed={opening.type === 'door'} onClick={chooseType('door')}>Door</button>
             </div>
-          ))}
+            )
+          })}
           {showEmptyHint && <p className="canvas-empty-line">Drag a box to make a room. Then click a wall to add a window.</p>}
           {wallNote && <p className="wall-note" role="status">Click a wall</p>}
+          {cornerNote && (
+            <p className="corner-note" role="status" style={{ left: `${cornerNote.x}%`, top: `${cornerNote.y}%` }}>
+              Corners don't meet
+            </p>
+          )}
           {plan.walls && plan.walls.length > 0 && (
             <svg className="draw-overlay napkin-walls" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
               {plan.walls.map((wall) => (
