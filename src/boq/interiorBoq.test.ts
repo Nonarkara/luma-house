@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { interiorBoq } from './interiorBoq'
+import { interiorBoq, WALL_THICKNESS_M, WASTE } from './interiorBoq'
 import { siteOf } from '../plan'
 import type { PlanState } from '../types'
 import { chinaApartmentPlan } from '../mockups/chinaApartment'
@@ -18,14 +18,41 @@ describe('interiorBoq', () => {
         expect(boq.categories).toHaveLength(0)
     })
 
-    it('costs floor finish from room area', () => {
-        // A 3×4 m room on a 14×10 site: w=21.43%, h=40%.
+    it('measures floor to the inner wall face and prices the order quantity', () => {
+        // A 3×4 m room drawn on wall centrelines: clear span is 2.85 × 3.85 m.
         const plan = makePlan([{ id: 'r', name: 'Room', kind: 'living', x: 10, y: 10, w: (3 / 14) * 100, h: (4 / 10) * 100 }])
         const boq = interiorBoq(plan, site)
-        const floor = boq.categories.find((c) => c.label === 'Floor finish')
-        expect(floor).toBeDefined()
-        expect(floor!.quantity).toBeCloseTo(12, 1) // 3×4=12 m²
-        expect(floor!.amount).toBeCloseTo(12 * 620, 0)
+        const floor = boq.categories.find((c) => c.label === 'Floor finish')!
+        const net = (3 - WALL_THICKNESS_M) * (4 - WALL_THICKNESS_M)
+        expect(floor.quantity).toBeCloseTo(net, 3)
+        expect(floor.orderQuantity).toBeCloseTo(net * (1 + WASTE.floorBoard), 3)
+        expect(floor.amount).toBeCloseTo(net * (1 + WASTE.floorBoard) * 620, 1)
+        expect(boq.rooms[0].lines[0].basis).toContain('inner wall face')
+    })
+
+    it('counts a door on a shared wall as one door set, but cuts both faces', () => {
+        // Two rooms share the wall at x=50; one door sits on it.
+        const plan = makePlan(
+            [
+                { id: 'a', name: 'A', kind: 'living', x: 10, y: 10, w: 40, h: 40 },
+                { id: 'b', name: 'B', kind: 'bedroom', x: 50, y: 10, w: 40, h: 40 },
+            ],
+            [{ id: 'd', type: 'door', x: 50, y: 30, rotation: 90 }],
+        )
+        const boq = interiorBoq(plan, site)
+        expect(boq.categories.find((c) => c.label === 'Door sets')!.quantity).toBe(1)
+        // Both rooms lose the door width from skirting.
+        const solo = interiorBoq(makePlan([plan.rooms[1]]), site).rooms[0].skirtingLinM
+        expect(boq.rooms[1].skirtingLinM).toBeLessThan(solo)
+    })
+
+    it('conserves opening units: BOQ door and window sets equal openings on room walls', () => {
+        const boq = interiorBoq(chinaApartmentPlan, site)
+        const units = (label: string) => boq.categories.find((c) => c.label === label)?.quantity ?? 0
+        const onWalls = (type: 'door' | 'window') => chinaApartmentPlan.openings.filter((o) => o.type === type && boq.rooms.some((r) =>
+            o.x >= r.room.x - 1.5 && o.x <= r.room.x + r.room.w + 1.5 && o.y >= r.room.y - 1.5 && o.y <= r.room.y + r.room.h + 1.5)).length
+        expect(units('Door sets')).toBe(onWalls('door'))
+        expect(units('Window sets')).toBe(onWalls('window'))
     })
 
     it('uses wet rates for bathroom and kitchen floors', () => {

@@ -67,6 +67,8 @@ Architectural drawing and study-sheet workflow inspiration: [IngeTrazo](https://
 
 Room-arrangement workflow inspiration: [SpaceFactor（空间因子）](https://spacefactor.cn/), with acknowledgment to Shouheng Chen for the reference. The local room-options implementation is independently written; no SpaceFactor code, models or assets are incorporated. The [SIC review](docs/SPACEFACTOR-SIC-REVIEW.md) records the research; supplier furnishing choices and a fuller design package remain future work.
 
+Quantity takeoff inspiration: [OpenTakeoff](https://github.com/Kentucky-ai/opentakeoff) by Kentucky-ai and contributors (AGPL-3.0). Its estimator conventions shaped the interior BOQ: finishes measured to the inner wall face, every quantity carrying how it was measured, and a buy quantity kept separate from the measured one. designon is MIT-licensed, so these ideas are independently implemented and no OpenTakeoff code is included. The [takeoff review](docs/OPENTAKEOFF-TAKEOFF-REVIEW.md) records what was studied, what changed, and what remains.
+
 ---
 
 ## Philosophy

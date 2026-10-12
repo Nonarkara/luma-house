@@ -1135,7 +1135,7 @@ export const Inspector = React.memo(function Inspector({
               <h3>Interior fit-out by room</h3>
               <span className="badge">{interior.categories.length} categories</span>
             </div>
-            <p className="section-intro">Paints, tiles, skirting and openings costed from each room's measured area and wall height.</p>
+            <p className="section-intro">Measured to the inner wall face, half a 0.15 m wall in from each drawn line. Skirting stops at doors; a door on a shared wall is one door set. Finishes are priced on the order quantity, measured plus waste.</p>
             <div className="interior-boq">
               {interior.rooms.map((r) => (
                 <div className="interior-boq-room" key={r.room.id}>
@@ -1145,7 +1145,14 @@ export const Inspector = React.memo(function Inspector({
                   </div>
                   {r.lines.map((line) => (
                     <div className="interior-boq-line" key={line.label}>
-                      <span>{line.label}<small>{line.quantity.toFixed(line.unit === 'm²' ? 1 : 0)} {line.unit}</small></span>
+                      <span>
+                        {line.label}
+                        <small>
+                          {line.quantity.toFixed(line.unit === 'units' ? 0 : 1)} {line.unit}
+                          {line.waste > 0 && ` · order ${line.orderQuantity.toFixed(1)} (+${Math.round(line.waste * 100)}% waste)`}
+                        </small>
+                        <small className="interior-boq-basis">{line.basis}</small>
+                      </span>
                       <b>{formatCurrency(line.amount, 'THB')}</b>
                     </div>
                   ))}

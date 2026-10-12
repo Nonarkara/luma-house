@@ -1,13 +1,20 @@
 import { openingDimensions } from '../openingGeometry'
 import type { CurrencyCode, Opening, PlanState, RegionalRateCard, Room, SiteSpec } from '../types'
-import { roomAreaFor, roomHeight } from '../plan'
+import { roomHeight } from '../plan'
 
 export interface InteriorLine {
   label: string
+  /** Measured quantity, taken off at the inner wall face. */
   quantity: number
   unit: string
   rate: number
+  /** Cutting and breakage allowance as a fraction (0.1 = 10%). */
+  waste: number
+  /** What gets bought: quantity × (1 + waste). Amount is priced on this. */
+  orderQuantity: number
   amount: number
+  /** How the quantity was measured, so every number can be argued with. */
+  basis: string
 }
 
 export interface RoomInteriorBoq {
@@ -75,13 +82,34 @@ const BASE_RATE = {
   ceilingPaint: 110, // ceiling paint per m²
 }
 
+/** Napkin lines are wall centrelines (same 0.15 m the 3D view draws), so
+ * finishes start half a wall in from every drawn edge. */
+export const WALL_THICKNESS_M = 0.15
+
+/** Rule-of-thumb order allowances for cutting and breakage. Paint is priced
+ * per m² of surface, so it carries none; counted units carry none. */
+export const WASTE = {
+  floorTile: 0.1,
+  floorBoard: 0.08,
+  wallTile: 0.1,
+  skirting: 0.1,
+  none: 0,
+} as const
+
 const WET_KINDS = new Set(['bathroom', 'kitchen'])
 const WET_WALL_TILE_HEIGHT = 1.5 // m of tiled wall in wet rooms
 
-function roomPerimeterMeters(room: Room, site: SiteSpec): number {
-  const w = (room.w / 100) * site.w
-  const d = (room.h / 100) * site.h
-  return 2 * (w + d)
+/** Clear width and depth between inner wall faces. */
+function innerFace(room: Room, site: SiteSpec): { w: number; d: number } {
+  return {
+    w: Math.max(0, (room.w / 100) * site.w - WALL_THICKNESS_M),
+    d: Math.max(0, (room.h / 100) * site.h - WALL_THICKNESS_M),
+  }
+}
+
+function line(label: string, quantity: number, unit: string, rate: number, waste: number, basis: string): InteriorLine {
+  const orderQuantity = quantity * (1 + waste)
+  return { label, quantity, unit, rate, waste, orderQuantity, amount: orderQuantity * rate, basis }
 }
 
 function openingsInRoom(openings: Opening[], room: Room): Opening[] {
@@ -98,53 +126,58 @@ function openingsInRoom(openings: Opening[], room: Room): Opening[] {
   })
 }
 
-function buildRoomBoq(room: Room, openings: Opening[], site: SiteSpec): RoomInteriorBoq {
-  const area = roomAreaFor(room, site)
-  const perimeter = roomPerimeterMeters(room, site)
+function buildRoomBoq(room: Room, openings: Opening[], owned: Set<string>, site: SiteSpec): RoomInteriorBoq {
+  const { w, d } = innerFace(room, site)
+  const area = w * d
+  const perimeter = 2 * (w + d)
   const height = roomHeight(room)
   const isWet = WET_KINDS.has(room.kind)
+  // Every opening on this room's walls cuts this room's faces; a door on a
+  // shared wall cuts both sides. Units are counted once, by the owning room.
   const roomOpenings = openingsInRoom(openings, room)
-  const doorCount = roomOpenings.filter((o) => o.type === 'door').length
-  const windowCount = roomOpenings.filter((o) => o.type === 'window').length
+  const doors = roomOpenings.filter((o) => o.type === 'door')
+  const doorWidth = doors.reduce((acc, o) => acc + openingDimensions(o).width, 0)
+  const ownedDoors = doors.filter((o) => owned.has(o.id)).length
+  const ownedWindows = roomOpenings.filter((o) => o.type === 'window' && owned.has(o.id)).length
 
   const openingM2 = roomOpenings.reduce((acc, op) => {
-    const w = openingDimensions(op).width
-    const h = openingDimensions(op).height
-    return acc + w * h
+    const dims = openingDimensions(op)
+    return acc + dims.width * dims.height
   }, 0)
 
   const grossWallM2 = perimeter * height
   const wallM2 = Math.max(0, grossWallM2 - openingM2)
-  const wetWallTileM2 = isWet ? perimeter * WET_WALL_TILE_HEIGHT : 0
+  const runLessDoors = Math.max(0, perimeter - doorWidth)
+  // ponytail: windows inside the 1.5 m tile band are not netted from the band; refine when sill heights vary.
+  const wetWallTileM2 = isWet ? runLessDoors * WET_WALL_TILE_HEIGHT : 0
   const paintableWallM2 = Math.max(0, wallM2 - wetWallTileM2)
+  const faceBasis = `${w.toFixed(2)} × ${d.toFixed(2)} m to inner wall face`
+  const runBasis = `${perimeter.toFixed(2)} m run − ${doorWidth.toFixed(2)} m doors`
 
   const lines: InteriorLine[] = [
-    {
-      label: isWet ? 'Floor tiles' : 'Floor finish',
-      quantity: area,
-      unit: 'm²',
-      rate: isWet ? BASE_RATE.floorWet : BASE_RATE.floorDry,
-      amount: area * (isWet ? BASE_RATE.floorWet : BASE_RATE.floorDry),
-    },
+    isWet
+      ? line('Floor tiles', area, 'm²', BASE_RATE.floorWet, WASTE.floorTile, faceBasis)
+      : line('Floor finish', area, 'm²', BASE_RATE.floorDry, WASTE.floorBoard, faceBasis),
   ]
 
   if (paintableWallM2 > 0) {
-    lines.push({ label: 'Wall paint', quantity: paintableWallM2, unit: 'm²', rate: BASE_RATE.wallPaint, amount: paintableWallM2 * BASE_RATE.wallPaint })
+    lines.push(line('Wall paint', paintableWallM2, 'm²', BASE_RATE.wallPaint, WASTE.none,
+      `${perimeter.toFixed(2)} m × ${height.toFixed(2)} m − ${openingM2.toFixed(1)} m² openings${isWet ? ' − tile band' : ''}`))
   }
   if (wetWallTileM2 > 0) {
-    lines.push({ label: 'Wet-wall tiles', quantity: wetWallTileM2, unit: 'm²', rate: BASE_RATE.wallTileWet, amount: wetWallTileM2 * BASE_RATE.wallTileWet })
+    lines.push(line('Wet-wall tiles', wetWallTileM2, 'm²', BASE_RATE.wallTileWet, WASTE.wallTile, `${runBasis} × ${WET_WALL_TILE_HEIGHT} m band`))
   }
-  lines.push({ label: 'Ceiling paint', quantity: area, unit: 'm²', rate: BASE_RATE.ceilingPaint, amount: area * BASE_RATE.ceilingPaint })
-  lines.push({ label: 'Skirting', quantity: perimeter, unit: 'lin.m', rate: BASE_RATE.skirting, amount: perimeter * BASE_RATE.skirting })
-  if (doorCount > 0) lines.push({ label: 'Door sets', quantity: doorCount, unit: 'units', rate: BASE_RATE.doorSet, amount: doorCount * BASE_RATE.doorSet })
-  if (windowCount > 0) lines.push({ label: 'Window sets', quantity: windowCount, unit: 'units', rate: BASE_RATE.windowSet, amount: windowCount * BASE_RATE.windowSet })
+  lines.push(line('Ceiling paint', area, 'm²', BASE_RATE.ceilingPaint, WASTE.none, faceBasis))
+  if (runLessDoors > 0) lines.push(line('Skirting', runLessDoors, 'lin.m', BASE_RATE.skirting, WASTE.skirting, runBasis))
+  if (ownedDoors > 0) lines.push(line('Door sets', ownedDoors, 'units', BASE_RATE.doorSet, WASTE.none, `${ownedDoors} counted here, once per door`))
+  if (ownedWindows > 0) lines.push(line('Window sets', ownedWindows, 'units', BASE_RATE.windowSet, WASTE.none, `${ownedWindows} counted here, once per window`))
 
-  const subtotal = lines.reduce((sum, line) => sum + line.amount, 0)
+  const subtotal = lines.reduce((sum, l) => sum + l.amount, 0)
   return {
     room,
     floorM2: area,
     wallM2,
-    skirtingLinM: perimeter,
+    skirtingLinM: runLessDoors,
     openings: roomOpenings.length,
     lines,
     subtotal,
@@ -158,9 +191,11 @@ function aggregate(rooms: RoomInteriorBoq[]): InteriorLine[] {
       const existing = byLabel.get(line.label)
       if (existing) {
         existing.quantity += line.quantity
+        existing.orderQuantity += line.orderQuantity
         existing.amount += line.amount
+        existing.basis = 'sum of rooms'
       } else {
-        byLabel.set(line.label, { ...line })
+        byLabel.set(line.label, { ...line, basis: 'sum of rooms' })
       }
     }
   }
@@ -169,7 +204,16 @@ function aggregate(rooms: RoomInteriorBoq[]): InteriorLine[] {
 
 export function interiorBoq(plan: PlanState, site: SiteSpec, currency: CurrencyCode = 'CNY'): InteriorBoq {
   const card = REGIONAL_RATE_CARDS[currency] ?? REGIONAL_RATE_CARDS.CNY
-  const rooms = plan.rooms.map((room) => buildRoomBoq(room, plan.openings, site))
+  // Each opening is owned by the first room (plan order) whose wall it sits on,
+  // so a shared door is one door set, not one per side.
+  const owned = new Map<string, Set<string>>()
+  for (const opening of plan.openings) {
+    const owner = plan.rooms.find((room) => openingsInRoom([opening], room).length > 0)
+    if (!owner) continue
+    if (!owned.has(owner.id)) owned.set(owner.id, new Set())
+    owned.get(owner.id)!.add(opening.id)
+  }
+  const rooms = plan.rooms.map((room) => buildRoomBoq(room, plan.openings, owned.get(room.id) ?? new Set(), site))
   const categories = aggregate(rooms)
   const total = categories.reduce((sum, line) => sum + line.amount, 0)
   const area = rooms.reduce((sum, r) => sum + r.floorM2, 0)

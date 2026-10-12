@@ -4728,6 +4728,7 @@ summary:focus-visible {
   border-top: 1px solid rgba(var(--studio-ink-rgb, 38, 56, 63), 0.03);
 }
 .interior-boq-line small { color: var(--text-tertiary); font-size: 8px; }
+.interior-boq-line small.interior-boq-basis { display: block; font-family: 'JetBrains Mono', monospace; }
 .interior-boq-line b { color: var(--text-primary); font-weight: 700; text-align: right; }
 .interior-boq-summary {
   display: flex;
