@@ -102,6 +102,36 @@ describe('applyNapkinStroke', () => {
     expect(result.plan!.furniture[0].kind).toBe('wc')
   })
 
+  it('closes four walls whose corners miss by less than 0.3 m', () => {
+    const gapX = (0.18 / site.w) * 100
+    const gapY = (0.18 / site.h) * 100
+    let current = plan()
+    const strokes = [
+      [{ x: 22, y: 30 }, { x: 50, y: 30.2 }],
+      [{ x: 50 + gapX, y: 30 + gapY }, { x: 50 + gapX, y: 55 }],
+      [{ x: 50, y: 55 + gapY }, { x: 22, y: 55 + gapY }],
+      [{ x: 22 - gapX, y: 55 }, { x: 22 - gapX, y: 30 }],
+    ]
+    for (const stroke of strokes) {
+      const next = applyNapkinStroke(current, stroke, site)
+      expect(next.plan).not.toBeNull()
+      current = next.plan!
+    }
+    expect(current.rooms.length).toBeGreaterThanOrEqual(1)
+    const area = (current.rooms[0].w / 100) * site.w * (current.rooms[0].h / 100) * site.h
+    expect(area).toBeGreaterThan(0)
+  })
+
+  it('reads a short stroke across an interior wall of 1 m or less as a door', () => {
+    const bed: Room = { id: 'bed', name: 'Bedroom', kind: 'bedroom', x: 50, y: 10, w: 30, h: 40 }
+    const result = applyNapkinStroke(plan([living, bed]), [
+      { x: 48, y: 28 },
+      { x: 52, y: 28 },
+    ], site)
+    expect(result.plan!.openings[0].type).toBe('door')
+    expect(result.plan!.openings[0].rotation).toBe(90)
+  })
+
   it('rejects a tap', () => {
     const result = applyNapkinStroke(plan(), [{ x: 20, y: 20 }, { x: 20.2, y: 20.1 }], site)
     expect(result.plan).toBeNull()

@@ -18,6 +18,7 @@ import {
   type ResizeHandle,
 } from './geometry'
 import { openingDimensions } from '../openingGeometry'
+import { nearestWallHit } from './wallHost'
 
 type GestureKind = 'move-room' | 'resize-room' | 'pinch-room' | 'move-opening' | 'resize-opening' | 'move-furniture'
 
@@ -297,23 +298,20 @@ export function useRoomGestures({
   )
 
   const placeOpeningAt = useCallback(
-    (clientX: number, clientY: number) => {
+    (clientX: number, clientY: number): Opening | null => {
       const bounds = stageBounds()
       if (!bounds || (activeTool !== 'window' && activeTool !== 'door')) return null
       const point = clientToPercent(clientX, clientY, bounds)
       if (!point) return null
-      const { x, y } = point
-      const rotation: 0 | 90 = Math.min(y, 100 - y) < Math.min(x, 100 - x) ? 0 : 90
-      return snapOpeningToWall(
-        {
-          id: `${activeTool}-${Date.now()}`,
-          type: activeTool,
-          x,
-          y,
-          rotation,
-        },
-        planRef.current.rooms,
-      ) satisfies Opening
+      const hit = nearestWallHit(point, planRef.current.rooms, { width: bounds.width, height: bounds.height })
+      if (!hit) return null
+      return {
+        id: `${activeTool}-${Date.now()}`,
+        type: activeTool,
+        x: hit.x,
+        y: hit.y,
+        rotation: hit.rotation,
+      }
     },
     [activeTool, stageBounds],
   )

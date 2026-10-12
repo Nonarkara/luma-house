@@ -8,9 +8,11 @@ import '@fontsource/jetbrains-mono/latin-700.css'
 import './styles.css'
 import './design/studio.css'
 import App from './App'
+import { installFiberTimer } from './canvas/fiberTimer'
 import { applyTheme, readTheme } from './design/themes'
 import { trackPageview } from './analytics'
 
+installFiberTimer()
 applyTheme(readTheme())
 trackPageview()
 

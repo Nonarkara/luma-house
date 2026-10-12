@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendStrokePoint, clampRoom, clientToPercent, moveRoom, resizeRoom, scaleRoomFromCenter, snapOpeningToWall, strokeToRoomRect } from './geometry'
+import { appendStrokePoint, clampRoom, clientToPercent, moveRoom, resizeRoom, scaleRoomFromCenter, snapOpeningToWall, snapPercentToGrid, strokeToRoomRect } from './geometry'
 import type { Opening, Room } from '../types'
 
 const base: Room = { id: 'r1', name: 'Test', kind: 'studio', x: 20, y: 20, w: 30, h: 30 }
@@ -111,5 +111,11 @@ describe('geometry', () => {
   it('leaves far-off openings untouched instead of teleporting them', () => {
     const far: Opening = { id: 'w', type: 'window', x: 80, y: 80, rotation: 0 }
     expect(snapOpeningToWall(far, [base])).toEqual(far)
+  })
+
+  it('snaps a plan percent onto the metre grid within 0.3 m', () => {
+    expect(snapPercentToGrid(20, 14, 1)).toBeCloseTo((3 / 14) * 100, 5)
+    expect(snapPercentToGrid(50, 14, 1)).toBeCloseTo(50, 5)
+    expect(snapPercentToGrid(10, 10, 1)).toBeCloseTo(10, 5)
   })
 })
