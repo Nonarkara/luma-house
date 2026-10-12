@@ -725,11 +725,11 @@ body { overflow-y: auto; }
 .app-shell .canvas-frame.is-plan {
   height: 100%;
   min-height: 0;
-  grid-template-rows: auto minmax(0, 1fr) repeat(9, auto);
+  grid-template-rows: minmax(0, 1fr) repeat(12, auto);
   align-content: stretch;
   overflow: auto;
 }
-.app-shell .is-plan > .plan-viewport { height: auto; min-height: 240px; }
+.app-shell .is-plan > .plan-viewport { grid-row: 1; height: 100%; min-height: 240px; }
 .app-shell .journey-rail-wrap { padding: 0; }
 
 /* Wide screens: the numbered room key sits beside the drawing, not under it,
@@ -744,7 +744,7 @@ body { overflow-y: auto; }
   .app-shell .is-plan > .zoom-control { grid-column: 1; justify-self: end; }
   .app-shell .is-plan > .plan-room-key {
     grid-column: 2;
-    grid-row: 2 / span 10;
+    grid-row: 1 / span 13;
     grid-template-columns: minmax(0, 1fr);
     align-content: start;
     overflow-y: auto;
@@ -809,24 +809,20 @@ body { overflow-y: auto; }
 @media (max-width: 720px) {
   .app-shell .journey-step { min-height: 44px; }
   .app-shell .journey-step span { font-size: var(--font-note); }
-  .app-shell .canvas-tools { display: grid; grid-template-columns: minmax(0, 1fr) 88px; overflow: visible; }
-  .app-shell .canvas-tools .floating-island-toolbar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
-  .app-shell .canvas-tools .toolbar-pill-btn { min-width: 44px; width: 100%; min-height: 44px; }
-  .app-shell .canvas-tools .toolbar-pill-btn .toolbar-pill-label { display: block; }
+  .app-shell .canvas-frame.is-plan { grid-template-rows: minmax(55dvh, 1fr) repeat(12, auto); }
+  .app-shell .is-plan > .plan-viewport { min-height: 55dvh; }
+  .app-shell .canvas-tools { display: block; overflow: visible; min-height: 44px; }
+  .app-shell .canvas-tools .floating-island-toolbar { display: flex; flex-direction: row; flex-wrap: nowrap; width: 100%; }
+  .app-shell .canvas-tools .toolbar-pill-btn { flex: 1 1 0; min-width: 44px; width: auto; min-height: 44px; }
+  .app-shell .canvas-tools .toolbar-pill-btn .toolbar-pill-label { display: block; font-size: 12px; }
   .app-shell .canvas-tools .toolbar-divider { display: none; }
-  .app-shell .canvas-tools .room-options-launch { grid-column: 2; grid-row: 1; min-height: 44px; width: 88px; }
-  .app-shell .dock-history { grid-column: 2; grid-row: 1; align-self: end; }
-  .app-shell .dock-history .icon-button { width: 44px; min-width: 44px; height: 44px; }
-  .app-shell .canvas-tools .room-options-launch { align-self: start; height: 44px; }
-  .app-shell .dock-history { transform: translateY(44px); }
-  .app-shell .assistant-bar .assistant-cta { min-height: 44px; }
+  .app-shell .toolbar-more { position: relative; display: flex; flex: 1 1 0; min-width: 44px; }
+  .app-shell .toolbar-more .toolbar-pill-btn { width: 100%; }
+  .app-shell .assistant-bar { height: 0; min-height: 0; overflow: hidden; padding: 0; border: 0; }
+  .app-shell .assistant-bar:focus-within { height: auto; min-height: 48px; overflow: visible; padding: 0 4px; border-top: 1px solid var(--border); }
 }
 .app-shell .top-more-menu { max-height: calc(100dvh - 60px); overflow-y: auto; }
 .menu-project-name small { display: block; color: var(--text-secondary); font-size: var(--font-note); }
-@media (max-width: 720px) {
-  .app-shell .canvas-tools .floating-island-toolbar { grid-column: 1; grid-row: 1; }
-  .app-shell .dock-history { transform: none; }
-}
 @media (max-width: 720px) {
   .app-shell .is-plan > .plan-room-key { scroll-snap-type: none; }
 }

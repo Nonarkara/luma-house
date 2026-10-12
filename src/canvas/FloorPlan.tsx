@@ -10,6 +10,7 @@ import type { ValueLensMode } from '../components/ValueLens'
 import type { Compass } from '../analysis'
 import type { ResizeHandle, StrokePoint } from './geometry'
 import type { NapkinCalibrationLine } from './napkinScale'
+import type { WallHit } from './wallHost'
 
 const roomColors: Record<RoomKind, string> = {
   living: 'rgba(var(--studio-action-rgb, 138, 76, 22), 0.07)',
@@ -56,6 +57,11 @@ export const FloorPlan = React.memo(function FloorPlan({
   alignGuides,
   measureStart,
   measureEnd,
+  openingGhost = null,
+  roomDraft = null,
+  wallNote = false,
+  showEmptyHint = false,
+  onSetOpeningType,
   onRoomPointerDown,
   onRoomSelect,
   onOpeningPointerDown,
@@ -95,6 +101,11 @@ export const FloorPlan = React.memo(function FloorPlan({
   alignGuides?: { x: number[]; y: number[] } | null
   measureStart?: { x: number; y: number } | null
   measureEnd?: { x: number; y: number } | null
+  openingGhost?: WallHit | null
+  roomDraft?: { x: number; y: number; w: number; h: number } | null
+  wallNote?: boolean
+  showEmptyHint?: boolean
+  onSetOpeningType?: (id: string, type: Opening['type']) => void
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
   onRoomSelect: (room: Room) => void
   onOpeningPointerDown: (event: ReactPointerEvent, opening: Opening, end?: 'start' | 'end') => void
@@ -344,6 +355,7 @@ export const FloorPlan = React.memo(function FloorPlan({
                 type="button"
                 className={`opening opening-${opening.type} rotate-${opening.rotation} ${isSel ? 'is-selected' : ''}`}
                 style={{ left: `${opening.x}%`, top: `${opening.y}%`, width: `${spanPct}%` }}
+                data-rotation={opening.rotation}
                 title={`${opening.type} ${w.toFixed(2)} × ${h.toFixed(2)} m — drag to move, drag an end to resize`}
                 aria-label={`${opening.type} opening ${w.toFixed(2)} by ${h.toFixed(2)} meters`}
                 onPointerDown={(event) => onOpeningPointerDown(event, opening)}
@@ -365,6 +377,37 @@ export const FloorPlan = React.memo(function FloorPlan({
             )
           })}
 
+          {openingGhost && (
+            <>
+              <svg className="draw-overlay wall-highlight" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <line x1={openingGhost.x1} y1={openingGhost.y1} x2={openingGhost.x2} y2={openingGhost.y2} className="wall-highlight-line" vectorEffect="non-scaling-stroke" />
+              </svg>
+              <div
+                className={`opening opening-${activeTool === 'door' ? 'door' : 'window'} rotate-${openingGhost.rotation} is-ghost`}
+                style={{ left: `${openingGhost.x}%`, top: `${openingGhost.y}%` }}
+                aria-hidden="true"
+              />
+            </>
+          )}
+          {roomDraft && roomDraft.w > 0 && roomDraft.h > 0 && (
+            <div className="room-draft" style={{ left: `${roomDraft.x}%`, top: `${roomDraft.y}%`, width: `${roomDraft.w}%`, height: `${roomDraft.h}%` }} aria-hidden="true" />
+          )}
+          {plan.openings.filter((opening) => opening.id === selectedOpening).map((opening) => (
+            <div
+              key={`${opening.id}-toggle`}
+              className="opening-toggle"
+              role="group"
+              aria-label="Window · Door"
+              style={{ left: `calc(${opening.x}% + 24px)`, top: `calc(${opening.y}% - 22px)` }}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button type="button" aria-pressed={opening.type === 'window'} onClick={() => onSetOpeningType?.(opening.id, 'window')}>Window</button>
+              <button type="button" aria-pressed={opening.type === 'door'} onClick={() => onSetOpeningType?.(opening.id, 'door')}>Door</button>
+            </div>
+          ))}
+          {showEmptyHint && <p className="canvas-empty-line">Drag a box to make a room. Then click a wall to add a window.</p>}
+          {wallNote && <p className="wall-note" role="status">Click a wall</p>}
           {plan.walls && plan.walls.length > 0 && (
             <svg className="draw-overlay napkin-walls" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
               {plan.walls.map((wall) => (

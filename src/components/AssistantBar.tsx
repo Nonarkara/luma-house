@@ -31,6 +31,7 @@ export const AssistantBar = React.memo(function AssistantBar({
         onChange={(event) => setAssistantText(event.target.value)}
         onKeyDown={(event) => event.key === 'Enter' && runQuickAction()}
         placeholder="Quick action: brighter, budget, photo…"
+        id="quick-action"
         aria-label="Quick plan actions"
         title={hint ? `Suggested next step: ${hint}` : undefined}
       />

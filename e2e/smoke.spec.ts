@@ -1,4 +1,4 @@
-import { openMore } from './workspace'
+import { clickTool, openMore } from './workspace'
 import { test, expect, type Page } from '@playwright/test'
 import { decodePlanFromHash, encodePlanToHash } from '../src/sharePlan'
 import { initialPlan } from '../src/plan'
@@ -158,21 +158,32 @@ test.describe('drawing studio', () => {
       const overlap = toolbarRect!.x < canvasRect!.x + canvasRect!.width && toolbarRect!.x + toolbarRect!.width > canvasRect!.x && toolbarRect!.y < canvasRect!.y + canvasRect!.height && toolbarRect!.y + toolbarRect!.height > canvasRect!.y
       expect(overlap, 'drawing tools stay outside the frame').toBe(false)
       expect(canvasRect!.height).toBeGreaterThanOrEqual(300)
-      await page.getByRole('button', { name: 'Add room', exact: true }).click()
+      await clickTool(page, 'Room')
+      const sheet = await page.locator('.plan-canvas').boundingBox()
+      await page.mouse.move(sheet!.x + sheet!.width * 0.55, sheet!.y + sheet!.height * 0.15)
+      await page.mouse.down()
+      await page.mouse.move(sheet!.x + sheet!.width * 0.9, sheet!.y + sheet!.height * 0.55, { steps: 8 })
+      await page.mouse.up()
       expect(await readRoomCount(page)).toBe(initialPlan.rooms.length + 1)
       await page.getByRole('button', { name: 'Undo', exact: true }).filter({ visible: true }).click()
       expect(await readRoomCount(page)).toBe(initialPlan.rooms.length)
       for (const name of ['Tape Measure', 'Layout presets']) {
-        await page.getByRole('button', { name, exact: true }).click({ trial: true })
+        const button = page.getByRole('button', { name, exact: true })
+        if (!(await button.isVisible())) await page.getByRole('button', { name: 'More tools', exact: true }).click()
+        await button.click({ trial: true })
       }
       await page.getByRole('button', { name: 'Calibrate', exact: true }).click({ trial: true })
-      await page.getByRole('button', { name: 'Tape Measure', exact: true }).click()
-      await page.getByRole('button', { name: 'Pencil', exact: true }).click()
-      await expect(page.getByRole('button', { name: 'Tape Measure', exact: true })).toHaveAttribute('aria-pressed', 'false')
-      const hint = await page.locator('.draw-hint').boundingBox()
+      const measure = page.getByRole('button', { name: 'Tape Measure', exact: true })
+      if (!(await measure.isVisible())) await page.getByRole('button', { name: 'More tools', exact: true }).click()
+      await measure.click()
+      await page.getByRole('button', { name: 'Draw', exact: true }).click()
+      const measureAfter = page.getByRole('button', { name: 'Tape Measure', exact: true })
+      if (!(await measureAfter.isVisible())) await page.getByRole('button', { name: 'More tools', exact: true }).click()
+      await expect(measureAfter).toHaveAttribute('aria-pressed', 'false')
       const zoom = await page.locator('.zoom-control').boundingBox()
-      const intersects = hint!.x < zoom!.x + zoom!.width && hint!.x + hint!.width > zoom!.x && hint!.y < zoom!.y + zoom!.height && hint!.y + hint!.height > zoom!.y
-      expect(intersects, 'zoom controls must not cover the drawing grammar').toBe(false)
+      const drawing = await page.locator('.plan-canvas').boundingBox()
+      const intersects = zoom!.x < drawing!.x + drawing!.width && zoom!.x + zoom!.width > drawing!.x && zoom!.y < drawing!.y + drawing!.height && zoom!.y + zoom!.height > drawing!.y
+      expect(intersects, 'zoom controls must not cover the drawing').toBe(false)
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
       expect(overflow).toBeLessThanOrEqual(1)
     })
@@ -265,11 +276,11 @@ test.describe('PWA installability', () => {
     await openMore(page)
     const section = page.locator('.top-more-extra .web-app-access')
     await expect(section, 'install guidance is rendered').toHaveCount(1)
-    // Both platform strings must be present — the audit agent flagged that
-    // the guidance must explicitly cover Android and iPhone, not just one.
+    await section.locator('summary').click()
     const text = (await section.innerText()).toLowerCase()
     expect(text, 'mentions Android').toContain('android')
     expect(text, 'mentions iPhone').toContain('iphone')
-    expect(text, 'mentions Add to Home Screen').toContain('home screen')
+    expect(text, 'mentions Add to Home Screen').toContain('add to home screen')
+    expect(text, 'summary no longer claims a store listing').not.toContain('available on android')
   })
 })

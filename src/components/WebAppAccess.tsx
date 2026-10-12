@@ -4,7 +4,7 @@ import React from 'react'
 export function WebAppAccess() {
   return (
     <details className="web-app-access">
-      <summary><img src="./brand/designon-app.png" alt="" width="28" height="28" /><span>Available on Android and iPhone <small>Web app · Add to Home Screen</small></span></summary>
+      <summary aria-label="Add to Home Screen"><img src="./brand/designon-app.png" alt="" width="28" height="28" /><span>Add to Home Screen</span></summary>
       <div className="web-app-instructions">
         <p><strong>Android</strong> — Open in Chrome. In the menu, choose <b>Add to Home screen</b> or <b>Install app</b>.</p>
         <p><strong>iPhone</strong> — Open in Safari. Tap <b>Share → Add to Home Screen</b>. Keep <b>Open as Web App</b> enabled if shown.</p>

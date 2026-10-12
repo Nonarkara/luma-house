@@ -1,4 +1,4 @@
-import { clickAction } from './workspace'
+import { clickAction, clickTool } from './workspace'
 import { expect, test, type Page } from '@playwright/test'
 import { decodePlanFromHash, encodePlanToHash } from '../src/sharePlan'
 import { CHINA_PROJECT_KEY, chinaApartmentPlan } from '../src/mockups/chinaApartment'
@@ -64,7 +64,12 @@ test('preview is inert; Apply is one undo step, persists and shares without AI',
 
 test('empty room and failed search keep Apply disabled; undone room selection falls back', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash({ ...fixture, furniture: [] }))
-  await page.getByRole('button', { name: 'Add room', exact: true }).click()
+  await clickTool(page, 'Room')
+  const sheet = await page.locator('.plan-canvas').boundingBox()
+  await page.mouse.move(sheet!.x + sheet!.width * 0.62, sheet!.y + sheet!.height * 0.62)
+  await page.mouse.down()
+  await page.mouse.move(sheet!.x + sheet!.width * 0.9, sheet!.y + sheet!.height * 0.9, { steps: 8 })
+  await page.mouse.up()
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
   await page.getByRole('button', { name: 'Room options', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Room options', exact: true })

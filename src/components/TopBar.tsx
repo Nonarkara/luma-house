@@ -21,6 +21,7 @@ interface TopBarProps {
   menuExtra?: React.ReactNode
   onChangeLocation?: () => void
   locationName?: string
+  hideLabeledShare?: boolean
 }
 
 export const TopBar = React.memo(function TopBar({
@@ -39,6 +40,7 @@ export const TopBar = React.memo(function TopBar({
   menuExtra,
   onChangeLocation,
   locationName,
+  hideLabeledShare = false,
 }: TopBarProps) {
   const menuRef = React.useRef<HTMLDetailsElement>(null)
   const close = () => menuRef.current?.removeAttribute('open')
@@ -79,7 +81,7 @@ export const TopBar = React.memo(function TopBar({
               </button>
             )}
             <button type="button" className="top-more-share" aria-label="Share" onClick={run(sharePlan)}>
-              <Copy aria-hidden="true" /> Share link
+              <Copy aria-hidden="true" /> Share
             </button>
             <button type="button" onClick={run(onNewSketch)} title="Start a fresh napkin sketch. Undo brings the current one back.">
               <FilePlus2 aria-hidden="true" /> New sketch
@@ -104,10 +106,12 @@ export const TopBar = React.memo(function TopBar({
           <PanelRight />
         </IconButton>
 
-        <button className="button secondary top-action-label" type="button" onClick={sharePlan} aria-label="Share">
-          <Copy className="top-action-icon" aria-hidden="true" />
-          <span className="btn-label">Share</span>
-        </button>
+        {!hideLabeledShare && (
+          <button className="button secondary top-action-label" type="button" onClick={sharePlan} aria-label="Share">
+            <Copy className="top-action-icon" aria-hidden="true" />
+            <span className="btn-label">Share</span>
+          </button>
+        )}
 
         <button className="button primary" type="button" onClick={exportPlan} aria-label="Export">
           <Download /><span className="btn-label">Export</span>

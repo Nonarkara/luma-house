@@ -1,4 +1,12 @@
 import { expect, type Page } from '@playwright/test'
+export async function clickTool(page: Page, name: string) {
+  const button = page.getByRole('button', { name, exact: true })
+  if (!(await button.first().isVisible())) {
+    await page.getByRole('button', { name: 'More tools', exact: true }).click()
+  }
+  await button.first().click()
+}
+
 export async function openMore(page: Page) {
   const more = page.getByRole('button', { name: 'More actions', exact: true })
   if (!(await page.locator('.top-more').getAttribute('open') !== null)) await more.click()
