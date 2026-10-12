@@ -102,6 +102,50 @@ describe('applyNapkinStroke', () => {
     expect(result.plan!.furniture[0].kind).toBe('wc')
   })
 
+  it('closes four walls whose corners miss by about 0.5 m', () => {
+    const at = (mx: number, my: number) => ({ x: (mx / site.w) * 100, y: (my / site.h) * 100 })
+    let current = plan()
+    const strokes = [
+      [at(4, 3), at(8, 3)],
+      [at(8.5, 3), at(8.5, 6)],
+      [at(8, 6), at(4, 6)],
+      [at(4, 6), at(4, 3)],
+    ]
+    for (const stroke of strokes) {
+      const next = applyNapkinStroke(current, stroke, site)
+      expect(next.plan).not.toBeNull()
+      current = next.plan!
+    }
+    expect(current.rooms.length).toBeGreaterThanOrEqual(1)
+    const area = (current.rooms[0].w / 100) * site.w * (current.rooms[0].h / 100) * site.h
+    expect(area).toBeGreaterThan(0)
+    expect(current.walls ?? []).toHaveLength(0)
+  })
+
+  it('reports Corners don\'t meet when a gap is wider than 0.6 m', () => {
+    const at = (mx: number, my: number) => ({ x: (mx / site.w) * 100, y: (my / site.h) * 100 })
+    let current = plan()
+    let toast = ''
+    let note: { x: number; y: number } | undefined
+    const strokes = [
+      [at(4, 3), at(8, 3)],
+      [at(8.9, 3), at(8.9, 6)],
+      [at(8, 6), at(4, 6)],
+      [at(4, 6), at(4, 3)],
+    ]
+    for (const stroke of strokes) {
+      const next = applyNapkinStroke(current, stroke, site)
+      expect(next.plan).not.toBeNull()
+      toast = next.toast
+      note = next.plan ? next.cornerNote ?? note : note
+      current = next.plan!
+    }
+    expect(current.rooms).toHaveLength(0)
+    expect(toast).toBe("Corners don't meet")
+    expect(note?.x).toBeGreaterThan(0)
+    expect(note?.y).toBeGreaterThan(0)
+  })
+
   it('closes four walls whose corners miss by less than 0.3 m', () => {
     const gapX = (0.18 / site.w) * 100
     const gapY = (0.18 / site.h) * 100
