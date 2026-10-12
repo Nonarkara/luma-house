@@ -64,3 +64,27 @@ export function nearestWallHit(
   }
   return best?.hit ?? null
 }
+
+/**
+ * The Window · Door chip sits on the opening it belongs to. A hit on that
+ * same wall, within the chip's reach, is a type toggle. Any other wall is a
+ * request to place the next opening.
+ */
+export function hitIsSelectedOpening(
+  hit: WallHit,
+  opening: { x: number; y: number; rotation: number },
+  site: { w: number; h: number },
+  stagePx: StagePx,
+): boolean {
+  if (hit.rotation !== opening.rotation) return false
+  const across = hit.rotation === 0
+    ? (Math.abs(hit.y - opening.y) / 100) * site.h
+    : (Math.abs(hit.x - opening.x) / 100) * site.w
+  if (across > 0.35) return false
+  const along = hit.rotation === 0
+    ? (Math.abs(hit.x - opening.x) / 100) * site.w
+    : (Math.abs(hit.y - opening.y) / 100) * site.h
+  const pxPerM = hit.rotation === 0 ? stagePx.width / site.w : stagePx.height / site.h
+  const chipReachM = 200 / Math.max(pxPerM, 1)
+  return along <= chipReachM
+}

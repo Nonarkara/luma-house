@@ -248,6 +248,7 @@ function App() {
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches)
   const [openingGhost, setOpeningGhost] = useState<WallHit | null>(null)
   const [wallNote, setWallNote] = useState(false)
+  const [cornerNote, setCornerNote] = useState<{ x: number; y: number } | null>(null)
   const [roomDraft, setRoomDraft] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
   const roomDragRef = useRef<{ pointerId: number; start: StrokePoint; current: StrokePoint } | null>(null)
   const pointerIsDownRef = useRef(false)
@@ -475,7 +476,7 @@ function App() {
       const completed = journey.stages.filter((s) => s.complete)
       const justDone = completed[completed.length - 1]
       if (justDone) {
-        setToast(`${justDone.def.label} locked in · ${journey.doneCount}/${journey.stages.length}`)
+        setToast(`Step ${journey.doneCount} of ${journey.stages.length}: ${justDone.def.label}`)
       }
     }
     prevDoneRef.current = journey.doneCount
@@ -625,9 +626,11 @@ function App() {
     setDraftStroke(null)
     const result = applyNapkinStroke(plan, points, site)
     if (!result.plan) {
+      setCornerNote(null)
       setToast(result.toast)
       return
     }
+    setCornerNote(result.cornerNote ?? null)
     commit(result.plan, result.label)
     setSelectedRoom(result.selectRoom ?? null)
     setSelectedOpening(result.selectOpening ?? null)
@@ -817,8 +820,9 @@ function App() {
   }, [finalizeDrawnRoom, finalizeRulerLine, onViewportPointerUp])
 
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if ((event.target as HTMLElement).closest('.opening-toggle')) return
-    if (panMovedRef.current || isGesturing()) return
+    if (panMovedRef.current || isGesturing()) {
+      if (activeTool !== 'window' && activeTool !== 'door') return
+    }
 
     // Tape measure: first click sets the start, second click sets the end
     // and freezes the line. A third click starts a new measurement.
@@ -1012,6 +1016,12 @@ function App() {
       }
 
       if (event.key === 'Escape') {
+        const focused = document.activeElement
+        if (focused instanceof HTMLElement && focused.closest('.canvas-tools')) {
+          const select = document.querySelector<HTMLElement>('.canvas-tools button[aria-label="Select"]')
+          if (select) select.focus()
+          else focused.blur()
+        }
         setSelectedRoom(null)
         setSelectedOpening(null)
         setSelectedFurniture(null)
@@ -1574,6 +1584,7 @@ function App() {
                 openingGhost={openingGhost}
                 roomDraft={roomDraft}
                 wallNote={wallNote}
+                cornerNote={cornerNote}
                 showEmptyHint={isEmpty && !hasNapkinWalls && !draftStroke && !rulerArmed && !rulerLine && !roomDraft}
                 onSetOpeningType={(id, type) => updateOpening(id, { type })}
                 onRoomPointerDown={onRoomPointerDown}

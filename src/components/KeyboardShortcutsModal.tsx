@@ -6,7 +6,7 @@ export function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
       category: 'Plan tools',
       items: [
         { key: 'V', description: 'Select and move' },
-        { key: 'W', description: 'Draw — a line is a wall, a tick is a door or window, a box is a room or furniture' },
+        { key: 'W', description: 'Draw — a line is a wall, a box is a room or furniture. Click a wall for a window or a door' },
         { key: 'O', description: 'Place a window' },
         { key: 'D', description: 'Place a door' },
         { key: 'M', description: 'Tape measure' },
