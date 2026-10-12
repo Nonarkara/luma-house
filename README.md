@@ -63,7 +63,7 @@ temperature/wind assumptions for both plans; it does not fetch live weather.
 
 Related studio writing: the [Axiom Design Core](src/design/AxiomCore.md) in this tree, and the public [Axiom-Design-Core](https://github.com/Nonarkara/Axiom-Design-Core) repo.
 
-Architectural drawing and study-sheet workflow inspiration: [IngeTrazo](https://ingetrazo.com/en/) by Marco Sumari Tellez and contributors. These features are independently implemented in designon; no IngeTrazo source code is included. The [reuse review](docs/INGETRAZO-REUSE-REVIEW.md) records further opportunities, sources and attribution requirements.
+Architectural drawing and study-sheet workflow inspiration: [IngeTrazo](https://ingetrazo.com/en/) by Marco Sumari Tellez and contributors. Wall hosting, opening snap and endpoint joins in the plan canvas follow that idea and are independently implemented in designon; no IngeTrazo source code is included. The [reuse review](docs/INGETRAZO-REUSE-REVIEW.md) records further opportunities, sources and attribution requirements.
 
 Room-arrangement workflow inspiration: [SpaceFactor（空间因子）](https://spacefactor.cn/), with acknowledgment to Shouheng Chen for the reference. The local room-options implementation is independently written; no SpaceFactor code, models or assets are incorporated. The [SIC review](docs/SPACEFACTOR-SIC-REVIEW.md) records the research; supplier furnishing choices and a fuller design package remain future work.
 

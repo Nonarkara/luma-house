@@ -1,9 +1,9 @@
 import { CityPicker } from './components/CityPicker'
 import { SunChart } from './canvas/SunChart'
-import { starterLocations } from './location/locations'
+import { locationForTimeZone } from './location/timeZoneLocation'
 import { citySunPosition, clockLabel, normalizedCivilHour } from './location/solar'
 import type { ProjectLocation } from './types'
-import type { StudyScene } from './study/types'
+import type { StudyCapture, StudyScene, StudySettings } from './study/types'
 import { readTheme, saveTheme } from './design/themes'
 import { ThemePicker } from './components/ThemePicker'
 import { traceSiteFromImage } from './concept/reviewTrace'
@@ -11,13 +11,18 @@ import { LayoutPresetDialog } from './components/LayoutPresetDialog'
 import { TraceReview, type PendingTrace } from './components/TraceReview'
 import { updateOpeningDimensions } from './openingGeometry'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { Check, ImagePlus, MapPin, Pencil, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
+import { Check, ImagePlus, MapPin, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
 import { FloorPlan } from './canvas/FloorPlan'
 import { RenderGallery } from './canvas/RenderGallery'
 import { contentBox, useCanvasViewport } from './canvas/useCanvasViewport'
 import { useRoomGestures } from './canvas/useRoomGestures'
-import { appendStrokePoint, clientToPercent, moveOpening, moveRoom, type StrokePoint } from './canvas/geometry'
+import { appendStrokePoint, clampRoom, clientToPercent, moveOpening, moveRoom, snapRoomDraft, type StrokePoint } from './canvas/geometry'
 import { applyNapkinStroke } from './canvas/napkinStroke'
+import { nearestWallHit, type WallHit } from './canvas/wallHost'
+import { downloadBlob, downloadPlanPng, drawPlan, planToDxf } from './export/planExchange'
+import { houseMesh } from './fabricate/houseMesh'
+import { meshToGlb } from './fabricate/formats'
+import { StudySheet } from './study/StudySheet'
 import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { generateConceptPhoto } from './concept/generateConcept'
@@ -80,7 +85,26 @@ import { readString, storageIsPersistent } from './storage/keys'
 import { checkPlan, exteriorDoorPlacement, type CodeIssue as StandardsCodeIssue } from './codes/checkPlan'
 
 const RoomOptionsDialog = lazy(() => import('./components/RoomOptionsDialog'))
-const DRAW_HINT = 'Line = wall · tick on a wall = door or window · box = room or furniture'
+
+function EmptyStage({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="empty-stage" role="status">
+      <p>Drag a box to make a room. Then click a wall to add a window.</p>
+      <button type="button" className="button primary" onClick={onBack}>Back to plan</button>
+    </div>
+  )
+}
+
+const PLAN_SHEET_SETTINGS: StudySettings = {
+  preset: 'topdown',
+  style: 'architectural',
+  sectionHeight: 1.2,
+  roofStyle: 'flat',
+  showRoof: false,
+  shadows: true,
+  sunRays: false,
+  airPaths: false,
+}
 
 /** A truly blank plan — the napkin / tissue-paper starting point. */
 function blankPlan(): PlanState {
@@ -135,7 +159,8 @@ function App() {
   const [rulerArmed, setRulerArmed] = useState(false)
   const [rulerLine, setRulerLine] = useState<NapkinCalibrationLine | null>(null)
   const [rulerMeters, setRulerMeters] = useState('')
-  const projectLocation = plan.location ?? starterLocations[0]
+  const inferredLocation = useMemo(() => locationForTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone), [])
+  const projectLocation = plan.location ?? inferredLocation
   const [locationOpen, setLocationOpen] = useState(false)
   const [styleKeywords, setStyleKeywords] = useState<string>(() => readString('style-keywords:shanghai-50', 'luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
   const [hour, setHour] = useState(10)
@@ -214,6 +239,14 @@ function App() {
   // Frame the building, not the whole sheet: on first load and whenever a
   // whole plan arrives (sample, accepted trace, import), and from Fit.
   const [exportOpen, setExportOpen] = useState(false)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [studyCapture, setStudyCapture] = useState<StudyCapture | null>(null)
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches)
+  const [openingGhost, setOpeningGhost] = useState<WallHit | null>(null)
+  const [wallNote, setWallNote] = useState(false)
+  const [roomDraft, setRoomDraft] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+  const roomDragRef = useRef<{ pointerId: number; start: StrokePoint; current: StrokePoint } | null>(null)
+  const pointerIsDownRef = useRef(false)
   const [fitRequest, setFitRequest] = useState(1)
   const [fitting, setFitting] = useState(false)
   const fitRoomsRef = useRef(plan.rooms)
@@ -442,11 +475,11 @@ function App() {
   }, [journey.doneCount, journey.stages])
 
   const goToStage = useCallback((nav: StageNav) => {
-    if (nav.inspector !== undefined) setInspectorOpen(nav.inspector)
     setSettingsOpen(false)
     if (nav.mode) setMode(nav.mode)
     if (nav.view) setView(nav.view)
     if (nav.tool) setActiveTool(nav.tool)
+    else if (nav.inspector !== undefined && !pointerIsDownRef.current) setInspectorOpen(nav.inspector)
   }, [])
 
   const commitSnapshot = useCallback((snapshot: PlanState, label = 'Auto-save') => {
@@ -507,6 +540,20 @@ function App() {
     const timeout = window.setTimeout(() => setToast(null), 2600)
     return () => window.clearTimeout(timeout)
   }, [toast])
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 720px)')
+    const apply = () => setNarrow(query.matches)
+    apply()
+    query.addEventListener('change', apply)
+    return () => query.removeEventListener('change', apply)
+  }, [])
+
+  useEffect(() => {
+    if (activeTool === 'window' || activeTool === 'door') return
+    setOpeningGhost(null)
+    setWallNote(false)
+  }, [activeTool])
 
   const undo = useCallback(() => {
     const previous = past[past.length - 1]
@@ -578,10 +625,7 @@ function App() {
     setSelectedOpening(result.selectOpening ?? null)
     setSelectedFurniture(result.selectFurniture ?? null)
     setMode('plan')
-    if (result.selectRoom) {
-      setSettingsOpen(false)
-      setInspectorOpen(true)
-    }
+    if (result.selectOpening) setWallNote(false)
     setToast(result.toast)
   }, [commit, plan, site])
 
@@ -602,6 +646,7 @@ function App() {
       setRulerLine(rulerLineRef.current)
       return
     }
+    pointerIsDownRef.current = true
     if (activeTool === 'draw') {
       if (drawPointerRef.current !== null) return
       const bounds = stageRef.current?.getBoundingClientRect()
@@ -616,6 +661,24 @@ function App() {
       }
       strokePointsRef.current = [point]
       setDraftStroke(strokePointsRef.current)
+      return
+    }
+    if (activeTool === 'room') {
+      const bounds = stageRef.current?.getBoundingClientRect()
+      if (!bounds) return
+      const point = clientToPercent(event.clientX, event.clientY, bounds)
+      if (!point) return
+      roomDragRef.current = { pointerId: event.pointerId, start: point, current: point }
+      setRoomDraft(null)
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      } catch {
+        // Synthetic pointers (tests) have no active pointer to capture.
+      }
+      return
+    }
+    if (activeTool === 'window' || activeTool === 'door') {
+      panMovedRef.current = false
       return
     }
     if (activeTool !== 'select') return
@@ -668,11 +731,50 @@ function App() {
       setDraftStroke(strokePointsRef.current)
       return
     }
+    if (roomDragRef.current?.pointerId === event.pointerId) {
+      const bounds = stageRef.current?.getBoundingClientRect()
+      if (!bounds) return
+      const point = clientToPercent(event.clientX, event.clientY, bounds)
+      if (!point) return
+      roomDragRef.current = { ...roomDragRef.current, current: point }
+      setRoomDraft(snapRoomDraft(roomDragRef.current.start, point, site))
+      return
+    }
+    if (activeTool === 'window' || activeTool === 'door') {
+      const bounds = stageRef.current?.getBoundingClientRect()
+      if (bounds) {
+        const point = clientToPercent(event.clientX, event.clientY, bounds)
+        setOpeningGhost(point ? nearestWallHit(point, plan.rooms, { width: bounds.width, height: bounds.height }) : null)
+      }
+      return
+    }
     onViewportPointerMove(event)
-    if (Math.abs(event.movementX) + Math.abs(event.movementY) > 2) panMovedRef.current = true
-  }, [isGesturing, isMeasuring, measureStart, onViewportPointerMove, plan.rooms, selectedRoom])
+    if (activeTool === 'select' && Math.abs(event.movementX) + Math.abs(event.movementY) > 2) panMovedRef.current = true
+  }, [activeTool, isGesturing, isMeasuring, measureStart, onViewportPointerMove, plan.rooms, selectedRoom, site])
+
+  const finishRoomDrag = useCallback((pointerId: number) => {
+    const drag = roomDragRef.current
+    roomDragRef.current = null
+    pointerIsDownRef.current = false
+    if (!drag || drag.pointerId !== pointerId) return
+    const rawW = Math.abs(drag.current.x - drag.start.x)
+    const rawH = Math.abs(drag.current.y - drag.start.y)
+    setRoomDraft(null)
+    if (rawW < 8 || rawH < 8) return
+    const rect = clampRoom(snapRoomDraft(drag.start, drag.current, site))
+    const id = `room-${Date.now()}`
+    const index = plan.rooms.length + 1
+    commit((current) => ({
+      ...current,
+      rooms: [...current.rooms, { id, name: index === 1 ? 'Room' : `Room ${index}`, kind: 'studio', ...rect }],
+    }), 'Draw room')
+    setSelectedRoom(id)
+    setSelectedOpening(null)
+    setSelectedFurniture(null)
+  }, [commit, plan.rooms.length, site])
 
   const handleCanvasPointerUp = useCallback((event: ReactPointerEvent) => {
+    pointerIsDownRef.current = false
     setLiveDragRect(null)
     if (rulerPointerRef.current === event.pointerId) {
       finalizeRulerLine()
@@ -680,23 +782,33 @@ function App() {
     }
     if (drawPointerRef.current === event.pointerId) {
       finalizeDrawnRoom()
+      return
+    }
+    if (roomDragRef.current?.pointerId === event.pointerId) {
+      finishRoomDrag(event.pointerId)
       return
     }
     onViewportPointerUp(event)
-  }, [finalizeDrawnRoom, finalizeRulerLine, onViewportPointerUp])
+  }, [finalizeDrawnRoom, finalizeRulerLine, finishRoomDrag, onViewportPointerUp])
 
   const handleCanvasPointerCancel = useCallback((event: ReactPointerEvent) => {
+    pointerIsDownRef.current = false
     setLiveDragRect(null)
     if (rulerPointerRef.current === event.pointerId) {
       finalizeRulerLine()
     }
     if (drawPointerRef.current === event.pointerId) {
       finalizeDrawnRoom()
+    }
+    if (roomDragRef.current?.pointerId === event.pointerId) {
+      roomDragRef.current = null
+      setRoomDraft(null)
     }
     onViewportPointerUp(event)
   }, [finalizeDrawnRoom, finalizeRulerLine, onViewportPointerUp])
 
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest('.opening-toggle')) return
     if (panMovedRef.current || isGesturing()) return
 
     // Tape measure: first click sets the start, second click sets the end
@@ -720,7 +832,7 @@ function App() {
       return
     }
 
-    if (activeTool === 'draw') return
+    if (activeTool === 'draw' || activeTool === 'room') return
     if (activeTool === 'select') {
       if (event.target === event.currentTarget || (event.target as HTMLElement).classList.contains('plan-canvas')) {
         setSelectedRoom(null)
@@ -730,21 +842,16 @@ function App() {
       return
     }
     const opening = placeOpeningAt(event.clientX, event.clientY)
-    if (!opening) return
+    if (!opening) {
+      setWallNote(true)
+      return
+    }
+    setWallNote(false)
     commit((current) => ({ ...current, openings: [...current.openings, opening] }), `Place ${opening.type}`)
-    setActiveTool('select')
-    setToast(`${opening.type === 'window' ? 'Window' : 'Door'} placed`)
+    setSelectedOpening(opening.id)
+    setSelectedRoom(null)
+    setSelectedFurniture(null)
   }, [activeTool, commit, isGesturing, isMeasuring, measureStart, placeOpeningAt, site.h, site.w])
-
-  const addRoom = useCallback(() => {
-    const index = plan.rooms.length + 1
-    const id = `room-${Date.now()}`
-    commit((current) => ({
-      ...current,
-      rooms: [...current.rooms, { id, name: `Flexible room ${index}`, kind: 'studio', x: 30, y: 30, w: 25, h: 24 }],
-    }), 'Add room')
-    setSelectedRoom(id)
-  }, [commit, plan.rooms.length])
 
   const deleteRoom = useCallback(() => {
     if (!selectedRoom) return
@@ -1033,7 +1140,6 @@ function App() {
     resetView()
     setTraceNote(null)
     setStyleKeywords('')
-    setToast('Blank canvas — draw a room or upload a plan to trace')
   }, [commit, resetView, projectLocation])
 
   // Adjustable scale: change the meters represented by one grid cell.
@@ -1065,7 +1171,6 @@ function App() {
     startBlank()
     setSketchUrl(null)
     setSelectedRoom(null)
-    setToast('Fresh napkin — draw it, or upload a photo to trace')
   }, [startBlank])
 
   // AI trace: read a plan from an uploaded image via the Gemini vision worker.
@@ -1183,8 +1288,10 @@ function App() {
       setMode('light')
       setToast(`North window added to ${target.name} — light study open`)
     } else if (prompt.includes('bedroom') || prompt.includes('room')) {
-      addRoom()
-      setToast('Added a flexible room to the plan')
+      setActiveTool('room')
+      setView('plan')
+      setMode('plan')
+      setToast('Drag a box to make a room')
     } else if (prompt.includes('cost') || prompt.includes('budget')) {
       setMode('budget')
       setToast('Opened the live cost plan')
@@ -1201,7 +1308,7 @@ function App() {
       setToast('Quick actions: “brighter”, “add room”, “budget”, “energy”, or “concept photo”')
     }
     setAssistantText('')
-  }, [addRoom, assistantText, commit, plan.rooms, runConceptRender, selectedRoom, site])
+  }, [assistantText, commit, plan.rooms, runConceptRender, selectedRoom, site])
 
   const exportPlan = useCallback(() => {
     const blob = new Blob([JSON.stringify({ project: projectTitle, location: projectLocation, orientation: 'North up', exportedAt: new Date().toISOString(), plan, budget, carbon, lightingChannels: chinaLightingChannels }, null, 2)], { type: 'application/json' })
@@ -1282,6 +1389,40 @@ function App() {
         setPresetOpen(false)
         setToast('Layout preset applied — undo restores the previous plan')
       }} />}
+      {exportMenuOpen && (
+        <div className="export-menu" role="menu" aria-label="Export">
+          <button type="button" onClick={() => { downloadPlanPng(plan, 'designon-plan.png'); setExportMenuOpen(false) }}>PNG of the plan</button>
+          <button type="button" onClick={() => {
+            const canvas = document.createElement('canvas')
+            canvas.width = 1280
+            canvas.height = 900
+            const ctx = canvas.getContext('2d')
+            if (!ctx) return
+            drawPlan(ctx, plan, canvas.width, canvas.height)
+            setStudyCapture({
+              image: canvas.toDataURL('image/png'),
+              camera: { projection: 'orthographic', position: [0, 12, 0], target: [0, 0, 0], up: [0, 0, -1], zoom: 1, fov: 45, fieldHeight: site.h },
+            })
+            setExportMenuOpen(false)
+          }}>PDF study sheet</button>
+          <button type="button" onClick={() => { downloadBlob(planToDxf(plan), 'designon-plan.dxf', 'application/dxf'); setExportMenuOpen(false) }}>DXF</button>
+          <button type="button" onClick={() => { downloadBlob(meshToGlb(houseMesh(plan).parts, 'designon'), 'designon-plan.glb', 'model/gltf-binary'); setExportMenuOpen(false) }}>GLB</button>
+          <button type="button" onClick={() => { setExportMenuOpen(false); setExportOpen(true) }}>Scale model</button>
+        </div>
+      )}
+      {studyCapture && (
+        <StudySheet
+          plan={plan}
+          title={projectTitle}
+          location={projectLocation}
+          day={day}
+          hour={hour}
+          year={studyYear}
+          settings={PLAN_SHEET_SETTINGS}
+          capture={studyCapture}
+          close={() => setStudyCapture(null)}
+        />
+      )}
       {exportOpen && <ExportDialog
         plan={plan}
         baseName={isAuthoredSample ? 'south-light-shanghai-50' : 'designon-sketch'}
@@ -1299,7 +1440,8 @@ function App() {
           setSettingsOpen(true)
           setInspectorOpen(true)
         }}
-        exportPlan={() => setExportOpen(true)}
+        exportPlan={() => setExportMenuOpen((open) => !open)}
+        hideLabeledShare={narrow}
         sharePlan={shareProject}
         onNewSketch={newSketch}
         onOpenShortcuts={() => setShortcutsOpen((prev) => !prev)}
@@ -1310,11 +1452,13 @@ function App() {
             <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>Spatial</button>
             <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>Renders</button>
           </div>
-          <div className="tool-group history-tools">
-            <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
-            <IconButton label="Redo" onClick={redo} disabled={!future.length}><Redo2 /></IconButton>
-            <IconButton label="Concept photo" onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><ImagePlus /></IconButton>
-          </div>
+          {!narrow && (
+            <div className="tool-group history-tools">
+              <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
+              <IconButton label="Redo" onClick={redo} disabled={!future.length}><Redo2 /></IconButton>
+              <IconButton label="Concept photo" onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><ImagePlus /></IconButton>
+            </div>
+          )}
         </>}
         meta={<>
           <span className="stage-area"><Ruler /> {budget.area.toFixed(1)} m²</span>
@@ -1354,16 +1498,19 @@ function App() {
                 isMeasuring={isMeasuring}
                 onToggleMeasure={() => setIsMeasuring(!isMeasuring)}
                 onSynthesize={() => setPresetOpen(true)}
-                onAddRoom={addRoom}
                 onFurniture={() => setFurnitureTrayOpen((open) => !open)}
                 furnitureOpen={furnitureTrayOpen}
+                compact={narrow}
+                onUndo={undo}
+                canUndo={past.length > 0}
+                onRedo={redo}
+                canRedo={future.length > 0}
+                onRoomOptions={() => setRoomOptionsOpen(true)}
+                onQuickAction={() => document.getElementById('quick-action')?.focus()}
+                onConcept={() => void runConceptRender()}
               />
             )}
-            {view === 'plan' && <button type="button" className="room-options-launch" disabled={isEmpty} onClick={() => setRoomOptionsOpen(true)}>Room options</button>}
-            <div className="dock-history" aria-label="History">
-              <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
-              <IconButton label="Redo" onClick={redo} disabled={!future.length}><Redo2 /></IconButton>
-            </div>
+            {view === 'plan' && !narrow && <button type="button" className="room-options-launch" disabled={isEmpty} onClick={() => setRoomOptionsOpen(true)}>Room options</button>}
           </div>
 
           {view === 'plan' && (room || selectedOpening) && (
@@ -1408,6 +1555,11 @@ function App() {
                 liveDragRect={liveDragRect}
                 measureStart={measureStart}
                 measureEnd={measureEnd}
+                openingGhost={openingGhost}
+                roomDraft={roomDraft}
+                wallNote={wallNote}
+                showEmptyHint={isEmpty && !hasNapkinWalls && !draftStroke && !rulerArmed && !rulerLine && !roomDraft}
+                onSetOpeningType={(id, type) => updateOpening(id, { type })}
                 onRoomPointerDown={onRoomPointerDown}
                 onRoomSelect={room => { setSelectedRoom(room.id); setSelectedOpening(null); setSelectedFurniture(null) }}
                 onOpeningPointerDown={onOpeningPointerDown}
@@ -1422,20 +1574,9 @@ function App() {
                 stageRef={stageRef}
               />
             ) : view === 'spatial' ? (
+              isEmpty ? <EmptyStage onBack={() => goToStage({ mode: 'plan', view: 'plan', tool: 'draw' })} /> : (
               <div className="spatial-wrap">
                 {localSpatialView}
-                {isEmpty && (
-                  <div className="spatial-ghost-note" role="status">
-                    <p>Draw a room in Plan to see it in 3D</p>
-                    <button
-                      className="button primary small"
-                      type="button"
-                      onClick={() => goToStage({ mode: 'plan', view: 'plan', tool: 'draw' })}
-                    >
-                      Go to Plan
-                    </button>
-                  </div>
-                )}
                 {(conceptImages.length > 0 || isRendering) && (
                   <div className="concept-strip" aria-live="polite">
                     {isRendering && <div className="concept-loading"><RotateCcw className="spin" /> Rendering concept…</div>}
@@ -1448,6 +1589,9 @@ function App() {
                   </div>
                 )}
               </div>
+              )
+            ) : isEmpty ? (
+              <EmptyStage onBack={() => goToStage({ mode: 'plan', view: 'plan', tool: 'draw' })} />
             ) : (
               <RenderGallery
                 plan={plan}
@@ -1540,21 +1684,6 @@ function App() {
                 <button className="button primary" type="button" onClick={applyRulerCalibration}>Apply</button>
               </div>
             )}
-            {view === 'plan' && isEmpty && !hasNapkinWalls && !draftStroke && !rulerArmed && !rulerLine && (
-              <div className="canvas-empty">
-                <Pencil />
-                <h3>Draw like a napkin</h3>
-                <p>A line is a wall. A tick on a wall is a door or a window. A box is a room — draw a bed inside it, or a WC in a small bath.</p>
-                <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <button className="button primary small" type="button" onClick={() => setActiveTool('draw')}>Draw a room</button>
-                  <button className="button secondary small" type="button" onClick={() => traceFileInputRef.current?.click()} disabled={isTracing || quotaLeft <= 0}>
-                    {isTracing ? 'Tracing…' : 'Upload plan → trace with AI'}
-                  </button>
-                  <button className="button secondary small" type="button" onClick={resetPlan}>Load sample</button>
-                </div>
-
-              </div>
-            )}
             {view === 'plan' && traceNote && (
               <div className="trace-note" role="status">
                 {isTracing ? 'AI reading plan…' : traceNote}
@@ -1564,11 +1693,6 @@ function App() {
             {mode === 'light' && view === 'plan' && (
               <div className="sun-status">
                 <Sun /><span><strong>{hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? 'PM' : 'AM'}</strong><small>{sun.altitude.toFixed(0)}° altitude • {sun.azimuth.toFixed(0)}° azimuth</small></span>
-              </div>
-            )}
-            {view === 'plan' && activeTool === 'draw' && !draftStroke && (
-              <div className="draw-hint" role="status">
-                <Pencil /> {DRAW_HINT}
               </div>
             )}
             {view === 'plan' && furnitureTrayOpen && (
@@ -1657,9 +1781,6 @@ function App() {
             assistantText={assistantText}
             setAssistantText={setAssistantText}
             runQuickAction={runQuickAction}
-            hint={journey.coach.cta}
-            cta={welcomeOpen ? undefined : journey.coach.cta}
-            onCta={() => goToStage(journey.coach.nav)}
           />
         </main>
 
@@ -1735,7 +1856,6 @@ function App() {
           setWelcomeOpen(false)
           startBlank()
           goToStage({ mode: 'plan', view: 'plan', tool: 'draw', inspector: false })
-          setToast('Blank page ready — draw one room with your finger or mouse')
         }}
         onSkip={() => {
           writeWelcomeDismissed()

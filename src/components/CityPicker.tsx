@@ -17,6 +17,7 @@ export function CityPicker({ location, onChange }: { location: ProjectLocation; 
     const controller = new AbortController()
     let timeout: ReturnType<typeof setTimeout> | undefined
     setResults([])
+    if (query.trim().length === 0) { setStatus(''); return }
     if (query.trim().length < 2) { setStatus('Type at least two letters.'); return }
     setStatus('Searching…')
     const timer = setTimeout(() => {
