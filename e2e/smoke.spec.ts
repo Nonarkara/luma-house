@@ -150,7 +150,7 @@ test.describe('drawing studio', () => {
       if (!(await measureAfter.isVisible())) await page.getByRole('button', { name: 'More tools', exact: true }).click()
       await expect(measureAfter).toHaveAttribute('aria-pressed', 'false')
       const zoom = await page.locator('.zoom-control').boundingBox()
-      const drawing = await page.locator('.plan-canvas').boundingBox()
+      const drawing = await page.locator('.plan-viewport').boundingBox()
       const intersects = zoom!.x < drawing!.x + drawing!.width && zoom!.x + zoom!.width > drawing!.x && zoom!.y < drawing!.y + drawing!.height && zoom!.y + zoom!.height > drawing!.y
       expect(intersects, 'zoom controls must not cover the drawing').toBe(false)
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
