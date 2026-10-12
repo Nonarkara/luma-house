@@ -63,6 +63,6 @@ describe('napkin tick placement', () => {
   it('still declines a tick that is not on a wall at all', () => {
     const r = applyNapkinStroke(plan([room]), horizontalTick(70, 5), site)
     expect(r.plan).toBeNull()
-    expect(r.toast).toMatch(/tick a wall/i)
+    expect(r.toast).toBe('Click a wall for a door or window')
   })
 })
