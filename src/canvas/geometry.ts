@@ -18,6 +18,28 @@ export function snap(value: number, enabled: boolean): number {
   return Math.round(value / GRID_SNAP) * GRID_SNAP
 }
 
+/** Pull a plan-percent coordinate onto the metre grid when it is already within 0.3 m. */
+export function snapPercentToGrid(percent: number, spanM: number, unitM = 1, toleranceM = 0.3): number {
+  if (!(spanM > 0) || !Number.isFinite(percent)) return percent
+  const metres = (percent / 100) * spanM
+  const unit = unitM > 0 ? unitM : 1
+  const grid = Math.round(metres / unit) * unit
+  const chosen = Math.abs(metres - grid) <= toleranceM ? grid : metres
+  return (chosen / spanM) * 100
+}
+
+export function snapRoomDraft(
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  site: { w: number; h: number; unit: number },
+): { x: number; y: number; w: number; h: number } {
+  const x1 = snapPercentToGrid(Math.min(start.x, end.x), site.w, site.unit)
+  const y1 = snapPercentToGrid(Math.min(start.y, end.y), site.h, site.unit)
+  const x2 = snapPercentToGrid(Math.max(start.x, end.x), site.w, site.unit)
+  const y2 = snapPercentToGrid(Math.max(start.y, end.y), site.h, site.unit)
+  return { x: x1, y: y1, w: Math.max(0, x2 - x1), h: Math.max(0, y2 - y1) }
+}
+
 export function clampRoom(room: Pick<Room, 'x' | 'y' | 'w' | 'h'>): Pick<Room, 'x' | 'y' | 'w' | 'h'> {
   const w = Math.max(MIN_ROOM, Math.min(100, room.w))
   const h = Math.max(MIN_ROOM, Math.min(100, room.h))
