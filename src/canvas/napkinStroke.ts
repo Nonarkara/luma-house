@@ -2,16 +2,17 @@ import { boundarySpans, roomsForOpening } from '../analysis/walls'
 import { roomAreaFor, siteOf } from '../plan'
 import type { DrawnWall, Furniture, FurnitureKind, Opening, PlanState, Room, RoomKind, SiteSpec } from '../types'
 import { MIN_ROOM, clampRoom, snapOpeningToWall, strokeToRoomRect, type StrokePoint } from './geometry'
+import { cornerSnapPercent, resolveSketchWalls } from './wallCycles'
 
 const SHORT_MAX = 8
 const LINE_ASPECT = 3.2
 const MIN_WALL = 8
-/** Metre-grid snap. Kept tighter than corner join so 4.4 m and 4.6 m do not leap to different metres. */
+/** Metre-grid snap. Kept tighter than a corner join so 4.4 m and 4.6 m do not leap to different metres. */
 const GRID_SNAP_M = 0.3
-/** Endpoint join for a hand-drawn box. About 0.5 m of miss still closes. */
-const CORNER_SNAP_M = 0.6
 /** A loop this close, but still open, is a missed corner rather than a new wall. */
 const CORNER_NOTE_M = 1.5
+/** Sheet size used when a stroke is resolved without a live canvas, so tests join a ~0.5 m gap. */
+const DEFAULT_SHEET_PX = { width: 560, height: 400 }
 const OPENING_MAX_M = 2.2
 
 export type NapkinResult = {
@@ -23,6 +24,13 @@ export type NapkinResult = {
   selectFurniture?: string
   /** Percent point of a gap that did not close, for the on-canvas note. */
   cornerNote?: { x: number; y: number }
+}
+
+/** Live sheet, so the corner join is a pixel distance and shrinks as the user zooms in. */
+export interface NapkinView {
+  widthPx: number
+  heightPx: number
+  zoom?: number
 }
 
 function nid(prefix: string): string {
@@ -89,13 +97,33 @@ function snapPointToGrid(point: StrokePoint, site: SiteSpec): StrokePoint {
   }
 }
 
+function wallCrosses(wall: DrawnWall, others: DrawnWall[]): boolean {
+  const wallH = Math.abs(wall.y1 - wall.y2) <= Math.abs(wall.x1 - wall.x2)
+  for (const other of others) {
+    const otherH = Math.abs(other.y1 - other.y2) <= Math.abs(other.x1 - other.x2)
+    if (wallH === otherH) continue
+    const hor = wallH ? wall : other
+    const ver = wallH ? other : wall
+    const vx = (ver.x1 + ver.x2) / 2
+    const hy = (hor.y1 + hor.y2) / 2
+    const hx1 = Math.min(hor.x1, hor.x2)
+    const hx2 = Math.max(hor.x1, hor.x2)
+    const vy1 = Math.min(ver.y1, ver.y2)
+    const vy2 = Math.max(ver.y1, ver.y2)
+    if (vx >= hx1 - 0.3 && vx <= hx2 + 0.3 && hy >= vy1 - 0.3 && hy <= vy2 + 0.3) return true
+  }
+  return false
+}
+
 /**
- * Join a new wall to existing endpoints within 0.6 m, then to the metre grid
- * within 0.3 m. Endpoint joins win so a corner that is already drawn is not
- * pulled onto a different grid line. IngeTrazo's wall snap is the reference
- * idea; this implementation is independent (docs/INGETRAZO-REUSE-REVIEW.md).
+ * Join a new wall to existing endpoints within the pixel snap, then to the
+ * metre grid within 0.3 m. A stroke that already crosses another wall is an
+ * overshoot, so its tails stay put and the cycle pass trims them. Endpoint
+ * joins win so a corner that is already drawn is not pulled onto a different
+ * grid line. IngeTrazo's wall snap is the reference idea; this implementation
+ * is independent (docs/INGETRAZO-REUSE-REVIEW.md).
  */
-function snapWallToSketch(wall: DrawnWall, plan: PlanState, site: SiteSpec): DrawnWall {
+function snapWallToSketch(wall: DrawnWall, plan: PlanState, site: SiteSpec, snapX: number, snapY: number): DrawnWall {
   const anchors: StrokePoint[] = []
   for (const other of plan.walls ?? []) {
     anchors.push({ x: other.x1, y: other.y1 }, { x: other.x2, y: other.y2 })
@@ -108,13 +136,16 @@ function snapWallToSketch(wall: DrawnWall, plan: PlanState, site: SiteSpec): Dra
       { x: room.x + room.w, y: room.y + room.h },
     )
   }
+  const crosses = wallCrosses(wall, plan.walls ?? [])
   const snapEnd = (x: number, y: number): StrokePoint => {
     const point = { x, y }
+    if (crosses) return snapPointToGrid(point, site)
     let best = point
-    let bestDist = CORNER_SNAP_M
+    let bestDist = Infinity
     for (const anchor of anchors) {
+      if (Math.abs(anchor.x - x) > snapX || Math.abs(anchor.y - y) > snapY) continue
       const dist = metresBetween(point, anchor, site)
-      if (dist <= bestDist) {
+      if (dist < bestDist) {
         best = anchor
         bestDist = dist
       }
@@ -134,60 +165,8 @@ function snapWallToSketch(wall: DrawnWall, plan: PlanState, site: SiteSpec): Dra
   return { ...wall, x1: x, y1: Math.min(a.y, b.y), x2: x, y2: Math.max(a.y, b.y) }
 }
 
-function covers(intervals: Array<[number, number]>, start: number, end: number, tol: number): boolean {
-  const sorted = intervals.filter(([a, b]) => b > a).sort((a, b) => a[0] - b[0])
-  let cursor = start
-  for (const [a, b] of sorted) {
-    if (b < cursor - tol) continue
-    if (a > cursor + tol) return false
-    cursor = Math.max(cursor, b)
-    if (cursor >= end - tol) return true
-  }
-  return cursor >= end - tol
-}
-
-function closedRoomsFromWalls(walls: DrawnWall[], site: SiteSpec, snapM = CORNER_SNAP_M): Array<Pick<Room, 'x' | 'y' | 'w' | 'h'>> {
-  const tolX = (snapM / site.w) * 100
-  const tolY = (snapM / site.h) * 100
-  const xs = [...new Set(walls.flatMap((wall) => [wall.x1, wall.x2]))].sort((a, b) => a - b)
-  const ys = [...new Set(walls.flatMap((wall) => [wall.y1, wall.y2]))].sort((a, b) => a - b)
-  const rooms: Array<Pick<Room, 'x' | 'y' | 'w' | 'h'>> = []
-  for (let i = 0; i < xs.length; i += 1) {
-    for (let j = i + 1; j < xs.length; j += 1) {
-      for (let k = 0; k < ys.length; k += 1) {
-        for (let l = k + 1; l < ys.length; l += 1) {
-          const x = xs[i]
-          const right = xs[j]
-          const y = ys[k]
-          const bottom = ys[l]
-          const w = right - x
-          const h = bottom - y
-          if (w < MIN_ROOM || h < MIN_ROOM) continue
-          const horizontal = (yy: number) =>
-            walls
-              .filter((wall) => Math.abs(wall.y1 - yy) <= tolY && Math.abs(wall.y2 - yy) <= tolY)
-              .map((wall) => [Math.min(wall.x1, wall.x2), Math.max(wall.x1, wall.x2)] as [number, number])
-          const vertical = (xx: number) =>
-            walls
-              .filter((wall) => Math.abs(wall.x1 - xx) <= tolX && Math.abs(wall.x2 - xx) <= tolX)
-              .map((wall) => [Math.min(wall.y1, wall.y2), Math.max(wall.y1, wall.y2)] as [number, number])
-          if (
-            covers(horizontal(y), x, right, tolX) &&
-            covers(horizontal(bottom), x, right, tolX) &&
-            covers(vertical(x), y, bottom, tolY) &&
-            covers(vertical(right), y, bottom, tolY)
-          ) {
-            rooms.push(clampRoom({ x, y, w, h }))
-          }
-        }
-      }
-    }
-  }
-  return rooms
-}
-
-/** Midpoint of the widest missed corner, between the join distance and 1.5 m. */
-function cornerGapPoint(walls: DrawnWall[], site: SiteSpec): { x: number; y: number } | null {
+/** Midpoint of the widest missed corner, between the pixel join and 1.5 m. */
+function cornerGapPoint(walls: DrawnWall[], site: SiteSpec, snapM: number): { x: number; y: number } | null {
   const ends = walls.flatMap((wall, index) => [
     { x: wall.x1, y: wall.y1, wall: index },
     { x: wall.x2, y: wall.y2, wall: index },
@@ -197,7 +176,7 @@ function cornerGapPoint(walls: DrawnWall[], site: SiteSpec): { x: number; y: num
     for (let j = i + 1; j < ends.length; j += 1) {
       if (ends[i].wall === ends[j].wall) continue
       const dist = metresBetween(ends[i], ends[j], site)
-      if (dist <= CORNER_SNAP_M || dist > CORNER_NOTE_M) continue
+      if (dist <= snapM || dist > CORNER_NOTE_M) continue
       if (!best || dist > best.dist) best = { dist, x: (ends[i].x + ends[j].x) / 2, y: (ends[i].y + ends[j].y) / 2 }
     }
   }
@@ -376,7 +355,7 @@ function inferOpening(plan: PlanState, site: SiteSpec, seed: Opening, lengthM: n
  * One pencil, many meanings. A line is a wall, a short stroke across a wall is
  * a window or a door, a box in empty space is a room, a box inside a room is furniture.
  */
-export function applyNapkinStroke(plan: PlanState, points: StrokePoint[], site: SiteSpec = siteOf(plan)): NapkinResult | { plan: null; toast: string } {
+export function applyNapkinStroke(plan: PlanState, points: StrokePoint[], site: SiteSpec = siteOf(plan), view?: NapkinView): NapkinResult | { plan: null; toast: string } {
   const box = bbox(points)
   if (!box || points.length < 2) {
     return { plan: null, toast: 'Draw a line for a wall, or a box for a room' }
@@ -432,8 +411,11 @@ export function applyNapkinStroke(plan: PlanState, points: StrokePoint[], site: 
   }
 
   if (isLine) {
+    const snapX = cornerSnapPercent(view?.widthPx ?? DEFAULT_SHEET_PX.width, view?.zoom ?? 1)
+    const snapY = cornerSnapPercent(view?.heightPx ?? DEFAULT_SHEET_PX.height, view?.zoom ?? 1)
+    const snapM = Math.min((snapX / 100) * site.w, (snapY / 100) * site.h)
     const raw = orthogonalLine(points[0], points[points.length - 1])
-    const wall = snapWallToSketch(raw, plan, site)
+    const wall = snapWallToSketch(raw, plan, site, snapX, snapY)
     if (wallLength(wall) < MIN_WALL) {
       return { plan: null, toast: 'Draw a longer line — a wall needs a few meters' }
     }
@@ -460,14 +442,16 @@ export function applyNapkinStroke(plan: PlanState, points: StrokePoint[], site: 
     }
 
     const walls = [...(plan.walls ?? []), wall]
-    const closed = closedRoomsFromWalls(walls, site)
+    const resolved = resolveSketchWalls(walls, snapX, snapY, MIN_ROOM)
+    const cleaned: DrawnWall[] = resolved.segments.map((seg) => ({ id: nid('wall'), ...seg }))
+    const closed = resolved.rooms.map((rect) => clampRoom(rect))
     const fresh = closed.filter((rect) =>
       !plan.rooms.some((room) =>
         Math.abs(room.x - rect.x) < 2 && Math.abs(room.y - rect.y) < 2 && Math.abs(room.w - rect.w) < 2 && Math.abs(room.h - rect.h) < 2,
       ),
     )
     if (fresh.length > 0) {
-      let next: PlanState = { ...plan, walls }
+      let next: PlanState = { ...plan, walls: cleaned }
       const minted: Room[] = []
       for (const rect of fresh) {
         const room = mintRoom(rect, next, site)
@@ -487,16 +471,10 @@ export function applyNapkinStroke(plan: PlanState, points: StrokePoint[], site: 
       }
     }
 
-    const loose = closedRoomsFromWalls(walls, site, CORNER_NOTE_M)
-    const almost = loose.some((rect) =>
-      !plan.rooms.some((room) =>
-        Math.abs(room.x - rect.x) < 2 && Math.abs(room.y - rect.y) < 2 && Math.abs(room.w - rect.w) < 2 && Math.abs(room.h - rect.h) < 2,
-      ),
-    )
-    const cornerNote = cornerGapPoint(walls, site)
-    if (cornerNote && (almost || walls.length >= 3)) {
+    const cornerNote = cornerGapPoint(cleaned, site, snapM)
+    if (cornerNote && cleaned.length >= 3) {
       return {
-        plan: { ...plan, walls },
+        plan: { ...plan, walls: cleaned },
         toast: "Corners don't meet",
         label: 'Sketch wall',
         cornerNote,
@@ -504,7 +482,7 @@ export function applyNapkinStroke(plan: PlanState, points: StrokePoint[], site: 
     }
 
     return {
-      plan: { ...plan, walls },
+      plan: { ...plan, walls: cleaned },
       toast: 'Wall. Draw the other three sides to close a room, or click this wall for a window.',
       label: 'Sketch wall',
     }

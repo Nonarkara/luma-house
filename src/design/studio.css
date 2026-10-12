@@ -349,6 +349,8 @@ body { overflow-y: auto; }
 .is-plan > .draw-hint { position: static; grid-column: 1 / -1; grid-row: 5; max-width: none; width: auto; margin: 0; padding: var(--space-2); font-size: var(--font-note); border: 0; border-top: var(--rule-control) solid var(--studio-border); }
 .is-plan > .furniture-tray { position: static; grid-column: 1 / -1; grid-row: 6; width: 100%; max-width: none; transform: none; }
 .is-plan > .furniture-chip { position: static; grid-column: 1 / -1; grid-row: 7; margin: var(--space-2); width: fit-content; max-width: calc(100% - 16px); }
+/* The opening status must not take a grid row. A new row shrinks the sheet and the wall the user just aimed at is no longer under the cursor. */
+.is-plan > .furniture-chip.is-overlay { position: absolute; top: 8px; left: 12px; bottom: auto; grid-row: auto; grid-column: auto; margin: 0; z-index: 8; pointer-events: auto; }
 .is-plan > .ruler-chip { position: static; grid-column: 1 / -1; grid-row: 8; width: 100%; max-width: none; transform: none; }
 .is-plan > .trace-note { position: static; grid-column: 1 / -1; grid-row: 9; margin: var(--space-2); }
 .is-plan > .overlap-warning { position: static; grid-column: 1 / -1; grid-row: 10; width: auto; max-width: none; margin: var(--space-2); transform: none; }
