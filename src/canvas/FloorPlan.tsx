@@ -344,8 +344,8 @@ export const FloorPlan = React.memo(function FloorPlan({
                 type="button"
                 className={`opening opening-${opening.type} rotate-${opening.rotation} ${isSel ? 'is-selected' : ''}`}
                 style={{ left: `${opening.x}%`, top: `${opening.y}%`, width: `${spanPct}%` }}
-                title={`${opening.type} (${w.toFixed(1)}m × ${h.toFixed(1)}m)`}
-                aria-label={`${opening.type} opening ${w.toFixed(1)} by ${h.toFixed(1)} meters`}
+                title={`${opening.type} ${w.toFixed(2)} × ${h.toFixed(2)} m — drag to move, drag an end to resize`}
+                aria-label={`${opening.type} opening ${w.toFixed(2)} by ${h.toFixed(2)} meters`}
                 onPointerDown={(event) => onOpeningPointerDown(event, opening)}
                 onClick={(event) => {
                   if (activeTool === 'select') event.stopPropagation()
