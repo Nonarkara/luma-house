@@ -30,15 +30,19 @@ export function wallParts(room: Room, compass: Compass, plan: PlanState): WallPa
     if (length <= 0 || h <= 0) return
     parts.push({ key, position: horizontal ? [x + length / 2, FLOOR_M + bottom + h / 2, fixed] : [fixed, FLOOR_M + bottom + h / 2, x + length / 2], size: horizontal ? [length, h, WALL_M] : [WALL_M, h, length] })
   }
-  let cursor = start
-  cuts.forEach((c, i) => {
-    add(`pier-${i}`, cursor, c.start - cursor, 0, height)
-    const a = Math.max(cursor, c.start)
-    add(`sill-${c.id}`, a, c.end - a, 0, c.sill)
-    add(`head-${c.id}`, a, c.end - a, c.head, height - c.head)
-    cursor = Math.max(cursor, c.end)
-  })
-  add('pier-end', cursor, end - cursor, 0, height)
+  // Split along every aperture boundary, then subtract the vertical union.
+  // A sequential sill/lintel pass incorrectly solidifies overlapping doors.
+  const stops = [...new Set([start, end, ...cuts.flatMap(c => [c.start, c.end])])].sort((a, b) => a - b)
+  for (let i = 0; i < stops.length - 1; i++) {
+    const a = stops[i], b = stops[i + 1], midpoint = (a + b) / 2
+    const gaps = cuts.filter(c => c.start < midpoint && c.end > midpoint && c.head > c.sill).sort((c, d) => c.sill - d.sill)
+    let bottom = 0
+    for (const gap of gaps) {
+      add(`span-${i}-${bottom}`, a, b - a, bottom, Math.max(0, gap.sill - bottom))
+      bottom = Math.max(bottom, gap.head)
+    }
+    add(`span-${i}-${bottom}`, a, b - a, bottom, height - bottom)
+  }
   return parts
 }
 export function cutPart(part: WallPart, cut: number) {
@@ -86,5 +90,5 @@ export function geometryFingerprint(plan: PlanState, roofStyle = 'flat') {
 }
 export function sheetScale(site: SiteSpec, wallHeight = 3) {
   // Include annotation margins and the vertical section, not just the footprint.
-  return [50, 100, 200, 500, 1000, 2000, 5000, 10000].find(n => site.w * 1000 / n <= 128 && site.h * 1000 / n <= 64 && (Math.max(3, wallHeight) + FLOOR_M) * 1000 / n + 14 <= 45) ?? 10000
+  return [50, 100, 200, 500, 1000, 2000, 5000, 10000].find(n => site.w * 1000 / n <= 104 && site.h * 1000 / n <= 52 && (Math.max(3, wallHeight) + FLOOR_M) * 1000 / n + 14 <= 45 && (site.h + Math.max(3, wallHeight) + FLOOR_M) * 1000 / n + 62 <= 132) ?? 10000
 }

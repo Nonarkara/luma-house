@@ -70,7 +70,7 @@ test('study sheets retain physical SVG scale and fit one landscape PDF page even
   await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   await page.getByRole('button', { name: 'Study sheet', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Printable study sheet' })).toBeVisible()
-  await expect(page.getByRole('img', { name: 'Measured plan at 1:100', exact: true })).toHaveAttribute('width', '46mm')
+  await expect(page.getByRole('img', { name: 'Measured plan at 1:100', exact: true })).toHaveAttribute('width', '144mm')
   await expect(page.getByRole('img', { name: 'Section A–A at 1:100', exact: true })).toBeVisible()
   await expect(page.locator('.study-captured-view')).toHaveAttribute('src', /^data:image\/jpeg;base64,/)
   await page.emulateMedia({ media: 'print' })
@@ -80,12 +80,55 @@ test('study sheets retain physical SVG scale and fit one landscape PDF page even
     return chart.bottom > footer.top + 1
   })
   expect(overflow).toBe(false)
+  for (const factor of await page.locator('.study-plan-drawing, .study-section-drawing').evaluateAll(els => els.map(el => (el as SVGSVGElement).getScreenCTM()!.a))) expect(factor).toBeCloseTo(96 / 25.4, 2)
   const pdf = await page.pdf({ path: testInfo.outputPath('study-sheet.pdf'), preferCSSPageSize: true, printBackground: true })
   expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
   expect((pdf.toString('latin1').match(/\/Type \/Page\b/g) ?? []).length).toBe(1)
+  const paper = pdf.toString('latin1').match(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/)!
+  expect(Number(paper[1])).toBeCloseTo(841.89, 0); expect(Number(paper[2])).toBeCloseTo(595.28, 0)
   await page.emulateMedia({ media: 'screen' })
   await page.getByRole('button', { name: 'Close study sheet', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Printable study sheet' })).toHaveCount(0)
+})
+
+test('seasonal wall shadows and sections compute offline and each print on one A4 page', async ({ page }, testInfo) => {
+  const cities = [
+    { name: 'Cape Town', label: 'Cape Town, South Africa', latitude: -33.925, longitude: 18.424, timezone: 'Africa/Johannesburg' },
+    { name: 'Tromsø', label: 'Tromsø, Norway', latitude: 69.65, longitude: 18.96, timezone: 'Europe/Oslo' },
+  ]
+  for (const location of cities) {
+    await page.context().setOffline(false)
+    await page.goto('/#plan=' + encodePlanToHash({ ...initialPlan, location, site: location.name === 'Tromsø' ? { w: 11, h: 5, unit: 1 } : initialPlan.site }))
+    await page.reload() // Hash-only navigation retains the mounted app's previous plan.
+    await page.getByRole('button', { name: 'Renders', exact: true }).click()
+    await page.getByRole('button', { name: 'Study sheet', exact: true }).click()
+    await page.context().setOffline(true)
+    await page.getByRole('button', { name: 'Seasonal sun', exact: true }).click()
+    await expect(page.getByRole('article', { name: 'Seasonal solar study sheet' })).toBeVisible()
+    await expect(page.locator('.study-paper header')).toContainText(location.label)
+    await expect(page.locator('.study-shadow-plan')).toHaveCount(2)
+    await expect(page.locator('.study-section-drawing')).toHaveCount(2)
+    const shadows = await page.locator('[data-shadow-polygons]').evaluateAll(els => els.map(el => el.innerHTML))
+    expect(shadows[0]).not.toEqual(shadows[1])
+    if (location.name === 'Tromsø') await expect(page.getByText('Sun below horizon: no direct sunlight.', { exact: true })).toBeVisible()
+    await page.emulateMedia({ media: 'print' })
+    await page.evaluate(() => document.fonts.ready)
+    const fits = await page.locator('.study-paper').evaluate(el => {
+      const footer = el.querySelector('footer')!.getBoundingClientRect()
+      const method = el.querySelector('.study-solar-method')!.getBoundingClientRect()
+      return method.bottom <= footer.top && [...el.querySelectorAll('.study-seasonal-grid section')].every(s => [...s.children].every(c => c.getBoundingClientRect().bottom <= method.top))
+    })
+    expect(fits).toBe(true)
+    for (const factor of await page.locator('.study-shadow-plan, .study-section-drawing').evaluateAll(els => els.map(el => (el as SVGSVGElement).getScreenCTM()!.a))) expect(factor).toBeCloseTo(96 / 25.4, 2)
+    const pdf = await page.pdf({ path: testInfo.outputPath(`seasonal-${location.name}.pdf`), preferCSSPageSize: true, printBackground: true })
+    expect((pdf.toString('latin1').match(/\/Type \/Page\b/g) ?? []).length).toBe(1)
+    const paper = pdf.toString('latin1').match(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/)!
+    expect(Number(paper[1])).toBeCloseTo(841.89, 0); expect(Number(paper[2])).toBeCloseTo(595.28, 0)
+    await page.emulateMedia({ media: 'screen' })
+    await page.getByRole('button', { name: 'Plan and section', exact: true }).click()
+    await expect(page.locator('.study-captured-view')).toHaveAttribute('src', /^data:image\/jpeg;base64,/)
+    await page.getByRole('button', { name: 'Close study sheet', exact: true }).click()
+  }
 })
 
 test('camera movement reuses actual offscreen shadow drawing and sun changes rebuild it', async ({ page }) => {

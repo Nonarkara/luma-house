@@ -1,3 +1,29 @@
+## Architectural study-sheet implementation — 2026-10-14
+
+Design Read: calibrated black-and-white drawings carry the sheet; physical wall
+cuts, dimension chains and a graphic scale make its geometry checkable on paper.
+Reference: AIA Architectural Graphic Standards, Student Edition, 11th ed. (2008),
+printed pp. 445–446 and 514–518. Original SVGs, no reproduced book graphics.
+Institutional register: solid cut faces dominate, reference lines are 0.35 mm,
+dimensions/furniture 0.18 mm. Equal seasonal panels are a comparison exception:
+identical geometry, city, civil hour, cut and physical scale, differing only by date.
+Keep the existing single-page A4 summary and add a selectable single-page seasonal
+companion. Invariant: metres × 1000 / scale = printed millimetres.
+Dimensions describe wall centrelines; 150 mm wall thickness and door swings are
+explicit assumptions, not material specifications or construction compliance.
+Wall ground shadows are analytic projections of actual cuboid wall pieces with
+opening gaps. They exclude roofs/furniture; section arrows only show projected
+solar direction. No LLM, new dependency, imported book asset or schema change.
+
+Verification: 400 frontend and 54 Worker unit tests, lint/types/build, production
+dependency audit, and all 104 desktop/phone browser checks pass. PDFs rendered
+and inspected. Browser checks assert one page, actual A4 MediaBox, 96/25.4 px
+per paper millimetre, and separation from footers; both seasonal comparisons
+work offline, including polar night. A fresh reviewer confirmed aperture-union
+and print-scale repairs and found no remaining confirmed issue. Shared-memory
+lessons captured and recalled for modal PDF scaling and overlapping apertures.
+Both sheets credit the book; no old code example is treated as compliance.
+
 ## SIC upgrade audit — 2026-10-12
 
 Retained Claude’s canvas-first workspace, measured/order BOQ and model/print

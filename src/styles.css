@@ -7140,12 +7140,19 @@ summary:focus-visible {
 .study-sheet-grid .sun-chart-now { fill: #15202b; }
 .study-sheet-grid .sun-chart-cardinal { fill: #15202b; }
 .study-paper footer { border-top: 2px solid #15202b; padding-top: 10px; font-size: 12px; }
+.study-sheet-selector { display: flex; flex-wrap: wrap; gap: 6px; }
+.study-sheet-selector button[aria-pressed="true"] { border: 2px solid var(--studio-ink); text-decoration: underline; text-underline-offset: 4px; }
+.study-seasonal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; margin: 14px 0; }
+.study-seasonal-grid section { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.study-seasonal-grid section h2 { width: 100%; margin: 0; }
+.study-solar-method { grid-column: 1 / -1; }
+@media screen { .study-shadow-plan { width: 100%; height: auto; max-height: 290px; } }
 @media screen { .study-plan-drawing, .study-section-drawing { width: 100%; height: auto; max-height: 290px; } }
 @media (max-width: 640px) {
   .study-dialog { padding: 12px; }
   .study-scene-inputs { grid-template-columns: 1fr 1fr; }
   .study-scene-inputs label:first-child { grid-column: 1 / -1; }
-  .study-scene-grid, .study-sheet-grid { grid-template-columns: 1fr; }
+  .study-scene-grid, .study-sheet-grid, .study-seasonal-grid { grid-template-columns: 1fr; }
   .study-paper { padding: 12px; }
   .study-paper header { flex-wrap: wrap; }
   .study-paper header > img { width: 90px; }
@@ -7154,6 +7161,9 @@ summary:focus-visible {
   .canvas-frame:has(> .spatial-wrap) { grid-template-rows: minmax(440px, 1fr) auto; }
 }
 @page study { size: A4 landscape; margin: 8mm; }
+/* Chromium's modal top layer does not propagate a child's named page.
+   The default page must carry the same physical paper contract. */
+@page { size: A4 landscape; margin: 8mm; }
 @media print {
   body:has(.study-sheet-dialog) > :not(.study-sheet-dialog) { display: none !important; }
   .study-sheet-dialog { position: static; inset: auto; width: auto; max-width: none; height: auto; max-height: none; overflow: visible; margin: 0; padding: 0; border: 0; background: white; }
@@ -7172,6 +7182,11 @@ summary:focus-visible {
   .study-sheet-grid .sun-chart svg { width: 40mm; height: 40mm; }
   .study-sheet-grid .sun-chart-caption, .study-sheet-grid .sun-chart-caption > * { font-size: 8pt; }
   .study-paper footer { padding-top: 3mm; }
+  .study-seasonal-grid { grid-template-columns: 136.5mm 136.5mm; grid-template-rows: 132mm 10mm; gap: 4mm 8mm; margin: 0; }
+  .study-seasonal-grid section { gap: 1mm; break-inside: avoid; }
+  .study-seasonal-grid p { font-size: 8pt; }
+  .study-seasonal-grid .study-section-drawing { max-width: 136.5mm; }
+  .study-seasonal-grid svg { flex-shrink: 0; }
 }
 @media screen and (max-width: 700px) {
   .study-paper header > div { flex-basis: 100%; order: 2; }
