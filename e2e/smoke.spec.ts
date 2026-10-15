@@ -16,6 +16,13 @@ import { initialPlan } from '../src/plan'
  */
 
 const SAMPLE_PLAN_HASH = encodePlanToHash(initialPlan)
+const BLANK_PLAN_HASH = encodePlanToHash({
+  ...initialPlan,
+  rooms: [],
+  openings: [],
+  furniture: [],
+  walls: [],
+})
 
 /**
  * Welcome gate renders at z-index 80 and sits on top of the topbar. Without
@@ -114,6 +121,30 @@ test.describe('shipability smoke', () => {
 // The studio must reserve the drawing surface for geometry, and controls must
 // still perform real edits after the duplicate toolbars are consolidated.
 test.describe('drawing studio', () => {
+  test('a real pencil drag creates a wall without crashing the canvas', async ({ page }) => {
+    const pageErrors: Error[] = []
+    page.on('pageerror', error => pageErrors.push(error))
+    await page.goto(`/#plan=${BLANK_PLAN_HASH}`)
+    await page.getByRole('button', { name: 'Pencil', exact: true }).click()
+
+    const stage = page.locator('.plan-canvas')
+    const box = await stage.boundingBox()
+    expect(box, 'blank drawing stage is measurable').not.toBeNull()
+    const start = { x: box!.x + box!.width * 0.2, y: box!.y + box!.height * 0.3 }
+    const end = { x: box!.x + box!.width * 0.75, y: start.y }
+    await page.mouse.move(start.x, start.y)
+    await page.mouse.down()
+    await page.mouse.move(end.x, end.y, { steps: 8 })
+    await page.mouse.up()
+
+    await expect(page.locator('.napkin-wall')).toHaveCount(1)
+    await expect(page.getByTestId('plan-canvas')).toBeVisible()
+    expect(pageErrors, 'pencil drag must not raise an uncaught page error').toEqual([])
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).filter({ visible: true }).click()
+    await expect(page.locator('.napkin-wall')).toHaveCount(0)
+  })
+
   for (const width of [375, 768, 1280]) {
     test(`tools stay outside the plan and edits undo at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 844 })

@@ -17,10 +17,12 @@ pipeline measures, centres and seats every model; tests re-open the shipped GLBs
 and compare their envelopes with the generated manifest.
 
 Verification: 452 frontend tests /60 files, lint and production build pass;
-production dependencies report zero vulnerabilities. All 114 desktop/phone
+production dependencies report zero vulnerabilities. All 116 desktop/phone
 browser checks passed, followed by a focused two-case furniture retest after the
 last catalogue styling change. The browser proves the selected asset persists,
 GLBs wait for Solid, and an aborted model request leaves the 3D building alive.
+It also performs a real pointer drag on a blank plan at desktop and phone widths,
+asserting that a wall is created, no uncaught page error occurs, and Undo removes it.
 The final catalog and loaded sofa were also inspected at desktop width. The lazy
 3D chunk remains about 1.04 MB minified /283 KB gzip; that existing Three.js
 cost is disclosed rather than counted as first-paint JavaScript.
