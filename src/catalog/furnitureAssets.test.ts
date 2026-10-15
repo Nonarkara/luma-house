@@ -13,6 +13,8 @@ import {
   furnitureAssetsForKind,
   furnitureAssetUrl,
 } from './furnitureAssets'
+import { furnitureCatalog, furnitureSpecFor } from '../plan'
+import type { FurnitureKind } from '../types'
 
 const PUBLIC_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../public')
 
@@ -195,6 +197,58 @@ describe('resolving a piece to real geometry', () => {
       const scale = fitScaleFor(asset, drawn.w, drawn.d)
       expect(asset.widthM * scale, `${asset.id} overhangs in x`).toBeLessThanOrEqual(drawn.w + 1e-9)
       expect(asset.depthM * scale, `${asset.id} overhangs in z`).toBeLessThanOrEqual(drawn.d + 1e-9)
+    }
+  })
+})
+
+describe('the placed default and the rendered mesh are one measurement', () => {
+  /**
+   * The load-bearing claim of this whole feature, stated as an assertion.
+   *
+   * `plan.ts` holds the footprint a user gets when they place a piece with no
+   * explicit size. `FurnitureMesh` scales a real mesh onto that same footprint.
+   * Nothing else in the codebase ties those two numbers together, so a default
+   * edited for looks could drift until a chair rendered at twice its size or a
+   * vase at six times — and nothing would fail.
+   *
+   * Two separate promises are checked here:
+   *
+   *   1. Every kind the catalogue claims to serve actually resolves to a mesh
+   *      when placed at its default. Otherwise the catalogue advertises geometry
+   *      the user silently never sees.
+   *   2. That mesh is served near-natively. A scale far from 1 means the default
+   *      footprint and the mesh disagree about what the object is, which is the
+   *      same lie as drawing a 2.2 m sofa with a chair mesh in it.
+   */
+  const servedKinds = FURNITURE_ASSETS.flatMap((asset) => asset.serves)
+  const uniqueKinds = [...new Set(servedKinds)]
+
+  it.each(uniqueKinds)('%s places a real mesh at its default footprint', (kind) => {
+    const spec = furnitureCatalog[kind as FurnitureKind]
+    const asset = furnitureAssetFor(kind as FurnitureKind, spec.w, spec.d)
+    expect(asset, `${kind} is advertised as having real geometry but resolves to a box`).not.toBeNull()
+    const scale = fitScaleFor(asset!, spec.w, spec.d)
+    expect(scale, `${kind} default ${spec.w}x${spec.d} m is served by ${asset!.id} at ${scale.toFixed(2)}x`).toBeGreaterThan(0.75)
+    expect(scale, `${kind} default ${spec.w}x${spec.d} m is served by ${asset!.id} at ${scale.toFixed(2)}x`).toBeLessThan(1.34)
+  })
+
+  it('reports the size a default piece would actually draw', () => {
+    // Guards the other half: `furnitureSpecFor` is what every 2D layer reads for
+    // a piece with no explicit size, so it must agree with the catalog default.
+    for (const kind of uniqueKinds) {
+      const piece = { id: 'probe', kind: kind as FurnitureKind, x: 0, y: 0, rotated: false }
+      expect(furnitureSpecFor(piece)).toEqual({ w: furnitureCatalog[kind as FurnitureKind].w, d: furnitureCatalog[kind as FurnitureKind].d })
+    }
+  })
+
+  it('never lets a mesh overhang the rectangle the plan draws', () => {
+    for (const asset of FURNITURE_ASSETS) {
+      for (const kind of asset.serves) {
+        const spec = furnitureCatalog[kind]
+        const scale = fitScaleFor(asset, spec.w, spec.d)
+        expect(asset.widthM * scale, `${asset.id} as ${kind} overhangs in x`).toBeLessThanOrEqual(spec.w + 1e-9)
+        expect(asset.depthM * scale, `${asset.id} as ${kind} overhangs in z`).toBeLessThanOrEqual(spec.d + 1e-9)
+      }
     }
   })
 })
