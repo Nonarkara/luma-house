@@ -60,6 +60,12 @@ async function openSolidView(page: Page) {
 }
 
 test.describe('measured furniture in local 3D', () => {
+  // These tests are the only ones that make the software renderer compile a real
+  // PBR mesh. In isolation they take ~10 s, but after their siblings the same
+  // work has exceeded the 60 s default while the page stayed visibly correct.
+  // The budget reflects the work, not a flake tolerance.
+  test.describe.configure({ timeout: 180_000 })
+
   test('preserves the selected asset and lazy-loads it only in Solid view', async ({ page }) => {
     await placeVelvetSofa(page)
     await expect.poll(() => page.evaluate(() => {
