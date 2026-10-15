@@ -512,3 +512,44 @@ The shared verified lesson was captured in SecondBrain before this local record.
 The impossible-fit walkthrough also exposed FloorPlan's accessible furniture
 labels using generic catalog sizes. They now use each piece's actual footprint
 and orientation; the custom-desk Apply test checks those dimensions before/after.
+
+## Furniture/layout audit — 2026-10-15
+
+The selected city and civil time own direct lighting; an imported furniture
+asset must not add studio lights/cameras or duplicate its real mesh shadow with
+a box. Cloned models now enforce that boundary; representation arrival/removal
+refreshes cached shadows once, and fallbacks share the asset's measured height.
+The normalizer preserves node indices and composes repeat scale corrections.
+Full-house/3D comparison choices reveal and focus their read-only preview.
+Per-asset creators, sources, modifications and legal URLs ship in a catalogue
+notice. Five lost sample checks were restored alongside containment checks for
+all three variants. The remote-inventory guard counts coordinate work instead
+of relying on a machine-speed ratio; the original bug fails that guard.
+
+Production verification exposed a failure invisible to the original preview:
+CSP blocked bundled Meshopt WASM compilation and embedded GLB blob textures,
+leaving 36-index boxes despite successful downloads. Runtime release `f5c3752`
+adds only `script-src 'wasm-unsafe-eval'` and `connect-src blob:`. JavaScript
+Function and inline scripts remain blocked. Vite preview now applies the exact
+production headers. Normal same-origin probe scripts enforce that distinction;
+CDP evaluation is not a valid probe because it bypasses eval restrictions.
+The independent 3MF test reader also loads through a same-origin script URL.
+
+Cloudflare upload `28ad020a` is verified on the canonical alias and custom domain:
+20 file hashes and the exact CSP match for three consecutive probes. All 20
+live desktop/phone furniture/comparison/security cases and four live export
+cases pass, using isolated saved plans with service workers blocked. The user's
+existing Cape Town drawing was inspected without replacing its saved geometry.
+The preceding upload was rejected after its live mesh check failed; its earlier
+124-case preview pass alone was insufficient. See
+`docs/FURNITURE-AUDIT-2026-10-15.md` for the full release evidence and limitations.
+No Worker code/deployment or persisted drawing schema changed. Existing old
+sample copies remain user drawings; a release never silently replaces them.
+
+Final combined gate: `d42772d`, CI `38769369863`, 474 frontend +54 Worker +126
+browser cases pass (browser 4.7m); lint/build/type/quota and dependency gates pass.
+Mirror deployment succeeds and all 20 checked files match three consecutive
+probes. Primary runtime/policy `f5c3752` has the same tested application bytes.
+The final report/context-only commit skips CI after this complete gate; it has
+no runtime effect. Seven pre-existing dev-only dependency advisories remain;
+Axiom audit is unavailable (registry 404), so neither is claimed clean/passed.

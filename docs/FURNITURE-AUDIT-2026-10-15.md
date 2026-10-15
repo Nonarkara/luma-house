@@ -177,3 +177,23 @@ as a normal same-origin script, retaining the policy and all independent file
 validation assertions. All four export cases pass locally (5.5 seconds) and on
 the primary deployment (6.3 seconds), covering desktop and phone. The complete
 126-case suite is rerun for this test-only repair before closing the audit.
+
+## Final release gate
+
+Combined release/test commit: `d42772d34e9e03317951c5a2f03e1cefd1afea9f`.
+[CI 38769369863](https://github.com/Nonarkara/luma-house/actions/runs/38769369863)
+passed: **474 frontend tests /61 files, 54 Worker tests /5 files and all 126
+browser cases (4.7 minutes)**, plus lint, build, Worker type/quota checks and
+both production dependency audits. Build and mirror deployment jobs succeeded.
+After deployment, all 20 checked mirror files match the isolated release build
+for three consecutive SHA-256 probes. GitHub Pages does not apply Cloudflare's
+`_headers`; the primary's actual CSP was checked separately as recorded above.
+Canonical and custom-domain 20-file/exact-policy checks were repeated and pass.
+
+The final documentation commit changes only this report and `context.md` and
+uses `[skip ci]` after the complete gate above; it changes no tested code,
+policy or deployed bytes. Runtime/policy remains `f5c3752`, Cloudflare upload
+`28ad020a`. Primary and mirror now serve the same audited application files.
+Reload an already-open tab once to obtain the corrected document policy; the
+application preserves its saved drawing. Evidence screenshots, prior failing
+trace and CI receipt are retained outside the disposable audit worktree.
