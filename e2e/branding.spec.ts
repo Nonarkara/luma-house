@@ -83,3 +83,13 @@ test('web-app manifest resolves icons and stays inside the deployment path', asy
   }
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('sizes', '180x180')
 })
+
+test('canonical and sharing metadata identify the production domain', async ({ page }) => {
+  await page.goto('/')
+  const canonical = 'https://designon.nonarkara.org/'
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', canonical)
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', canonical)
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', canonical + 'og-image.svg')
+  const data = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? '{}')
+  for (const entity of data['@graph']) expect(entity.url).toBe(canonical)
+})

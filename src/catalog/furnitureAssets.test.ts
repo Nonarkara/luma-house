@@ -290,3 +290,10 @@ it('reprocesses already normalized world geometry without restoring its original
     expect(json.nodes).toHaveLength(2)
   }
 })
+
+
+it('chooses the permitted mesh that fills the footprint most closely', () => {
+  expect(furnitureAssetFor('sofa', 2.7, .95)?.id).toBe('wood-leather-sofa')
+  expect(furnitureAssetFor('sofa', 2.7, .95, 0, 'glam-velvet-sofa')?.id).toBe('glam-velvet-sofa')
+  expect(furnitureAssetFor('sofa', 2.7, .95, 1)?.id).toBe('glam-velvet-sofa')
+})

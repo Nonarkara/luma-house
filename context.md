@@ -553,3 +553,13 @@ probes. Primary runtime/policy `f5c3752` has the same tested application bytes.
 The final report/context-only commit skips CI after this complete gate; it has
 no runtime effect. Seven pre-existing dev-only dependency advisories remain;
 Axiom audit is unavailable (registry 404), so neither is claimed clean/passed.
+
+## Reconciliation drawing fix — 2026-10-15
+
+Design Read: the measured paper must stay in the same place while the pencil is
+held down. Reference: the existing AIA drawing-sheet layout and its separate
+control margins. Keep the drawing dominant, current structural/control line
+weights, four palettes and typography. Reserve the existing pencil-hint row
+while inking, hiding its text without removing its layout space. This prevents
+live canvas bounds from changing between pointer-down and pointer-move; no new
+surface, toolbar or overlay is introduced. Other PR #5 UI rewrites are deferred.

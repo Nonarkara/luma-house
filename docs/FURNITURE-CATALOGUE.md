@@ -17,7 +17,7 @@ Each asset declares two things beyond its measured size:
 - **`serves`** — the `FurnitureKind` values it may stand in for.
 - **`bandM`** — the footprint window, in metres, where it still reads as its own shape.
 
-A piece draws real geometry only when its kind is served *and* its footprint falls inside the band. Outside that, it draws its measured box.
+A piece draws real geometry only when its kind is served *and* its footprint falls inside the band. Outside that, it draws its measured box. An explicit model choice wins within that contract. Otherwise an exact measured size wins; among other permitted models, the one that fills the most footprint area after uniform scaling is selected first. The bands themselves are unchanged.
 
 This is not a performance guard, it is an honesty guard. A 0.83 m chair scaled uniformly onto a 2.2 m sofa footprint is not a sofa — it is a chair you could sit on from across the room. Nothing would catch it: `tsc`, `lint`, the unit suite and the dimension-agreement tests all pass, because the mesh *does* match its manifest, it is simply the wrong mesh for that rectangle. So the band is data, and `furnitureAssets.test.ts` fails when a kind the catalogue advertises stops resolving to a mesh, or when a default footprint is served by a mesh more than ~25% off native.
 

@@ -125,8 +125,7 @@ npm run preview
 ```
 
 Requires **Node 20.19+ within 20.x, Node 22.13+ within 22.x, or Node 24+**, matching the locked Vite and ESLint requirements.
-`.nvmrc` selects Node 22 for local development. The GitHub Pages workflow’s
-Node 20 selector resolves a current 20.x release.
+`.nvmrc` selects Node 22 for local development. The GitHub Pages workflow uses Node 22.
 
 A learner path that matches the code:
 

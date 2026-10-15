@@ -584,10 +584,7 @@ function App() {
     setSelectedOpening(result.selectOpening ?? null)
     setSelectedFurniture(result.selectFurniture ?? null)
     setMode('plan')
-    if (result.selectRoom) {
-      setSettingsOpen(false)
-      setInspectorOpen(true)
-    }
+    if (result.selectRoom) setSettingsOpen(false)
     setToast(result.toast)
   }, [commit, plan, site])
 
@@ -794,7 +791,7 @@ function App() {
       ...current,
       furniture: current.furniture.map((item) => {
         if (item.id !== selectedFurniture) return item
-        const spec = furnitureCatalog[item.kind]
+        const spec = furnitureSpecFor(item)
         const rotated = !item.rotated
         const w = ((rotated ? spec.d : spec.w) / site.w) * 100
         const h = ((rotated ? spec.w : spec.d) / site.h) * 100
@@ -1573,8 +1570,8 @@ function App() {
                 <Sun /><span><strong>{hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? 'PM' : 'AM'}</strong><small>{sun.altitude.toFixed(0)}° altitude • {sun.azimuth.toFixed(0)}° azimuth</small></span>
               </div>
             )}
-            {view === 'plan' && activeTool === 'draw' && !draftStroke && (
-              <div className="draw-hint" role="status">
+            {view === 'plan' && activeTool === 'draw' && (
+              <div className="draw-hint" role="status" style={{ visibility: draftStroke ? 'hidden' : undefined }}>
                 <Pencil /> {DRAW_HINT}
               </div>
             )}

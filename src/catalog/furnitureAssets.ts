@@ -131,6 +131,9 @@ export function furnitureAssetFor(
   const exact = usable.filter(
     (asset) => Math.abs(asset.widthM - widthM) <= 0.02 && Math.abs(asset.depthM - depthM) <= 0.02,
   )
-  const pool = exact.length ? exact : usable
+  // Otherwise maximize the uniformly fitted footprint. Catalogue order alone
+  // can choose a short sofa when another permitted mesh nearly fills the plan.
+  const fittedArea = (asset: FurnitureAsset) => asset.widthM * asset.depthM * fitScaleFor(asset, widthM, depthM) ** 2
+  const pool = exact.length ? exact : usable.sort((a, b) => fittedArea(b) - fittedArea(a))
   return pool[variantIndex % pool.length]
 }

@@ -145,16 +145,26 @@ function closedRoomsFromWalls(walls: DrawnWall[]): Array<Pick<Room, 'x' | 'y' | 
   return rooms
 }
 
-function wallConsumedByRoom(wall: DrawnWall, room: Pick<Room, 'x' | 'y' | 'w' | 'h'>): boolean {
+function wallConsumedByRoom(wall: DrawnWall, room: Pick<Room, 'x' | 'y' | 'w' | 'h'>, site: SiteSpec): boolean {
+  // Absorb short pencil tails only when the wall belongs to the closed face.
+  // Longer continuations remain authored walls, as do unrelated strokes.
+  const tailX = Math.max(1.5, 0.75 / site.w * 100)
+  const tailY = Math.max(1.5, 0.75 / site.h * 100)
   const onTop = Math.abs(wall.y1 - room.y) <= 1.5 && Math.abs(wall.y2 - room.y) <= 1.5
   const onBottom = Math.abs(wall.y1 - (room.y + room.h)) <= 1.5 && Math.abs(wall.y2 - (room.y + room.h)) <= 1.5
   const onLeft = Math.abs(wall.x1 - room.x) <= 1.5 && Math.abs(wall.x2 - room.x) <= 1.5
   const onRight = Math.abs(wall.x1 - (room.x + room.w)) <= 1.5 && Math.abs(wall.x2 - (room.x + room.w)) <= 1.5
   if (onTop || onBottom) {
-    return Math.min(wall.x1, wall.x2) >= room.x - 1.5 && Math.max(wall.x1, wall.x2) <= room.x + room.w + 1.5
+    const start = Math.min(wall.x1, wall.x2), end = Math.max(wall.x1, wall.x2)
+    const contained = start >= room.x - 1.5 && end <= room.x + room.w + 1.5
+    const coversEdge = start <= room.x + 1.5 && end >= room.x + room.w - 1.5
+    return contained || (coversEdge && start >= room.x - tailX && end <= room.x + room.w + tailX)
   }
   if (onLeft || onRight) {
-    return Math.min(wall.y1, wall.y2) >= room.y - 1.5 && Math.max(wall.y1, wall.y2) <= room.y + room.h + 1.5
+    const start = Math.min(wall.y1, wall.y2), end = Math.max(wall.y1, wall.y2)
+    const contained = start >= room.y - 1.5 && end <= room.y + room.h + 1.5
+    const coversEdge = start <= room.y + 1.5 && end >= room.y + room.h - 1.5
+    return contained || (coversEdge && start >= room.y - tailY && end <= room.y + room.h + tailY)
   }
   return false
 }
@@ -362,7 +372,7 @@ export function applyNapkinStroke(plan: PlanState, points: StrokePoint[], site: 
         next = {
           ...next,
           rooms: [...next.rooms, room],
-          walls: (next.walls ?? []).filter((item) => !wallConsumedByRoom(item, room)),
+          walls: (next.walls ?? []).filter((item) => !wallConsumedByRoom(item, room, site)),
         }
       }
       const last = minted[minted.length - 1]

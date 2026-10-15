@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyNapkinStroke } from './napkinStroke'
 import type { PlanState, Room } from '../types'
-import { defaultSite } from '../plan'
+import { defaultSite, roomAreaFor } from '../plan'
 
 const site = defaultSite()
 
@@ -105,5 +105,49 @@ describe('applyNapkinStroke', () => {
   it('rejects a tap', () => {
     const result = applyNapkinStroke(plan(), [{ x: 20, y: 20 }, { x: 20.2, y: 20.1 }], site)
     expect(result.plan).toBeNull()
+  })
+})
+
+// From Cursor PR #5: a completed rough loop must not leave its short tails.
+describe('closing a rough pencil loop', () => {
+  const at = (mx: number, my: number) => ({ x: mx / site.w * 100, y: my / site.h * 100 })
+  function close(over: number, extra: Partial<PlanState> = {}) {
+    let current = plan([], extra)
+    for (const stroke of [
+      [at(4 - over, 3), at(9 + over, 3)],
+      [at(9, 3 - over), at(9, 7 + over)],
+      [at(9 + over, 7), at(4 - over, 7)],
+      [at(4, 7 + over), at(4, 3 - over)],
+    ]) {
+      const result = applyNapkinStroke(current, stroke, site)
+      expect(result.plan).not.toBeNull()
+      current = result.plan!
+    }
+    return current
+  }
+  it.each([0.5, 0.7])('consumes %s m tails without changing the enclosed room', over => {
+    const result = close(over)
+    expect(result.rooms).toHaveLength(1)
+    expect(result.walls).toHaveLength(0)
+    expect(roomAreaFor(result.rooms[0], site)).toBeGreaterThan(19)
+    expect(roomAreaFor(result.rooms[0], site)).toBeLessThan(21)
+  })
+  it('preserves an unrelated wall whose coordinate crosses the room interior', () => {
+    const remote = { id: 'remote', x1: 75, y1: 30, x2: 95, y2: 30 }
+    const result = close(.5, { walls: [remote] })
+    expect(result.rooms).toHaveLength(1)
+    expect(result.walls).toEqual([remote])
+  })
+  it('preserves a detached saved fragment inside the tail allowance', () => {
+    const detached = { id: 'detached', x1: 3.35 / site.w * 100, y1: 30, x2: 3.45 / site.w * 100, y2: 30 }
+    const result = close(.5, { walls: [detached] })
+    expect(result.rooms).toHaveLength(1)
+    expect(result.walls).toEqual([detached])
+  })
+  it('preserves a long wall that continues beyond the new room', () => {
+    const extension = { id: 'extension', x1: 4 / site.w * 100, y1: 30, x2: 13 / site.w * 100, y2: 30 }
+    const result = close(.5, { walls: [extension] })
+    expect(result.rooms.length).toBeGreaterThanOrEqual(1)
+    expect(result.walls).toContainEqual(extension)
   })
 })
