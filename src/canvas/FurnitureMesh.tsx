@@ -4,8 +4,8 @@
  * Draws the real measured mesh when the catalogue has one for this piece, and
  * the measured box otherwise. Both paths agree on footprint by construction: the
  * mesh is uniformly scaled onto `widthM × depthM`, which is the same rectangle the
- * 2D plan and the axonometric sheet draw. The invisible pick box stays in place
- * either way so selection and door-clearance checks do not depend on a download.
+ * 2D plan and the axonometric sheet draw. Schematic views keep full-height shadow
+ * geometry; loaded meshes cast their own shadows without a duplicate box.
  *
  * Wireframe and architectural modes keep the box treatment — the point of those
  * modes is a legible drawing, not a material study — and real geometry appears in
@@ -13,8 +13,9 @@
  */
 
 import { Edges, useGLTF } from '@react-three/drei'
-import { Component, Suspense, useMemo, type ReactNode } from 'react'
-import * as THREE from 'three'
+import { Component, Suspense, useLayoutEffect, useMemo, type ReactNode } from 'react'
+import { useThree } from '@react-three/fiber'
+import { furnitureHeight, prepareFurnitureScene, refreshFurnitureShadows } from './furnitureGeometry'
 import type { Furniture, SiteSpec } from '../types'
 import { furnitureRectFor, furnitureSpecFor } from '../plan'
 import { fitScaleFor, furnitureAssetFor, type FurnitureAsset } from '../catalog/furnitureAssets'
@@ -48,50 +49,25 @@ class FurnitureAssetBoundary extends Component<{ fallback: ReactNode; children: 
   }
 }
 
-function MeasuredMesh({
-  asset,
-  url,
-  widthM,
-  depthM,
-  architectural,
-}: {
-  asset: FurnitureAsset
-  url: string
-  widthM: number
-  depthM: number
-  architectural: boolean
-}) {
-  // Meshopt is bundled by drei; disabling Draco avoids a runtime dependency on
-  // Google's decoder CDN. The catalogue build emits Meshopt-compressed GLBs.
-  const gltf = useGLTF(url, false, true)
-  const object = useMemo(() => {
-    const clone = gltf.scene.clone(true)
-    // Assets are normalised to metres with the base on y=0 and the footprint
-    // centred, so one uniform scale fits them to the drawn rectangle.
-    const scale = fitScaleFor(asset, widthM, depthM)
-    clone.traverse((child) => {
-      const mesh = child as unknown as {
-        castShadow?: boolean
-        receiveShadow?: boolean
-        material?: { transparent?: boolean; opacity?: number }
-      }
-      mesh.castShadow = true
-      mesh.receiveShadow = true
-      if (mesh.material && architectural) {
-        mesh.material.transparent = true
-        mesh.material.opacity = 0.28
-      }
-    })
-    return { clone: clone as THREE.Object3D, scale }
-  }, [gltf, asset, widthM, depthM, architectural])
+/** Rebuild once when a fallback/model replaces another, then let idle GPU rest. */
+function ShadowRepresentation() {
+  const scene = useThree(state => state.scene), invalidate = useThree(state => state.invalidate)
+  useLayoutEffect(() => {
+    const refresh = () => { refreshFurnitureShadows(scene); invalidate() }
+    refresh()
+    return refresh
+  }, [scene, invalidate])
+  return null
+}
 
-  return (
-    <primitive
-      object={object.clone}
-      scale={object.scale}
-      raycast={() => {}}
-    />
-  )
+function MeasuredMesh({ asset, url, widthM, depthM }: {
+  asset: FurnitureAsset; url: string; widthM: number; depthM: number
+}) {
+  // The decoder stays bundled; never mount a downloaded model's lights/cameras.
+  const gltf = useGLTF(url, false, true)
+  const clone = useMemo(() => prepareFurnitureScene(gltf.scene), [gltf.scene])
+  const scale = fitScaleFor(asset, widthM, depthM)
+  return <><primitive object={clone} scale={scale} raycast={() => {}} /><ShadowRepresentation /></>
 }
 
 /**
@@ -117,16 +93,21 @@ export default function FurniturePieceView({
     mx: ((rect.x + rect.w / 2) / 100) * site.w - site.w / 2,
     mz: ((rect.y + rect.h / 2) / 100) * site.h - site.h / 2,
   }
-  const height = Math.max(0, Math.min(kindHeight, sectionHeight - floorThickness))
   // Resolve against the unrotated catalogue dimensions. Rotation belongs to
   // the placed object, not to the identity of the model.
   const asset = resolveAsset(item.kind, spec.w, spec.d, 0, item.assetId)
-  const assetScale = asset ? fitScaleFor(asset, spec.w, spec.d) : 1
-  const realHeight = asset ? asset.heightM * assetScale : kindHeight
+  const realHeight = furnitureHeight(asset, spec.w, spec.d, kindHeight)
+  const height = Math.max(0, Math.min(realHeight, sectionHeight - floorThickness))
   const showReal = Boolean(asset) && !wireframe && !architectural && sectionHeight >= floorThickness + realHeight
   const url = asset ? `${import.meta.env.BASE_URL}${import.meta.env.BASE_URL.endsWith('/') ? '' : '/'}${asset.file}` : null
 
   const box = (
+    <>
+    <ShadowRepresentation />
+    <mesh position={[0, realHeight / 2, 0]} castShadow raycast={() => {}}>
+      <boxGeometry args={[widthM, realHeight, depthM]} />
+      <meshBasicMaterial colorWrite={false} depthWrite={false} />
+    </mesh>
     <mesh position={[0, height / 2, 0]}>
       <boxGeometry args={[widthM, height, depthM]} />
       <meshStandardMaterial
@@ -140,14 +121,11 @@ export default function FurniturePieceView({
         <Edges color={edgeColor} threshold={1} lineWidth={architectural ? 0.7 : 1} />
       )}
     </mesh>
+    </>
   )
 
   return (
     <group>
-      <mesh position={[mx, floorThickness + kindHeight / 2, mz]} castShadow raycast={() => {}}>
-        <boxGeometry args={[widthM, kindHeight, depthM]} />
-        <meshBasicMaterial colorWrite={false} depthWrite={false} />
-      </mesh>
       <group position={[mx, floorThickness, mz]}>
         {showReal && asset && url ? (
           <FurnitureAssetBoundary key={url} fallback={box}>
@@ -158,7 +136,6 @@ export default function FurniturePieceView({
                   url={url}
                   widthM={spec.w}
                   depthM={spec.d}
-                  architectural={architectural}
                 />
               </group>
             </Suspense>

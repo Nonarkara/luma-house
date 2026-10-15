@@ -1,0 +1,53 @@
+DESIGNON FURNITURE ASSET NOTICES
+
+Source collection: KhronosGroup/glTF-Sample-Assets
+https://github.com/KhronosGroup/glTF-Sample-Assets
+
+Licenses apply to the respective assets, independently of designon's code.
+CC BY 4.0 (Attribution 4.0 International):
+https://creativecommons.org/licenses/by/4.0/
+Legal text: https://creativecommons.org/licenses/by/4.0/legalcode.en
+CC0 1.0 (Public Domain Dedication):
+https://creativecommons.org/publicdomain/zero/1.0/
+Legal text: https://creativecommons.org/publicdomain/zero/1.0/legalcode.en
+No author or source organization endorses designon.
+
+Modifications by designon: models were uniformly scaled to catalogue dimensions,
+centered on their footprints and seated on y=0. Geometry was compressed with
+Meshopt and textures with WebP. These are adaptations of the upstream models;
+original copyright metadata is retained. The runtime omits imported lights and
+cameras so furniture does not change the building's selected solar lighting.
+Original source modifications described in the linked READMEs are retained.
+
+SHEEN CHAIR — furniture/models/sheen-chair.glb
+Copyright 2020 Wayfair, LLC. Creator: Eric Chadwick.
+License: CC0 1.0; license and legal text linked above.
+https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SheenChair
+
+CHAIR DAMASK PURPLEGOLD — furniture/models/damask-chair.glb
+Copyright 2021 Wayfair. Models and textures: Eric Chadwick.
+License: CC BY 4.0; license and legal text linked above.
+https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ChairDamaskPurplegold
+
+GLAM VELVET SOFA — furniture/models/glam-velvet-sofa.glb
+Copyright 2021 Wayfair, LLC. Creator: Eric Chadwick.
+License: CC BY 4.0; license and legal text linked above.
+https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/GlamVelvetSofa
+
+SHEEN WOOD LEATHER SOFA — furniture/models/wood-leather-sofa.glb
+Copyright 2024 Darmstadt Graphics Group GmbH. Improvements: Eric Chadwick.
+License for improvements: CC BY 4.0; license and legal text linked above.
+Original asset: Fran Calvente; 2021 public domain / CC0 1.0.
+https://polyhaven.com/a/sofa_03
+https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SheenWoodLeatherSofa
+
+GLASS VASE FLOWERS — furniture/models/glass-vase.glb
+2023 Public domain. Glass vase: Eric Chadwick. Flowers: Rico Cilliers.
+License: CC0 1.0; license and legal text linked above.
+https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/GlassVaseFlowers
+
+LANTERN — furniture/models/lantern.glb
+Copyright 2017 Microsoft Corporation; initial version: sbtron.
+Copyright 2018 Frank Galligan; Draco compression: Frank Galligan.
+License: CC0 1.0; license and legal text linked above.
+https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/Lantern

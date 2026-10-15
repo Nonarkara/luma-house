@@ -57,6 +57,7 @@ test('3D A/B switches actual geometry offline while preserving an orbited camera
   await expect.poll(async () => (await saved(page)).comparison?.baselineName).toBe('Before rearranging')
   const original = await saved(page)
   await page.getByRole('button', { name: '3D comparison', exact: true }).click()
+  await expect(page.getByRole('region', { name: '3D comparison preview', exact: true })).toBeFocused()
   const canvas = page.locator('.comparison-3d canvas')
   const image = () => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL())
   await expect.poll(async () => (await image()).length, { timeout: 25000 }).toBeGreaterThan(12000)
@@ -91,8 +92,14 @@ test('room options preview real 3D before Apply and every palette keeps comparis
   await page.getByRole('button', { name: 'Room options', exact: true }).click()
   await page.getByRole('button', { name: 'Preview in the full house', exact: true }).click()
   await page.getByRole('button', { name: '3D comparison', exact: true }).click()
+  await expect(page.getByRole('region', { name: '3D comparison preview', exact: true })).toBeFocused()
   const canvas = page.locator('.comparison-3d canvas')
   await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 25000 }).toBeGreaterThan(12000)
+  const visible = await canvas.evaluate(el => {
+    const r = el.getBoundingClientRect(), dialog = el.closest('dialog')!.getBoundingClientRect()
+    return Math.max(0, Math.min(r.bottom, dialog.bottom, innerHeight) - Math.max(r.top, dialog.top, 0)) / r.height
+  })
+  expect(visible, '3D choice must reveal the rendered model without manual scrolling').toBeGreaterThan(.85)
   await expect(page.locator('.room-options-dialog')).toContainText('Bangkok, Thailand')
   expect(await saved(page)).toEqual(original)
   await page.getByRole('button', { name: 'Keep current drawing', exact: true }).click()

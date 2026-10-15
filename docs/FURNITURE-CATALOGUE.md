@@ -12,7 +12,7 @@ The furniture catalogue is a progressive enhancement of the local 3D view. The p
 
 ## Sources and licences
 
-The source files come from the [Khronos glTF Sample Assets repository](https://github.com/KhronosGroup/glTF-Sample-Assets). Keep the credit below with any redistributed build.
+The source files come from the [Khronos glTF Sample Assets repository](https://github.com/KhronosGroup/glTF-Sample-Assets). Keep the [complete bundled notice](../public/licenses/furniture.txt) with every redistributed build. It includes supplied creators, source and license links, and our normalization/compression changes; the catalogue links to the deployed notice.
 
 | Asset | Credit | Licence |
 |---|---|---|
@@ -32,3 +32,13 @@ Exact upstream URLs live in `scripts/build-furniture-catalog.mjs` and are copied
 3. Run `npm test -- src/catalog/furnitureAssets.test.ts` and `npm run build`.
 
 The large upstream files and scratch directory are intentionally ignored. Commit the optimized files in `public/furniture/models/` and the generated TypeScript manifest together.
+
+
+## Audited rendering boundary
+
+Furniture scenes contribute meshes and materials only. Runtime clones omit
+source lights/cameras and leave shared source resources unchanged. Resolved
+catalogue height, including uniform scale, also drives schematic and error boxes.
+Only a box representation keeps a full-height box shadow caster; loaded meshes
+cast their own shadows. Representation mount/unmount refreshes the existing
+solar shadow cache once, preserving demand rendering and idle reuse.

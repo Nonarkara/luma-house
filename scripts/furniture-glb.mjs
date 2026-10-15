@@ -304,13 +304,22 @@ export function normaliseMatrix(bounds, widthM, depthM) {
 
 /**
  * Wrap every scene root in one node carrying the normalisation matrix. The node
- * is named so re-running the script replaces it instead of nesting another one.
+ * is named so re-running composes a relative adjustment without nesting or
+ * renumbering any node.
  */
 export function applyNormalisation(json, matrix) {
-  json.nodes = (json.nodes ?? []).filter((node) => node.name !== 'designonNormalise')
-  const scene = json.scenes[0]
+  json.nodes ??= []
+  const scene = json.scenes[json.scene ?? 0]
+  if (!scene) throw new Error('No active scene to normalise')
+  const root = scene.nodes?.length === 1 ? json.nodes[scene.nodes[0]] : null
+  if (root?.name === 'designonNormalise') {
+    // New bounds already include this wrapper: compose the relative adjustment.
+    root.matrix = Array.from(multiply(matrix, nodeMatrix(root)))
+    return scene.nodes[0]
+  }
+  // Keep node indices stable: scenes, skins and animations may reference them.
   const index = json.nodes.length
-  json.nodes.push({ name: 'designonNormalise', matrix, children: scene.nodes })
+  json.nodes.push({ name: 'designonNormalise', matrix, children: [...(scene.nodes ?? [])] })
   scene.nodes = [index]
   return index
 }

@@ -3,7 +3,7 @@ import { readFileSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 // @ts-expect-error The build helper is intentionally plain ESM so Node can run it directly.
-import { readGlbChunks, writeGlbChunks, worldBoundsFromAccessorBounds } from '../../scripts/furniture-glb.mjs'
+import { applyNormalisation, normaliseMatrix, worldBounds, readGlbChunks, writeGlbChunks, worldBoundsFromAccessorBounds } from '../../scripts/furniture-glb.mjs'
 import {
   FURNITURE_ASSETS,
   FURNITURE_BUDGET_BYTES,
@@ -251,4 +251,42 @@ describe('the placed default and the rendered mesh are one measurement', () => {
       }
     }
   })
+})
+
+
+describe('repeatable GLB normalization', () => {
+  it('updates the active scene wrapper without renumbering skins, animations or other scene roots', () => {
+    const matrix = normaliseMatrix({ min: [-1, 0, -1], max: [1, 1, 1], size: [2, 1, 2] }, 1, 1).matrix
+    const json = { scene: 1, scenes: [{ nodes: [0] }, { nodes: [1, 2] }], nodes: [{ mesh: 0 }, { mesh: 1 }, { mesh: 2 }], skins: [{ joints: [1, 2] }], animations: [{ channels: [{ target: { node: 2 } }] }] }
+    const index = applyNormalisation(json, matrix)
+    expect(json.scenes[0].nodes).toEqual([0])
+    expect(json.scenes[1].nodes).toEqual([index])
+    expect(json.nodes[index]).toMatchObject({ children: [1, 2], matrix })
+    const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+    for (let i = 0; i < 3; i++) expect(applyNormalisation(json, identity)).toBe(index)
+    expect(json.nodes).toHaveLength(4)
+    expect(json.nodes[index]).toMatchObject({ children: [1, 2] })
+    expect(json.skins[0].joints).toEqual([1, 2]); expect(json.animations[0].channels[0].target.node).toBe(2)
+  })
+})
+
+
+it('ships the complete attribution notice alongside every model', () => {
+  const notice = readFileSync(resolve(PUBLIC_ROOT, 'licenses/furniture.txt'), 'utf8')
+  for (const asset of FURNITURE_ASSETS) { expect(notice).toContain(asset.file); expect(notice).toContain(asset.source) }
+  for (const text of ['Eric Chadwick', 'Fran Calvente', 'Rico Cilliers', 'Darmstadt Graphics Group', 'Modifications by designon', 'https://creativecommons.org/licenses/by/4.0/legalcode.en', 'https://creativecommons.org/publicdomain/zero/1.0/legalcode.en']) expect(notice).toContain(text)
+})
+
+
+it('reprocesses already normalized world geometry without restoring its original scale', () => {
+  const values = Float32Array.from([-10, -3, -10, 10, 17, 10]), bin = Buffer.from(values.buffer)
+  const json = { scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }], meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }], bufferViews: [{ buffer: 0, byteLength: bin.length }], accessors: [{ bufferView: 0, componentType: 5126, count: 2, type: 'VEC3' }] }
+  for (const size of [.36, .36, .5, .5]) {
+    applyNormalisation(json, normaliseMatrix(worldBounds(json, bin), size, size).matrix)
+    const bounds = worldBounds(json, bin)
+    for (const measured of bounds.size) expect(measured).toBeCloseTo(size, 8)
+    expect(bounds.min[1]).toBeCloseTo(0, 8)
+    expect(bounds.min[0] + bounds.max[0]).toBeCloseTo(0, 8)
+    expect(json.nodes).toHaveLength(2)
+  }
 })

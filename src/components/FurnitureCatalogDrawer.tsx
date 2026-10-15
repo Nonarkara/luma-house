@@ -165,7 +165,7 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
       </div>
       <p className="catalog-credit">
         Measured 3D assets · CC0 / CC BY 4.0 ·{' '}
-        <a href="https://github.com/Nonarkara/luma-house/blob/main/docs/FURNITURE-CATALOGUE.md" target="_blank" rel="noreferrer">credits</a>
+        <a href={`${import.meta.env.BASE_URL}licenses/furniture.txt`} target="_blank" rel="noreferrer">credits</a>
       </p>
     </aside>
   )

@@ -115,13 +115,15 @@ describe('local room options', () => {
     expect(roomOptionIssues(plan, plan.rooms[0], plan.furniture)).toContain('Furniture enters a door buffer.')
   })
 
-  it('caps inventory and bounds sample search time', () => {
+  it('caps inventory and bounds sample alternatives', () => {
     const crowded = structuredClone(roomOptionsFixture)
     crowded.furniture = Array.from({ length: 9 }, (_, i) => ({ ...crowded.furniture[0], id: `f${i}` }))
     expect(generateRoomOptions(crowded, crowded.rooms[0]).reason).toMatch(/eight movable pieces/)
-    const start = performance.now()
-    for (const room of chinaApartmentPlan.rooms) generateRoomOptions(chinaApartmentPlan, room)
-    expect(performance.now() - start).toBeLessThan(1500)
+    for (const room of chinaApartmentPlan.rooms) {
+      const result = generateRoomOptions(chinaApartmentPlan, room)
+      expect(result.options.length).toBeLessThanOrEqual(3)
+      for (const option of result.options) expect(roomOptionIssues(chinaApartmentPlan, room, option.furniture)).toEqual([])
+    }
   })
 
   it('keeps a thousand-piece imported inventory out of the local beam search', () => {
@@ -137,15 +139,23 @@ describe('local room options', () => {
       x: i < 8 ? 1.1 + i % 4 * .4 : 25.1 + i % 32,
       y: i < 8 ? 1.1 + Math.floor(i / 4) * .4 : 25.1 + Math.floor(i / 32),
     }))
-    // Relative, not wall-clock: the same eight pieces alone set the baseline, so
-    // a loaded CI machine slows both runs instead of failing the gate at random.
+    // Count work on remote coordinates, independent of CPU contention. The
+    // beam must never repeatedly visit them; initial validation/output may.
     const alone = { ...plan, furniture: plan.furniture.slice(0, 8) }
-    let start = performance.now()
-    generateRoomOptions(alone, alone.rooms[0])
-    const baseline = performance.now() - start
-    start = performance.now()
+    const local = generateRoomOptions(alone, alone.rooms[0])
+    let remoteReads = 0
+    const budget = (plan.furniture.length - 8) * 100
+    for (const piece of plan.furniture.slice(8)) {
+      const x = piece.x
+      Object.defineProperty(piece, 'x', { enumerable: true, get() {
+        if (++remoteReads > budget) throw new Error('Remote furniture entered repeated search work')
+        return x
+      } })
+    }
     const result = generateRoomOptions(plan, plan.rooms[0])
-    expect(performance.now() - start).toBeLessThan(baseline * 3 + 100)
+    expect(remoteReads).toBeGreaterThan(0)
+    expect(remoteReads).toBeLessThanOrEqual(budget)
+    expect(result.options.map(o => o.furniture.slice(0, 8))).toEqual(local.options.map(o => o.furniture))
     expect(result.options.length).toBeGreaterThan(0)
     for (const option of result.options) expect(option.furniture.slice(8)).toEqual(plan.furniture.slice(8))
   })

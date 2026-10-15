@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { furnitureLabelFor, furnitureRectFor, siteOf } from '../plan'
 import { openingCompassForRoom } from '../analysis/walls'
@@ -60,6 +60,12 @@ export default function RoomOptionsDialog({ plan, initialRoomId, onApply, onClos
   const option = result?.options[index]
   const preview = useMemo(() => option ? { ...plan, furniture: option.furniture } : plan, [plan, option])
   const [showSpatial, setShowSpatial] = useState(false)
+  const spatial = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (!showSpatial) return
+    spatial.current?.focus({ preventScroll: true })
+    spatial.current?.scrollIntoView({ block: 'start', behavior: 'instant' })
+  }, [showSpatial])
   useEffect(() => {
     const dialog = ref.current
     dialog?.showModal()
@@ -76,7 +82,7 @@ export default function RoomOptionsDialog({ plan, initialRoomId, onApply, onClos
         <figure><figcaption>{option ? `${option.title} · preview` : 'Keep current drawing'}</figcaption><RoomDrawing plan={plan} room={room} furniture={option?.furniture ?? plan.furniture} label="Preview arrangement" /></figure>
       </div>
       <button type="button" className="room-option-spatial-toggle" aria-expanded={showSpatial} onClick={() => setShowSpatial(value => !value)}>{showSpatial ? 'Hide full-house comparison' : 'Preview in the full house'}</button>
-      {showSpatial && <><p className="room-option-method">Shared sunlight: {conditionsLabel} · {sunAltitude.toFixed(1)}° altitude / {sunAzimuth.toFixed(1)}° bearing. Preview changes no saved geometry.</p><VisualComparison baseline={plan} proposed={preview} theme={theme} sunAzimuth={sunAzimuth} sunAltitude={sunAltitude} baselineLabel="Current drawing" proposedLabel="Arrangement preview" /></>}
+      {showSpatial && <div ref={spatial} role="region" aria-label="Full-house arrangement preview" tabIndex={-1}><p className="room-option-method">Shared sunlight: {conditionsLabel} · {sunAltitude.toFixed(1)}° altitude / {sunAzimuth.toFixed(1)}° bearing. Preview changes no saved geometry.</p><VisualComparison baseline={plan} proposed={preview} theme={theme} sunAzimuth={sunAzimuth} sunAltitude={sunAltitude} baselineLabel="Current drawing" proposedLabel="Arrangement preview" /></div>}
       <p className="room-option-inventory">Inventory: {plan.furniture.filter(f => {
         const r = furnitureRectFor(f, siteOf(plan))
         return r.x + r.w / 2 >= room.x && r.x + r.w / 2 < room.x + room.w && r.y + r.h / 2 >= room.y && r.y + r.h / 2 < room.y + room.h

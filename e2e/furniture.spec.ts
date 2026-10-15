@@ -20,12 +20,19 @@ const MESH_INDICES = 1000
 
 function trackDrawCalls(page: Page) {
   return page.addInitScript(() => {
-    const target = window as Window & { largestDraw?: number }
+    const target = window as Window & { largestDraw?: number; shadowMeshDraws?: number }
+    const bound = new WeakMap<WebGL2RenderingContext, boolean>()
+    const bind = WebGL2RenderingContext.prototype.bindFramebuffer
+    WebGL2RenderingContext.prototype.bindFramebuffer = function (type, buffer) {
+      if (type === this.FRAMEBUFFER || type === this.DRAW_FRAMEBUFFER) bound.set(this, buffer !== null)
+      return bind.call(this, type, buffer)
+    }
     const original = WebGL2RenderingContext.prototype.drawElements
     // Count only; application behaviour is untouched.
     WebGL2RenderingContext.prototype.drawElements = function (
       mode: number, count: number, type: number, offset: number,
     ) {
+      if (bound.get(this) && count > 1000) target.shadowMeshDraws = (target.shadowMeshDraws ?? 0) + 1
       target.largestDraw = Math.max(target.largestDraw ?? 0, count)
       return original.call(this, mode, count, type, offset)
     }
@@ -33,7 +40,7 @@ function trackDrawCalls(page: Page) {
 }
 
 const largestDraw = (page: Page) =>
-  page.evaluate(() => (window as Window & { largestDraw?: number }).largestDraw ?? 0)
+  page.evaluate(() => (window as Window & { largestDraw?: number; shadowMeshDraws?: number }).largestDraw ?? 0)
 
 async function placeVelvetSofa(page: Page) {
   await page.addInitScript(() => localStorage.setItem('luma-journey:welcome:shanghai-50', '1'))
@@ -97,12 +104,13 @@ test.describe('measured furniture in local 3D', () => {
     await expect(page.locator('.spatial3d-shell canvas')).toBeVisible()
   })
 
-  test('an unavailable model leaves only boxes on screen, and says so honestly', async ({ page }) => {
+  test('an unavailable model leaves measured boxes and explains the fallback', async ({ page }) => {
     await trackDrawCalls(page)
     await page.route('**/furniture/models/glam-velvet-sofa.glb', route => route.abort())
     await placeVelvetSofa(page)
     await openSolidView(page)
     await page.waitForTimeout(2_000)
+    await expect(page.locator('.spatial-orbit-note').filter({ hasText: 'measured boxes while' })).toBeVisible()
     // First prove the scene drew at all, so the bound below is meaningful
     // rather than satisfied by an empty canvas.
     expect(await largestDraw(page)).toBeGreaterThanOrEqual(BOX_INDICES)
@@ -110,4 +118,40 @@ test.describe('measured furniture in local 3D', () => {
     // silently draw something else in its place.
     expect(await largestDraw(page)).toBeLessThan(MESH_INDICES)
   })
+})
+
+
+test('late model geometry enters the cached solar shadow map, which rests again afterwards', async ({ page }) => {
+  await trackDrawCalls(page)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/furniture/models/glam-velvet-sofa.glb', async route => { await gate; await route.continue() })
+  await placeVelvetSofa(page)
+  await openSolidView(page)
+  await expect.poll(() => largestDraw(page)).toBeGreaterThanOrEqual(BOX_INDICES)
+  expect(await page.evaluate(() => (window as Window & { shadowMeshDraws?: number }).shadowMeshDraws ?? 0)).toBe(0)
+  release()
+  const shadows = () => page.evaluate(() => (window as Window & { shadowMeshDraws?: number }).shadowMeshDraws ?? 0)
+  await expect.poll(shadows, { timeout: 30000 }).toBeGreaterThan(0)
+  // Wait for the final committed frame, then move only the camera. Loaded
+  // geometry must cast a real shadow once, without enabling continuous maps.
+  await page.waitForTimeout(500)
+  const cached = await shadows()
+  await page.getByRole('button', { name: 'Top-Down', exact: true }).click()
+  await page.waitForTimeout(500)
+  expect(await shadows()).toBe(cached)
+})
+
+test('a corrupt model with HTTP 200 also falls back without an uncaught page error', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await trackDrawCalls(page)
+  await page.route('**/furniture/models/glam-velvet-sofa.glb', route => route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: 'corrupt model' }))
+  await placeVelvetSofa(page)
+  await openSolidView(page)
+  await expect.poll(() => largestDraw(page)).toBeGreaterThanOrEqual(BOX_INDICES)
+  await page.waitForTimeout(500)
+  expect(await largestDraw(page)).toBeLessThan(MESH_INDICES)
+  expect(errors).toEqual([])
+  await expect(page.locator('.spatial3d-shell canvas')).toBeVisible()
 })

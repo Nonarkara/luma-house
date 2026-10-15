@@ -909,6 +909,7 @@ export default function Spatial3D({
         {walkMode
           ? 'Eye-level walk · click model to look · WASD moves · Esc exits · concept view has no wall collision'
           : `${preset === 'topdown' ? 'North-up parallel view' : 'Drag to orbit'} · ${architectural ? 'cut faces filled · ' : ''}${showShadows ? 'full building in shadow model' : 'shadows off'}`}
+        {displayStyle === 'solid' && <span> · measured boxes while furniture models load, are unavailable or meet the section cut</span>}
       </div>
     </div>
   )
