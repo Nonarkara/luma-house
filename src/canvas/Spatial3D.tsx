@@ -144,7 +144,7 @@ function SegmentedWall({ compass, room, plan, emissiveIntensity, onClick, wirefr
   />)}</group>
 }
 
-function RoomVolume({
+export function RoomVolume({
   room,
   plan,
   site,
@@ -237,7 +237,7 @@ function RoomVolume({
   )
 }
 
-function OpeningPanel({ opening, site, wireframe, edgeColor, architectural, sectionHeight }: { opening: Opening; site: SiteSpec; wireframe: boolean; edgeColor: string; architectural: boolean; sectionHeight: number }) {
+export function OpeningPanel({ opening, site, wireframe, edgeColor, architectural, sectionHeight }: { opening: Opening; site: SiteSpec; wireframe: boolean; edgeColor: string; architectural: boolean; sectionHeight: number }) {
   const { mx, mz } = toMeters(opening.x, opening.y, site)
   const isWindow = opening.type === 'window'
   const { width, height: fullHeight, sill } = openingDimensions(opening)
@@ -266,7 +266,7 @@ function OpeningPanel({ opening, site, wireframe, edgeColor, architectural, sect
 }
 
 
-function FurniturePiece({ item, site, wireframe, edgeColor, architectural, sectionHeight }: { item: Furniture; site: SiteSpec; wireframe: boolean; edgeColor: string; architectural: boolean; sectionHeight: number }) {
+export function FurniturePiece({ item, site, wireframe, edgeColor, architectural, sectionHeight }: { item: Furniture; site: SiteSpec; wireframe: boolean; edgeColor: string; architectural: boolean; sectionHeight: number }) {
   const rect = useMemo(() => furnitureRectFor(item, site), [item, site])
   const widthM = (rect.w / 100) * site.w
   const depthM = (rect.h / 100) * site.h
@@ -379,7 +379,7 @@ function AirflowPathVectors({
 }
 
 
-function SunLight({ azimuth, altitude, site, shadows, geometryKey }: { azimuth: number; altitude: number; site: SiteSpec; shadows: boolean; geometryKey: string }) {
+export function SunLight({ azimuth, altitude, site, shadows, geometryKey }: { azimuth: number; altitude: number; site: SiteSpec; shadows: boolean; geometryKey: string }) {
   const light = useRef<THREE.DirectionalLight>(null)
   const invalidate = useThree(state => state.invalidate)
   useLayoutEffect(() => {

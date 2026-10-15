@@ -4,6 +4,8 @@ import { furnitureCatalog, furnitureRectFor, siteOf } from '../plan'
 import { openingCompassForRoom } from '../analysis/walls'
 import { generateRoomOptions, type RoomMeasures, type RoomOption } from '../options/roomOptions'
 import type { Furniture, PlanState, Room } from '../types'
+import type { StudioTheme } from '../design/themes'
+import { VisualComparison } from '../comparison/VisualComparison'
 
 function RoomDrawing({ plan, room, furniture, label }: { plan: PlanState; room: Room; furniture: Furniture[]; label: string }) {
   const site = siteOf(plan), width = room.w / 100 * site.w, depth = room.h / 100 * site.h
@@ -46,8 +48,9 @@ function MetricRows({ current, preview }: { current: RoomMeasures; preview?: Roo
   </tbody></table>
 }
 
-export default function RoomOptionsDialog({ plan, initialRoomId, onApply, onClose }: {
+export default function RoomOptionsDialog({ plan, initialRoomId, onApply, onClose, theme, sunAzimuth, sunAltitude, conditionsLabel }: {
   plan: PlanState; initialRoomId?: string | null; onApply: (room: Room, option: RoomOption) => void; onClose: () => void
+  theme: StudioTheme; sunAzimuth: number; sunAltitude: number; conditionsLabel: string
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   const [roomId, setRoomId] = useState(plan.rooms.find(r => r.id === initialRoomId)?.id ?? plan.rooms[0]?.id)
@@ -55,6 +58,8 @@ export default function RoomOptionsDialog({ plan, initialRoomId, onApply, onClos
   const room = plan.rooms.find(r => r.id === roomId)
   const result = useMemo(() => room ? generateRoomOptions(plan, room) : null, [plan, room])
   const option = result?.options[index]
+  const preview = useMemo(() => option ? { ...plan, furniture: option.furniture } : plan, [plan, option])
+  const [showSpatial, setShowSpatial] = useState(false)
   useEffect(() => {
     const dialog = ref.current
     dialog?.showModal()
@@ -70,6 +75,8 @@ export default function RoomOptionsDialog({ plan, initialRoomId, onApply, onClos
         <figure><figcaption>Current drawing</figcaption><RoomDrawing plan={plan} room={room} furniture={plan.furniture} label="Current arrangement" /></figure>
         <figure><figcaption>{option ? `${option.title} · preview` : 'Keep current drawing'}</figcaption><RoomDrawing plan={plan} room={room} furniture={option?.furniture ?? plan.furniture} label="Preview arrangement" /></figure>
       </div>
+      <button type="button" className="room-option-spatial-toggle" aria-expanded={showSpatial} onClick={() => setShowSpatial(value => !value)}>{showSpatial ? 'Hide full-house comparison' : 'Preview in the full house'}</button>
+      {showSpatial && <><p className="room-option-method">Shared sunlight: {conditionsLabel} · {sunAltitude.toFixed(1)}° altitude / {sunAzimuth.toFixed(1)}° bearing. Preview changes no saved geometry.</p><VisualComparison baseline={plan} proposed={preview} theme={theme} sunAzimuth={sunAzimuth} sunAltitude={sunAltitude} baselineLabel="Current drawing" proposedLabel="Arrangement preview" /></>}
       <p className="room-option-inventory">Inventory: {plan.furniture.filter(f => {
         const r = furnitureRectFor(f, siteOf(plan))
         return r.x + r.w / 2 >= room.x && r.x + r.w / 2 < room.x + room.w && r.y + r.h / 2 >= room.y && r.y + r.h / 2 < room.y + room.h
@@ -81,7 +88,7 @@ export default function RoomOptionsDialog({ plan, initialRoomId, onApply, onClos
       {result.reason && <p className="room-option-warning" role="status">{result.reason}</p>}
       <MetricRows current={result.current} preview={option?.measures} />
       <p className="room-option-method">Centre clearance is the radius of empty floor around the centre dot. Window distance runs from the nearest desk footprint to a window centre, or uses a seat/bed if there is no desk. Dashed circles reserve a door-width buffer (minimum 0.9 m); they do not model hinges. Distances describe fit, not lux, walking routes or code compliance.</p>
-      <p className="room-option-method">Local bounded search · up to eight movable pieces · no AI calls. These plans compare placement; use Spatial after Apply to see the actual sun and shadows. Options may trade one distance for another and are not guaranteed to improve every measure.</p>
+      <p className="room-option-method">Local bounded search · up to eight movable pieces · no AI calls. Preview in the full house before Apply; its 3D comparison uses actual geometry and the selected city's sun. Options may trade one distance for another and are not guaranteed to improve every measure.</p>
       <footer><a href="https://spacefactor.cn" target="_blank" rel="noopener noreferrer">Workflow inspiration: SpaceFactor / HomeFactor</a><div><button type="button" onClick={onClose}>Keep current drawing</button><button type="button" className="room-option-apply" disabled={!option} onClick={() => option && onApply(room, option)}>Apply arrangement</button></div></footer>
     </>}
   </dialog>, document.body)

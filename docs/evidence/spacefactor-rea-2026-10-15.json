@@ -1,0 +1,49 @@
+{
+  "review_date": "2026-10-15",
+  "tool": "rea-agents@6.5.0",
+  "operation": "capture_browser_scenario",
+  "target": "https://layout-studio.spacefactor.cn/",
+  "source_sha256": "d426ed1347dcc89af4ec13a2cf5215fab96b8f8f6d664d5cdc315e062deb667f",
+  "result": "partial_observation_in_cleanup_error",
+  "cleanup": "incomplete; subsequent process-prefix check found no REA scenario Chrome process",
+  "request_response_bodies_requested": false,
+  "header_values_requested": false,
+  "storage_requested": false,
+  "steps": [
+    {
+      "id": "scenario_start",
+      "status": "completed",
+      "event_sequence_start": 1,
+      "event_sequence_end": 30
+    },
+    {
+      "id": "open-public-sample",
+      "status": "completed",
+      "event_sequence_start": 31,
+      "event_sequence_end": 34
+    },
+    {
+      "id": "wait-sample",
+      "status": "completed",
+      "event_sequence_start": 35,
+      "event_sequence_end": 36
+    },
+    {
+      "id": "choose-child-room-alternative",
+      "status": "completed",
+      "event_sequence_start": 37,
+      "event_sequence_end": 36
+    },
+    {
+      "id": "settle-selection",
+      "status": "completed",
+      "event_sequence_start": 37,
+      "event_sequence_end": 36
+    }
+  ],
+  "retained_events": 36,
+  "dropped_events": 0,
+  "observed_selection_confirmation": "child room switched to scheme 2",
+  "backend_solver": "unknown",
+  "first_run_evidence_id": "ev_caaa22a35c2cd8cbc45c91916549944b637f0db0bedf01a5d3ff2dd44933ff15"
+}

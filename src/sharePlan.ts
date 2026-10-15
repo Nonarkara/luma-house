@@ -1,5 +1,6 @@
 import { sanitizeLocation } from './location/locations'
 import { sanitizeStudyScenes } from './study/scenes'
+import { sanitizeBaseline } from './comparison/baseline'
 import type { DrawnWall, Furniture, Opening, PlanState, Room, RoomKind } from './types'
 import { sanitizeSite } from './plan'
 import { ASSEMBLY_PRESETS } from './assemblies/presets'
@@ -140,7 +141,7 @@ function sanitizeWall(raw: unknown): DrawnWall | null {
  * back to the default plan. Unknown extra fields are ignored.
  * An empty rooms array is a valid blank napkin.
  */
-export function sanitizePlan(raw: unknown): PlanState | null {
+function sanitizePlanContent(raw: unknown): Omit<PlanState, 'comparison'> | null {
   if (typeof raw !== 'object' || raw === null) return null
   const candidate = raw as Record<string, unknown>
   if (!Array.isArray(candidate.rooms)) return null
@@ -189,6 +190,13 @@ export function sanitizePlan(raw: unknown): PlanState | null {
     location: sanitizeLocation(candidate.location),
     site: candidate.site ? sanitizeSite(candidate.site) : undefined,
   }
+}
+
+export function sanitizePlan(raw: unknown): PlanState | null {
+  const plan = sanitizePlanContent(raw)
+  if (!plan) return null
+  const comparison = sanitizeBaseline((raw as Record<string, unknown>).comparison, sanitizePlanContent)
+  return comparison ? { ...plan, comparison } : plan
 }
 
 function toBase64Url(text: string): string {

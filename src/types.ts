@@ -93,6 +93,8 @@ export interface ProjectLocation {
 }
 
 export interface PlanState {
+  /** One saved alternative; its drawing snapshot never contains another comparison. */
+  comparison?: ABComparisonState
   /** Camera and sun settings; cached preview images are never put in share URLs. */
   studyScenes?: StudyScene[]
   /** Coordinates and civil time zone travel with saved, imported and shared drawings. */
@@ -110,7 +112,7 @@ export interface PlanState {
 }
 
 export interface ABComparisonState {
-  baselinePlan: PlanState
+  baselinePlan: Omit<PlanState, 'comparison'>
   baselineName: string
   pinnedAt: string
 }

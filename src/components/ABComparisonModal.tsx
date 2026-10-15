@@ -1,5 +1,11 @@
 import { ArrowDownRight, ArrowUpRight, Check, Pin, X } from 'lucide-react'
 import type { ABComparisonResult } from '../analysis/abComparison'
+import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import type { PlanState } from '../types'
+import type { StudioTheme } from '../design/themes'
+import { VisualComparison } from '../comparison/VisualComparison'
+import { RoomComparison } from '../comparison/RoomComparison'
 
 export function ABComparisonModal({
   result,
@@ -7,13 +13,24 @@ export function ABComparisonModal({
   proposedName,
   onClose,
   onApplyProposedAsBaseline,
+  baselinePlan, proposedPlan, theme, onRestoreBaseline,
 }: {
   result: ABComparisonResult
   baselineName: string
   proposedName: string
   onClose: () => void
   onApplyProposedAsBaseline?: () => void
+  baselinePlan?: PlanState
+  proposedPlan?: PlanState
+  theme?: StudioTheme
+  onRestoreBaseline?: () => void
 }) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    dialog.current?.showModal()
+    const current = dialog.current
+    return () => current?.close()
+  }, [])
   const formatDelta = (val: number, unit: string, invertIsGood = false, grade = true) => {
     if (Math.abs(val) < 0.01) return <span className="delta-neutral">No change</span>
     if (!grade) return <span className="delta-neutral">{val > 0 ? '+' : ''}{val.toFixed(1)} {unit}</span>
@@ -30,14 +47,13 @@ export function ABComparisonModal({
     )
   }
 
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="ab-modal shadow-2xl" onClick={(e) => e.stopPropagation()}>
+  const content = (
+    <dialog ref={dialog} className="ab-modal" aria-labelledby="ab-comparison-title" onKeyDown={e => e.stopPropagation()} onCancel={e => { e.preventDefault(); onClose() }}>
         <div className="ab-modal-header">
           <div className="flex items-center gap-2">
             <Pin className="w-5 h-5 text-amber-400" />
             <div>
-              <h2>Side-by-Side Design Comparison</h2>
+              <h2 id="ab-comparison-title">Side-by-Side Design Comparison</h2>
               <p>Compare baseline sketch ("Plan A") against active proposed modifications ("Plan B").</p>
             </div>
           </div>
@@ -51,6 +67,10 @@ export function ABComparisonModal({
           {' '}Clear-sky sun; temperature and wind are selected assumptions, not live weather. Daylight reach uses window geometry only. Budget uses the China concept rate card, not local supplier prices.
           {' '}Positive heat flow enters the interior; negative heat flow leaves it. The thermal difference has no better/worse colour grade.
         </p>
+        {baselinePlan && proposedPlan && theme && <>
+          <VisualComparison baseline={baselinePlan} proposed={proposedPlan} theme={theme} sunAzimuth={result.context.sunAzimuth} sunAltitude={result.context.sunAltitude} />
+          <RoomComparison baseline={baselinePlan} proposed={proposedPlan} />
+        </>}
         <div className="ab-table-wrapper">
           <table className="ab-table">
             <thead>
@@ -114,9 +134,10 @@ export function ABComparisonModal({
 
         <div className="ab-modal-footer">
           <div className="ab-footer-note">
-            💡 <em>Plan A is pinned as your baseline. Modifying rooms, openings, or systems updates Plan B live.</em>
+            <em>Plan A is saved in this project, including shared links and JSON exports. Modifying the drawing updates Plan B. Restore is undoable.</em>
           </div>
           <div className="ab-footer-actions">
+            {onRestoreBaseline && <button type="button" className="button secondary small" onClick={onRestoreBaseline}>Restore Plan A</button>}
             {onApplyProposedAsBaseline && (
               <button
                 type="button"
@@ -132,7 +153,7 @@ export function ABComparisonModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </dialog>
   )
+  return typeof document === 'undefined' ? content : createPortal(content, document.body)
 }

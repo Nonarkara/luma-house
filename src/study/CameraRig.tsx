@@ -10,8 +10,8 @@ export function CameraRig({ plan, preset, walking, touring, request, controlsRef
   plan: PlanState; preset: DrawingPreset; walking: boolean; touring: boolean
   request: { id: number; camera: StudyCamera } | null
   controlsRef: RefObject<OrbitControls>
-  captureRef: MutableRefObject<ReadyStudyCapture | null>
-  time: StudyTime
+  captureRef?: MutableRefObject<ReadyStudyCapture | null>
+  time?: StudyTime
 }) {
   const { size, get, set, invalidate } = useThree()
   const perspective = useMemo(() => new PerspectiveCamera(45, 1, 0.01, 10000), [])
@@ -58,6 +58,7 @@ export function CameraRig({ plan, preset, walking, touring, request, controlsRef
   }, [active, aspect, preset, geometryKey, request, walking, touring, controlsRef, invalidate])
 
   useLayoutEffect(() => {
+    if (!captureRef || !time) return // Read-only comparisons need a camera, not saved-view capture.
     const capture = async (): Promise<StudyCapture> => {
       invalidate()
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
@@ -99,6 +100,6 @@ export function CameraRig({ plan, preset, walking, touring, request, controlsRef
     const ready = { time: { day: time.day, hour: time.hour, year: time.year }, capture }
     captureRef.current = ready
     return () => { if (captureRef.current === ready) captureRef.current = null }
-  }, [captureRef, controlsRef, get, invalidate, time.day, time.hour, time.year])
+  }, [captureRef, controlsRef, get, invalidate, time])
   return null
 }

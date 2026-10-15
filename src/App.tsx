@@ -75,7 +75,8 @@ import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal'
 import { comparePlans } from './analysis/abComparison'
 import { ABComparisonModal } from './components/ABComparisonModal'
 import { applyRoomOption } from './options/roomOptions'
-import type { ABComparisonState, CurrencyCode, Opening } from './types'
+import type { CurrencyCode, Opening } from './types'
+import { pinBaseline, restoreBaseline } from './comparison/baseline'
 import { readString, storageIsPersistent } from './storage/keys'
 import { checkPlan, exteriorDoorPlacement, type CodeIssue as StandardsCodeIssue } from './codes/checkPlan'
 
@@ -112,7 +113,7 @@ function readSavedPlan(): PlanState {
     const saved = localStorage.getItem(CHINA_PROJECT_KEY)
     if (!saved) return blankPlan()
     const next = sanitizePlan(JSON.parse(saved)) ?? blankPlan()
-    if (isStockDemo(next) && !next.location && !next.studyScenes?.length) return blankPlan()
+    if (isStockDemo(next) && !next.location && !next.studyScenes?.length && !next.comparison) return blankPlan()
     return next
   } catch {
     return blankPlan()
@@ -178,7 +179,7 @@ function App() {
   const [alignGuides, setAlignGuides] = useState<{ x: number[]; y: number[] } | null>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [currency, setCurrency] = useState<CurrencyCode>('CNY')
-  const [pinnedBaseline, setPinnedBaseline] = useState<ABComparisonState | null>(null)
+  const pinnedBaseline = plan.comparison
   const [abComparisonModalOpen, setABComparisonModalOpen] = useState(false)
   const [roomOptionsOpen, setRoomOptionsOpen] = useState(false)
   const frameRef = useRef<HTMLDivElement>(null!)
@@ -367,13 +368,9 @@ function App() {
   }, [commit])
 
   const handlePinBaseline = useCallback(() => {
-    setPinnedBaseline({
-      baselinePlan: plan,
-      baselineName: 'Pinned Baseline (Plan A)',
-      pinnedAt: new Date().toLocaleTimeString(),
-    })
+    commit(current => pinBaseline(current), 'Pin Plan A')
     setToast('Plan A pinned as baseline! Modify your drawing to compare Plan B side-by-side.')
-  }, [plan])
+  }, [commit])
 
   const handleOpenABComparison = useCallback(() => {
     if (!pinnedBaseline) return
@@ -382,21 +379,28 @@ function App() {
 
   const handleApplyProposedAsBaseline = useCallback(() => {
     if (!pinnedBaseline) return
-    setPinnedBaseline({
-      baselinePlan: plan,
-      baselineName: 'Pinned Baseline (Plan A)',
-      pinnedAt: new Date().toLocaleTimeString(),
-    })
+    commit(current => pinBaseline(current, pinnedBaseline.baselineName), 'Pin Plan B as Plan A')
     setToast('Plan B promoted to new baseline Plan A!')
-  }, [plan, pinnedBaseline])
+  }, [commit, pinnedBaseline])
+
+  const handleRestoreBaseline = useCallback(() => {
+    if (!pinnedBaseline) return
+    commit(restoreBaseline, 'Restore Plan A')
+    setSelectedRoom(null); setSelectedOpening(null); setSelectedFurniture(null)
+    setFitRequest(n => n + 1)
+    setABComparisonModalOpen(false)
+    setToast('Plan A restored — Undo returns to Plan B.')
+  }, [commit, pinnedBaseline])
+
+  const comparisonConditionsLabel = `${projectLocation.label} · ${new Date(Date.UTC(studyYear, 0, day)).toISOString().slice(0, 10)} · ${clockLabel(hour)} · ${projectLocation.timezone}`
 
   const abComparisonResult = useMemo(() => {
     if (!pinnedBaseline) return null
     return comparePlans(pinnedBaseline.baselinePlan, plan, {
-      label: `${projectLocation.label} · ${new Date(Date.UTC(studyYear, 0, day)).toISOString().slice(0, 10)} · ${clockLabel(hour)} · ${projectLocation.timezone}`,
+      label: comparisonConditionsLabel,
       sunAzimuth: sun.azimuth, sunAltitude: sun.altitude, outsideC, windFrom, windSpeed,
     })
-  }, [pinnedBaseline, plan, projectLocation, studyYear, day, hour, sun.azimuth, sun.altitude, outsideC, windFrom, windSpeed])
+  }, [pinnedBaseline, plan, comparisonConditionsLabel, sun.azimuth, sun.altitude, outsideC, windFrom, windSpeed])
 
 
   const journey = useMemo(
@@ -1124,7 +1128,7 @@ function App() {
   }, [isTracing, quotaLeft, startTrace])
   const acceptTrace = (next: PlanState) => {
     if (!pendingTrace || isTracing) return
-    commit({ ...next, location: projectLocation, studyScenes: plan.studyScenes }, 'Accept calibrated trace')
+    commit({ ...next, location: projectLocation, studyScenes: plan.studyScenes, comparison: plan.comparison }, 'Accept calibrated trace')
     setSketchUrl(pendingTrace.image)
     setSelectedRoom(next.rooms[0]?.id ?? null)
     setSelectedOpening(null)
@@ -1275,7 +1279,7 @@ function App() {
     <div className="app-shell">
       <input ref={traceFileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={runTrace} hidden />
       {presetOpen && <LayoutPresetDialog onClose={() => setPresetOpen(false)} onApply={next => {
-        commit(current => ({ ...next, location: projectLocation, studyScenes: current.studyScenes }), 'Apply layout preset')
+        commit(current => ({ ...next, location: projectLocation, studyScenes: current.studyScenes, comparison: current.comparison }), 'Apply layout preset')
         setSelectedRoom(next.rooms[0]?.id ?? null)
         setSelectedOpening(null)
         setSelectedFurniture(null)
@@ -1793,15 +1797,23 @@ function App() {
       {abComparisonModalOpen && abComparisonResult && pinnedBaseline && (
         <ABComparisonModal
           result={abComparisonResult}
+          baselinePlan={pinnedBaseline.baselinePlan}
+          proposedPlan={plan}
+          theme={theme}
           baselineName={pinnedBaseline.baselineName}
           proposedName="Proposed Iteration (Plan B)"
           onClose={() => setABComparisonModalOpen(false)}
           onApplyProposedAsBaseline={handleApplyProposedAsBaseline}
+          onRestoreBaseline={handleRestoreBaseline}
         />
       )}
 
       {roomOptionsOpen && <Suspense fallback={<div role="status" className="toast">Loading room options…</div>}><RoomOptionsDialog
         plan={plan}
+        theme={theme}
+        sunAzimuth={sun.azimuth}
+        sunAltitude={sun.altitude}
+        conditionsLabel={comparisonConditionsLabel}
         initialRoomId={selectedRoom}
         onClose={() => setRoomOptionsOpen(false)}
         onApply={(selected, option) => {

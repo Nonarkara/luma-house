@@ -1,3 +1,36 @@
+## SpaceFactor comparison work — 2026-10-15
+
+Design Read: equal-scale measured plans explain the decision, and one local 3D
+canvas holds camera/sun fixed while the user switches alternatives. Reference:
+SpaceFactor Layout Studio's public room-scheme workflow, independently observed
+with REA; detailed evidence and limits belong in docs/SPACEFACTOR-REA-REVIEW.md.
+Keep square palette controls and the existing Source Sans/JetBrains Mono roles.
+Cut walls dominate geometry; openings use medium ink, furniture fine ink.
+Equal adjacent drawings are a comparison exception, consistent with study sheets.
+Preview never edits a project. A saved baseline is bounded and nonrecursive;
+metres stay constant across sites and both views share the north-west origin.
+Plan and scope: docs/SPACEFACTOR-REA-PLAN.md. No SpaceFactor assets/source/solver
+are embedded; all geometry, comparison and persistence code is independent.
+
+
+Verification: 418 frontend tests /58 files, 54 Worker tests, lint/type/build,
+production dependency audits, Worker type/quota/concurrency proof and all 110
+browser checks pass. Comparison tests cover real storage reload/share, Restore
+and Undo, distinct actual A/B pixels offline, byte-identical return to an orbited
+camera, full-frame PNG export and inert full-house room preview. Existing city,
+idle GPU, cached shadows, architectural A4 sheets and model exports still pass.
+Independent review found a coordinate-tolerance bug when normalizing unequal
+sites; original topology is now resolved before display transforms. Its focused
+18 tests and asymmetric-site review pass, and the verified lesson is in SecondBrain.
+The six focused comparison cases also pass explicit four-palette contrast,
+three-size type and 44px target checks after correcting inherited 11px footer
+buttons. Phone/tablet/desktop screenshots inspected at 375/768/1280px. REA's cleanup
+verification failed after all scenario actions completed; report preserves that
+partial observation instead of claiming a clean REA run. No new runtime dependency
+or copied SpaceFactor asset/source. Seven existing development-only advisories
+remain; production dependencies are clean. Axiom audit remains unavailable (prior
+registry 404), so no passed automated design audit is claimed.
+
 ## Architectural study-sheet implementation — 2026-10-14
 
 Design Read: calibrated black-and-white drawings carry the sheet; physical wall
