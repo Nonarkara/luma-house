@@ -46,6 +46,10 @@ Exact upstream URLs live in `scripts/build-furniture-catalog.mjs` and are copied
 
 The large upstream files and scratch directory are intentionally ignored. Commit the optimized files in `public/furniture/models/` and the generated TypeScript manifest together.
 
+## Running the browser suite
+
+`npm run test:e2e` **builds first**. The Playwright server runs `npm run preview`, which serves `dist/` as it happens to be — it never builds. Running `playwright test` on its own tests whatever bundle was last built, so updated specs will be measured against an old app and fail for reasons that have nothing to do with the change under test. Use `npm run test:e2e:fast` only when you deliberately want the existing `dist/`, such as when iterating on a spec without touching app code.
+
 
 ## Audited rendering boundary
 

@@ -9,7 +9,8 @@
     "build:furniture": "node scripts/build-furniture-catalog.mjs",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run build && playwright test",
+    "test:e2e:fast": "playwright test",
     "preview": "vite preview",
     "deploy:pages": "npm run build && workers/concept-render/node_modules/.bin/wrangler pages deploy dist --project-name=luma-house --branch=main"
   },
