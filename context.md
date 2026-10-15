@@ -1,3 +1,30 @@
+## Furniture/layout audit — 2026-10-15
+
+Design Read: choosing a comparison reveals the actual view in the existing
+workspace. Reference: designon's measured architectural sheets and AIA Graphic
+Standards hierarchy. Keep the dominant drawing, square controls, 22/16/12px
+roles, four palettes and native scrolling. No new runtime dependency.
+
+Furniture contributes geometry/materials, never studio lights or cameras. An
+isolated clone keeps source resources unchanged. Only schematic boxes keep box
+shadow casters; loaded meshes cast their own shadows. Representation changes
+refresh the existing cached solar maps once. Measured height also governs
+sectioned/loading/failure boxes. The normalizer composes relative adjustments
+without renumbering nodes. Bundled per-asset notices include creators, license
+and legal links, source and changes. The catalogue links the deployed notice.
+
+Restored five erased sample checks and added full-footprint containment for
+all variants. The remote-inventory work guard now counts coordinate reads,
+with an independently verified mutation that fails at the budget. See
+docs/FURNITURE-AUDIT-2026-10-15.md for findings and executable evidence.
+Lint/build, 474 frontend and 54 Worker tests, quota concurrency and production
+dependency audits pass. Focused furniture/comparison/study browser run: 30/30.
+Full merged-release browser and live checks are release gates; the first broader
+run hit a first-frame timeout in the existing city test under host load, pending
+an isolated rerun. Screenshots reviewed at 375/768/1280px. Axiom remains registry
+404; seven development-only advisories remain. Both novel geometry/shadow and
+normalization lessons were captured and recalled from SecondBrain.
+
 ## Measured furniture catalogue — 2026-10-15
 
 Design Read: furniture is evidence of scale, not decoration. The plan remains
