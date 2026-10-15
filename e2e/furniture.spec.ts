@@ -67,6 +67,8 @@ test.describe('measured furniture in local 3D', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('preserves the selected asset and lazy-loads it only in Solid view', async ({ page }) => {
+    const models: string[] = []
+    page.on('request', request => { if (request.url().endsWith('.glb')) models.push(request.url()) })
     await placeVelvetSofa(page)
     await expect.poll(() => page.evaluate(() => {
       const raw = localStorage.getItem('designon:plan:south-light-shanghai-50:v4')
@@ -81,13 +83,16 @@ test.describe('measured furniture in local 3D', () => {
       dM: 1.02,
     })
 
-    const request = page.waitForResponse(response =>
-      response.url().endsWith('/furniture/models/glam-velvet-sofa.glb') && response.status() === 200,
-    )
+    expect(models).toEqual([])
     await page.getByRole('button', { name: 'Spatial', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Solid', exact: true })).toBeVisible({ timeout: 15_000 })
-    await page.getByRole('button', { name: 'Solid', exact: true }).click()
-    await request
+    expect(models).toEqual([])
+    // Start the response deadline at the action that requests the model, after
+    // the unrelated lazy 3D/shader startup. Handle both promises immediately.
+    await Promise.all([
+      page.waitForResponse(response => response.url().endsWith('/furniture/models/glam-velvet-sofa.glb') && response.status() === 200, { timeout: 30_000 }),
+      page.getByRole('button', { name: 'Solid', exact: true }).click(),
+    ])
     await expect(page.locator('.spatial3d-shell canvas')).toBeVisible()
   })
 

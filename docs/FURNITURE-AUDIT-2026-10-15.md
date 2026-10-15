@@ -73,6 +73,12 @@ suites. Commit, push, deploy primary+mirror, verify matching bytes and live path
 8. **Asset notices were incomplete in the shipped bundle.** The catalogue now
    links a bundled notice with creators, copyright, source, license/legal URLs,
    adaptations and the lighting exclusion. Original GLB metadata is retained.
+9. **The lazy-load response deadline started before the requesting action.**
+   A 180-second test budget did not change the response wait's own 15-second
+   deadline. It could reject before Solid was clicked while 3D initialized.
+   The wait now starts alongside Solid in `Promise.all`, after explicitly proving
+   Plan and Architectural requested no GLB. The trace confirms the original
+   failure; the corrected case passes on desktop and phone.
 
 Independent review reproduced the original failures and rechecked the repairs.
 No remaining confirmed finding was reported within this scope. This is a
@@ -95,6 +101,12 @@ furniture/layout audit, not a claim of a comprehensive application pentest.
 - Full merged-release browser suite and public deployment checks are recorded
   below when completed. Port 4186 belonged to another preview; this audit uses
   an isolated preview on 4191 and does not stop that service.
+- The local full run was stopped after 23 passes, two failures and one
+  interrupted test. The city first-frame wait timed out under host load; the
+  second failure exposed the response-deadline bug above. An isolated rerun of
+  both failures plus the interrupted shadow/wireframe case passed all six
+  desktop/phone cases in 36.6 seconds. Complete-suite verification uses CI's
+  separate runner; the interrupted local run is not reported as a full pass.
 - Source and built-output scan found no direct OpenAI/Anthropic provider calls,
   builder hosts, generator metadata or localhost URLs. No new dependency or
   credential is introduced. The largest file reduction is 13.4%, within the

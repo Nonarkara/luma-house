@@ -19,9 +19,13 @@ with an independently verified mutation that fails at the budget. See
 docs/FURNITURE-AUDIT-2026-10-15.md for findings and executable evidence.
 Lint/build, 474 frontend and 54 Worker tests, quota concurrency and production
 dependency audits pass. Focused furniture/comparison/study browser run: 30/30.
-Full merged-release browser and live checks are release gates; the first broader
-run hit a first-frame timeout in the existing city test under host load, pending
-an isolated rerun. Screenshots reviewed at 375/768/1280px. Axiom remains registry
+Full merged-release browser and live checks are release gates. The local full
+run stopped after 23 passes, two failures and one interrupted case. The existing
+city first-frame wait timed out under host load; the furniture response wait
+started before Solid could request a model. That wait now starts with the action
+and asserts zero earlier GLB downloads. Both failures and the interrupted case
+pass in a six-case desktop/phone rerun. Screenshots reviewed at 375/768/1280px.
+Axiom remains registry
 404; seven development-only advisories remain. Both novel geometry/shadow and
 normalization lessons were captured and recalled from SecondBrain.
 
