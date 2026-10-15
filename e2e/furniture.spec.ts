@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { encodePlanToHash } from '../src/sharePlan'
 import { initialPlan } from '../src/plan'
 import { openMore } from './workspace'
+import { readFileSync } from 'node:fs'
 
 const hash = encodePlanToHash(initialPlan)
 
@@ -20,7 +21,9 @@ const MESH_INDICES = 1000
 
 function trackDrawCalls(page: Page) {
   return page.addInitScript(() => {
-    const target = window as Window & { largestDraw?: number; shadowMeshDraws?: number }
+    const target = window as Window & { largestDraw?: number; shadowMeshDraws?: number; cspViolations?: string[] }
+    target.cspViolations = []
+    document.addEventListener('securitypolicyviolation', event => { target.cspViolations!.push(`${event.effectiveDirective}: ${event.blockedURI}`) })
     const bound = new WeakMap<WebGL2RenderingContext, boolean>()
     const bind = WebGL2RenderingContext.prototype.bindFramebuffer
     WebGL2RenderingContext.prototype.bindFramebuffer = function (type, buffer) {
@@ -103,6 +106,7 @@ test.describe('measured furniture in local 3D', () => {
     // The load and the draw are separate events: a 200 proves the bytes arrived,
     // this proves something other than a 36-index box reached the GPU.
     await expect.poll(() => largestDraw(page), { timeout: 30_000 }).toBeGreaterThan(MESH_INDICES)
+    expect(await page.evaluate(() => (window as Window & { cspViolations?: string[] }).cspViolations)).toEqual([])
   })
 
   test('a missing model falls back without taking down the building', async ({ page }) => {
@@ -129,6 +133,27 @@ test.describe('measured furniture in local 3D', () => {
     // silently draw something else in its place.
     expect(await largestDraw(page)).toBeLessThan(MESH_INDICES)
   })
+})
+
+test('production policy permits bundled WASM while blocking JavaScript string execution', async ({ page }) => {
+  const expected = readFileSync(new URL('../public/_headers', import.meta.url), 'utf8').split('\n').find(line => line.trim().startsWith('Content-Security-Policy:'))!.split(':').slice(1).join(':').trim()
+  const response = await page.goto('/#plan=' + hash)
+  expect(response!.headers()['content-security-policy']).toBe(expected)
+  const scriptSources = expected.split(';').find(directive => directive.trim().startsWith('script-src '))!.trim().split(/\s+/).slice(1)
+  expect(scriptSources).toEqual(["'self'", "'wasm-unsafe-eval'"])
+  // CDP evaluation may bypass eval restrictions. Run the probe as a normal
+  // same-origin script, so the browser applies the actual document policy.
+  await page.route('**/__designon_csp_probe.js', route => route.fulfill({ contentType: 'application/javascript', body: `
+    (async () => {
+      let stringExecutionBlocked = false;
+      try { new Function('return 7')(); } catch (error) { stringExecutionBlocked = error instanceof EvalError; }
+      let wasmCompiled = false;
+      try { wasmCompiled = (await WebAssembly.compile(new Uint8Array([0,97,115,109,1,0,0,0]))) instanceof WebAssembly.Module; } catch {}
+      window.designonPolicyProbe = { stringExecutionBlocked, wasmCompiled };
+    })();
+  ` }))
+  await page.evaluate(() => { const script = document.createElement('script'); script.src = '/__designon_csp_probe.js'; document.head.append(script) })
+  await expect.poll(() => page.evaluate(() => (window as Window & { designonPolicyProbe?: { stringExecutionBlocked: boolean; wasmCompiled: boolean } }).designonPolicyProbe)).toEqual({ stringExecutionBlocked: true, wasmCompiled: true })
 })
 
 

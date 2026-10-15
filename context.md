@@ -1,5 +1,15 @@
 ## Furniture/layout audit — 2026-10-15
 
+Production-policy correction: the initial 124-case CI pass missed real GLB
+failure because Vite preview did not enforce Cloudflare's CSP. A live GPU check
+found WASM compilation and embedded texture blob fetches blocked. The policy
+adds only WASM compilation and blob connection permissions, preserving blocked
+JavaScript string execution/inline scripts and the existing host allowlist.
+Preview now reads exact production headers. Actual mesh/shadow cases pass with
+zero CSP violations, and an ordinary same-origin script proves Function blocked
+and WASM allowed on desktop/phone. The full browser gate now has 126 cases.
+Initial 705f3a5 upload is superseded by this repair; require live GPU verification.
+
 Design Read: choosing a comparison reveals the actual view in the existing
 workspace. Reference: designon's measured architectural sheets and AIA Graphic
 Standards hierarchy. Keep the dominant drawing, square controls, 22/16/12px

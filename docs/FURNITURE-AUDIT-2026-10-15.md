@@ -79,6 +79,17 @@ suites. Commit, push, deploy primary+mirror, verify matching bytes and live path
    The wait now starts alongside Solid in `Promise.all`, after explicitly proving
    Plan and Architectural requested no GLB. The trace confirms the original
    failure; the corrected case passes on desktop and phone.
+10. **Production CSP silently defeated real furniture.** The first release's
+    124 preview tests passed, but the live GPU check drew only 36-index boxes.
+    The trace recorded blocked WebAssembly compilation and embedded-image blob
+    fetches. Cloudflare's headers had never been applied by Vite preview.
+    The policy now adds only `script-src 'wasm-unsafe-eval'` and `connect-src
+    blob:` permissions. JavaScript string execution and inline scripts remain
+    blocked; no new external host is allowed. Preview reads the exact global
+    production headers, so CI exercises this boundary. Both desktop/phone real
+    mesh and delayed-shadow checks pass with zero CSP violations. A normal
+    same-origin test script proves Function is denied and WASM compiles; a CDP
+    evaluation probe was discarded because it bypasses eval restrictions.
 
 Independent review reproduced the original failures and rechecked the repairs.
 No remaining confirmed finding was reported within this scope. This is a
@@ -114,12 +125,18 @@ furniture/layout audit, not a claim of a comprehensive application pentest.
 - `npx axiom-audit . --strict` still returns registry HTTP 404. Its source/dist
   design gate is unavailable; no automated Axiom pass is claimed. Existing
   palette/type/target checks and visual review provide the available evidence.
+- Release `705f3a5` passed all 124 browser checks in CI run
+  [38764759310](https://github.com/Nonarkara/luma-house/actions/runs/38764759310).
+  Primary/mirror files matched, but its subsequent live mesh check exposed the
+  CSP issue above. That initial upload is not accepted as a verified release.
+  The policy repair adds two browser checks, for a complete suite of 126.
 
 ## Upstream sources
 
 - [Glam Velvet Sofa](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/GlamVelvetSofa): embedded studio light and asset credits.
 - [Sheen Chair](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SheenChair), [Damask Chair](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ChairDamaskPurplegold), [Wood Leather Sofa](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SheenWoodLeatherSofa), [Glass Vase](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/GlassVaseFlowers), [Lantern](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/Lantern): per-asset authors and licenses.
 - [Bundled notice](../public/licenses/furniture.txt) and [CC BY 4.0 legal text](https://creativecommons.org/licenses/by/4.0/legalcode.en).
+- [MDN script-src](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src): the WASM-specific permission does not grant JavaScript string execution. Installed decoder and image loader provide the blob-fetch evidence.
 
 Verified lessons are stored once in SecondBrain: imported furniture lighting and
 cached shadows; repeat normalization without node reindexing. The report is the
