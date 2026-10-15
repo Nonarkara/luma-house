@@ -37,8 +37,9 @@ export const chinaApartmentPlan: PlanState = {
     { id: 'd-bath', type: 'door', x: 65, y: MID, rotation: 0 },
   ],
   furniture: [
-    { id: 'f-bed', kind: 'bed', x: 19, y: 25, rotated: false },
-    { id: 'f-robe', kind: 'wardrobe', x: 29, y: 22, rotated: false },
+    // Bed headboard on the west wall; a 1.2 m wardrobe on the east wall stays clear of the bed and the door swing.
+    { id: 'f-bed', kind: 'bed', x: 19, y: 22.5, rotated: false },
+    { id: 'f-robe', kind: 'wardrobe', x: 42.4, y: 22, rotated: true, wM: 1.2 },
     { id: 'f-desk', kind: 'desk', x: 48, y: 23, rotated: false },
     { id: 'f-sofa', kind: 'sofa', x: 23, y: 57, rotated: false },
     { id: 'f-dining', kind: 'dining', x: 50, y: 60, rotated: true },

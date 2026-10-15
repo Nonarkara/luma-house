@@ -137,8 +137,15 @@ describe('local room options', () => {
       x: i < 8 ? 1.1 + i % 4 * .4 : 25.1 + i % 32,
       y: i < 8 ? 1.1 + Math.floor(i / 4) * .4 : 25.1 + Math.floor(i / 32),
     }))
-    const start = performance.now(), result = generateRoomOptions(plan, plan.rooms[0])
-    expect(performance.now() - start).toBeLessThan(1500)
+    // Relative, not wall-clock: the same eight pieces alone set the baseline, so
+    // a loaded CI machine slows both runs instead of failing the gate at random.
+    const alone = { ...plan, furniture: plan.furniture.slice(0, 8) }
+    let start = performance.now()
+    generateRoomOptions(alone, alone.rooms[0])
+    const baseline = performance.now() - start
+    start = performance.now()
+    const result = generateRoomOptions(plan, plan.rooms[0])
+    expect(performance.now() - start).toBeLessThan(baseline * 3 + 100)
     expect(result.options.length).toBeGreaterThan(0)
     for (const option of result.options) expect(option.furniture.slice(8)).toEqual(plan.furniture.slice(8))
   })
