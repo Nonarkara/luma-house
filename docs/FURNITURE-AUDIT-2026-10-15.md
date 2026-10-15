@@ -141,3 +141,39 @@ furniture/layout audit, not a claim of a comprehensive application pentest.
 Verified lessons are stored once in SecondBrain: imported furniture lighting and
 cached shadows; repeat normalization without node reindexing. The report is the
 project evidence source, not a replacement memory store.
+
+## Verified production repair
+
+Runtime/policy commit: `f5c37528cee3e655c9f327c9622d6f4e11b54f63`.
+Cloudflare upload: [28ad020a](https://28ad020a.luma-house.pages.dev).
+Primary: [designon.nonarkara.org](https://designon.nonarkara.org/).
+
+Canonical alias and custom domain each matched all 20 checked files, plus the
+exact corrected CSP, for three consecutive SHA-256/header probes. This includes
+HTML, manifest, SunCalc/furniture notices, every JS/CSS chunk and all six GLBs.
+The subsequent production browser run passed **all 20 desktop/phone cases in
+3.0 minutes**, with service workers blocked and isolated saved plans. It proves
+actual mesh draw, zero CSP violations on that path, real late-arriving shadows,
+idle shadow reuse, blocked Function/allowed WASM, missing/corrupt-file recovery,
+saved/shared baselines, Restore/Undo, offline A/B geometry, PNG export, preview
+focus/visibility and all four palettes. No real saved drawing was replaced.
+
+The saved Cape Town drawing was also inspected in the actual deployed Solid
+view. It retains its city and existing furniture; old saved sample geometry is
+not silently migrated. Phone/tablet/desktop comparison screenshots remain in the
+session evidence folder. Temporary UI tabs and the audit preview were closed.
+
+Concurrent commit `c4df0be` is preserved: browser tests now build first, with an
+explicit fast command for intentionally reusing `dist/`. It changes the test
+command/docs, with identical application bytes and policy. Its CI run supersedes
+the canceled `f5c3752` run. Root and isolated publishable builds match across
+45 files (Finder metadata excluded). No Worker code or deployment changed.
+
+The first full suite under enforced production headers (`c4df0be`, CI
+[38767841930](https://github.com/Nonarkara/luma-house/actions/runs/38767841930))
+passed 124 cases and exposed two failures in the independent 3MF test reader:
+its inline script injection was correctly blocked by CSP. The reader now loads
+as a normal same-origin script, retaining the policy and all independent file
+validation assertions. All four export cases pass locally (5.5 seconds) and on
+the primary deployment (6.3 seconds), covering desktop and phone. The complete
+126-case suite is rerun for this test-only repair before closing the audit.

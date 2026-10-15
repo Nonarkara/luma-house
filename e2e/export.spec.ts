@@ -49,7 +49,10 @@ test('export controls gate thin walls and downloaded GLB/STL/3MF open in indepen
   expect(geometry.boundingBox!.max.z).toBeCloseTo(29.5, 3)
   await open()
   const bytes = await download(page, info, 'Download .3mf', '3mf')
-  await page.addScriptTag({ content: await reader })
+  // Keep the independent reader subject to production's script-src policy.
+  // Inline injection would fail even though the downloaded export is valid.
+  await page.route('**/__designon_export_reader.js', async route => route.fulfill({ contentType: 'application/javascript', body: await reader }))
+  await page.addScriptTag({ url: '/__designon_export_reader.js' })
   const result = await page.evaluate(bytes => {
     const parser = (window as unknown as { ExportReader: { ThreeMFLoader: new () => { parse: (bytes: ArrayBuffer) => { traverse: (callback: (object: { geometry?: { attributes: { position: { count: number; array: ArrayLike<number> } }; index?: { count: number } } }) => void) => void } } } }).ExportReader.ThreeMFLoader
     const root = new parser().parse(new Uint8Array(bytes).buffer)
