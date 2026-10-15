@@ -101,3 +101,66 @@ comparison or model rendering. Original PR branches are retained for recovery.
 
 Durable lessons were captured in SecondBrain before this result log: rotation
 must clamp effective dimensions; inking must retain stable layout bounds.
+
+## Release gate and PR disposition
+
+Release commit: `05d25b01cb06f4f89c563f116d8a5d87a2404e8f`.
+[CI 38772314712](https://github.com/Nonarkara/luma-house/actions/runs/38772314712)
+passed **480 frontend tests, 54 Worker tests and all 136 browser checks
+(5.2 minutes)**, plus lint, type/build, quota and production dependency gates.
+Build and GitHub mirror deployment both succeeded.
+
+| PR | Result | Reason |
+| --- | --- | --- |
+| [#2](https://github.com/Nonarkara/luma-house/pull/2) | Closed | Its exact head/configuration was already in main. |
+| [#3](https://github.com/Nonarkara/luma-house/pull/3) | Closed | Superseded measured sheets; whole snapshot would remove newer scene controls/content. Remaining ideas recorded above. |
+| [#4](https://github.com/Nonarkara/luma-house/pull/4) | Merged | Node metadata retained; stale README CI selector corrected. |
+| [#5](https://github.com/Nonarkara/luma-house/pull/5) | Closed after bounded extraction | Useful cases, metadata and drawing-flow fixes retained; known broken resolver/corner hosting and broader rewrites not imported. |
+
+Zero open PRs remain. Original source branches were not deleted. Cursor's
+contribution is credited in the retained code commit. Merging the Node PR
+preserved its original commit and added the required Codex merge trailer.
+
+Primary upload: [119236b4](https://119236b4.luma-house.pages.dev).
+The scripted deploy rebuilt the same application chunk names as the tested
+isolated checkout. Canonical alias, custom domain and mirror each match all
+20 checked file hashes for three consecutive probes. Canonical/custom CSP
+matches the release policy exactly. Browser profiles used for live verification
+block service workers and carry isolated fixture drawings.
+
+The managed audit checkout disappeared after all source was committed/pushed;
+root main still held the exact release commit. Deployment continued there.
+A later archive request reported that the attachment belonged to another task;
+no other task's checkout was removed. Screenshots and the pre-fix rotation
+trace are retained outside managed worktrees. Pencil screenshots at
+375/768/1280 px and a real one-room Solid furniture scene were visually reviewed.
+An attempted manual phone drawing was not dispatched because the IAB CDP call
+timed out; it is not counted as a successful walkthrough. Automated real-pointer
+phone/desktop closure and Undo checks passed instead.
+
+Primary live verification: **all 30 desktop/phone cases pass (4.7 minutes)**.
+These cover the new metadata, measured/custom furniture rotation and Undo,
+rough pencil closure with stable bounds and accessible Undo, actual mesh draw,
+lazy loading, missing/unavailable/corrupt models, CSP, real late-arriving shadows
+and idle cache reuse, stored/shared baselines, A/B geometry/camera/PNG, and
+read-only comparison visibility across every palette.
+
+During final live checks another task began modifying
+`src/options/roomOptions.ts` and created `src/options/zz_probe.test.ts` in the
+shared checkout. These changes are not in the tested/deployed `05d25b0` release;
+they are preserved and excluded from this documentation commit. No claim is
+made that the shared working directory is clean while that work is active.
+
+Mirror live verification: **all 12 desktop/phone cases pass (37.8 seconds)**,
+covering production metadata, measured/custom rotation and Undo, actual mesh
+draw, and both rough pencil loops. The temporary test adapter prefixes entry
+navigation with `/luma-house/` and preserves the existing assertions; the normal
+root-path test configuration would otherwise visit a different GitHub page.
+An initial adapter discovery failed because its temporary directory lacked
+module metadata/dependency resolution; after supplying those locally, all 12
+cases ran and passed. No application repair or policy change was needed.
+
+The final report/context commit is documentation only and uses `[skip ci]`
+after the complete passing gate. It changes no tested or published application
+bytes. This release is shipped and verified at both public addresses. The
+separate in-progress room-options source/probe changes remain untouched.

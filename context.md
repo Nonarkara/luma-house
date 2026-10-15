@@ -563,3 +563,21 @@ weights, four palettes and typography. Reserve the existing pencil-hint row
 while inking, hiding its text without removing its layout space. This prevents
 live canvas bounds from changing between pointer-down and pointer-move; no new
 surface, toolbar or overlay is introduced. Other PR #5 UI rewrites are deferred.
+
+MiniMax/PR reconciliation shipped as `05d25b0`, Cloudflare upload `119236b4`.
+CI `38772314712`: 480 frontend +54 Worker +136 browser checks pass (browser5.2m),
+with type/build/lint/quota and production dependency audits. Primary live30
+cases pass (4.7m); mirror subpath live12 cases pass (37.8s). All20 checked files
+match three consecutive probes on canonical/custom/mirror; actual primary CSP
+matches too. No provider call, dependency version, model binary, city migration
+or policy change was introduced. Rotation now clamps actual measured sizes;
+permitted meshes rank by fitted area; inking retains stable canvas bounds;
+short pencil tails are absorbed only for full-edge strokes; a drawn room keeps
+manual inspector access without auto-opening over phone Undo. Canonical/share
+metadata identifies the primary domain. PR4 merged; PR2/3 closed; PR5 closed
+after bounded extraction. Original branches retained; rejected/deferred parts
+are explicit in `docs/RECONCILIATION-2026-10-15.md`. Seven dev-only Tailwind
+transitive advisories remain; no Axiom pass claimed. Two novel verified lessons
+are in SecondBrain. Final receipt/context-only commit skips CI with unchanged
+application bytes. Another task's roomOptions.ts/probe changes in the shared
+checkout were excluded and preserved; do not treat them as part of this release.
