@@ -21,3 +21,8 @@ worker-configuration.d.ts
 !.env.example
 **/.dev.vars
 **/.dev.vars.*
+
+# Furniture catalogue: large upstream sources and build scratch, not committed.
+# The compressed, normalised output lives in public/furniture/models/.
+scripts/furniture-src/
+scripts/.furniture-work/

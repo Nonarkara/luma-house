@@ -6616,10 +6616,12 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   gap: 0;
   padding: 0;
   border-bottom: 1px solid var(--axiom-mute, #2a2c30);
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .catalog-tab {
-  flex: 1;
+  flex: 1 0 72px;
   padding: 8px 10px;
   background: transparent;
   border: 0;
@@ -6699,6 +6701,20 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   font-family: var(--type-mono, 'IBM Plex Mono', monospace);
   font-size: 10px;
   color: var(--text-tertiary);
+}
+
+.catalog-credit {
+  margin: 0;
+  padding: 8px 12px;
+  border-top: 1px solid var(--axiom-mute, #2a2c30);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.catalog-credit a {
+  color: var(--text);
+  text-underline-offset: 2px;
 }
 
 /* Spatial 3D toolbar — sharp section cut, replaces the inline styles */

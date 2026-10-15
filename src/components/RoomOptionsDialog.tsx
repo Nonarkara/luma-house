@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { furnitureCatalog, furnitureRectFor, siteOf } from '../plan'
+import { furnitureLabelFor, furnitureRectFor, siteOf } from '../plan'
 import { openingCompassForRoom } from '../analysis/walls'
 import { generateRoomOptions, type RoomMeasures, type RoomOption } from '../options/roomOptions'
 import type { Furniture, PlanState, Room } from '../types'
@@ -16,7 +16,7 @@ function RoomDrawing({ plan, room, furniture, label }: { plan: PlanState; room: 
       const r = furnitureRectFor(f, site), x = (r.x - room.x) / 100 * site.w, y = (r.y - room.y) / 100 * site.h
       if (x >= width || y >= depth || x + r.w / 100 * site.w <= 0 || y + r.h / 100 * site.h <= 0) return null
       const w = r.w / 100 * site.w, h = r.h / 100 * site.h
-      return <g key={f.id}><title>{furnitureCatalog[f.kind].label} · {w.toFixed(2)} × {h.toFixed(2)} m{f.kind === 'wc' ? ' · fixed' : ''}</title>
+      return <g key={f.id}><title>{furnitureLabelFor(f)} · {w.toFixed(2)} × {h.toFixed(2)} m{f.kind === 'wc' ? ' · fixed' : ''}</title>
         <rect className="option-furniture-outline" x={x} y={y} width={w} height={h} />
         <text x={x + w / 2} y={y + h / 2} textAnchor="middle" dominantBaseline="middle" fontSize={Math.min(Math.max(width, depth) / 10, w / 2, h / 2)}>{index + 1}</text>
       </g>
@@ -82,7 +82,7 @@ export default function RoomOptionsDialog({ plan, initialRoomId, onApply, onClos
         return r.x + r.w / 2 >= room.x && r.x + r.w / 2 < room.x + room.w && r.y + r.h / 2 >= room.y && r.y + r.h / 2 < room.y + room.h
       }).map(f => {
         const r = furnitureRectFor({ ...f, rotated: false }, siteOf(plan)), site = siteOf(plan)
-        return `${plan.furniture.indexOf(f) + 1}. ${furnitureCatalog[f.kind].label} ${((r.w / 100) * site.w).toFixed(2)} × ${((r.h / 100) * site.h).toFixed(2)} m${f.kind === 'wc' ? ' (fixed)' : ''}`
+        return `${plan.furniture.indexOf(f) + 1}. ${furnitureLabelFor(f)} ${((r.w / 100) * site.w).toFixed(2)} × ${((r.h / 100) * site.h).toFixed(2)} m${f.kind === 'wc' ? ' (fixed)' : ''}`
       }).join(' · ') || 'None in this room'}</p>
       {result.issues.length > 0 && <p className="room-option-warning">Current drawing: {result.issues.join(' ')}</p>}
       {result.reason && <p className="room-option-warning" role="status">{result.reason}</p>}

@@ -17,7 +17,7 @@ export const MAX_PROJECT_BYTES = 2 * 1024 * 1024
 const COLLECTION_LIMITS = { rooms: 200, openings: 1000, furniture: 1000, walls: 2000 } as const
 
 const ROOM_KINDS: RoomKind[] = ['living', 'kitchen', 'bedroom', 'bathroom', 'studio', 'terrace']
-const FURNITURE_KINDS: Furniture['kind'][] = ['bed', 'sofa', 'dining', 'wardrobe', 'desk', 'wc']
+const FURNITURE_KINDS: Furniture['kind'][] = ['bed', 'sofa', 'dining', 'wardrobe', 'desk', 'wc', 'chair', 'console', 'decor']
 
 function num(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 10000 ? value : null
@@ -84,12 +84,16 @@ function sanitizeFurniture(raw: unknown): Furniture | null {
   if (!FURNITURE_KINDS.includes(candidate.kind as Furniture['kind'])) return null
   const wM = num(candidate.wM)
   const dM = num(candidate.dM)
+  const label = str(candidate.label)
+  const assetId = str(candidate.assetId)
   return {
     id,
     kind: candidate.kind as Furniture['kind'],
     x,
     y,
     rotated: candidate.rotated === true,
+    ...(label ? { label } : {}),
+    ...(assetId ? { assetId } : {}),
     // Per-piece dimension overrides (catalog items with specific sizes).
     ...(wM !== null && wM > 0 && wM < 20 ? { wM } : {}),
     ...(dM !== null && dM > 0 && dM < 20 ? { dM } : {}),

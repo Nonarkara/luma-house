@@ -1,3 +1,30 @@
+## Measured furniture catalogue — 2026-10-15
+
+Design Read: furniture is evidence of scale, not decoration. The plan remains
+the authority: every object has one measured footprint shared by the 2D drawing,
+schematic views and optional real 3D mesh. Real materials appear only in Solid;
+Architectural and Wireframe keep the quieter measured boxes. Six permissively
+licensed Khronos sample assets provide chairs, sofas and small decor, with exact
+credits and rebuild instructions in `docs/FURNITURE-CATALOGUE.md`.
+
+Runtime contract: no GLB is requested at first paint or in schematic 3D. Solid
+loads each model behind its own Suspense and error boundary; a slow, missing or
+invalid model falls back to its measured box without taking down the building.
+The chosen asset id and human label survive local saves and share links. Unknown
+ids fail closed. Generated geometry is Meshopt-compressed, uses the decoder in
+the lazy 3D bundle, and stays within a 3.5 MB total catalogue budget. The build
+pipeline measures, centres and seats every model; tests re-open the shipped GLBs
+and compare their envelopes with the generated manifest.
+
+Verification: 452 frontend tests /60 files, lint and production build pass;
+production dependencies report zero vulnerabilities. All 114 desktop/phone
+browser checks passed, followed by a focused two-case furniture retest after the
+last catalogue styling change. The browser proves the selected asset persists,
+GLBs wait for Solid, and an aborted model request leaves the 3D building alive.
+The final catalog and loaded sofa were also inspected at desktop width. The lazy
+3D chunk remains about 1.04 MB minified /283 KB gzip; that existing Three.js
+cost is disclosed rather than counted as first-paint JavaScript.
+
 ## SpaceFactor comparison work — 2026-10-15
 
 Design Read: equal-scale measured plans explain the decision, and one local 3D

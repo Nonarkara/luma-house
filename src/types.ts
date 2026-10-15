@@ -35,11 +35,24 @@ export interface Opening {
   operableFraction?: number
 }
 
-export type FurnitureKind = 'bed' | 'sofa' | 'dining' | 'wardrobe' | 'desk' | 'wc'
+/**
+ * Placeable furniture classes.
+ *
+ * `chair`, `console`, and `decor` were added when the real furniture catalogue arrived.
+ * Before that the drawer reached for `sofa` to mean "some living-room object",
+ * which put a *Lounge Armchair* and a *Media & TV Console* on the same kind and
+ * would have labelled a glass vase "Sofa" in the plan. A real mesh needs a kind
+ * that means what it draws, or the label under the drawing is a lie.
+ */
+export type FurnitureKind = 'bed' | 'sofa' | 'dining' | 'wardrobe' | 'desk' | 'wc' | 'chair' | 'console' | 'decor'
 
 export interface Furniture {
   id: string
   kind: FurnitureKind
+  /** User-facing catalogue name; falls back to the generic kind label. */
+  label?: string
+  /** Stable measured-mesh choice. Missing/unknown assets fall back to a box. */
+  assetId?: string
   x: number
   y: number
   rotated: boolean

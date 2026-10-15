@@ -6,6 +6,8 @@
 
 **A local-first sketch-to-decision studio for a home — draw a room, give it one real measure, and read light, air, escape, heat, and a concept cost in the same geometry.**
 
+The optional 3D furniture library is documented in [docs/FURNITURE-CATALOGUE.md](docs/FURNITURE-CATALOGUE.md), including measured-footprint guarantees, lazy-loading behavior, source credits, and licences.
+
 [![License: MIT](https://img.shields.io/badge/license-MIT-1A1A1A)](LICENSE)
 
 By [Non Arkaraprasertkul](https://github.com/Nonarkara) ([@Nonarkara](https://github.com/Nonarkara)) — [Axiom X Co., Ltd.](https://github.com/Nonarkara/Axiom), Bangkok.

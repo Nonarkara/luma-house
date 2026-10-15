@@ -14,7 +14,7 @@ import * as THREE from 'three'
 const WIREFILL_OPACITY = 0.18
 const WIREEDGE_COLOR = '#0e1014' // Axiom ink
 const WIREFILL_COLOR = '#faf7f1' // Axiom paper
-import { furnitureRectFor, roomHeight, siteOf, sunVector } from '../plan'
+import { roomHeight, siteOf, sunVector } from '../plan'
 import type { Furniture, FurnitureKind, Opening, PlanState, Room, SiteSpec } from '../types'
 import { windFlowPotential } from '../analysis'
 import type { Compass } from '../analysis'
@@ -31,6 +31,7 @@ import { cutPart, modelBounds, physicalGeometryKey, wallParts } from '../study/g
 import type { DisplayStyle, ReadyStudyCapture, StudyCamera, StudyScene, StudySettings, StudyTime } from '../study/types'
 import { captureWhenReady } from '../study/capture'
 import type { ProjectLocation } from '../types'
+import FurniturePieceView from './FurnitureMesh'
 
 const HEIGHT_MIN = 2.2
 const HEIGHT_MAX = 4.5
@@ -48,6 +49,31 @@ const FURNITURE_HEIGHTS: Record<FurnitureKind, number> = {
   wardrobe: 2.0,
   desk: 0.75,
   wc: 0.42,
+  // Measured from the real catalogue geometry, not guessed.
+  chair: 0.69,
+  console: 0.55,
+  decor: 0.6,
+}
+
+/** Shared schematic/real furniture renderer used by the main and A/B scenes. */
+export function FurniturePiece({ item, site, wireframe, edgeColor, architectural, sectionHeight }: {
+  item: Furniture
+  site: SiteSpec
+  wireframe: boolean
+  edgeColor: string
+  architectural: boolean
+  sectionHeight: number
+}) {
+  return <FurniturePieceView
+    item={item}
+    site={site}
+    wireframe={wireframe}
+    edgeColor={edgeColor}
+    architectural={architectural}
+    sectionHeight={sectionHeight}
+    kindHeight={FURNITURE_HEIGHTS[item.kind]}
+    floorThickness={FLOOR_THICKNESS}
+  />
 }
 
 export type CameraPreset = 'orbit' | 'axonometric' | 'topdown'
@@ -265,34 +291,6 @@ export function OpeningPanel({ opening, site, wireframe, edgeColor, architectura
   )
 }
 
-
-export function FurniturePiece({ item, site, wireframe, edgeColor, architectural, sectionHeight }: { item: Furniture; site: SiteSpec; wireframe: boolean; edgeColor: string; architectural: boolean; sectionHeight: number }) {
-  const rect = useMemo(() => furnitureRectFor(item, site), [item, site])
-  const widthM = (rect.w / 100) * site.w
-  const depthM = (rect.h / 100) * site.h
-  const { mx, mz } = toMeters(rect.x + rect.w / 2, rect.y + rect.h / 2, site)
-  const fullHeight = FURNITURE_HEIGHTS[item.kind]
-  const height = Math.max(0, Math.min(fullHeight, sectionHeight - FLOOR_THICKNESS))
-
-  return (
-    <group>
-    <mesh position={[mx, FLOOR_THICKNESS + fullHeight / 2, mz]} castShadow raycast={() => {}}>
-      <boxGeometry args={[widthM, fullHeight, depthM]} /><meshBasicMaterial colorWrite={false} depthWrite={false} />
-    </mesh>
-    <mesh position={[mx, FLOOR_THICKNESS + height / 2, mz]}>
-      <boxGeometry args={[widthM, height, depthM]} />
-      <meshStandardMaterial
-        color={wireframe || architectural ? WIREFILL_COLOR : '#8b8f98'}
-        roughness={0.9}
-        metalness={0}
-        transparent={wireframe}
-        opacity={wireframe ? WIREFILL_OPACITY : 1}
-      />
-      {(wireframe || architectural) && <Edges color={edgeColor} threshold={1} lineWidth={architectural ? 0.7 : 1} />}
-    </mesh>
-    </group>
-  )
-}
 
 function VectorLine({
   start,
@@ -719,6 +717,8 @@ export default function Spatial3D({
 
         <div className="vector-group">
           <button type="button" className={`spatial-tb-btn ${architectural ? 'active-layer' : ''}`} aria-pressed={architectural} onClick={() => setDisplayStyle('architectural')}>Architectural</button>
+          <button type="button" className={`spatial-tb-btn ${displayStyle === 'solid' ? 'active-layer' : ''}`} aria-pressed={displayStyle === 'solid'} onClick={() => setDisplayStyle('solid')}>Solid</button>
+          <button type="button" className={`spatial-tb-btn ${wireframe ? 'active-layer' : ''}`} aria-pressed={wireframe} onClick={() => setDisplayStyle('wireframe')}>Wireframe</button>
           <button type="button" className="spatial-tb-btn" onClick={onStartTour} disabled={ghost}>
             Tour
           </button>
@@ -746,15 +746,6 @@ export default function Spatial3D({
           >
             3D Roof
           </button>
-          <button
-              type="button"
-              className={`spatial-tb-btn toggle ${wireframe ? 'active-layer' : ''}`}
-              onClick={() => setDisplayStyle(wireframe ? 'solid' : 'wireframe')}
-              aria-pressed={wireframe}
-              title="Toggle architectural wireframe (sharp edges, paper fill) vs solid render"
-            >
-              Wireframe
-            </button>
           <button type="button" className={`spatial-tb-btn toggle ${showShadows ? 'active-layer' : ''}`} aria-pressed={showShadows} onClick={() => setShowShadows(value => !value)}>Shadows</button>
           <button type="button" className="spatial-tb-btn" onClick={downloadView} disabled={ghost}>Save view PNG</button>
           {showRoof && (
@@ -877,7 +868,15 @@ export default function Spatial3D({
           <OpeningPanel key={opening.id} opening={opening} site={site} wireframe={wireframe} edgeColor={edgeColor} architectural={architectural} sectionHeight={visibleCut} />
         ))}
         {!ghost && plan.furniture.map((item) => (
-          <FurniturePiece key={item.id} item={item} site={site} wireframe={wireframe} edgeColor={edgeColor} architectural={architectural} sectionHeight={visibleCut} />
+          <FurniturePiece
+            key={item.id}
+            item={item}
+            site={site}
+            wireframe={wireframe}
+            edgeColor={edgeColor}
+            architectural={architectural}
+            sectionHeight={visibleCut}
+          />
         ))}
 
         {!ghost && showSunRays && (

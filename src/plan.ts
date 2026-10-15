@@ -101,6 +101,8 @@ export const initialPlan: PlanState = {
 }
 
 // Real-world footprints in meters (width × depth), the whole point of testing fit.
+// `chair` and `decor` default to the measured geometry of the real catalogue
+// assets for that kind, so the drawn rectangle needs no scaling at all.
 export const furnitureCatalog: Record<FurnitureKind, { label: string; w: number; d: number }> = {
   bed: { label: 'Bed', w: 2.0, d: 1.8 },
   sofa: { label: 'Sofa', w: 2.2, d: 0.9 },
@@ -108,6 +110,14 @@ export const furnitureCatalog: Record<FurnitureKind, { label: string; w: number;
   wardrobe: { label: 'Wardrobe', w: 2.0, d: 0.6 },
   desk: { label: 'Desk', w: 1.4, d: 0.7 },
   wc: { label: 'WC', w: 0.4, d: 0.7 },
+  chair: { label: 'Chair', w: 0.83, d: 0.57 },
+  console: { label: 'Media console', w: 2.0, d: 0.4 },
+  decor: { label: 'Decor', w: 0.36, d: 0.11 },
+}
+
+/** The specific catalogue name wins; legacy pieces retain their kind label. */
+export function furnitureLabelFor(item: Furniture): string {
+  return item.label?.trim() || furnitureCatalog[item.kind].label
 }
 
 /**

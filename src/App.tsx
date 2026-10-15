@@ -22,7 +22,7 @@ import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
-import { calibrateSiteFromRoom, defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureRectFor, furnitureSpecFor, roomAreaFor, roomOverlaps, siteOf, sunPatches } from './plan'
+import { calibrateSiteFromRoom, defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureLabelFor, furnitureRectFor, furnitureSpecFor, roomAreaFor, roomOverlaps, siteOf, sunPatches } from './plan'
 import { interiorBoq } from './boq/interiorBoq'
 import { tracePlanFromImage } from './concept/tracePlan'
 import type { SiteSpec } from './types'
@@ -1591,7 +1591,7 @@ function App() {
             {view === 'plan' && furnitureItem && (
               <div className={`furniture-chip ${furnitureConflicts.has(furnitureItem.id) ? 'is-conflict' : ''}`} role="status">
                 <span>
-                  <strong>{furnitureCatalog[furnitureItem.kind].label}</strong>
+                  <strong>{furnitureLabelFor(furnitureItem)}</strong>
                   <small>
                     {(() => {
                       const spec = furnitureSpecFor(furnitureItem)
@@ -1623,7 +1623,7 @@ function App() {
             <FurnitureCatalogDrawer
               open={isCatalogOpen}
               onClose={() => setIsCatalogOpen(false)}
-              onAddFurniture={(kind, label, size) => {
+              onAddFurniture={(kind, label, size, assetId) => {
                 const id = `furn-${Date.now()}`
                 commit({
                   ...plan,
@@ -1632,6 +1632,8 @@ function App() {
                     {
                       id,
                       kind,
+                      label,
+                      ...(assetId ? { assetId } : {}),
                       x: 50,
                       y: 50,
                       rotated: false,

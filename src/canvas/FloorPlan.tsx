@@ -1,7 +1,7 @@
 import { openingDimensions } from '../openingGeometry'
 import { ArrowRight } from 'lucide-react'
 import React, { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
-import { furnitureCatalog, furnitureRectFor, furnitureSpecFor, roomAreaFor, siteOf } from '../plan'
+import { furnitureCatalog, furnitureLabelFor, furnitureRectFor, furnitureSpecFor, roomAreaFor, siteOf } from '../plan'
 import type { SunPatch } from '../plan'
 import type { Furniture, Opening, PlanState, PlanTool, Room, RoomKind } from '../types'
 import type { DaylightBand, RoomEgressRoute, RoomWindPotential } from '../analysis'
@@ -327,7 +327,7 @@ export const FloorPlan = React.memo(function FloorPlan({
                 aria-label={`${spec.label}, ${item.rotated ? dimensions.d : dimensions.w} by ${item.rotated ? dimensions.w : dimensions.d} meters${furnitureConflicts.has(item.id) ? ', blocks a door swing' : ''}`}
                 title={`${spec.label} · ${dimensions.w} × ${dimensions.d} m`}
               >
-                <span>{item.kind === 'wc' ? 'WC' : spec.label}</span>
+                <span>{item.kind === 'wc' ? 'WC' : furnitureLabelFor(item)}</span>
               </button>
             )
           })}

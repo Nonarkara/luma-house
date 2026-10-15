@@ -8,6 +8,24 @@ describe('sharePlan', () => {
     expect(decodePlanFromHash(hash)).toEqual(completeHousePlan)
   })
 
+  it('preserves a measured furniture choice and its honest label', () => {
+    const source = {
+      ...completeHousePlan,
+      furniture: [{
+        id: 'chair-1',
+        kind: 'chair' as const,
+        label: 'Damask chair',
+        assetId: 'damask-chair',
+        x: 42,
+        y: 38,
+        rotated: true,
+        wM: 0.83,
+        dM: 0.57,
+      }],
+    }
+    expect(decodePlanFromHash(`#plan=${encodePlanToHash(source)}`)?.furniture).toEqual(source.furniture)
+  })
+
   it('returns null for hashes without a plan payload', () => {
     expect(decodePlanFromHash('')).toBeNull()
     expect(decodePlanFromHash('#other=abc')).toBeNull()

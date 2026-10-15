@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
-import { X, Bed, Armchair, Monitor, Utensils, Flower2, Tv, LayoutGrid, Layers, Bath } from 'lucide-react'
+import { X, Bed, Armchair, Monitor, Utensils, Flower2, Tv, LayoutGrid, Layers, Bath, Lamp } from 'lucide-react'
 import { furnitureCatalog } from '../plan'
 import type { FurnitureKind } from '../types'
+import { furnitureAssetById } from '../catalog/furnitureAssets'
 
 interface FurnitureCatalogDrawerProps {
   open: boolean
   onClose: () => void
-  onAddFurniture: (kind: FurnitureKind, label: string, size?: { wM: number; dM: number }) => void
+  onAddFurniture: (kind: FurnitureKind, label: string, size?: { wM: number; dM: number }, assetId?: string) => void
 }
 
 interface CatalogItem {
@@ -15,20 +16,47 @@ interface CatalogItem {
   category: 'bedroom' | 'living' | 'office' | 'dining' | 'decor' | 'bath'
   /** Explicit footprint override. Omitted = the generic kind spec. */
   size?: { wM: number; dM: number }
+  assetId?: string
   icon: typeof Bed
+}
+
+function measuredItem(
+  assetId: string,
+  kind: FurnitureKind,
+  category: CatalogItem['category'],
+  icon: CatalogItem['icon'],
+): CatalogItem {
+  const asset = furnitureAssetById(assetId)
+  if (!asset) throw new Error(`Missing generated furniture asset: ${assetId}`)
+  return {
+    kind,
+    label: asset.label,
+    category,
+    size: { wM: asset.widthM, dM: asset.depthM },
+    assetId,
+    icon,
+  }
 }
 
 const CATALOG_ITEMS: CatalogItem[] = [
   { kind: 'bed', label: 'King Bed & Nightstands', category: 'bedroom', size: { wM: 2.0, dM: 2.0 }, icon: Bed },
   { kind: 'bed', label: 'Single Bed', category: 'bedroom', size: { wM: 1.2, dM: 2.0 }, icon: Bed },
-  { kind: 'sofa', label: '3-Seater Living Sofa', category: 'living', size: { wM: 2.4, dM: 0.9 }, icon: Armchair },
+  measuredItem('glam-velvet-sofa', 'sofa', 'living', Armchair),
+  measuredItem('wood-leather-sofa', 'sofa', 'living', Armchair),
   { kind: 'sofa', label: 'L-Shape Sectional', category: 'living', size: { wM: 2.8, dM: 1.8 }, icon: Armchair },
   { kind: 'desk', label: 'Executive Workstation', category: 'office', size: { wM: 1.6, dM: 0.8 }, icon: Monitor },
   { kind: 'dining', label: '6-Person Dining Table', category: 'dining', size: { wM: 1.8, dM: 0.9 }, icon: Utensils },
-  { kind: 'sofa', label: 'Media & TV Console', category: 'living', size: { wM: 2.0, dM: 0.4 }, icon: Tv },
+  { kind: 'console', label: 'Media & TV Console', category: 'living', size: { wM: 2.0, dM: 0.4 }, icon: Tv },
   { kind: 'wardrobe', label: 'Built-in Wardrobe', category: 'bedroom', size: { wM: 2.0, dM: 0.6 }, icon: LayoutGrid },
-  { kind: 'sofa', label: 'Lounge Armchair', category: 'living', size: { wM: 0.9, dM: 0.9 }, icon: Flower2 },
+  // `chair`, not `sofa`: the kind is what the plan prints under the piece, and a
+  // chair labelled "Sofa" is a lie in the one label a reader is guaranteed to see.
+  measuredItem('sheen-chair', 'chair', 'living', Flower2),
+  measuredItem('damask-chair', 'chair', 'living', Flower2),
   { kind: 'wc', label: 'WC', category: 'bath', size: { wM: 0.4, dM: 0.7 }, icon: Bath },
+  // Sizes are the measured geometry of the real catalogue meshes, so placing
+  // either of these needs no scaling and the 3D view matches the plan exactly.
+  measuredItem('glass-vase', 'decor', 'decor', Flower2),
+  measuredItem('lantern', 'decor', 'decor', Lamp),
 ]
 
 /**
@@ -51,10 +79,12 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
     { id: 'living', label: 'Living' },
     { id: 'office', label: 'Office' },
     { id: 'dining', label: 'Dining' },
+    { id: 'decor', label: 'Decor' },
     { id: 'bath', label: 'Bath' },
   ]
 
   const needle = searchQuery.trim().toLowerCase()
+  const dimension = (value: number) => value < 1 ? value.toFixed(2) : value.toFixed(1)
   const filteredItems = CATALOG_ITEMS.filter((item) => {
     const matchesCategory = activeCategory === 'all' || item.category === activeCategory
     const matchesSearch =
@@ -114,12 +144,12 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
           filteredItems.map((item, idx) => {
             const Icon = item.icon
             const size = item.size ?? { wM: furnitureCatalog[item.kind].w, dM: furnitureCatalog[item.kind].d }
-            const dimensions = `${size.wM.toFixed(1)} × ${size.dM.toFixed(1)} m`
+            const dimensions = `${dimension(size.wM)} × ${dimension(size.dM)} m`
             return (
               <button
                 key={`${item.kind}-${idx}`}
                 type="button"
-                onClick={() => onAddFurniture(item.kind, item.label, item.size)}
+                onClick={() => onAddFurniture(item.kind, item.label, item.size, item.assetId)}
                 className="catalog-card"
                 aria-label={`Add ${item.label}, ${dimensions}`}
               >
@@ -127,12 +157,16 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
                   <Icon className="catalog-card-icon-svg" />
                 </span>
                 <strong className="catalog-card-name">{item.label}</strong>
-                <span className="catalog-card-dim">{dimensions}</span>
+                <span className="catalog-card-dim">{dimensions}{item.assetId ? ' · measured 3D' : ''}</span>
               </button>
             )
           })
         )}
       </div>
+      <p className="catalog-credit">
+        Measured 3D assets · CC0 / CC BY 4.0 ·{' '}
+        <a href="https://github.com/Nonarkara/luma-house/blob/main/docs/FURNITURE-CATALOGUE.md" target="_blank" rel="noreferrer">credits</a>
+      </p>
     </aside>
   )
 }
