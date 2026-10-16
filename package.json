@@ -12,6 +12,8 @@
     "test:e2e": "npm run build && playwright test",
     "test:e2e:fast": "playwright test",
     "preview": "vite preview",
+    "verify:worker": "cd workers/concept-render && npx tsc --noEmit && npx vitest run",
+    "verify": "npm run lint && npm run build && npm test && npm run verify:worker",
     "deploy:pages": "npm run build && workers/concept-render/node_modules/.bin/wrangler pages deploy dist --project-name=luma-house --branch=main"
   },
   "dependencies": {
