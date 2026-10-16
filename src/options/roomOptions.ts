@@ -42,9 +42,16 @@ function distance(x: number, y: number, r: Rect) {
 function geometry(plan: PlanState, room: Room) {
   const site = siteOf(plan)
   const bounds = { x: room.x / 100 * site.w, y: room.y / 100 * site.h, w: room.w / 100 * site.w, h: room.h / 100 * site.h }
+  // ponytail: furniture poses are never mutated, so one footprint per object is exact.
+  const rects = new WeakMap<Furniture, Rect>()
   const rect = (f: Furniture): Rect => {
-    const r = furnitureRectFor(f, site)
-    return { x: r.x / 100 * site.w, y: r.y / 100 * site.h, w: r.w / 100 * site.w, h: r.h / 100 * site.h }
+    let m = rects.get(f)
+    if (!m) {
+      const r = furnitureRectFor(f, site)
+      m = { x: r.x / 100 * site.w, y: r.y / 100 * site.h, w: r.w / 100 * site.w, h: r.h / 100 * site.h }
+      rects.set(f, m)
+    }
+    return m
   }
   const owns = (f: Furniture) => {
     const r = rect(f), x = r.x + r.w / 2, y = r.y + r.h / 2

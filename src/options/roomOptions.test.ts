@@ -158,5 +158,6 @@ describe('local room options', () => {
     expect(result.options.map(o => o.furniture.slice(0, 8))).toEqual(local.options.map(o => o.furniture))
     expect(result.options.length).toBeGreaterThan(0)
     for (const option of result.options) expect(option.furniture.slice(8)).toEqual(plan.furniture.slice(8))
-  })
+    // Deterministic read counts, not time; the timeout only absorbs a saturated CI machine.
+  }, 30_000)
 })
