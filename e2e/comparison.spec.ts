@@ -85,6 +85,80 @@ test('3D A/B switches actual geometry offline while preserving an orbited camera
   expect(ai).toEqual([])
 })
 
+test('morph slides between the alternatives and states what it cannot carry', async ({ page }) => {
+  await page.goto('/#plan=' + encodePlanToHash(b))
+  await compare(page)
+  // Captured before any morphing: the slider is a view, never an edit.
+  const savedBefore = await saved(page)
+  await page.getByRole('button', { name: '3D comparison', exact: true }).click()
+  const canvas = page.locator('.comparison-3d canvas')
+  const image = () => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL())
+  await expect.poll(async () => (await image()).length, { timeout: 25000 }).toBeGreaterThan(12000)
+  const box = (await canvas.boundingBox())!
+  // One percent of the frame: wide enough for shadow noise, far below the share
+  // of a canvas a sofa sliding across a room would repaint.
+  const canvas_area = Math.round(box.width * box.height * 0.01)
+  const slider = page.getByRole('slider', { name: 'Morph between alternatives', exact: true })
+
+  await page.locator('.comparison-3d').getByRole('button', { name: 'Morph', exact: true }).click()
+  await expect(slider).toBeVisible()
+
+  /**
+   * Count pixels that actually differ between two frames.
+   *
+   * Asserting "the screenshot is not identical" is worthless here: any state
+   * change re-renders the demand-framed canvas, so incidental shadow-map and
+   * dithering differences make two *identical* drawings compare unequal. That is
+   * exactly how a morph which silently returned Plan A every time passed this
+   * test once. So the assertion is a threshold on real changed pixels, and the
+   * slider's two ends are compared against the two real alternatives.
+   */
+  const changedPixels = (first: string, second: string) => page.evaluate(async ([a, b]) => {
+    const load = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src
+    })
+    const [first, second] = await Promise.all([load(a!), load(b!)])
+    const canvas = document.createElement('canvas')
+    canvas.width = first.width; canvas.height = first.height
+    const context = canvas.getContext('2d')!
+    context.drawImage(first, 0, 0)
+    const from = context.getImageData(0, 0, canvas.width, canvas.height).data
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    context.drawImage(second, 0, 0)
+    const to = context.getImageData(0, 0, canvas.width, canvas.height).data
+    let count = 0
+    for (let i = 0; i < from.length; i += 4) {
+      if (Math.abs(from[i] - to[i]) > 12 || Math.abs(from[i + 1] - to[i + 1]) > 12 || Math.abs(from[i + 2] - to[i + 2]) > 12) count += 1
+    }
+    return count
+  }, [first, second] as const)
+
+  await slider.fill('0')
+  await page.waitForTimeout(1200)
+  const atZero = await image()
+  await slider.fill('1')
+  await page.waitForTimeout(1200)
+  const atOne = await image()
+
+  // A real morph moves the building. 1% of the frame is a wide margin for
+  // shadow noise and a low bar for actual geometry travelling across a room.
+  expect(await changedPixels(atZero, atOne), 'the two ends of the morph must render differently').toBeGreaterThan(canvas_area)
+
+  // The ends must be the two alternatives themselves, not two arbitrary frames.
+  await page.locator('.comparison-3d').getByRole('button', { name: 'Plan A', exact: true }).click()
+  await page.waitForTimeout(1200)
+  const planA = await image()
+  await page.locator('.comparison-3d').getByRole('button', { name: 'Plan B', exact: true }).click()
+  await page.waitForTimeout(1200)
+  const planB = await image()
+  expect(await changedPixels(planA, planB), 'the two alternatives must differ for a morph to mean anything').toBeGreaterThan(canvas_area)
+
+  // And it must say out loud which parts swap rather than slide.
+  const note = page.locator('.comparison-3d p', { hasText: 'cannot interpolate' })
+  if (await note.count()) await expect(note).toContainText('switch')
+  expect(await saved(page)).toEqual(savedBefore)
+})
+
 test('room options preview real 3D before Apply and every palette keeps comparison within the dialog', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(a))
   await expect.poll(async () => (await saved(page)).rooms?.length).toBe(1)
