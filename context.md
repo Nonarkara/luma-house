@@ -8,6 +8,19 @@ roles, workspace palettes, and controls. Audit actual font ink, occlusion, keys,
 and A4 output at 1440/1024/390px with an independent review. Correct measured
 defects without replacing the interactive model or changing saved drawings.
 
+Shipped as `2369499` (audit fix `d72914a`), Cloudflare upload `bb0b4e67`.
+CI `39148190535` passes 539 frontend +54 Worker +158 browser cases (5.6m),
+lint/type/build/quota and dependency gates. Primary live30 and mirror subpath
+live14 cases pass. All44 files match three consecutive probes on canonical,
+custom and mirror hosts; primary CSP matches. Actual font ink/SAT occlusion,
+visibility-checked marks, wrapped keys/notes, A4 sizing and compact phone zoom
+controls are independently screenshot/PDF reviewed at1440/1024/390px. Morph
+uses effective dimensions with exact endpoint entities and correct identity
+switches/counts. Fresh city defaults, legacy JSON cities and explicitly loaded
+samples now survive sharing/reload. Three verified shared lessons captured.
+Seven dev-only Tailwind advisories remain; production dependencies have zero.
+See `docs/SHEET-AUDIT-2026-10-18.md` for evidence and concept-drawing limits.
+
 ## Furniture/layout audit — 2026-10-15
 
 Production-policy correction: the initial 124-case CI pass missed real GLB

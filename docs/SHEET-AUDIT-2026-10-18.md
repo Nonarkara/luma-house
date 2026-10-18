@@ -103,3 +103,33 @@ poses byte-for-byte: an OrbitControls round-trip varied by approximately
 retains exact projection/FOV checks, and still requires three distinct actual
 sun frames. No production capture logic was weakened. The final full gate
 and live deployment are recorded below when verified.
+
+## Shipped release
+
+- Runtime `2369499`, following the main audit fix `d72914a`.
+- [CI 39148190535](https://github.com/Nonarkara/luma-house/actions/runs/39148190535):
+  539 frontend tests, 54 Worker tests, **158 browser cases pass (5.6m)**.
+  Lint/build/type, Worker quota and dependency gates pass. Mirror deploy succeeds.
+- Cloudflare upload `bb0b4e67` via `npm run deploy:pages`.
+- Entry `assets/index-D25KEgcd.js`, SHA-256
+  `58e8e51e3a6be963507dbf31be1ec50ee6534601524e27b86ea101371ee78199`.
+  The deploy rebuild matches all 44 reviewed local file hashes.
+- Canonical alias, primary custom domain and GitHub mirror each match all
+  **44 files for three consecutive disposable-key probes**. Primary/canonical
+  CSP matches the tested source policy. GitHub does not apply `_headers`.
+- Primary live **30 desktop/phone cases pass (1.4m)**: real font containment,
+  occlusion and marks, long-key A4 PDF, preview zoom, morph, automatic city
+  sharing/import, sample reload, actual furniture mesh draws, solar shadows,
+  and the WASM-allowed/JavaScript-eval-blocked policy boundary.
+- Mirror live **14 desktop/phone cases pass (31.1s)** at `/luma-house/`:
+  labels, print/zoom, fresh city sharing and sample persistence. Temporary
+  test copies prefix navigation paths; root-domain success is not substituted.
+- Live tests use isolated profiles and block service workers; no user drawing
+  was replaced. Three verified lessons were stored in SecondBrain.
+- A final manual check in the persistent in-app browser opened production's
+  Renders → Study sheet → Elevation sheet. The new style/zoom selectors are
+  visible; the user's existing Cape Town 50m² drawing remains intact.
+
+Evidence: `/Users/nonarkara/.codex/visualizations/2026/10/18/designon-sheet-audit/`,
+including immutable final screenshots, actual print raster, PDF and release
+hash manifest. The final receipt-only commit has no application-byte change.
