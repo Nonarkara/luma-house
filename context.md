@@ -1,3 +1,13 @@
+## Drawing-sheet audit plan — 2026-10-18
+
+Design Read: a room name must occupy visible paper belonging to that room,
+and every room must remain identifiable in a wrapped drawing key on the printed
+sheet. Reference: AIA Architectural Graphic Standards drawing keys and separate
+annotation margins. The drawing stays dominant; preserve the existing line-weight
+roles, workspace palettes, and controls. Audit actual font ink, occlusion, keys,
+and A4 output at 1440/1024/390px with an independent review. Correct measured
+defects without replacing the interactive model or changing saved drawings.
+
 ## Furniture/layout audit — 2026-10-15
 
 Production-policy correction: the initial 124-case CI pass missed real GLB

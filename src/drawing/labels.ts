@@ -36,6 +36,17 @@ export interface LabelLine {
   fontSize: number
 }
 
+export interface TextMetrics {
+  width: number
+  left: number
+  right: number
+  ascent: number
+  descent: number
+}
+
+/** Runtime callers measure the loaded font; pure callers use the estimate. */
+export type MeasureText = (line: LabelLine) => TextMetrics
+
 export interface LabelCandidate {
   id: string
   lines: LabelLine[]
@@ -47,6 +58,7 @@ export interface LabelCandidate {
   minFontSize?: number
   /** Polygons painted after this label's own face. A covered label is worse than no label. */
   occluders?: Quad[]
+  measure?: MeasureText
 }
 
 export interface PlacedLine extends LabelLine {
@@ -115,8 +127,8 @@ export function pointInQuad(point: Point, quad: Quad): boolean {
   return inside
 }
 
-export function lineWidth(lines: LabelLine[]): number {
-  return lines.reduce((widest, line) => Math.max(widest, textWidth(line.text, line.fontSize)), 0)
+export function lineWidth(lines: LabelLine[], measure?: MeasureText): number {
+  return lines.reduce((widest, line) => Math.max(widest, measure ? measure(line).width : textWidth(line.text, line.fontSize)), 0)
 }
 
 /** Total block height, with the leading that keeps two stacked lines from touching. */
@@ -148,7 +160,14 @@ export function lineBox(
   x: number,
   baselineY: number,
   anchor: 'start' | 'middle' = 'start',
+  measure?: MeasureText,
 ): Quad {
+  if (measure) {
+    const metrics = measure(line)
+    const origin = anchor === 'middle' ? x - metrics.width / 2 : x
+    return [[origin + metrics.left, baselineY - metrics.ascent], [origin + metrics.right, baselineY - metrics.ascent],
+      [origin + metrics.right, baselineY + metrics.descent], [origin + metrics.left, baselineY + metrics.descent]]
+  }
   const width = textWidth(line.text, line.fontSize)
   const bearing = INK_SIDE_BEARING * line.fontSize
   const origin = anchor === 'middle' ? x - width / 2 : x
@@ -157,6 +176,21 @@ export function lineBox(
   const top = baselineY - INK_ASCENT * line.fontSize
   const bottom = baselineY + INK_DESCENT * line.fontSize
   return [[left, top], [right, top], [right, bottom], [left, bottom]]
+}
+
+/** Separating-axis test for convex faces and ink boxes, including edge crossings. */
+export function quadsOverlap(a: Quad, b: Quad): boolean {
+  for (const polygon of [a, b]) {
+    for (let i = 0; i < polygon.length; i += 1) {
+      const p = polygon[i], q = polygon[(i + 1) % polygon.length]
+      const nx = p[1] - q[1], ny = q[0] - p[0]
+      if (nx === 0 && ny === 0) continue
+      const project = (quad: Quad) => quad.map(([x, y]) => x * nx + y * ny)
+      const aa = project(a), bb = project(b)
+      if (Math.max(...aa) <= Math.min(...bb) || Math.max(...bb) <= Math.min(...aa)) return false
+    }
+  }
+  return a.length >= 3 && b.length >= 3
 }
 
 /** True when every corner of `box` lies inside the convex `quad`. */
@@ -189,9 +223,9 @@ export function crossSection(quad: Quad, y: number): { left: number; right: numb
  * decision and the drawing agree — a corner list that is empty is the promise
  * the sheet makes about every name it prints.
  */
-export function inkEscapes(lines: PlacedLine[], quad: Quad, anchor: 'start' | 'middle'): Quad {
+export function inkEscapes(lines: PlacedLine[], quad: Quad, anchor: 'start' | 'middle', measure?: MeasureText): Quad {
   return lines
-    .flatMap((line) => lineBox(line, line.x, line.y, anchor))
+    .flatMap((line) => lineBox(line, line.x, line.y, anchor, measure))
     .filter((corner) => !pointInQuad({ x: corner[0], y: corner[1] }, quad))
 }
 
@@ -251,7 +285,7 @@ function attemptPlacement(candidate: LabelCandidate, size: number): LabelPlaceme
   const box = quadExtents(candidate.quad)
   const faceWidth = box.maxX - box.minX
   const faceHeight = box.maxY - box.minY
-  const need = lineWidth(lines)
+  const need = lineWidth(lines, candidate.measure)
   const height = blockHeight(lines)
   if (faceWidth < need + pad * 2) return { ...empty, reason: 'too-narrow' }
   if (faceHeight < height + pad * 2) return { ...empty, reason: 'too-short' }
@@ -267,11 +301,11 @@ function attemptPlacement(candidate: LabelCandidate, size: number): LabelPlaceme
   // Measure the strip the ink actually covers, not the block's leading: a face
   // narrows fast between one line's descenders and the next line's cap height,
   // and charging the name for that gap is what empties an axonometric of names.
-  const inks = laidOut.map((line) => lineBox(line, line.x, line.y, anchor))
+  const inks = laidOut.map((line) => lineBox(line, line.x, line.y, anchor, candidate.measure))
   const inkTop = Math.min(...inks.flat().map((corner) => corner[1]))
   const inkBottom = Math.max(...inks.flat().map((corner) => corner[1]))
-  const bearing = INK_SIDE_BEARING * lines[0].fontSize
-  const inkWidth = Math.max(0, lineWidth(lines) - bearing * 2)
+  const leftOffset = Math.min(...inks.flat().map(([x]) => x - origin))
+  const rightOffset = Math.max(...inks.flat().map(([x]) => x - origin))
   const band = usableBand(candidate.quad, inkTop, inkBottom)
   if (!band) return { ...empty, reason: 'too-short' }
   // Slide the block along the face until its ink sits in the measured band. A
@@ -279,21 +313,21 @@ function attemptPlacement(candidate: LabelCandidate, size: number): LabelPlaceme
   // and one that misses by more is refused rather than named across an edge.
   // The inset keeps the ink clear of the line rather than resting on it: type
   // that touches an edge reads as touching, not as inside.
-  const near = (candidate.align === 'centre' ? band.left + inkWidth / 2 : band.left + bearing) + INSET
-  const far = (candidate.align === 'centre' ? band.right - inkWidth / 2 : band.right - inkWidth - bearing) - INSET
+  const near = band.left - leftOffset + INSET
+  const far = band.right - rightOffset - INSET
   if (near > far) return { ...empty, reason: 'too-narrow' }
   const placed = laidOut.map((line) => ({ ...line, x: Math.min(Math.max(origin, near), far) }))
   // Backstop, not a primary gate: the band arithmetic above is expected to make
   // this unreachable. It stays because a name printed across a boundary is the
   // defect this whole module exists to prevent, and a future face ordering that
   // confuses the band should cost one unnamed room rather than a wrong drawing.
-  const escapes = inkEscapes(placed, candidate.quad, anchor)
+  const escapes = inkEscapes(placed, candidate.quad, anchor, candidate.measure)
   if (escapes.length > 0) {
     const leftVertically = escapes.some((corner) => corner[1] < box.minY || corner[1] > box.maxY)
     return { ...empty, reason: leftVertically ? 'too-short' : 'too-narrow' }
   }
-  const centre = quadCentre(candidate.quad)
-  const covered = (candidate.occluders ?? []).some((occluder) => pointInQuad(centre, occluder))
+  const covered = (candidate.occluders ?? []).some((occluder) => placed.some(line =>
+    quadsOverlap(lineBox(line, line.x, line.y, anchor, candidate.measure), occluder)))
   return covered
     ? { id: candidate.id, lines: [], placed: false, reason: 'occluded' }
     : { id: candidate.id, lines: placed, placed: true, reason: 'placed' }

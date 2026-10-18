@@ -59,7 +59,18 @@ test('three sun comparisons contain distinct actual frames from the same camera 
   await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key) ?? '{}').studyScenes?.length, CHINA_PROJECT_KEY)).toBe(3)
   const scenes = await page.evaluate(key => JSON.parse(localStorage.getItem(key) ?? '{}').studyScenes, CHINA_PROJECT_KEY)
   expect(scenes.map((s: { hour: number }) => s.hour)).toEqual([9, 12, 15])
-  expect(scenes[0].camera).toEqual(scenes[1].camera); expect(scenes[1].camera).toEqual(scenes[2].camera)
+  for (const scene of scenes.slice(1)) {
+    // OrbitControls can round-trip a fixed pose by ~1e-14. Reject any material
+    // camera change without mistaking floating-point noise for a new view.
+    const { position, target, up, fieldHeight, zoom, ...settings } = scene.camera
+    const reference = scenes[0].camera
+    expect(settings).toEqual({ projection: reference.projection, fov: reference.fov })
+    for (const [actual, expected] of [[position, reference.position], [target, reference.target], [up, reference.up]]) {
+      actual.forEach((value: number, index: number) => expect(value).toBeCloseTo(expected[index], 10))
+    }
+    expect(fieldHeight).toBeCloseTo(reference.fieldHeight, 10)
+    expect(zoom).toBeCloseTo(reference.zoom, 10)
+  }
   expect(calls).toEqual([])
 })
 
@@ -214,7 +225,7 @@ test('the elevation sheet draws a real elevation and re-styles on demand', async
   // Switching style must change the drawing. Asserting the panel merely exists
   // would pass even if every style rendered identically.
   const before = await drawing.innerHTML()
-  await page.getByRole('button', { name: 'Postmodern', exact: true }).click()
+  await page.getByLabel('Drawing style', { exact: true }).selectOption('postmodern')
   await expect.poll(async () => drawing.innerHTML()).not.toBe(before)
 })
 

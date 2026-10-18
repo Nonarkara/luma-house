@@ -1,6 +1,7 @@
 import { CityPicker } from './components/CityPicker'
 import { SunChart } from './canvas/SunChart'
 import { locationForTimeZone } from './location/timeZoneLocation'
+import { sanitizeLocation, starterLocations } from './location/locations'
 import { citySunPosition, clockLabel, normalizedCivilHour } from './location/solar'
 import type { ProjectLocation } from './types'
 import type { StudyScene } from './study/types'
@@ -92,6 +93,7 @@ function blankPlan(): PlanState {
     walls: [],
     systems: { solar: false, insulation: false, climate: false, lighting: false },
     site: defaultSite(),
+    location: locationForTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone),
   }
 }
 
@@ -107,14 +109,14 @@ function readSavedPlan(): PlanState {
   // Priority: share link in the URL hash, then the user's draft, then a blank napkin.
   if (typeof window !== 'undefined') {
     const shared = decodePlanFromHash(window.location.hash)
-    if (shared) return shared
+    if (shared) return { ...shared, location: shared.location ?? starterLocations[0] }
   }
   try {
     const saved = localStorage.getItem(CHINA_PROJECT_KEY)
     if (!saved) return blankPlan()
     const next = sanitizePlan(JSON.parse(saved)) ?? blankPlan()
     if (isStockDemo(next) && !next.location && !next.studyScenes?.length && !next.comparison) return blankPlan()
-    return next
+    return { ...next, location: next.location ?? starterLocations[0] }
   } catch {
     return blankPlan()
   }
@@ -136,11 +138,8 @@ function App() {
   const [rulerArmed, setRulerArmed] = useState(false)
   const [rulerLine, setRulerLine] = useState<NapkinCalibrationLine | null>(null)
   const [rulerMeters, setRulerMeters] = useState('')
-  // Prefer the city the browser's own time zone names, so a first-time visitor
-// somewhere real opens onto their own sun rather than an arbitrary sample. A
-// drawing that already carries a location always wins — this only supplies the
-// default for a fresh one.
-const projectLocation = plan.location ?? locationForTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  // Fresh plans persist the browser-zone default; legacy plans retain Shanghai.
+  const projectLocation = plan.location ?? starterLocations[0]
   const [locationOpen, setLocationOpen] = useState(false)
   const [styleKeywords, setStyleKeywords] = useState<string>(() => readString('style-keywords:shanghai-50', 'luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
   const [hour, setHour] = useState(10)
@@ -849,7 +848,9 @@ const projectLocation = plan.location ?? locationForTimeZone(Intl.DateTimeFormat
           setToast('That file does not contain a valid designon plan')
           return
         }
-        commit(next, 'Import project')
+        const wrapperLocation = typeof parsed === 'object' && parsed !== null && 'location' in parsed
+          ? sanitizeLocation((parsed as { location: unknown }).location) : undefined
+        commit({ ...next, location: next.location ?? wrapperLocation ?? starterLocations[0] }, 'Import project')
         setSelectedRoom(next.rooms[0]?.id ?? null)
         setSelectedOpening(null)
         setSelectedFurniture(null)

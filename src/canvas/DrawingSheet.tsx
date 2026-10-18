@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { projectIso } from './isometric'
 import { buildDrawingSheet, type DrawingSheet, type ElevationBay, type SectionSlice, type SheetRoom } from '../drawing/sheet'
 import { drawingStyleById, type DrawingStyle, type DrawingStyleId } from '../drawing/styles'
-import { placeLabel, type Quad } from '../drawing/labels'
+import { placeLabel, textWidth, type MeasureText, type Quad } from '../drawing/labels'
+import { useTextMeasure } from '../drawing/useTextMeasure'
 import type { PlanState } from '../types'
 
 interface Box { x: number; y: number; w: number; h: number }
@@ -14,6 +15,22 @@ const PLAN_DRAW: Box = { x: 64, y: 52, w: 456, h: 372 }
 const SECTION: Box = { x: 548, y: 52, w: 464, h: 190 }
 const ELEVATION: Box = { x: 548, y: 262, w: 464, h: 190 }
 const AXON: Box = { x: 28, y: 468, w: 984, h: 188 }
+
+function wrapNote(text: string, size: number, measure?: MeasureText): string[] {
+  const lines: string[] = []
+  let line = ''
+  for (const character of text) {
+    const next = line + character
+    const width = measure ? measure({ text: next, fontSize: size }).width : textWidth(next, size)
+    if ((width > 465 || next.length > 65) && line) {
+      const space = line.lastIndexOf(' ')
+      if (space > 0) { lines.push(line.slice(0, space)); line = line.slice(space + 1) + character }
+      else { lines.push(line); line = character }
+    } else line = next
+  }
+  if (line.trim()) lines.push(line.trim())
+  return lines
+}
 
 function fit(bounds: Bounds, panel: Box, flipY: boolean) {
   const padX = 22
@@ -394,7 +411,7 @@ function ElevationBayShape({
   )
 }
 
-function AxonDrawing({ sheet, style }: { sheet: DrawingSheet; style: DrawingStyle }) {
+function AxonDrawing({ sheet, style, measure }: { sheet: DrawingSheet; style: DrawingStyle; measure?: MeasureText }) {
   const blocks = [...sheet.rooms].sort((a, b) => (a.x + a.y) - (b.x + b.y))
   const faces = blocks.flatMap((room) => {
     const { x, y, w, d, height } = room
@@ -434,6 +451,7 @@ function AxonDrawing({ sheet, style }: { sheet: DrawingSheet; style: DrawingStyl
     align: 'centre',
     pad: 4,
     minFontSize: 9,
+    measure,
     occluders: drawn.slice(index + 1).flatMap((later) => [later.left, later.right, later.top]),
   }))
 
@@ -441,17 +459,17 @@ function AxonDrawing({ sheet, style }: { sheet: DrawingSheet; style: DrawingStyl
   // and the name moves to the key under the drawing. This is the convention the
   // studio already uses on plan, and it is the only honest answer for a room
   // whose name cannot be read across a boundary.
-  const keyed: Array<{ mark: string; name: string }> = []
   const marks = placements.map((placement, index) => {
     if (placement.placed) return null
-    const mark = String(keyed.length + 1)
-    keyed.push({ mark, name: drawn[index].room.name })
+    const mark = String(sheet.rooms.findIndex(room => room.id === drawn[index].room.id) + 1)
     return placeLabel({
       id: `${placement.id}-mark`,
       lines: [{ text: mark, fontSize: 10 }],
       quad: drawn[index].top,
       align: 'centre',
       pad: 2,
+      measure,
+      occluders: drawn.slice(index + 1).flatMap(later => [later.left, later.right, later.top]),
     })
   })
 
@@ -459,7 +477,7 @@ function AxonDrawing({ sheet, style }: { sheet: DrawingSheet; style: DrawingStyl
     <g>
       <Caption panel={AXON} title="Axonometric · same footprints and ceilings" style={style} />
       {drawn.map(({ room, left, right, top }) => (
-        <g key={room.id}>
+        <g key={room.id} data-sheet-solid={room.id}>
           <polygon points={quadPoints(left)} fill={style.poche} fillOpacity={style.wallMode === 'outline' ? 0.18 : 0.78} stroke={style.ink} strokeWidth={style.thinWidth} />
           <polygon points={quadPoints(right)} fill={style.wallFill} stroke={style.ink} strokeWidth={style.thinWidth} />
           <polygon points={quadPoints(top)} fill={style.roomFill[room.kind]} stroke={style.ink} strokeWidth={style.profileWidth} />
@@ -477,23 +495,33 @@ function AxonDrawing({ sheet, style }: { sheet: DrawingSheet; style: DrawingStyl
             fontFamily={style.font}
             fontSize={line.fontSize}
             data-sheet-label={line.text}
+            data-sheet-room-id={drawn[index].room.id}
             data-sheet-face={quadPoints(drawn[index].top)}
           >
             {line.text}
           </text>
         )))}
-      {keyed.length > 0 && (
-        <text x={AXON.x + 2} y={AXON.y + AXON.h - 4} fill={style.muted} fontFamily={style.font} fontSize={10}>
-          {keyed.map((entry) => `${entry.mark} ${entry.name}`).join('   ')}
-        </text>
-      )}
     </g>
   )
 }
 
 export function DrawingSheet({ plan, styleId }: { plan: PlanState; styleId: DrawingStyleId }) {
   const style = drawingStyleById(styleId)
+  const measure = useTextMeasure(style.font)
   const sheet = useMemo(() => buildDrawingSheet(plan), [plan])
+  // The key names every room, including hidden faces and plan names that do
+  // not fit. Wrap long names and grow the paper instead of clipping one line.
+  const keyRows: Array<{ x: number; y: number; lines: string[] }> = []
+  let keyBottom = 692
+  for (let index = 0; index < sheet.rooms.length; index += 2) {
+    const pair = sheet.rooms.slice(index, index + 2).map((room, column) => {
+      const lines = wrapNote(`${index + column + 1} ${room.name}`, 11, measure)
+      return { x: 28 + column * 500, y: keyBottom, lines }
+    })
+    keyRows.push(...pair)
+    keyBottom += Math.max(...pair.map(entry => entry.lines.length)) * 15 + 4
+  }
+  const footerY = Math.max(712, keyBottom + 12)
   const planFit = useMemo(() => {
     const points: Array<[number, number]> = []
     for (const room of sheet.rooms) {
@@ -516,23 +544,19 @@ export function DrawingSheet({ plan, styleId }: { plan: PlanState; styleId: Draw
   const method = style.eaveM > 0
     ? `Walls ${sheet.wallThickness.toFixed(2)} m, the same thickness as the 3D model. Eaves extend ${style.eaveM.toFixed(1)} m past the walls as a graphic convention.`
     : `Walls ${sheet.wallThickness.toFixed(2)} m, the same thickness as the 3D model. Section A is the cut through the most floor area.`
+  const notes = [method, 'Concept drawing · panels fitted independently; use scale bar for plan · confirm dimensions before construction']
+    .map(note => wrapNote(note, 11, measure))
+  const paperHeight = footerY + 62 + Math.max(...notes.map(lines => lines.length)) * 15
 
   return (
-    <svg className="drawing-sheet" viewBox="0 0 1040 760" role="img" aria-label={`${style.name} drawing of the current plan, ${area.toFixed(1)} square meters`}>
+    <svg className="drawing-sheet" viewBox={`0 0 1040 ${paperHeight}`} role="img" aria-label={`${style.name} drawing of the current plan, ${area.toFixed(1)} square meters`}>
       <defs>
         <pattern id="sheet-hatch" width="7" height="7" patternUnits="userSpaceOnUse">
           <path d="M-1,1 l2,-2 M0,7 l7,-7 M6,8 l2,-2" stroke={style.ink} strokeWidth="0.6" />
         </pattern>
       </defs>
-      <rect width="1040" height="760" fill={style.paper} />
-      {style.id === 'fancy' && (
-        <g fill="none" stroke={style.accent}>
-          <rect x="12" y="12" width="1016" height="736" strokeWidth="1.2" />
-          <rect x="16" y="16" width="1008" height="728" strokeWidth="0.4" />
-        </g>
-      )}
-      {style.id === 'postmodern' && <rect x="28" y="22" width="14" height="14" fill={style.accent} />}
-      <text x={style.id === 'postmodern' ? 50 : 28} y={34} fill={style.ink} fontFamily={style.font} fontSize={20}>
+      <rect width="1040" height={paperHeight} fill={style.paper} />
+      <text x={28} y={34} fill={style.ink} fontFamily={style.font} fontSize={20}>
         {style.name}
       </text>
       <text x={1012} y={34} textAnchor="end" fill={style.muted} fontFamily={style.font} fontSize={12}>
@@ -647,6 +671,11 @@ export function DrawingSheet({ plan, styleId }: { plan: PlanState; styleId: Draw
               quad: face,
               align: 'start',
               pad: 5,
+              measure,
+              occluders: sheet.furniture.map(item => {
+                const a = planFit.p(item.x, item.y), b = planFit.p(item.x + item.w, item.y + item.d)
+                return [[a.x, a.y], [b.x, a.y], [b.x, b.y], [a.x, b.y]] as Quad
+              }),
             })
             return (
               <g key={`${room.id}-label`} data-sheet-room={room.name}>
@@ -677,14 +706,15 @@ export function DrawingSheet({ plan, styleId }: { plan: PlanState; styleId: Draw
 
       <SectionDrawing sheet={sheet} style={style} />
       <ElevationDrawing sheet={sheet} style={style} />
-      <AxonDrawing sheet={sheet} style={style} />
+      <AxonDrawing sheet={sheet} style={style} measure={measure} />
 
-      <line x1={28} y1={672} x2={1012} y2={672} stroke={style.muted} strokeWidth={0.6} />
-      <text x={28} y={694} fill={style.ink} fontFamily={style.font} fontSize={13}>{summary}</text>
-      <text x={28} y={714} fill={style.muted} fontFamily={style.font} fontSize={11}>{method}</text>
-      <text x={1012} y={714} textAnchor="end" fill={style.muted} fontFamily={style.font} fontSize={11}>
-        Graphic style only · quantities match the plan
-      </text>
+      <text x={28} y={674} fill={style.muted} fontFamily={style.font} fontSize={11}>ROOM KEY · hidden faces are named here</text>
+      <g data-sheet-key="">
+        {keyRows.map(entry => entry.lines.map((line, i) => <text key={`${entry.x}-${entry.y}-${i}`} x={entry.x} y={entry.y + i * 15} fill={style.ink} fontFamily={style.font} fontSize={11}>{line}</text>))}
+      </g>
+      <line x1={28} y1={footerY} x2={1012} y2={footerY} stroke={style.muted} strokeWidth={0.6} />
+      <text x={28} y={footerY + 22} fill={style.ink} fontFamily={style.font} fontSize={13}>{summary}</text>
+      {notes.map((lines, column) => lines.map((line, index) => <text key={`${column}-${index}`} data-sheet-note="" x={28 + column * 500} y={footerY + 42 + index * 15} fill={style.muted} fontFamily={style.font} fontSize={11}>{line}</text>))}
     </svg>
   )
 }

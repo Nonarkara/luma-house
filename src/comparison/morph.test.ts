@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { morphCoverage, morphPlan } from './morph'
+import { furnitureRectFor, furnitureSpecFor, roomHeight } from '../plan'
+import { openingDimensions } from '../openingGeometry'
 import type { PlanState } from '../types'
 
 const plan = (over: Partial<PlanState> = {}): PlanState => ({
@@ -38,6 +40,27 @@ describe('morph endpoints are exactly the drawings that were pinned', () => {
     expect(morphPlan(a, b, -3).rooms).toEqual(a.rooms)
     expect(morphPlan(a, b, 9).rooms).toEqual(b.rooms)
   })
+
+  it('preserves complete endpoint entities when dimensions and identities differ', () => {
+    const measured = plan({
+      rooms: [{ ...a.rooms[0], wallHeight: 4 }],
+      openings: [{ ...a.openings[0], headHeightM: 3.1 }],
+      furniture: [{ ...a.furniture[0], label: 'Custom desk', assetId: 'desk-a', wM: 3.2, dM: 1.6 }],
+      walls: [{ id: 'w1', x1: 0, y1: 0, x2: 20, y2: 0 }],
+    })
+    const defaults = plan({
+      rooms: [{ id: 'r1', name: 'Terrace', kind: 'terrace', x: 30, y: 20, w: 50, h: 40 }],
+      openings: [{ id: 'o1', type: 'door', x: 10, y: 20, rotation: 90 }],
+      furniture: [{ id: 'f1', kind: 'desk', x: 40, y: 40, rotated: true, label: 'Desk B', assetId: 'desk-b' }],
+    })
+    for (const [t, expected] of [[0, measured], [1, defaults]] as const) {
+      const actual = morphPlan(measured, defaults, t)
+      for (const key of ['rooms', 'openings', 'furniture', 'walls'] as const) {
+        expect(actual[key]).toEqual(expected[key])
+      }
+    }
+    expect(morphPlan(defaults, measured, 1).furniture).toEqual(measured.furniture)
+  })
 })
 
 describe('the midpoint is a straight line between two measured numbers', () => {
@@ -61,13 +84,43 @@ describe('the midpoint is a straight line between two measured numbers', () => {
     }
   })
 
-  it('never invents a dimension only one end defines', () => {
+  it('interpolates a measured furniture dimension against its rendered default', () => {
     const withoutSize = plan({ furniture: [{ id: 'f1', kind: 'desk', x: 10, y: 10, rotated: false }] })
-    const withSize = plan({ furniture: [{ id: 'f1', kind: 'desk', x: 20, y: 20, rotated: false, wM: 1.4 }] })
-    // Interpolating a real measurement against an undefined one has no honest
-    // answer, so the piece stays as drawn rather than gaining a fabricated size.
-    expect(morphPlan(withoutSize, withSize, 0.5).furniture[0].wM).toBeUndefined()
-    expect(morphPlan(withSize, withoutSize, 0.5).furniture[0].wM).toBeUndefined()
+    const withSize = plan({ furniture: [{ id: 'f1', kind: 'desk', x: 20, y: 20, rotated: false, wM: 3.2, dM: 1.5 }] })
+    // Omitted dimensions already draw the catalog footprint; resolve those same
+    // numbers here so moving the slider cannot reset the measured endpoint.
+    for (const [from, to] of [[withoutSize, withSize], [withSize, withoutSize]]) {
+      const mid = morphPlan(from, to, 0.5).furniture[0]
+      expect(furnitureSpecFor(mid).w).toBeCloseTo(2.3)
+      expect(furnitureSpecFor(mid).d).toBeCloseTo(1.1)
+    }
+  })
+
+  it('interpolates room and opening defaults including head-only window heights', () => {
+    const defaults = plan({
+      rooms: [{ ...a.rooms[0], wallHeight: undefined }],
+      openings: [{ id: 'o1', type: 'window', x: 30, y: 10, rotation: 0 }],
+    })
+    const measured = plan({
+      rooms: [{ ...a.rooms[0], wallHeight: 4 }],
+      openings: [{ ...defaults.openings[0], widthM: 2.4, sillHeightM: 1.1, headHeightM: 3.1 }],
+    })
+    const mid = morphPlan(defaults, measured, 0.5)
+    expect(roomHeight(mid.rooms[0])).toBeCloseTo(3.35)
+    const dimensions = openingDimensions(mid.openings[0])
+    expect(dimensions.width).toBeCloseTo(2)
+    expect(dimensions.sill).toBeCloseTo(1)
+    expect(dimensions.height).toBeCloseTo(1.6)
+    expect(dimensions.head).toBeCloseTo(2.6)
+    expect(mid.openings[0].headHeightM).toBeCloseTo(dimensions.head)
+  })
+
+  it('keeps the actual measured footprint when a sized piece turns', () => {
+    const from = plan({ furniture: [{ id: 'f1', kind: 'desk', x: 10, y: 10, rotated: false, wM: 3.2, dM: 1.5 }] })
+    const to = plan({ furniture: [{ ...from.furniture[0], rotated: true }] })
+    const site = { w: 10, h: 10, unit: 1 }
+    expect(furnitureRectFor(morphPlan(from, to, 0.49).furniture[0], site)).toMatchObject({ w: 32, h: 15 })
+    expect(furnitureRectFor(morphPlan(from, to, 0.5).furniture[0], site)).toMatchObject({ w: 15, h: 32 })
   })
 })
 
@@ -75,6 +128,29 @@ describe('what a morph cannot carry is reported, not faked', () => {
   it('turns a piece at the midpoint instead of inventing a quarter rotation', () => {
     expect(morphPlan(a, b, 0.49).furniture[0].rotated).toBe(false)
     expect(morphPlan(a, b, 0.5).furniture[0].rotated).toBe(true)
+  })
+
+  it('switches opening orientation and type exactly at the midpoint', () => {
+    const other = plan({ openings: [{ ...a.openings[0], type: 'door', rotation: 90, x: 10, y: 30 }] })
+    const before = morphPlan(a, other, 0.49).openings[0]
+    const after = morphPlan(a, other, 0.5).openings[0]
+    expect(before).toMatchObject({ type: 'window', rotation: 0 })
+    expect(after).toMatchObject({ type: 'door', rotation: 90, x: 20, y: 20 })
+    // Orientation also switches when the opening retains its type.
+    const rotated = plan({ openings: [{ ...a.openings[0], rotation: 90 }] })
+    expect(morphPlan(a, rotated, 0.5).openings[0].rotation).toBe(90)
+  })
+
+  it('switches room kind/name and furniture catalog identity at the midpoint', () => {
+    const other = plan({
+      rooms: [{ ...b.rooms[0], name: 'Terrace', kind: 'terrace' }],
+      furniture: [{ ...b.furniture[0], label: 'Sofa B', assetId: 'sofa-b' }],
+    })
+    expect(morphPlan(a, other, 0.49).rooms[0]).toMatchObject({ kind: 'living', name: 'Living' })
+    expect(morphPlan(a, other, 0.5).rooms[0]).toMatchObject({ kind: 'terrace', name: 'Terrace', x: 20 })
+    expect(morphPlan(a, other, 0.49).furniture[0].assetId).toBeUndefined()
+    expect(morphPlan(a, other, 0.5).furniture[0]).toMatchObject({ label: 'Sofa B', assetId: 'sofa-b', x: 40 })
+    expect(morphCoverage(a, other)).toEqual({ continuous: 0, swapped: 3 })
   })
 
   it('swaps a piece that exists in only one plan, and does not duplicate it', () => {
@@ -107,15 +183,28 @@ describe('what a morph cannot carry is reported, not faked', () => {
     expect(coverage.continuous).toBe(3)
     expect(coverage.swapped).toBe(1)
   })
+
+  it('counts removed and added IDs separately even when collection lengths match', () => {
+    const changed = plan({
+      furniture: [{ ...a.furniture[0], id: 'new' }],
+    })
+    const before = plan({ furniture: a.furniture })
+    expect(morphCoverage(before, changed)).toEqual({ continuous: 0, swapped: 2 })
+    expect(morphCoverage(changed, before)).toEqual({ continuous: 0, swapped: 2 })
+    const grown = plan({ furniture: [...changed.furniture, { ...a.furniture[0], id: 'another' }] })
+    expect(morphCoverage(before, grown)).toEqual({ continuous: 0, swapped: 3 })
+  })
 })
 
 describe('the morph carries the conditions it was compared under', () => {
   it('keeps the baseline site, systems and comparison so camera and sun hold', () => {
     const baseline = { ...a, site: { w: 12, h: 9, unit: 1 }, systems: { solar: true, insulation: false, climate: false, lighting: false } }
     const proposed = { ...b, site: { w: 30, h: 30, unit: 1 } }
-    const morphed = morphPlan(baseline, proposed, 0.5)
-    expect(morphed.site).toEqual({ w: 12, h: 9, unit: 1 })
-    expect(morphed.systems.solar).toBe(true)
+    for (const t of [0, 0.5, 1]) {
+      const morphed = morphPlan(baseline, proposed, t)
+      expect(morphed.site).toEqual({ w: 12, h: 9, unit: 1 })
+      expect(morphed.systems.solar).toBe(true)
+    }
   })
 
   it('interpolates pencil walls and keeps the key optional when neither plan has any', () => {

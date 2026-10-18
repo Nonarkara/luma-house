@@ -10,6 +10,7 @@ import {
   lineWidth,
   placeLabel,
   pointInQuad,
+  quadsOverlap,
   quadCentre,
   quadExtents,
   textWidth,
@@ -34,6 +35,25 @@ const candidate = (over: Partial<LabelCandidate> = {}): LabelCandidate => ({
 })
 
 describe('text measurement', () => {
+  it('uses supplied font ink instead of Latin width estimates', () => {
+    const measure = ({ text, fontSize }: { text: string; fontSize: number }) => ({ width: text.length * fontSize * 0.6,
+      left: 0, right: text.length * fontSize * 0.6, ascent: fontSize * 0.8, descent: fontSize * 0.2 })
+    const face = quad(0, 0, 37, 40)
+    expect(placeLabel(candidate({ quad: face, lines: [{ text: 'Utility', fontSize: 10 }] })).placed).toBe(true)
+    expect(placeLabel(candidate({ quad: face, lines: [{ text: 'Utility', fontSize: 10 }], measure })).placed).toBe(false)
+  })
+
+  it('rejects ink covered at its edge even when the face centre is visible', () => {
+    const face = quad(0, 0, 120, 60)
+    const occluder = quad(63, 20, 40, 20)
+    expect(pointInQuad({ x: 60, y: 30 }, occluder)).toBe(false)
+    expect(placeLabel(candidate({ quad: face, occluders: [occluder] })).reason).toBe('occluded')
+  })
+
+  it('detects crossing polygons even without a contained corner', () => {
+    expect(quadsOverlap(quad(0, 4, 20, 2), quad(9, 0, 2, 10))).toBe(true)
+    expect(quadsOverlap(quad(0, 0, 5, 5), quad(6, 0, 5, 5))).toBe(false)
+  })
   it('orders characters by how wide they actually draw', () => {
     expect(charEm('i')).toBeLessThan(charEm('a'))
     expect(charEm('a')).toBeLessThan(charEm('7'))

@@ -1,9 +1,46 @@
 import { expectSaved } from './workspace'
 import { openCity, expectCity } from './workspace'
-import { chinaApartmentPlan } from '../src/mockups/chinaApartment'
+import { chinaApartmentPlan, CHINA_PROJECT_KEY } from '../src/mockups/chinaApartment'
 import { test, expect } from '@playwright/test'
-import { encodePlanToHash } from '../src/sharePlan'
+import { decodePlanFromHash, encodePlanToHash } from '../src/sharePlan'
+import { clickAction } from './workspace'
 import { initialPlan } from '../src/plan'
+import { starterLocations } from '../src/location/locations'
+
+test('legacy wrapped JSON imports retain the exported city', async ({ page }) => {
+  await page.goto('/#plan=' + encodePlanToHash(initialPlan))
+  await clickAction(page, 'Workspace settings')
+  const { location: ignoredLocation, ...legacy } = initialPlan
+  void ignoredLocation
+  await page.locator('input[accept="application/json,.json"]').setInputFiles({ name: 'legacy.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ plan: legacy, location: starterLocations[1] })) })
+  await expect(page.getByText('Project imported', { exact: true })).toBeVisible()
+  await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key) ?? '{}').location?.name, CHINA_PROJECT_KEY)).toBe('Bangkok')
+  await page.reload()
+  await expectCity(page, 'Bangkok')
+})
+
+test('fresh browser-zone city is embedded in share links and survives another time zone', async ({ browser }, info) => {
+  const source = await browser.newContext({ baseURL: info.project.use.baseURL, timezoneId: 'Asia/Bangkok', permissions: ['clipboard-read', 'clipboard-write'] })
+  const recipient = await browser.newContext({ baseURL: info.project.use.baseURL, timezoneId: 'Asia/Shanghai' })
+  try {
+    const page = await source.newPage()
+    await page.goto('/')
+    const welcome = page.getByRole('dialog')
+    if (await welcome.isVisible()) await welcome.getByRole('button', { name: /Start from a blank page/i }).click()
+    await expectCity(page, 'Bangkok')
+    await clickAction(page, 'Share')
+    const url = await page.evaluate(() => navigator.clipboard.readText())
+    expect(decodePlanFromHash(new URL(url).hash)?.location?.timezone).toBe('Asia/Bangkok')
+    const other = await recipient.newPage()
+    await other.goto(url)
+    await expectCity(other, 'Bangkok')
+    await other.reload()
+    const returningWelcome = other.getByRole('dialog')
+    if (await returningWelcome.isVisible()) await returningWelcome.getByRole('button', { name: /Start from a blank page/i }).click()
+    await expectCity(other, 'Bangkok')
+  } finally { await source.close(); await recipient.close() }
+})
 
 test('worldwide city updates its chart and actual shadows, persists through reload and works offline', async ({ page }) => {
   const aiCalls: string[] = []

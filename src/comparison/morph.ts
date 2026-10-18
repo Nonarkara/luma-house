@@ -16,22 +16,22 @@
  *    and `true`, so a piece turns at the midpoint rather than spinning. Turning
  *    *is* continuous in the drawing, so it is deliberately excluded.
  *  - A `kind`, `name` or `type` is categorical. A sofa does not fade into a bed;
- *    the piece keeps its Plan A identity and is counted as swapped if the other
- *    end disagrees.
+ *    the piece switches identity at the midpoint and is counted as swapped if
+ *    the other end disagrees.
  *
  * Every number here is a straight lerp between two numbers that were already
  * measured or already typed by the user. No new geometry is invented.
  */
 
 import type { DrawnWall, Furniture, Opening, PlanState, Room } from '../types'
+import { furnitureSpecFor, roomHeight } from '../plan'
+import { openingDimensions } from '../openingGeometry'
 
 const lerp = (from: number, to: number, t: number): number => from + (to - from) * t
 
-/** Interpolate optional dimensions only when both ends actually define them. */
-const lerpOptional = (from: number | undefined, to: number | undefined, t: number): number | undefined => {
-  if (from === undefined || to === undefined) return undefined
-  return lerp(from, to, t)
-}
+const sameRoom = (a: Room, b: Room) => a.kind === b.kind && a.name === b.name
+const sameFurniture = (a: Furniture, b: Furniture) =>
+  a.kind === b.kind && a.assetId === b.assetId && a.label === b.label
 
 /**
  * How much of the drawing a morph can actually carry, and how much of it has to
@@ -48,24 +48,28 @@ export interface MorphCoverage {
 function morphRoom(room: Room, other: Room | undefined, t: number): Room {
   if (!other) return room
   return {
-    ...room,
+    ...(t < 0.5 ? room : other),
     x: lerp(room.x, other.x, t),
     y: lerp(room.y, other.y, t),
     w: lerp(room.w, other.w, t),
     h: lerp(room.h, other.h, t),
-    wallHeight: lerpOptional(room.wallHeight, other.wallHeight, t),
+    wallHeight: lerp(roomHeight(room), roomHeight(other), t),
   }
 }
 
 function morphOpening(opening: Opening, other: Opening | undefined, t: number): Opening {
   if (!other) return opening
+  const from = openingDimensions(opening), to = openingDimensions(other)
+  const sill = lerp(from.sill, to.sill, t)
+  const height = lerp(from.height, to.height, t)
   return {
-    ...opening,
+    ...(t < 0.5 ? opening : other),
     x: lerp(opening.x, other.x, t),
     y: lerp(opening.y, other.y, t),
-    widthM: lerpOptional(opening.widthM, other.widthM, t),
-    heightM: lerpOptional(opening.heightM, other.heightM, t),
-    sillHeightM: lerpOptional(opening.sillHeightM, other.sillHeightM, t),
+    widthM: lerp(from.width, to.width, t),
+    heightM: height,
+    sillHeightM: sill,
+    headHeightM: sill + height,
   }
 }
 
@@ -82,12 +86,13 @@ function morphWall(wall: DrawnWall, other: DrawnWall | undefined, t: number): Dr
 
 function morphFurniture(item: Furniture, other: Furniture | undefined, t: number): Furniture {
   if (!other) return item
+  const from = furnitureSpecFor(item), to = furnitureSpecFor(other)
   return {
-    ...item,
+    ...(t < 0.5 ? item : other),
     x: lerp(item.x, other.x, t),
     y: lerp(item.y, other.y, t),
-    wM: lerpOptional(item.wM, other.wM, t),
-    dM: lerpOptional(item.dM, other.dM, t),
+    wM: lerp(from.w, to.w, t),
+    dM: lerp(from.d, to.d, t),
     // Boolean at the midpoint, never blended into a nonsense quarter turn.
     rotated: t < 0.5 ? item.rotated : other.rotated,
   }
@@ -103,6 +108,16 @@ function morphFurniture(item: Furniture, other: Furniture | undefined, t: number
  */
 export function morphPlan(baseline: PlanState, proposed: PlanState, t: number): PlanState {
   const amount = Math.min(1, Math.max(0, t))
+  // Endpoints preserve every geometry field, including omitted defaults and
+  // categorical metadata, while comparison conditions stay with the baseline.
+  if (amount === 0) return baseline
+  if (amount === 1) return {
+    ...baseline,
+    rooms: proposed.rooms,
+    openings: proposed.openings,
+    walls: proposed.walls,
+    furniture: proposed.furniture,
+  }
   // Morphing from the proposed side runs the same trajectory backwards.
   const reverse = 1 - amount
   const pastMidpoint = amount >= 0.5
@@ -114,20 +129,14 @@ export function morphPlan(baseline: PlanState, proposed: PlanState, t: number): 
   /**
    * Which side owns an entity at this point on the slider.
    *
-   *  - Present in both and still the same *kind* of thing: the baseline side owns
-   *    it for the whole journey, so the trajectory always runs A → B and `t = 1`
-   *    lands exactly on Plan B.
-   *  - Anything else — present in one plan only, or re-typed from one plan to the
-   *    other — cannot interpolate, so it holds its side until the midpoint and
-   *    swaps there. A sofa does not become half a bed on the way.
+   *  - Present in both: the baseline side owns the trajectory A → B. Each
+   *    morph helper switches categorical fields at the midpoint.
+   *  - Present in one plan only: it holds its side until the midpoint and
+   *    swaps there, without interpolating a piece into existence.
    */
-  const owner = (inBaseline: boolean, inProposed: boolean, sameKind: boolean): 'baseline' | 'proposed' | null => {
+  const owner = (inBaseline: boolean, inProposed: boolean): 'baseline' | 'proposed' | null => {
     if (inBaseline && inProposed) {
-      // Same thing in both plans: one continuous journey from A to B.
-      if (sameKind) return 'baseline'
-      // Re-typed between the plans: the piece exists the whole way, but what it
-      // *is* is categorical and switches at the midpoint rather than blending.
-      return pastMidpoint ? 'proposed' : 'baseline'
+      return 'baseline'
     }
     if (inBaseline) return pastMidpoint ? null : 'baseline'
     return pastMidpoint ? 'proposed' : null
@@ -136,20 +145,20 @@ export function morphPlan(baseline: PlanState, proposed: PlanState, t: number): 
   return {
     ...baseline,
     rooms: [
-      ...baseline.rooms.filter((r) => owner(roomsB.has(r.id), roomsP.has(r.id), true) === 'baseline').map((r) => morphRoom(r, roomsP.get(r.id), amount)),
-      ...proposed.rooms.filter((r) => owner(roomsB.has(r.id), roomsP.has(r.id), true) === 'proposed').map((r) => morphRoom(r, roomsB.get(r.id), reverse)),
+      ...baseline.rooms.filter((r) => owner(roomsB.has(r.id), roomsP.has(r.id)) === 'baseline').map((r) => morphRoom(r, roomsP.get(r.id), amount)),
+      ...proposed.rooms.filter((r) => owner(roomsB.has(r.id), roomsP.has(r.id)) === 'proposed').map((r) => morphRoom(r, roomsB.get(r.id), reverse)),
     ],
     openings: [
-      ...baseline.openings.filter((o) => owner(openingsB.has(o.id), openingsP.has(o.id), openingsP.get(o.id)?.type === o.type) === 'baseline').map((o) => morphOpening(o, openingsP.get(o.id), amount)),
-      ...proposed.openings.filter((o) => owner(openingsB.has(o.id), openingsP.has(o.id), openingsB.get(o.id)?.type === o.type) === 'proposed').map((o) => morphOpening(o, openingsB.get(o.id), reverse)),
+      ...baseline.openings.filter((o) => owner(openingsB.has(o.id), openingsP.has(o.id)) === 'baseline').map((o) => morphOpening(o, openingsP.get(o.id), amount)),
+      ...proposed.openings.filter((o) => owner(openingsB.has(o.id), openingsP.has(o.id)) === 'proposed').map((o) => morphOpening(o, openingsB.get(o.id), reverse)),
     ],
     walls: baseline.walls || proposed.walls ? [
-      ...(baseline.walls ?? []).filter((w) => owner(wallsB.has(w.id), wallsP.has(w.id), true) === 'baseline').map((w) => morphWall(w, wallsP.get(w.id), amount)),
-      ...(proposed.walls ?? []).filter((w) => owner(wallsB.has(w.id), wallsP.has(w.id), true) === 'proposed').map((w) => morphWall(w, wallsB.get(w.id), reverse)),
+      ...(baseline.walls ?? []).filter((w) => owner(wallsB.has(w.id), wallsP.has(w.id)) === 'baseline').map((w) => morphWall(w, wallsP.get(w.id), amount)),
+      ...(proposed.walls ?? []).filter((w) => owner(wallsB.has(w.id), wallsP.has(w.id)) === 'proposed').map((w) => morphWall(w, wallsB.get(w.id), reverse)),
     ] : undefined,
     furniture: [
-      ...baseline.furniture.filter((f) => owner(furnitureB.has(f.id), furnitureP.has(f.id), furnitureP.get(f.id)?.kind === f.kind) === 'baseline').map((f) => morphFurniture(f, furnitureP.get(f.id), amount)),
-      ...proposed.furniture.filter((f) => owner(furnitureB.has(f.id), furnitureP.has(f.id), furnitureB.get(f.id)?.kind === f.kind) === 'proposed').map((f) => morphFurniture(f, furnitureB.get(f.id), reverse)),
+      ...baseline.furniture.filter((f) => owner(furnitureB.has(f.id), furnitureP.has(f.id)) === 'baseline').map((f) => morphFurniture(f, furnitureP.get(f.id), amount)),
+      ...proposed.furniture.filter((f) => owner(furnitureB.has(f.id), furnitureP.has(f.id)) === 'proposed').map((f) => morphFurniture(f, furnitureB.get(f.id), reverse)),
     ],
   }
 }
@@ -169,11 +178,11 @@ export function morphCoverage(baseline: PlanState, proposed: PlanState): MorphCo
       const other = inB.get(item.id)
       if (other && same(item, other)) continuous += 1
     }
-    return { continuous, swapped: Math.max(0, a.length - continuous) + Math.max(0, b.length - inA.size) }
+    return { continuous, swapped: a.length - continuous + b.filter((item) => !inA.has(item.id)).length }
   }
-  const rooms = pair(baseline.rooms, proposed.rooms, () => true)
+  const rooms = pair(baseline.rooms, proposed.rooms, sameRoom)
   const openings = pair(baseline.openings, proposed.openings, (x, y) => x.type === y.type)
-  const furniture = pair(baseline.furniture, proposed.furniture, (x, y) => x.kind === y.kind)
+  const furniture = pair(baseline.furniture, proposed.furniture, sameFurniture)
   const walls = pair(baseline.walls ?? [], proposed.walls ?? [], () => true)
   return {
     continuous: rooms.continuous + openings.continuous + furniture.continuous + walls.continuous,

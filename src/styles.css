@@ -7194,6 +7194,9 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 .study-scene-grid article > div:last-child { display: flex; flex-wrap: wrap; gap: 6px; }
 .study-no-preview, .study-empty { padding: 18px; border: 1px dashed var(--studio-border); font-size: 12px; }
 .study-sheet-dialog { width: 1120px; }
+.drawing-sheet { display: block; width: 100%; height: auto; }
+.drawing-sheet-viewport { max-width: 100%; overflow: auto; }
+.study-dialog-controls select { min-height: 44px; padding: 8px; border: 1px solid var(--studio-border); background: var(--studio-sheet); color: var(--studio-ink); }
 .study-paper { background: white; color: #15202b; padding: 20px; }
 .study-paper header { display: flex; align-items: center; gap: 18px; padding-bottom: 12px; border-bottom: 2px solid #15202b; }
 .study-paper header > img { width: 110px; height: auto; }
@@ -7224,6 +7227,13 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 @media screen { .study-plan-drawing, .study-section-drawing { width: 100%; height: auto; max-height: 290px; } }
 @media (max-width: 640px) {
   .study-dialog { padding: 12px; }
+  .study-dialog-controls:has(.drawing-style-control) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .study-dialog-controls:has(.drawing-style-control) > span,
+  .study-dialog-controls:has(.drawing-style-control) > .study-sheet-selector { grid-column: 1 / -1; }
+  .study-dialog-controls > .drawing-style-control,
+  .study-dialog-controls > .drawing-zoom-control { display: grid; gap: 4px; }
+  .drawing-style-control select, .drawing-zoom-control select { min-width: 0; width: 100%; }
+  .study-dialog-controls:has(.drawing-style-control) > .study-sheet-selector button { flex: 1; min-height: 44px; padding: 6px; font-size: 12px; }
   .study-scene-inputs { grid-template-columns: 1fr 1fr; }
   .study-scene-inputs label:first-child { grid-column: 1 / -1; }
   .study-scene-grid, .study-sheet-grid, .study-seasonal-grid { grid-template-columns: 1fr; }
@@ -7243,6 +7253,9 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   .study-sheet-dialog { position: static; inset: auto; width: auto; max-width: none; height: auto; max-height: none; overflow: visible; margin: 0; padding: 0; border: 0; background: white; }
   .study-sheet-dialog::backdrop { display: none; }
   .study-dialog-controls { display: none; }
+  .drawing-sheet { width: 281mm; height: 190mm; max-width: none; break-inside: avoid; }
+  .drawing-sheet-viewport { overflow: visible; }
+  .drawing-sheet-viewport > div { width: 281mm !important; }
   .study-paper { page: study; width: 281mm; height: 190mm; display: grid; grid-template-rows: 20mm 146mm 16mm; gap: 4mm; padding: 0; margin: 0; break-inside: avoid; }
   .study-paper header { padding-bottom: 3mm; gap: 5mm; flex-wrap: nowrap; }
   .study-paper header > img { width: 30mm; }
