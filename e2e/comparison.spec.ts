@@ -88,7 +88,11 @@ test('3D A/B switches actual geometry offline while preserving an orbited camera
 test('morph slides between the alternatives and states what it cannot carry', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(b))
   await compare(page)
-  // Captured before any morphing: the slider is a view, never an edit.
+  // Captured before any morphing: the slider is a view, never an edit. The
+  // baseline pin lands in storage a moment after the dialog opens, so wait for
+  // it — capturing too early compared a half-saved plan against a finished one
+  // and failed intermittently on slower runs.
+  await expect.poll(async () => (await saved(page)).comparison?.baselineName).toBe('Before rearranging')
   const savedBefore = await saved(page)
   await page.getByRole('button', { name: '3D comparison', exact: true }).click()
   const canvas = page.locator('.comparison-3d canvas')

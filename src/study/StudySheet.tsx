@@ -8,6 +8,8 @@ import { roomsForOpening } from '../analysis/walls'
 import { DimensionChain, GraphicScale } from './DrawingAnnotations'
 import { dimensionStops, planWallCuts, studyHeight, studyWalls } from './graphics'
 import { SeasonalSheet } from './SeasonalSheet'
+import { DrawingSheet } from '../canvas/DrawingSheet'
+import { DRAWING_STYLE_IDS, DRAWING_STYLES, type DrawingStyleId } from '../drawing/styles'
 import type { PlanState, ProjectLocation } from '../types'
 import { FLOOR_M, roomBounds, sheetScale } from './geometry'
 import type { StudyCapture, StudySettings } from './types'
@@ -119,15 +121,16 @@ export function StudySheet({ plan, title, location, day, hour, year, settings, c
   settings: StudySettings; capture: StudyCapture; close: () => void
 }) {
   const site = siteOf(plan), scale = sheetScale(site, Math.max(0, ...plan.rooms.map(roomHeight)))
-  const [sheet, setSheet] = useState<'summary' | 'seasonal'>('summary')
+  const [sheet, setSheet] = useState<'summary' | 'seasonal' | 'drawing'>('summary')
+  const [styleId, setStyleId] = useState<DrawingStyleId>('minimalist')
   const [depth, setDepth] = useState(() => {
     const largest = [...plan.rooms].sort((a, b) => b.w * b.h - a.w * a.h)[0]
     return largest ? (largest.y + largest.h / 2) / 100 * site.h : site.h / 2
   })
   const date = new Date(Date.UTC(year, 0, day)).toISOString().slice(0, 10)
   return <StudyDialog label="Printable study sheet" close={close} className="study-sheet-dialog">
-    <div className="study-dialog-controls"><strong>Study sheet</strong><span>A4 landscape · print at 100% · save as PDF</span><div className="study-sheet-selector"><button type="button" aria-pressed={sheet === 'summary'} onClick={() => setSheet('summary')}>Plan and section</button><button type="button" aria-pressed={sheet === 'seasonal'} onClick={() => setSheet('seasonal')}>Seasonal sun</button></div><label>Section A–A<input type="range" aria-label="Sheet section depth" min={0} max={site.h} step={0.1} value={depth} onChange={e => setDepth(Number(e.target.value))} />{depth.toFixed(1)} m from north</label><button type="button" onClick={() => window.print()}>Print / Save PDF</button><button type="button" onClick={close}>Close study sheet</button></div>
-    {sheet === 'seasonal' ? <SeasonalSheet plan={plan} title={title} location={location} hour={hour} year={year} scale={scale} depth={depth} /> : <article className="study-paper" aria-label="Architectural and sun study sheet">
+    <div className="study-dialog-controls"><strong>Study sheet</strong><span>A4 landscape · print at 100% · save as PDF</span><div className="study-sheet-selector"><button type="button" aria-pressed={sheet === 'summary'} onClick={() => setSheet('summary')}>Plan and section</button><button type="button" aria-pressed={sheet === 'seasonal'} onClick={() => setSheet('seasonal')}>Seasonal sun</button><button type="button" aria-pressed={sheet === 'drawing'} onClick={() => setSheet('drawing')}>Elevation sheet</button></div>{sheet === 'drawing' && <div className="study-sheet-selector" role="group" aria-label="Drawing style">{DRAWING_STYLE_IDS.map(id => <button type="button" key={id} aria-pressed={styleId === id} onClick={() => setStyleId(id)}>{DRAWING_STYLES.find(s => s.id === id)?.name ?? id}</button>)}</div>}<label>Section A–A<input type="range" aria-label="Sheet section depth" min={0} max={site.h} step={0.1} value={depth} onChange={e => setDepth(Number(e.target.value))} />{depth.toFixed(1)} m from north</label><button type="button" onClick={() => window.print()}>Print / Save PDF</button><button type="button" onClick={close}>Close study sheet</button></div>
+    {sheet === 'drawing' ? <DrawingSheet plan={plan} styleId={styleId} /> : sheet === 'seasonal' ? <SeasonalSheet plan={plan} title={title} location={location} hour={hour} year={year} scale={scale} depth={depth} /> : <article className="study-paper" aria-label="Architectural and sun study sheet">
       <header><img src="./brand/designon-wordmark.png" alt="designon" /><div><h1>{title}</h1><p>{location.label} · {date} · {clockLabel(hour)} · {location.timezone}</p></div><strong>A-01 · Rev 00<br />Concept study · 1:{scale}</strong></header>
       <div className="study-sheet-grid">
         <section><h2>01 / Measured plan · 1:{scale}</h2><PlanDrawing plan={plan} scale={scale} sectionDepth={depth} /></section>

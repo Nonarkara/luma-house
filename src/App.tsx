@@ -1,6 +1,6 @@
 import { CityPicker } from './components/CityPicker'
 import { SunChart } from './canvas/SunChart'
-import { starterLocations } from './location/locations'
+import { locationForTimeZone } from './location/timeZoneLocation'
 import { citySunPosition, clockLabel, normalizedCivilHour } from './location/solar'
 import type { ProjectLocation } from './types'
 import type { StudyScene } from './study/types'
@@ -136,7 +136,11 @@ function App() {
   const [rulerArmed, setRulerArmed] = useState(false)
   const [rulerLine, setRulerLine] = useState<NapkinCalibrationLine | null>(null)
   const [rulerMeters, setRulerMeters] = useState('')
-  const projectLocation = plan.location ?? starterLocations[0]
+  // Prefer the city the browser's own time zone names, so a first-time visitor
+// somewhere real opens onto their own sun rather than an arbitrary sample. A
+// drawing that already carries a location always wins — this only supplies the
+// default for a fresh one.
+const projectLocation = plan.location ?? locationForTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone)
   const [locationOpen, setLocationOpen] = useState(false)
   const [styleKeywords, setStyleKeywords] = useState<string>(() => readString('style-keywords:shanghai-50', 'luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
   const [hour, setHour] = useState(10)

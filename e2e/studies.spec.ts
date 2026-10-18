@@ -189,3 +189,31 @@ test('old previews are marked when the drawing changes and recover with undo', a
   await page.getByRole('button', { name: 'Saved views', exact: true }).click()
   await expect(page.getByText('Captured from this drawing', { exact: true })).toBeVisible()
 })
+
+test('the elevation sheet draws a real elevation and re-styles on demand', async ({ page }) => {
+  await page.goto('/#plan=' + encodePlanToHash(initialPlan))
+  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  const canvas = page.locator('.spatial3d-shell canvas')
+  await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
+  await page.getByRole('button', { name: 'Study sheet', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Printable study sheet' })).toBeVisible()
+
+  const sheet = page.getByRole('button', { name: 'Elevation sheet', exact: true })
+  await sheet.click()
+
+  // The sheet must actually draw an elevation, not fall back to an empty panel.
+  // An unmeasured panel captions itself "Elevation"; a real one names the face it
+  // measured. Counting shapes would not prove anything — the plan and section
+  // panels alone paint far more than twenty paths.
+  const drawing = page.locator('svg.drawing-sheet')
+  await expect(drawing).toBeVisible()
+  await expect(drawing).toHaveAttribute('aria-label', /drawing of the current plan/)
+  const captions = (await drawing.locator('text').allTextContents()).join(' ')
+  expect(captions, 'the sheet must name the elevation face it measured').toMatch(/(north|south|east|west) elevation/i)
+
+  // Switching style must change the drawing. Asserting the panel merely exists
+  // would pass even if every style rendered identically.
+  const before = await drawing.innerHTML()
+  await page.getByRole('button', { name: 'Postmodern', exact: true }).click()
+  await expect.poll(async () => drawing.innerHTML()).not.toBe(before)
+})

@@ -14,7 +14,7 @@ import * as THREE from 'three'
 const WIREFILL_OPACITY = 0.18
 const WIREEDGE_COLOR = '#0e1014' // Axiom ink
 const WIREFILL_COLOR = '#faf7f1' // Axiom paper
-import { roomHeight, siteOf, sunVector } from '../plan'
+import { MODEL_WALL_THICKNESS_M, roomHeight, siteOf, sunVector, TERRACE_SLAB_M } from '../plan'
 import type { Furniture, FurnitureKind, Opening, PlanState, Room, SiteSpec } from '../types'
 import { windFlowPotential } from '../analysis'
 import type { Compass } from '../analysis'
@@ -38,9 +38,11 @@ const HEIGHT_MAX = 4.5
 const HEIGHT_STEP = 0.1
 const HEIGHT_SNAP = 0.05
 
-const WALL_THICKNESS = 0.15
+// Modelled thicknesses come from one place, so the 3D scene and the printed
+// elevation and section sheets cannot quietly disagree about the same wall.
+const WALL_THICKNESS = MODEL_WALL_THICKNESS_M
 const FLOOR_THICKNESS = 0.1
-const TERRACE_THICKNESS = 0.12
+const TERRACE_THICKNESS = TERRACE_SLAB_M
 
 const FURNITURE_HEIGHTS: Record<FurnitureKind, number> = {
   bed: 0.55,

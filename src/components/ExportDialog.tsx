@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { meshTo3mf, meshToBinaryStl, meshToGlb } from '../fabricate/formats'
 import { houseMesh, scaleToPrint } from '../fabricate/houseMesh'
 import { BASE_PRINT_MM, BUILD_PLATE_MM, checkPrint, PRINT_SCALES, PROCESS_LIMITS, recommendScale, type PrintProcess } from '../fabricate/printability'
+import { planToDxf } from '../export/planExchange'
 import type { PlanState } from '../types'
 
 function download(bytes: Uint8Array, filename: string, type: string) {
@@ -58,6 +59,13 @@ export function ExportDialog({ plan, baseName, onClose, onExportProject, onDone 
       <button className="button secondary" type="button" disabled={!hasWalls} onClick={() => {
         save(() => meshToGlb(houseMesh(plan).parts, baseName), `${baseName}.glb`, 'model/gltf-binary', '3D model downloaded (.glb, metres)')
       }}>.glb</button>
+    </section>
+
+    <section className="export-option">
+      <div><h3>2D CAD drawing</h3><p>Rooms and pencil walls as metre LINE entities, plan north up. Opens in AutoCAD, BricsCAD, DraftSight, LibreCAD and anything that reads DXF — to trace, dimension or carry the outline into another tool.</p></div>
+      <button className="button secondary" type="button" disabled={!plan.rooms.length && !plan.walls?.length} onClick={() => {
+        save(() => new TextEncoder().encode(planToDxf(plan)), `${baseName}.dxf`, 'image/vnd.dxf', '2D CAD drawing downloaded (.dxf, metres, north up)')
+      }}>.dxf</button>
     </section>
 
     <section className="export-option export-print">

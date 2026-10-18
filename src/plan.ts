@@ -390,6 +390,19 @@ export function estimateEnergySavings(systems: PlanState['systems']): number {
 
 export const DEFAULT_WALL_HEIGHT = 2.7
 
+/**
+ * Modelled wall thickness in metres.
+ *
+ * This is the single source of truth. The 3D scene, the print sheets and the
+ * elevation/section drawings must all measure a wall the same width, or the
+ * drawing and the render disagree about the same building. `Spatial3D` imports
+ * these rather than repeating the literals.
+ */
+export const MODEL_WALL_THICKNESS_M = 0.15
+
+/** Terrace slab thickness in metres, for the same reason. */
+export const TERRACE_SLAB_M = 0.12
+
 export function roomHeight(room: Room): number {
   return room.wallHeight ?? DEFAULT_WALL_HEIGHT
 }
