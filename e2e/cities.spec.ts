@@ -7,6 +7,16 @@ import { clickAction } from './workspace'
 import { initialPlan } from '../src/plan'
 import { starterLocations } from '../src/location/locations'
 
+test('an explicitly loaded sample keeps Shanghai and its rooms after reload', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore the 50 m² sample', exact: true }).click()
+  await expect(page.locator('button.room')).toHaveCount(chinaApartmentPlan.rooms.length)
+  await expectCity(page, 'Shanghai')
+  await page.reload()
+  await expect(page.locator('button.room')).toHaveCount(chinaApartmentPlan.rooms.length)
+  await expectCity(page, 'Shanghai')
+})
+
 test('legacy wrapped JSON imports retain the exported city', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(initialPlan))
   await clickAction(page, 'Workspace settings')

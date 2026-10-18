@@ -1023,7 +1023,7 @@ function App() {
   }, [commit, plan.rooms])
 
   const resetPlan = useCallback(() => {
-    commit(chinaApartmentPlan, 'Restore sample apartment')
+    commit({ ...chinaApartmentPlan, location: starterLocations[0] }, 'Restore sample apartment')
     setSelectedRoom('living')
     setSelectedOpening(null)
     setFitRequest((n) => n + 1)

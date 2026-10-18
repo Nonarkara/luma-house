@@ -39,7 +39,10 @@ drawing styles, four workspace palettes and existing saved drawings.
   Bangkok share opened under a Shanghai browser with different sunlight.
   Fresh plans now store the resolved city. Legacy plans without a city retain
   Shanghai; explicit stored cities win. Imports also accept a validated city
-  in older JSON export wrappers.
+  in older JSON export wrappers. The manual walkthrough also found that an
+  explicitly loaded sample was still unlocated and got discarded by the old
+  demo migration on reload. Restoring the sample now stores Shanghai; the
+  desktop/phone regression cases preserve all six rooms through reload.
 
 DXF exports were checked for metre units, entity pairs and north-up coordinates;
 no confirmed exporter defect was found. No provider call, Worker runtime,
