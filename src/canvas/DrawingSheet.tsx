@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { projectIso } from './isometric'
 import { buildDrawingSheet, type DrawingSheet, type ElevationBay, type SectionSlice, type SheetRoom } from '../drawing/sheet'
 import { drawingStyleById, type DrawingStyle, type DrawingStyleId } from '../drawing/styles'
+import { placeLabel, type Quad } from '../drawing/labels'
 import type { PlanState } from '../types'
 
 interface Box { x: number; y: number; w: number; h: number }
@@ -41,6 +42,10 @@ function poly(points: Array<[number, number]>, map: (x: number, y: number) => Ma
     const point = map(x, y)
     return `${point.x.toFixed(2)},${point.y.toFixed(2)}`
   }).join(' ')
+}
+
+function quadPoints(quad: Quad): string {
+  return quad.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')
 }
 
 function wallQuad(x1: number, y1: number, x2: number, y2: number, thickness: number): Array<[number, number]> {
@@ -402,27 +407,86 @@ function AxonDrawing({ sheet, style }: { sheet: DrawingSheet; style: DrawingStyl
   if (faces.length === 0) return <Caption panel={AXON} title="Axonometric" style={style} />
   const points = faces.flatMap((face) => face.map((point) => [point.x, point.y] as [number, number]))
   const map = fit(boundsOf(points, 4), AXON, false)
+
+  // Every face is mapped to screen pixels first. The label decision is made in
+  // those pixels and nowhere else — an earlier guard compared projected metres
+  // against SVG font pixels, so it excluded nothing and names spilled.
+  const drawn = blocks.map((room) => {
+    const { x, y, w, d, height } = room
+    const quads = [
+      [projectIso(x, y + d, 0), projectIso(x + w, y + d, 0), projectIso(x + w, y + d, height), projectIso(x, y + d, height)],
+      [projectIso(x + w, y + d, 0), projectIso(x + w, y, 0), projectIso(x + w, y, height), projectIso(x + w, y + d, height)],
+      [projectIso(x, y, height), projectIso(x + w, y, height), projectIso(x + w, y + d, height), projectIso(x, y + d, height)],
+    ].map((face) => face.map((point) => {
+      const at = map.p(point.x, point.y)
+      return [at.x, at.y] as [number, number]
+    }))
+    return { room, left: quads[0], right: quads[1], top: quads[2] }
+  })
+
+  // Names are drawn after all the solids, so a nearer room can no longer saw a
+  // name in half. In exchange a name whose own top face was painted over is
+  // dropped rather than floated over the room in front of it.
+  const placements = drawn.map((block, index) => placeLabel({
+    id: block.room.id,
+    lines: [{ text: block.room.name, fontSize: 10 }],
+    quad: block.top,
+    align: 'centre',
+    pad: 4,
+    minFontSize: 9,
+    occluders: drawn.slice(index + 1).flatMap((later) => [later.left, later.right, later.top]),
+  }))
+
+  // A face too small for its own name at a legible size gets a number instead,
+  // and the name moves to the key under the drawing. This is the convention the
+  // studio already uses on plan, and it is the only honest answer for a room
+  // whose name cannot be read across a boundary.
+  const keyed: Array<{ mark: string; name: string }> = []
+  const marks = placements.map((placement, index) => {
+    if (placement.placed) return null
+    const mark = String(keyed.length + 1)
+    keyed.push({ mark, name: drawn[index].room.name })
+    return placeLabel({
+      id: `${placement.id}-mark`,
+      lines: [{ text: mark, fontSize: 10 }],
+      quad: drawn[index].top,
+      align: 'centre',
+      pad: 2,
+    })
+  })
+
   return (
     <g>
       <Caption panel={AXON} title="Axonometric · same footprints and ceilings" style={style} />
-      {blocks.map((room) => {
-        const { x, y, w, d, height } = room
-        const left = [projectIso(x, y + d, 0), projectIso(x + w, y + d, 0), projectIso(x + w, y + d, height), projectIso(x, y + d, height)]
-        const right = [projectIso(x + w, y + d, 0), projectIso(x + w, y, 0), projectIso(x + w, y, height), projectIso(x + w, y + d, height)]
-        const top = [projectIso(x, y, height), projectIso(x + w, y, height), projectIso(x + w, y + d, height), projectIso(x, y + d, height)]
-        const label = projectIso(x + w / 2, y + d / 2, height)
-        const mapped = map.p(label.x, label.y)
-        return (
-          <g key={room.id}>
-            <polygon points={poly(left.map((point) => [point.x, point.y]), map.p)} fill={style.poche} fillOpacity={style.wallMode === 'outline' ? 0.18 : 0.78} stroke={style.ink} strokeWidth={style.thinWidth} />
-            <polygon points={poly(right.map((point) => [point.x, point.y]), map.p)} fill={style.wallFill} stroke={style.ink} strokeWidth={style.thinWidth} />
-            <polygon points={poly(top.map((point) => [point.x, point.y]), map.p)} fill={style.roomFill[room.kind]} stroke={style.ink} strokeWidth={style.profileWidth} />
-            <text x={mapped.x} y={mapped.y} textAnchor="middle" fill={style.ink} fontFamily={style.font} fontSize={10}>
-              {room.name}
-            </text>
-          </g>
-        )
-      })}
+      {drawn.map(({ room, left, right, top }) => (
+        <g key={room.id}>
+          <polygon points={quadPoints(left)} fill={style.poche} fillOpacity={style.wallMode === 'outline' ? 0.18 : 0.78} stroke={style.ink} strokeWidth={style.thinWidth} />
+          <polygon points={quadPoints(right)} fill={style.wallFill} stroke={style.ink} strokeWidth={style.thinWidth} />
+          <polygon points={quadPoints(top)} fill={style.roomFill[room.kind]} stroke={style.ink} strokeWidth={style.profileWidth} />
+        </g>
+      ))}
+      {[...placements.map((placement, index) => ({ placement, index })), ...marks.map((mark, index) => ({ placement: mark, index }))]
+        .filter((entry) => entry.placement)
+        .map(({ placement, index }) => placement!.lines.map((line) => (
+          <text
+            key={`${placement!.id}-${line.text}`}
+            x={line.x}
+            y={line.y}
+            textAnchor="middle"
+            fill={inkOn(style.roomFill[drawn[index].room.kind], style.ink)}
+            fontFamily={style.font}
+            fontSize={line.fontSize}
+            data-sheet-label={line.text}
+            data-sheet-face={quadPoints(drawn[index].top)}
+          >
+            {line.text}
+          </text>
+        )))}
+      {keyed.length > 0 && (
+        <text x={AXON.x + 2} y={AXON.y + AXON.h - 4} fill={style.muted} fontFamily={style.font} fontSize={10}>
+          {keyed.map((entry) => `${entry.mark} ${entry.name}`).join('   ')}
+        </text>
+      )}
     </g>
   )
 }
@@ -564,17 +628,41 @@ export function DrawingSheet({ plan, styleId }: { plan: PlanState; styleId: Draw
             </g>
           )}
           {sheet.rooms.map((room) => {
-            const center = planFit.p(room.x + room.w / 2, room.y + room.d / 2)
-            const width = room.w * planFit.scale
-            if (width < 36) return null
+            // Room names sit inside the room at its top-left corner, which is the
+            // architectural convention and — unlike the middle of the room — is
+            // where the furniture is not. Centring them put every name straight
+            // through a sofa or a bed. Whether the name fits is decided in screen
+            // pixels by the same rule the axonometric uses.
+            const origin = planFit.p(room.x, room.y)
+            const far = planFit.p(room.x + room.w, room.y + room.d)
+            const face: Quad = [
+              [origin.x, origin.y],
+              [far.x, origin.y],
+              [far.x, far.y],
+              [origin.x, far.y],
+            ]
+            const placement = placeLabel({
+              id: room.id,
+              lines: [{ text: room.name, fontSize: 11 }, { text: `${room.area.toFixed(1)} m²`, fontSize: 10 }],
+              quad: face,
+              align: 'start',
+              pad: 5,
+            })
             return (
-              <g key={`${room.id}-label`}>
-                <text x={center.x} y={center.y - 2} textAnchor="middle" fill={inkOn(style.roomFill[room.kind], style.ink)} fontFamily={style.font} fontSize={11}>
-                  {room.name}
-                </text>
-                <text x={center.x} y={center.y + 12} textAnchor="middle" fill={inkOn(style.roomFill[room.kind], style.muted)} fontFamily={style.font} fontSize={10}>
-                  {room.area.toFixed(1)} m²
-                </text>
+              <g key={`${room.id}-label`} data-sheet-room={room.name}>
+                {placement.lines.map((line) => (
+                  <text
+                    key={line.text}
+                    x={line.x}
+                    y={line.y}
+                    textAnchor="start"
+                    fill={inkOn(style.roomFill[room.kind], line === placement.lines[0] ? style.ink : style.muted)}
+                    fontFamily={style.font}
+                    fontSize={line.fontSize}
+                  >
+                    {line.text}
+                  </text>
+                ))}
               </g>
             )
           })}

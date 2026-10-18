@@ -217,3 +217,74 @@ test('the elevation sheet draws a real elevation and re-styles on demand', async
   await page.getByRole('button', { name: 'Postmodern', exact: true }).click()
   await expect.poll(async () => drawing.innerHTML()).not.toBe(before)
 })
+
+test('axonometric names are named on their own faces and never collide', async ({ page }) => {
+  await page.goto('/#plan=' + encodePlanToHash(initialPlan))
+  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  const canvas = page.locator('.spatial3d-shell canvas')
+  await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
+  await page.getByRole('button', { name: 'Study sheet', exact: true }).click()
+  await page.getByRole('button', { name: 'Elevation sheet', exact: true }).click()
+  const drawing = page.locator('svg.drawing-sheet')
+  await expect(drawing).toBeVisible()
+
+  // The defect this guards: names on the axonometric spilled off their own face
+  // and were cut in half by the room drawn in front of them. Both read as one
+  // name floating over the wrong room. Each name carries the face it was set on,
+  // so containment is checked against the real polygon rather than a guess.
+  const labels = await drawing.evaluate(svg => {
+    const ctm = svg.getScreenCTM()!
+    const contains = (x: number, y: number, quad: number[][]) => {
+      let inside = false
+      for (let i = 0, j = quad.length - 1; i < quad.length; j = i++) {
+        const [xi, yi] = quad[i]
+        const [xj, yj] = quad[j]
+        if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside
+      }
+      return inside
+    }
+    return [...svg.querySelectorAll('[data-sheet-label]')].map(el => {
+      const face = el.getAttribute('data-sheet-face')!.split(' ').map(pair => {
+        const [x, y] = pair.split(',').map(Number)
+        const at = new DOMPoint(x, y).matrixTransform(ctm)
+        return [at.x, at.y]
+      })
+      const box = el.getBoundingClientRect()
+      const midX = (box.left + box.right) / 2
+      const midY = (box.top + box.bottom) / 2
+      const probes: Array<[string, number, number]> = [
+        ['centre', midX, midY],
+        ['left edge', box.left, midY],
+        ['right edge', box.right, midY],
+        ['cap line', midX, box.top],
+        ['baseline', midX, box.bottom],
+      ]
+      return {
+        text: el.textContent ?? '',
+        passed: probes.filter(([, x, y]) => contains(x, y, face)).map(([name]) => name),
+        probes: probes.map(([name]) => name),
+        left: box.left, right: box.right, top: box.top, bottom: box.bottom,
+      }
+    })
+  })
+  expect(labels.length, 'the axonometric must still name the rooms it can name').toBeGreaterThanOrEqual(4)
+  for (const label of labels) {
+    expect(label.passed, `"${label.text}" must sit wholly on the face it names`).toEqual(label.probes)
+  }
+  for (let i = 0; i < labels.length; i += 1) {
+    for (let j = i + 1; j < labels.length; j += 1) {
+      const a = labels[i]
+      const b = labels[j]
+      const collide = a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+      expect(collide, `"${a.text}" and "${b.text}" collide in the axonometric`).toBe(false)
+    }
+  }
+
+  // A room whose face cannot hold its name at a legible size is keyed rather
+  // than left unnamed or clipped, and a key mark is never orphaned.
+  const sheetText = (await drawing.locator('text').allTextContents()).join(' | ')
+  expect(sheetText, 'every room must be named somewhere on the sheet').toContain('Shaded terrace')
+  for (const label of labels.filter(entry => /^\d+$/.test(entry.text))) {
+    expect(sheetText, `key mark ${label.text} must be listed in the key`).toMatch(new RegExp(`\\b${label.text}\\s+\\S`))
+  }
+})
