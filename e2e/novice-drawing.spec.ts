@@ -132,18 +132,10 @@ test('a wall click with the Window · Door chip open places the next window', as
   const room = await page.locator('button.room').boundingBox()
   await page.mouse.click(room!.x + room!.width / 2, room!.y + 2)
   await expect(page.locator('button.opening-window')).toHaveCount(1)
-  await expect(page.locator('.opening-toggle')).toBeVisible()
-
-  await page.locator('.opening-toggle').getByRole('button', { name: 'Door', exact: true }).click()
-  await expect(page.locator('button.opening-door')).toHaveCount(1)
-  await expect(page.locator('button.opening-window')).toHaveCount(0)
-
-  await page.locator('.opening-toggle').getByRole('button', { name: 'Window', exact: true }).click()
-  await expect(page.locator('button.opening-window')).toHaveCount(1)
+  await expect(page.locator('.opening-slot:not(.is-reserved)')).toBeVisible()
 
   const host = await page.locator('button.room').boundingBox()
-  const chip = page.locator('.opening-toggle')
-  await chip.dispatchEvent('click', { clientX: host!.x + host!.width / 2, clientY: host!.y + host!.height - 2, bubbles: true })
+  await page.mouse.click(host!.x + host!.width / 2, host!.y + host!.height - 2)
   await expect(page.locator('button.opening-window')).toHaveCount(2)
   await expect(page.locator('button.opening-window[data-rotation="0"]')).toHaveCount(2)
 })
@@ -210,7 +202,7 @@ test('every wall accepts a window after one is already on the right', async ({ p
   const left = { x: before!.x + 2, y: before!.y + before!.height / 2 }
   await page.mouse.click(right.x, right.y)
   await expect(page.locator('button.opening-window')).toHaveCount(1)
-  await expect(page.locator('.opening-toggle')).toBeVisible()
+  await expect(page.locator('.opening-slot:not(.is-reserved)')).toBeVisible()
 
   const settled = await page.locator('button.room').boundingBox()
   expect(Math.abs((settled!.y + settled!.height) - (before!.y + before!.height))).toBeLessThan(8)

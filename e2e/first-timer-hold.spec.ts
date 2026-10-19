@@ -18,6 +18,15 @@ const SUN_TIME: Record<Lang, string> = { en: 'Inspector sun time', th: 'เว�
 const PLACE: Record<Lang, string> = { en: 'Place a window', th: 'วางหน้าต่าง', zh: '放置窗户' }
 const WINDOW_TOOL: Record<Lang, string> = { en: 'Window', th: 'หน้าต่าง', zh: '窗' }
 const ROOM_TOOL: Record<Lang, string> = { en: 'Room', th: 'ห้อง', zh: '房间' }
+const DOOR_TOOL: Record<Lang, string> = { en: 'Door', th: 'ประตู', zh: '门' }
+const SELECT_TOOL: Record<Lang, string> = { en: 'Select', th: 'เลือก', zh: '选择' }
+const OPEN_PANEL: Record<Lang, string> = { en: 'Open panel', th: 'เปิดแผง', zh: '打开面板' }
+const CLOSE_PANEL: Record<Lang, string> = { en: 'Close panel', th: 'ปิดแผง', zh: '关闭面板' }
+const STRIP_HINT: Record<Lang, string> = {
+  en: 'Drag along the wall · Delete key removes',
+  th: 'ลากไปตามผนัง · ปุ่มลบเอาออก',
+  zh: '沿墙拖动 · Delete 键移除',
+}
 const HOLD_DIR = path.join('test-results', 'hold')
 
 test.describe('play hold fixes', () => {
@@ -361,6 +370,184 @@ test.describe('play hold fixes', () => {
         expect(strip).toEqual({ onSheet: false, onScience: false })
         fs.mkdirSync(HOLD_DIR, { recursive: true })
         await page.screenshot({ path: path.join(HOLD_DIR, `hold-${viewport.name}-${lang}-corner.png`) })
+      })
+    }
+  }
+
+  const STAGES = [
+    { step: 0, name: 'draw' },
+    { step: 3, name: 'living' },
+    { step: 4, name: 'systems' },
+    { step: 5, name: 'cost' },
+  ] as const
+
+  for (const viewport of VIEWPORTS) {
+    for (const lang of LANGS) {
+      test(`sheet stays put ${viewport.name} ${lang}`, async ({ page }) => {
+        test.setTimeout(180_000)
+        await page.addInitScript((value) => localStorage.setItem('designon:lang', value), lang)
+        await page.setViewportSize(viewport)
+        await page.goto('/')
+        const blank = page.getByRole('button', { name: /Start from a blank page|เริ่มจากหน้าว่าง|从空白页开始/ })
+        if (await blank.isVisible()) await blank.click()
+        await expect(blank).toBeHidden()
+        const tool = async (name: string) => {
+          const button = page.locator('.canvas-tools').getByRole('button', { name, exact: true })
+          if (!(await button.isVisible())) {
+            await page.getByRole('button', { name: /More tools|เครื่องมือเพิ่ม|更多工具/ }).click()
+          }
+          await button.click()
+        }
+        await tool(ROOM_TOOL[lang])
+        const sheet = await page.locator('.plan-canvas').boundingBox()
+        if (!sheet) throw new Error('missing sheet')
+        const drag = async (ax: number, ay: number, bx: number, by: number) => {
+          await page.mouse.move(sheet.x + sheet.width * ax, sheet.y + sheet.height * ay)
+          await page.mouse.down()
+          await page.mouse.move(sheet.x + sheet.width * bx, sheet.y + sheet.height * by, { steps: 8 })
+          await page.mouse.up()
+        }
+        await drag(0.03, 0.05, 0.28, 0.34)
+        await drag(0.40, 0.42, 0.78, 0.82)
+        await expect(page.locator('button.room')).toHaveCount(2)
+        const phone = viewport.name === '390'
+        const rectOf = () => page.locator('.plan-canvas').evaluate((el) => {
+          const box = el.getBoundingClientRect()
+          return { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) }
+        })
+        const clearOpenings = async () => {
+          if (await page.locator('button.opening').count() === 0) return
+          await tool(SELECT_TOOL[lang])
+          for (let guard = 0; guard < 24 && await page.locator('button.opening').count(); guard++) {
+            await page.locator('button.opening').first().click({ force: true })
+            await page.locator('.opening-slot .chip-action').click()
+          }
+          await expect(page.locator('button.opening')).toHaveCount(0)
+        }
+        for (const stage of STAGES) {
+          await page.locator('.journey-step').nth(stage.step).click()
+          await expect(page.locator('.plan-canvas')).toBeVisible()
+          if (phone) {
+            const close = page.getByRole('button', { name: CLOSE_PANEL[lang], exact: true })
+            if (await close.isVisible()) await close.click()
+          } else {
+            const open = page.getByRole('button', { name: OPEN_PANEL[lang], exact: true })
+            if (await open.isVisible()) await open.click()
+            await expect(page.locator('.inspector')).toBeVisible()
+          }
+          await page.waitForTimeout(200)
+          await clearOpenings()
+          const before = await rectOf()
+          const reserved = await page.locator('.opening-slot').evaluate((el) => {
+            const chip = el.querySelector('.furniture-chip')
+            return {
+              display: getComputedStyle(el).display,
+              h: Math.round(el.getBoundingClientRect().height),
+              chipDisplay: chip ? getComputedStyle(chip).display : 'missing',
+              chipVisibility: chip ? getComputedStyle(chip).visibility : 'missing',
+            }
+          })
+          expect(reserved.display, `${stage.name} reserved slot`).not.toBe('none')
+          expect(reserved.chipDisplay, `${stage.name} reserved slot`).not.toBe('none')
+          expect(reserved.chipVisibility, `${stage.name} reserved slot`).toBe('hidden')
+          expect(reserved.h, `${stage.name} reserved slot`).toBe(44)
+          const corner = await page.locator('button.room').nth(0).boundingBox()
+          const centre = await page.locator('button.room').nth(1).boundingBox()
+          if (!corner || !centre) throw new Error('missing rooms')
+          await tool(WINDOW_TOOL[lang])
+          const cornerWalls = [
+            [corner.x + corner.width / 2, corner.y + 4],
+            [corner.x + corner.width - 4, corner.y + corner.height / 2],
+            [corner.x + corner.width / 2, corner.y + corner.height - 4],
+            [corner.x + 4, corner.y + corner.height / 2],
+          ]
+          for (let index = 0; index < cornerWalls.length; index++) {
+            await page.mouse.click(cornerWalls[index][0], cornerWalls[index][1])
+            await expect(page.locator('button.opening-window'), `${stage.name} corner ${index + 1}`).toHaveCount(index + 1)
+            expect(await rectOf(), `${stage.name} corner ${index + 1}`).toEqual(before)
+          }
+          const centreWalls = [
+            [centre.x + centre.width / 2, centre.y + 4],
+            [centre.x + centre.width - 4, centre.y + centre.height / 2],
+            [centre.x + centre.width / 2, centre.y + centre.height - 4],
+          ]
+          for (let index = 0; index < centreWalls.length; index++) {
+            await page.mouse.click(centreWalls[index][0], centreWalls[index][1])
+            await expect(page.locator('button.opening-window'), `${stage.name} centre window ${index + 1}`).toHaveCount(4 + index + 1)
+            expect(await rectOf(), `${stage.name} centre window ${index + 1}`).toEqual(before)
+          }
+          await tool(DOOR_TOOL[lang])
+          await page.mouse.click(centre.x + 4, centre.y + centre.height / 2)
+          await expect(page.locator('button.opening-door'), `${stage.name} door`).toHaveCount(1)
+          expect(await rectOf(), `${stage.name} door`).toEqual(before)
+          await expect(page.locator('.opening-slot small')).toHaveText(STRIP_HINT[lang])
+          const hintFit = await page.locator('.opening-slot small').evaluate((el) => {
+            const range = document.createRange()
+            range.selectNodeContents(el)
+            const rect = range.getBoundingClientRect()
+            const slot = el.closest('.opening-slot')!.getBoundingClientRect()
+            const button = el.closest('.furniture-chip')?.querySelector('.chip-action')?.getBoundingClientRect()
+            const overflow = Math.max(0, rect.right - slot.right, slot.left - rect.left)
+            const buttonOverflow = button ? Math.max(0, button.right - slot.right, slot.left - button.left) : 99
+            return {
+              clipped: overflow > 2 || buttonOverflow > 2 || el.scrollWidth > el.clientWidth + 2 || (el.textContent ?? '').includes('…'),
+              text: el.textContent,
+              overflow: Math.round(overflow),
+              buttonOverflow: Math.round(buttonOverflow),
+            }
+          })
+          expect(hintFit.clipped, JSON.stringify(hintFit)).toBe(false)
+          const row = await page.locator('.plan-control-row').evaluate((el) => {
+            const box = el.getBoundingClientRect()
+            const kids = [...el.children].map((kid) => kid.getBoundingClientRect())
+            const zoom = el.querySelector('.zoom-control')?.getBoundingClientRect()
+            const contained = (kid: DOMRect) => kid.top >= box.top - 1 && kid.bottom <= box.bottom + 1 && kid.left >= box.left - 1 && kid.right <= box.right + 1
+            return {
+              h: box.height,
+              contained: kids.every(contained),
+              zoomInside: !!zoom && contained(zoom),
+            }
+          })
+          expect(row.h, `${stage.name} control row`).toBeLessThanOrEqual(45)
+          expect(row.contained, `${stage.name} control row wraps`).toBe(true)
+          expect(row.zoomInside, `${stage.name} zoom`).toBe(true)
+          const slot = await page.locator('.opening-slot').evaluate((el) => {
+            const chip = el.querySelector('.furniture-chip')
+            return {
+              display: getComputedStyle(el).display,
+              h: Math.round(el.getBoundingClientRect().height),
+              chipDisplay: chip ? getComputedStyle(chip).display : 'missing',
+              chipVisibility: chip ? getComputedStyle(chip).visibility : 'missing',
+            }
+          })
+          expect(slot.display, `${stage.name} slot`).not.toBe('none')
+          expect(slot.chipDisplay, `${stage.name} slot`).not.toBe('none')
+          expect(slot.chipVisibility, `${stage.name} slot`).toBe('visible')
+          expect(slot.h, `${stage.name} slot`).toBe(44)
+          if (phone) {
+            const fit = await page.evaluate(() => {
+              const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect() ?? null
+              const rooms = box('.plan-room-key')
+              const zoom = box('.zoom-control')
+              const dock = box('.canvas-tools')
+              const hit = rooms ? document.elementFromPoint(rooms.left + 12, rooms.top + rooms.height / 2) : null
+              return {
+                roomsH: rooms?.height ?? 0,
+                zoomH: zoom?.height ?? 0,
+                roomsAbove: !!rooms && !!dock && rooms.bottom <= dock.top + 1,
+                zoomAbove: !!zoom && !!dock && zoom.bottom <= dock.top + 1,
+                roomHit: !!hit?.closest('.plan-room-key'),
+              }
+            })
+            expect(fit.roomsH, JSON.stringify(fit)).toBeGreaterThanOrEqual(44)
+            expect(fit.zoomH, JSON.stringify(fit)).toBeGreaterThanOrEqual(44)
+            expect(fit.roomsAbove, JSON.stringify(fit)).toBe(true)
+            expect(fit.zoomAbove, JSON.stringify(fit)).toBe(true)
+            expect(fit.roomHit, JSON.stringify(fit)).toBe(true)
+          }
+        }
+        fs.mkdirSync(HOLD_DIR, { recursive: true })
+        await page.screenshot({ path: path.join(HOLD_DIR, `hold-${viewport.name}-${lang}-stable.png`) })
       })
     }
   }
