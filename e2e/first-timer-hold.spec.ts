@@ -14,6 +14,7 @@ const LANGS = ['en', 'th', 'zh'] as const
 type Lang = (typeof LANGS)[number]
 
 const MORE: Record<Lang, string> = { en: 'More actions', th: 'คำสั่งเพิ่ม', zh: '更多操作' }
+const RENDERS: Record<Lang, string> = { en: 'Renders', th: 'ภาพเรนเดอร์', zh: '渲染' }
 const SUN_TIME: Record<Lang, string> = { en: 'Inspector sun time', th: 'เวลาแดดในแผง', zh: '面板中的日照时间' }
 const PLACE: Record<Lang, string> = { en: 'Place a window', th: 'วางหน้าต่าง', zh: '放置窗户' }
 const WINDOW_TOOL: Record<Lang, string> = { en: 'Window', th: 'หน้าต่าง', zh: '窗' }
@@ -290,7 +291,12 @@ test.describe('play hold fixes', () => {
         expect(spatial.overflow, JSON.stringify(spatial.overflow)).toEqual([])
         await page.screenshot({ path: `${HOLD_DIR}/hold-${viewport.name}-${lang}-spatial.png` })
 
-        await page.locator('.view-switch button').nth(2).click()
+        const rendersInBar = page.locator('.view-switch button').nth(2)
+        if (await rendersInBar.count()) await rendersInBar.click()
+        else {
+          await page.getByRole('button', { name: MORE[lang], exact: true }).click()
+          await page.getByRole('button', { name: RENDERS[lang], exact: true }).click()
+        }
         await expect(page.locator('.render-thumbs button').first()).toBeVisible()
         await expect(page.locator('.render-stage.is-local-study .spatial-orbit-note')).toBeVisible()
         const navNote = await page.evaluate(() => {

@@ -521,7 +521,7 @@ function App() {
   }, [journey.doneCount, journey.stages])
 
   const dismissOverlays = useCallback((except?: 'inspector' | 'location' | 'settings' | 'catalog' | 'furniture' | 'preset' | 'shortcuts' | 'scenarios' | 'export' | 'rooms') => {
-    if (except !== 'inspector' && except !== 'settings') { setInspectorOpen(false); setSheetExpanded(false) }
+    if (except !== 'inspector' && except !== 'settings' && except !== 'location') { setInspectorOpen(false); setSheetExpanded(false) }
     if (except !== 'location') setLocationOpen(false)
     if (except !== 'settings') setSettingsOpen(false)
     if (except !== 'catalog') setIsCatalogOpen(false)
