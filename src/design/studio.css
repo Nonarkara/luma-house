@@ -888,30 +888,6 @@ body { overflow-y: auto; }
 .app-shell .menu-history { display: flex; align-items: center; width: 100%; min-height: 44px; padding: 0 12px; border: 0; background: transparent; color: var(--text-primary); font: 600 12px/1 var(--type-body); text-align: left; cursor: pointer; }
 .app-shell .menu-history:disabled { color: var(--text-tertiary); cursor: default; }
 
-/* The selection bar shares the coach row so the first room does not shrink the sheet. */
-@media (min-width: 721px) {
-  .app-shell .design-stage { grid-template-rows: 0px minmax(0, 1fr) 48px; }
-  .app-shell .canvas-selection {
-    grid-area: coach;
-    z-index: 3;
-    background: var(--bg, #fcfcf8);
-    border-bottom: 0;
-    border-top: 1px solid var(--border);
-  }
-}
-@media (max-width: 720px) {
-  /* Fixed, not a grid item: an absolute grid item is positioned in the collapsed selection row and lands under the top bar. */
-  .app-shell .canvas-selection {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 48px;
-    z-index: 6;
-    min-height: 44px;
-    background: var(--bg, #fcfcf8);
-  }
-}
-
 /* Phone stage panels: a bottom sheet that peeks (30% of the screen) and grows
    on request, always below the stage bar so every stage stays one tap away. */
 .sheet-grow { display: none; }

@@ -2,7 +2,7 @@ import { CityPicker } from './components/CityPicker'
 import { SunChart } from './canvas/SunChart'
 import { locationForTimeZone } from './location/timeZoneLocation'
 import { sanitizeLocation, starterLocations } from './location/locations'
-import { citySunPosition, clockLabel, normalizedCivilHour, todayIn } from './location/solar'
+import { citySunPosition, clockLabel, normalizedCivilHour, studyStartIn, todayIn } from './location/solar'
 import type { ProjectLocation } from './types'
 import type { StudyCapture, StudyScene, StudySettings } from './study/types'
 import { readTheme, saveTheme } from './design/themes'
@@ -169,7 +169,7 @@ function App() {
   const [locationOpen, setLocationOpen] = useState(false)
   const [styleKeywords, setStyleKeywords] = useState<string>(() => readString('style-keywords:shanghai-50', 'luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
   // The sun study opens on today, now, in the project's city; Dec/Mar/Jun stay as shortcuts.
-  const [hour, setHour] = useState(() => todayIn(projectLocation).hour)
+  const [hour, setHour] = useState(() => studyStartIn(projectLocation).hour)
   const [day, setDay] = useState(() => todayIn(projectLocation).day)
   const [studyYear, setStudyYear] = useState(() => todayIn(projectLocation).year)
   const [outsideC, setOutsideC] = useState(34)
@@ -485,7 +485,7 @@ function App() {
       const justDone = completed[completed.length - 1]
       if (justDone) {
         const next = journey.stages.find((s) => !s.complete)
-        setToast(next ? `${justDone.def.label} done. Next: ${next.def.label.toLowerCase()}` : `${justDone.def.label} done. All stages done.`)
+        setToast(next ? `${justDone.def.label} done. Next: ${next.def.label}` : `${justDone.def.label} done. All stages done.`)
       }
     }
     prevDoneRef.current = journey.doneCount

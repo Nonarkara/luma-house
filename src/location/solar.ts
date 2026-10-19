@@ -63,3 +63,11 @@ export function todayIn(location: Pick<ProjectLocation, 'timezone'>, now = new D
 export function dayLabel(day: number, year = new Date().getFullYear()) {
   return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(year, 0, day)))
 }
+
+/** Today's date and the current hour in the city, but a night-time "now" falls back to 10:00 so a fresh sun study is never empty. */
+export function studyStartIn(location: ProjectLocation, now = new Date()) {
+  const today = todayIn(location, now)
+  let up = false
+  try { up = citySunPosition(location, today.day, today.hour, today.year).altitude > 0 } catch { up = false }
+  return { ...today, hour: up ? today.hour : 10 }
+}

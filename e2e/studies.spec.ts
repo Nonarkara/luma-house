@@ -103,6 +103,8 @@ test('study sheets retain physical SVG scale and fit one landscape PDF page even
 })
 
 test('seasonal wall shadows and sections compute offline and each print on one A4 page', async ({ page }, testInfo) => {
+  // The study opens on today's date and hour; pin the clock so both cities are drawn in daylight.
+  await page.clock.setFixedTime(new Date('2026-10-19T09:00:00Z'))
   const cities = [
     { name: 'Cape Town', label: 'Cape Town, South Africa', latitude: -33.925, longitude: 18.424, timezone: 'Africa/Johannesburg' },
     { name: 'Tromsø', label: 'Tromsø, Norway', latitude: 69.65, longitude: 18.96, timezone: 'Europe/Oslo' },

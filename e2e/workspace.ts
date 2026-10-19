@@ -27,6 +27,11 @@ export async function openCity(page: Page) {
   else { await openMore(page); await page.getByRole('button', { name: /^Change city ·/ }).click() }
   await expect(page.getByLabel('Search any city', { exact: true })).toBeVisible()
 }
+export async function pickSuggestedCity(page: Page, name: RegExp) {
+  const starters = page.locator('details.city-starters')
+  if (await starters.count() && !(await starters.evaluate(d => (d as HTMLDetailsElement).open))) await starters.locator('summary').click()
+  await page.getByRole('button', { name }).click()
+}
 export async function expectCity(page: Page, name: string) {
   const direct = page.locator('.topbar-meta .location-toggle')
   if (await direct.isVisible()) await expect(direct).toHaveAttribute('aria-label', new RegExp(name))

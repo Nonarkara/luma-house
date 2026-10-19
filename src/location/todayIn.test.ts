@@ -10,3 +10,12 @@ describe('todayIn', () => {
     expect(dayLabel(292, 2026)).toBe('19 Oct')
   })
 })
+
+describe('studyStartIn', () => {
+  it('keeps the current hour in daylight and falls back to 10:00 at night', async () => {
+    const { studyStartIn } = await import('./solar')
+    const bangkok = { name: 'Bangkok', label: 'Bangkok, Thailand', latitude: 13.7563, longitude: 100.5018, timezone: 'Asia/Bangkok' }
+    expect(studyStartIn(bangkok, new Date('2026-10-19T07:00:00Z')).hour).toBe(14)
+    expect(studyStartIn(bangkok, new Date('2026-10-19T16:00:00Z')).hour).toBe(10)
+  })
+})

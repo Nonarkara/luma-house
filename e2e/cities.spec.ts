@@ -1,5 +1,5 @@
 import { expectSaved } from './workspace'
-import { openCity, expectCity } from './workspace'
+import { openCity, expectCity, pickSuggestedCity } from './workspace'
 import { chinaApartmentPlan, CHINA_PROJECT_KEY } from '../src/mockups/chinaApartment'
 import { test, expect } from '@playwright/test'
 import { decodePlanFromHash, encodePlanToHash } from '../src/sharePlan'
@@ -53,6 +53,8 @@ test('fresh browser-zone city is embedded in share links and survives another ti
 })
 
 test('worldwide city updates its chart and actual shadows, persists through reload and works offline', async ({ page }) => {
+  // The sun study opens on today's date; pin "today" to the December solstice so Tromsø is in polar night.
+  await page.clock.setFixedTime(new Date('2026-12-21T11:00:00Z'))
   const aiCalls: string[] = []
   await page.route('**/luma-concept-render.drnon.workers.dev/**', r => { aiCalls.push(r.request().url()); return r.abort() })
   await page.route('**/geocoding-api.open-meteo.com/**', r => r.fulfill({ json: { results: [
@@ -101,7 +103,7 @@ test('fixed interior images are labeled references and never the default render'
 test('a relocated sample survives reload instead of being discarded as an old demo', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(chinaApartmentPlan))
   await openCity(page)
-  await page.getByRole('button', { name: /Bangkok, Thailand.*Asia\/Bangkok/ }).click()
+  await pickSuggestedCity(page, /Bangkok, Thailand.*Asia\/Bangkok/)
   await page.getByRole('button', { name: 'Close city search' }).click()
   await expectSaved(page)
   await page.reload()
@@ -113,7 +115,7 @@ test('a relocated sample survives reload instead of being discarded as an old de
 test('immediate reload keeps a city change before the saved indicator appears', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(initialPlan))
   await openCity(page)
-  await page.getByRole('button', { name: /Bangkok, Thailand.*Asia\/Bangkok/ }).click()
+  await pickSuggestedCity(page, /Bangkok, Thailand.*Asia\/Bangkok/)
   // Do not wait for the debounced "Saved locally" indicator.
   await page.reload()
   await expectCity(page, 'Bangkok')
