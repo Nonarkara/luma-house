@@ -999,7 +999,7 @@ button:active {
 
 .furniture.is-conflict {
   border-color: #a72144;
-  background: rgba(248, 113, 113, 0.16);
+  background: rgba(146, 39, 31, 0.16);
   color: var(--error);
 }
 
@@ -1077,7 +1077,7 @@ button:active {
 }
 
 .furniture-chip.is-conflict {
-  border-color: rgba(248, 113, 113, 0.5);
+  border-color: rgba(146, 39, 31, 0.5);
 }
 
 .furniture-chip.is-conflict small {
@@ -1357,9 +1357,9 @@ button:active {
   border: 1px solid #006eb8;
   border-left: 4px solid #006eb8;
   border-right: 4px solid #006eb8;
-  background: rgba(56, 189, 248, 0.3);
+  background: rgba(34, 80, 108, 0.3);
   backdrop-filter: blur(4px);
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+  box-shadow: 0 0 10px rgba(34, 80, 108, 0.4);
 }
 
 .opening-door::before {
@@ -3949,7 +3949,7 @@ select {
 }
 
 .sev-badge.sev-3 {
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(146, 39, 31, 0.12);
   color: var(--error);
 }
 
@@ -4038,12 +4038,12 @@ select {
 
 /* ── Plan integrity: overlap flag ────────────────────── */
 .room.is-overlap {
-  border-color: rgba(248, 113, 113, 0.9);
+  border-color: rgba(146, 39, 31, 0.9);
   border-style: dashed;
 }
 
 .room.is-overlap::before {
-  border-color: rgba(248, 113, 113, 0.4);
+  border-color: rgba(146, 39, 31, 0.4);
 }
 
 .overlap-warning {
@@ -4054,7 +4054,7 @@ select {
   z-index: 9;
   max-width: calc(100% - 24px);
   padding: 8px 14px;
-  border: 1px solid rgba(248, 113, 113, 0.5);
+  border: 1px solid rgba(146, 39, 31, 0.5);
   border-radius: 8px;
   background: var(--bg-elevated);
   backdrop-filter: blur(12px);
@@ -5444,7 +5444,7 @@ summary:focus-visible {
 
 .guided-tour-title {
   margin: 5px 0 6px;
-  font: 600 18px/1.1 'Josefin Sans', sans-serif;
+  font: 600 22px/1.1 'Source Sans 3', sans-serif;
 }
 
 .guided-tour-description {
@@ -5600,7 +5600,7 @@ summary:focus-visible {
 .scenario-modal-header h2,
 .shortcuts-modal-header h2 {
   margin: 3px 0 4px;
-  font: 600 18px/1.15 'Josefin Sans', sans-serif;
+  font: 600 22px/1.15 'Source Sans 3', sans-serif;
 }
 
 .scenario-modal-header p,
@@ -6058,7 +6058,7 @@ summary:focus-visible {
 }
 
 .badge-plan-a {
-  background: rgba(56, 189, 248, 0.15);
+  background: rgba(34, 80, 108, 0.15);
   color: var(--analysis-cool);
   border: 1px solid #006eb8;
   padding: 1px 5px;
@@ -6091,9 +6091,9 @@ summary:focus-visible {
 }
 
 .delta-tag.warn {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(146, 39, 31, 0.15);
   color: var(--error);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(146, 39, 31, 0.3);
 }
 
 .delta-neutral {
