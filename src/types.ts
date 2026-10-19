@@ -130,7 +130,7 @@ export interface ABComparisonState {
   pinnedAt: string
 }
 
-export type CurrencyCode = 'CNY' | 'THB' | 'USD' | 'EUR'
+export type CurrencyCode = 'CNY' | 'THB' | 'USD' | 'EUR' | 'ZAR' | 'SGD'
 
 export interface RegionalRateCard {
   code: CurrencyCode

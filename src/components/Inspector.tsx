@@ -598,7 +598,7 @@ export const Inspector = React.memo(function Inspector({
             <CityPicker location={projectLocation} onChange={setProjectLocation} />
             <label className="range-label">
               <span><strong>{tr('Time of day')}</strong><b>{clockLabel(hour)}</b></span>
-              <input aria-label="Inspector sun time" type="range" min="0" max="24" step="0.25" value={hour} onChange={(event) => setHour(Number(event.target.value))} />
+              <input aria-label={tr('Inspector sun time')} type="range" min="0" max="24" step="0.25" value={hour} onChange={(event) => setHour(Number(event.target.value))} />
             </label>
             <div className="season-buttons" aria-label="Season presets">
               <button type="button" className={day === 355 ? 'active' : ''} onClick={() => setDay(355)}>{tr('December solstice')}</button>
@@ -667,9 +667,11 @@ export const Inspector = React.memo(function Inspector({
               <h3>{tr('Openings')}</h3>
               <span className="badge">{plan.openings.length}</span>
             </div>
-            <button className="button secondary full" type="button" onClick={() => setActiveTool('window')}>
-               Place a window
-            </button>
+            {!plan.openings.some((opening) => opening.type === 'window') && (
+              <button className="button secondary full" type="button" onClick={() => setActiveTool('window')}>
+                {tr('Place a window')}
+              </button>
+            )}
           </section>
         </div>
       )}
@@ -1042,7 +1044,7 @@ export const Inspector = React.memo(function Inspector({
           <section className="budget-hero">
             <p className="eyebrow">{site.w.toFixed(1)} × {site.h.toFixed(1)} m site · {site.unit} m grid · ±15%</p>
             <strong>{formatCurrency(budget.total, budget.currency)}</strong>
-            <span>{formatCurrency(budget.total / Math.max(1, budget.area), budget.currency)} / m² <b>incl. {Math.round(budget.contingencyRate * 100)}% contingency</b></span>
+            <span>{formatCurrency(budget.total / Math.max(1, budget.area), budget.currency)} / m² <b>{tr(`incl. ${Math.round(budget.contingencyRate * 100)}% contingency`)}</b></span>
           </section>
 
           <section className="panel-section">
@@ -1050,22 +1052,24 @@ export const Inspector = React.memo(function Inspector({
               <h3>{tr('Regional Rate Card & A/B Study')}</h3>
             </div>
             <label className="field-label" style={{ marginBottom: 10 }}>
-              Pricing Region
+              {tr('Pricing Region')}
               <select value={currency} onChange={(e) => setCurrency?.(e.target.value as CurrencyCode)}>
                 <option value="THB">{tr('Thailand (THB ฿)')}</option>
                 <option value="CNY">{tr('China (RMB ¥)')}</option>
+                <option value="SGD">{tr('Singapore (SGD)')}</option>
                 <option value="USD">{tr('North America (USD $)')}</option>
                 <option value="EUR">{tr('Western Europe (EUR €)')}</option>
+                <option value="ZAR">{tr('South Africa (ZAR)')}</option>
               </select>
             </label>
-            {currency !== 'CNY' && <p className="legal-note">The authored RMB specification, converted at {FX_SOURCE}. Not a local market rate card.</p>}
+            {currency !== 'CNY' && <p className="legal-note">{tr(`The authored RMB specification, converted at ${FX_SOURCE}. Not a local market rate card.`)}</p>}
             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
               <button type="button" className="button secondary full" onClick={onPinBaseline}>
-                Pin Plan A
+                {tr('Pin Plan A')}
               </button>
               {hasBaselinePin && (
                 <button type="button" className="button primary full" onClick={onOpenABComparison}>
-                  Compare A vs B
+                  {tr('Compare A vs B')}
                 </button>
               )}
             </div>
@@ -1106,14 +1110,14 @@ export const Inspector = React.memo(function Inspector({
           <section className="panel-section">
             <div className="section-title">
               <h3>{tr('Interior fit-out by room')}</h3>
-              <span className="badge">{interior.categories.length} categories</span>
+              <span className="badge">{tr(`${interior.categories.length} categories`)}</span>
             </div>
-            <p className="section-intro">Measured to the inner wall face, half a 0.15 m wall in from each drawn line. Skirting stops at doors; a door on a shared wall is one door set. Finishes are priced on the order quantity, measured plus waste.</p>
+            <p className="section-intro">{tr('Measured to the inner wall face, half a 0.15 m wall in from each drawn line. Skirting stops at doors; a door on a shared wall is one door set. Finishes are priced on the order quantity, measured plus waste.')}</p>
             <div className="interior-boq">
               {interior.rooms.map((r) => (
                 <div className="interior-boq-room" key={r.room.id}>
                   <div className="interior-boq-room-head">
-                    <strong>{r.room.name}</strong>
+                    <strong>{tr(r.room.name)}</strong>
                     <span>{r.floorM2.toFixed(1)} m² · {r.openings} openings</span>
                   </div>
                   {r.lines.map((line) => (
@@ -1126,19 +1130,19 @@ export const Inspector = React.memo(function Inspector({
                         </small>
                         <small className="interior-boq-basis">{line.basis}</small>
                       </span>
-                      <b>{formatCurrency(line.amount, 'THB')}</b>
+                      <b>{formatCurrency(line.amount, interior.currency)}</b>
                     </div>
                   ))}
                   <div className="interior-boq-line">
                     <span><strong style={{ color: 'var(--text-primary)' }}>{tr('Room subtotal')}</strong></span>
-                    <b>{formatCurrency(r.subtotal, 'THB')}</b>
+                    <b>{formatCurrency(r.subtotal, interior.currency)}</b>
                   </div>
                 </div>
               ))}
             </div>
             <div className="interior-boq-summary">
               <span>{tr('Interior fit-out total')}</span>
-              <span>{formatCurrency(interior.total, 'THB')}</span>
+              <span>{formatCurrency(interior.total, interior.currency)}</span>
             </div>
             <p className="legal-note">{tr('Per-room quantities are transparent; rates are concept-level and replaced by supplier quotes at tender.')}</p>
           </section>
@@ -1166,13 +1170,13 @@ export const Inspector = React.memo(function Inspector({
                 style={{ width: '100%', marginTop: 4 }}
               />
             </label>
-            <p className="legal-note" style={{ marginTop: 6, fontSize: '10.5px', lineHeight: '1.4' }}>
-              Design language feeds concept images. The detailed BOQ remains fixed to the authored reference specification so visual adjectives cannot silently alter quantities.
+            <p className="legal-note">
+              {tr('Design language feeds concept images. The detailed BOQ remains fixed to the authored reference specification so visual adjectives cannot silently alter quantities.')}
             </p>
           </section>
 
           <button className="button dark full" type="button" onClick={exportPlan}>
-             Export project + BOQ
+            {tr('Export project + BOQ')}
           </button>
           <p className="legal-note">{tr('Concept estimate only. Local professionals must verify structure, code, quantities, and procurement before construction.')}</p>
         </div>

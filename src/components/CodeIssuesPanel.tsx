@@ -57,11 +57,11 @@ export const CodeIssuesPanel: React.FC<CodeIssuesPanelProps> = ({
   return (
     <div className="code-issues-panel">
       <div className="code-issues-summary">
-        <span>{counts.critical + counts.warning + counts.info} findings</span>
+        <span>{tr(`${counts.critical + counts.warning + counts.info} findings`)}</span>
         <span className="code-issues-summary-counts">
-          <span className="count-critical">{counts.critical} critical</span>
-          <span className="count-warning">{counts.warning} warn</span>
-          <span className="count-info">{counts.info} info</span>
+          <span className="count-critical">{tr(`${counts.critical} critical`)}</span>
+          <span className="count-warning">{tr(`${counts.warning} warn`)}</span>
+          <span className="count-info">{tr(`${counts.info} info`)}</span>
         </span>
       </div>
       {sorted.map((issue, index) => {
@@ -81,10 +81,10 @@ export const CodeIssuesPanel: React.FC<CodeIssuesPanelProps> = ({
             </div>
             <div className="code-issue-body-block">
               <div className="code-issue-title">
-                {issue.title}
-                {roomName && <span className="code-issue-room"> · {roomName}</span>}
+                {tr(issue.title)}
+                {roomName && <span className="code-issue-room"> · {tr(roomName)}</span>}
               </div>
-              <p className="code-issue-body">{issue.body}</p>
+              <p className="code-issue-body">{tr(issue.body)}</p>
               {issue.fixAction && onApply && (
                 <button
                   type="button"

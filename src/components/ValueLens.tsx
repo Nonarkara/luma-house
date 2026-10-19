@@ -2,6 +2,7 @@ import React from 'react'
 import { useI18n } from '../i18n'
 import type { HeatFlowSnapshot, RoomDaylightPotential, RoomEgressRoute, RoomWindPotential } from '../analysis'
 import { formatCurrency } from '../plan'
+import { GlyphCompare } from './ui'
 
 export type ValueLensMode = 'off' | 'daylight' | 'shade' | 'air' | 'escape' | 'shell'
 
@@ -186,6 +187,7 @@ export const ValueLens = React.memo(function ValueLens({
   if (active === 'off') {
     return (
       <button className="value-lens-launch" type="button" aria-label={tr('Open value lens')} onClick={() => setActive('daylight')}>
+        <GlyphCompare />
         <span><small>{tr('Compare decisions')}</small><strong>{tr('Open value lens')}</strong></span>
       </button>
     )

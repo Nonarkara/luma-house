@@ -425,6 +425,7 @@ function HeightHandle({
   site: SiteSpec
   onSetWallHeight: (roomId: string, height: number) => void
 }) {
+  const { tr } = useI18n()
   const footprint = useMemo(() => roomFootprint(room, site), [room, site])
   const height = roomHeight(room)
   const startHeightRef = useRef(height)
@@ -461,11 +462,11 @@ function HeightHandle({
       />
       <Html center position={[0, 0.6, 0]}>
         <div className="spatial-chip">
-          <strong>{room.name}</strong>
+          <strong>{tr(room.name)}</strong>
           <span>{height.toFixed(2)} m</span>
           <div className="spatial-chip-controls">
-            <button type="button" onClick={() => step(-HEIGHT_STEP)} aria-label="Lower wall height">−</button>
-            <button type="button" onClick={() => step(HEIGHT_STEP)} aria-label="Raise wall height">+</button>
+            <button type="button" onClick={() => step(-HEIGHT_STEP)} aria-label={tr('Lower wall height')}>−</button>
+            <button type="button" onClick={() => step(HEIGHT_STEP)} aria-label={tr('Raise wall height')}>+</button>
           </div>
         </div>
       </Html>

@@ -1329,7 +1329,7 @@ button:active {
 
 .opening {
   position: absolute;
-  z-index: 7;
+  z-index: 9;
   display: block;
   transform-origin: center;
   /* x/y IS the point on the wall (snapOpeningToWall snaps it there, sunPatches
@@ -1358,8 +1358,6 @@ button:active {
   border-left: 4px solid #006eb8;
   border-right: 4px solid #006eb8;
   background: rgba(34, 80, 108, 0.3);
-  backdrop-filter: blur(4px);
-  box-shadow: 0 0 10px rgba(34, 80, 108, 0.4);
 }
 
 .opening-door::before {
@@ -1371,7 +1369,6 @@ button:active {
   height: 3px;
   margin: -2px 0 0 -13px;
   background: #f68c50;
-  box-shadow: 0 0 8px rgba(251, 146, 60, 0.5);
 }
 
 .opening-door i {
@@ -1767,8 +1764,12 @@ button:active {
 }
 
 .render-nav button {
-  width: 33px;
-  height: 33px;
+  width: auto;
+  min-width: 44px;
+  height: auto;
+  min-height: 44px;
+  padding: 8px 10px;
+  white-space: nowrap;
   display: grid;
   place-items: center;
   border: 0;
@@ -1835,8 +1836,10 @@ button:active {
 
 .render-thumbs strong,
 .render-thumbs small {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: normal;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
@@ -2195,7 +2198,7 @@ button:active {
 
 .sun-chart-cardinal {
   fill: var(--text-tertiary);
-  font: 700 8px 'Source Sans 3', sans-serif;
+  font: 700 12px 'Source Sans 3', sans-serif;
   text-anchor: middle;
 }
 
@@ -6319,7 +6322,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   padding: 4px 6px;
   background: var(--bg-elevated);
   border: 1px solid var(--accent-primary);
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   pointer-events: none;
   z-index: 12;
   white-space: nowrap;
@@ -6502,11 +6505,11 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .toolbar-pill-label {
-  font-family: var(--type-body, 'IBM Plex Sans Thai', sans-serif);
+  font-family: var(--type-body, 'Source Sans 3', sans-serif);
 }
 
 .toolbar-pill-kbd {
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 10px;
   padding: 1px 4px;
   border: 1px solid currentColor;
@@ -6558,11 +6561,11 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   font-size: 11px;
   font-weight: 600;
   color: var(--text);
-  font-family: var(--type-body, 'IBM Plex Sans Thai', sans-serif);
+  font-family: var(--type-body, 'Source Sans 3', sans-serif);
 }
 
 .contextual-action-area {
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 10px;
   color: var(--axiom-accent);
   margin-top: 2px;
@@ -6578,14 +6581,14 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .contextual-stepper-label {
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 10px;
   color: var(--text-tertiary);
   padding: 0 4px;
 }
 
 .contextual-stepper-value {
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 11px;
   color: var(--text);
   min-width: 48px;
@@ -6687,7 +6690,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  font-family: var(--type-body, 'IBM Plex Sans Thai', sans-serif);
+  font-family: var(--type-body, 'Source Sans 3', sans-serif);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -6827,12 +6830,12 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   font-size: 12px;
   font-weight: 600;
   color: var(--text);
-  font-family: var(--type-body, 'IBM Plex Sans Thai', sans-serif);
+  font-family: var(--type-body, 'Source Sans 3', sans-serif);
   line-height: 1.2;
 }
 
 .catalog-card-dim {
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 10px;
   color: var(--text-tertiary);
 }
@@ -6864,7 +6867,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .spatial-section-label {
-  font-family: var(--type-body, 'IBM Plex Sans Thai', sans-serif);
+  font-family: var(--type-body, 'Source Sans 3', sans-serif);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-size: 10px;
@@ -6876,7 +6879,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .spatial-section-value {
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 11px;
   color: var(--axiom-accent);
   min-width: 36px;
@@ -6889,7 +6892,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 
 .standards-badge {
   display: inline-block;
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 9.5px;
   letter-spacing: 0.04em;
   padding: 1px 5px;
@@ -6916,7 +6919,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 /* Inline variant — sits next to a number, no border, just a monospace tag */
 .standards-tag {
   display: inline-block;
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 9px;
   letter-spacing: 0.04em;
   padding: 0;
@@ -6951,7 +6954,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .room-data-number {
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 28px;
   font-weight: 600;
   color: var(--text);
@@ -6960,7 +6963,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .room-data-unit {
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 12px;
   color: var(--text-tertiary);
   text-transform: lowercase;
@@ -6971,7 +6974,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   flex-wrap: wrap;
   gap: 12px 18px;
   margin-top: 8px;
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 11px;
   color: var(--text-secondary);
 }
@@ -7018,11 +7021,11 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   font-size: 12px;
   font-weight: 600;
   color: var(--text);
-  font-family: var(--type-body, 'IBM Plex Sans Thai', sans-serif);
+  font-family: var(--type-body, 'Source Sans 3', sans-serif);
 }
 
 .code-issue-body {
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 11px;
   color: var(--text-secondary);
   line-height: 1.4;
@@ -7038,7 +7041,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   background: transparent;
   border: 1px solid var(--axiom-accent);
   color: var(--axiom-accent);
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 10px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -7066,7 +7069,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 10px;
   color: var(--text-tertiary);
   letter-spacing: 0.04em;
@@ -7092,7 +7095,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .code-issues-empty {
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 11px;
   color: var(--text-tertiary);
   padding: 10px 0;
@@ -7106,7 +7109,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 4px;
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 9px;
   color: var(--text-tertiary);
   letter-spacing: 0.04em;
@@ -7114,7 +7117,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 
 /* Small severity tag inside the code-issue ref column */
 .code-issue-sev {
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 8.5px;
   color: var(--text-tertiary);
   letter-spacing: 0.08em;
@@ -7128,7 +7131,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 .code-issue-room {
   color: var(--text-tertiary);
   font-weight: 400;
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--type-mono, 'JetBrains Mono', monospace);
   font-size: 10.5px;
 }
 
@@ -7232,7 +7235,9 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 /* Local light study: controls retain their labels and stay clear of the model. */
-.spatial-tb-btn { flex: 0 0 auto; white-space: nowrap; }
+.spatial-toolbar { flex-wrap: wrap; overflow: visible; }
+.spatial-toolbar > div { flex-wrap: wrap; max-width: 100%; }
+.spatial-tb-btn { flex: 0 1 auto; white-space: normal; height: auto; min-height: 44px; max-width: 100%; line-height: 1.25; text-align: center; overflow: visible; padding: 6px 8px; }
 .spatial-tb-btn.toggle { width: auto; height: auto; overflow: visible; }
 .render-stage.is-local-study .render-nav { top: auto; bottom: 128px; z-index: 11; }
 .render-stage.is-local-study .spatial-orbit-note { bottom: 128px; left: 12px; right: auto; max-width: calc(100% - 155px); }

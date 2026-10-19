@@ -8,9 +8,9 @@ import type { DaylightBand, RoomEgressRoute, RoomWindPotential } from '../analys
 import { exteriorWalls } from '../analysis'
 import type { ValueLensMode } from '../components/ValueLens'
 import type { Compass } from '../analysis'
-import { clientToPercent, type ResizeHandle, type StrokePoint } from './geometry'
+import { type ResizeHandle, type StrokePoint } from './geometry'
 import type { NapkinCalibrationLine } from './napkinScale'
-import { hitIsSelectedOpening, nearestWallHit, type WallHit } from './wallHost'
+import { type WallHit } from './wallHost'
 
 const roomColors: Record<RoomKind, string> = {
   living: 'rgba(var(--studio-action-rgb, 138, 76, 22), 0.07)',
@@ -62,7 +62,6 @@ export const FloorPlan = React.memo(function FloorPlan({
   wallNote = false,
   cornerNote = null,
   showEmptyHint = false,
-  onSetOpeningType,
   onPlaceOpening,
   onRoomPointerDown,
   onRoomSelect,
@@ -359,7 +358,7 @@ export const FloorPlan = React.memo(function FloorPlan({
                 key={opening.id}
                 type="button"
                 className={`opening opening-${opening.type} rotate-${opening.rotation} ${isSel ? 'is-selected' : ''}`}
-                style={{ left: `${opening.x}%`, top: `${opening.y}%`, width: `${spanPct}%` }}
+                style={{ left: `${opening.x}%`, top: `${opening.y}%`, width: `${spanPct}%`, ['--span' as string]: spanPct } as CSSProperties}
                 data-rotation={opening.rotation}
                 title={`${opening.type} ${w.toFixed(2)} × ${h.toFixed(2)} m — drag to move, drag an end to resize`}
                 aria-label={`${opening.type} opening ${w.toFixed(2)} by ${h.toFixed(2)} meters`}
@@ -368,7 +367,18 @@ export const FloorPlan = React.memo(function FloorPlan({
                   if (activeTool === 'select') event.stopPropagation()
                 }}
               >
-                {opening.type === 'door' && <i />}
+                {opening.type === 'window' ? (
+                  <svg className="opening-glyph" viewBox="0 0 34 6" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                    <rect x="0.5" y="0.5" width="33" height="5" fill="rgb(34 80 108 / 0.3)" stroke="#006eb8" strokeWidth="1" />
+                    <rect x="0" y="0" width="4" height="6" fill="#006eb8" />
+                    <rect x="30" y="0" width="4" height="6" fill="#006eb8" />
+                  </svg>
+                ) : (
+                  <svg className="opening-glyph is-door" viewBox="0 0 26 26" preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">
+                    <path d="M1 3h24" stroke="#f68c50" strokeWidth="3" />
+                    <path d="M1 3a22 22 0 0 1 22 22" fill="none" stroke="#f68c50" strokeWidth="1" />
+                  </svg>
+                )}
                 {isSel && (
                   <>
                     <span className="opening-handle is-start" aria-hidden="true" onPointerDown={(event) => onOpeningPointerDown(event, opening, 'start')} />
@@ -397,35 +407,6 @@ export const FloorPlan = React.memo(function FloorPlan({
           {roomDraft && roomDraft.w > 0 && roomDraft.h > 0 && (
             <div className="room-draft" style={{ left: `${roomDraft.x}%`, top: `${roomDraft.y}%`, width: `${roomDraft.w}%`, height: `${roomDraft.h}%` }} aria-hidden="true" />
           )}
-          {plan.openings.filter((opening) => opening.id === selectedOpening).map((opening) => {
-            const chooseType = (type: Opening['type']) => (event: React.MouseEvent<HTMLButtonElement>) => {
-              if (activeTool === 'window' || activeTool === 'door') {
-                const bounds = stageRef.current?.getBoundingClientRect()
-                const point = bounds ? clientToPercent(event.clientX, event.clientY, bounds) : null
-                const hit = point && bounds ? nearestWallHit(point, plan.rooms, bounds) : null
-                if (hit && bounds && !hitIsSelectedOpening(hit, opening, site, bounds)) {
-                  event.stopPropagation()
-                  onPlaceOpening?.(event.clientX, event.clientY)
-                  return
-                }
-              }
-              event.stopPropagation()
-              onSetOpeningType?.(opening.id, type)
-            }
-            return (
-            <div
-              key={`${opening.id}-toggle`}
-              className="opening-toggle"
-              role="group"
-              aria-label="Window · Door"
-              style={{ left: `calc(${opening.x}% + 24px)`, top: `calc(${opening.y}% - 22px)` }}
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              <button type="button" aria-pressed={opening.type === 'window'} onClick={chooseType('window')}>{tr('Window')}</button>
-              <button type="button" aria-pressed={opening.type === 'door'} onClick={chooseType('door')}>{tr('Door')}</button>
-            </div>
-            )
-          })}
           {showEmptyHint && <p className="canvas-empty-line">{tr('Drag a box to make a room. Then click a wall to add a window.')}</p>}
           {wallNote && <p className="wall-note" role="status">{tr('Click a wall')}</p>}
           {cornerNote && (
@@ -502,7 +483,7 @@ export const FloorPlan = React.memo(function FloorPlan({
                     x="0" y="0"
                     fontSize="3.5"
                     fill="var(--accent-primary)"
-                    fontFamily="'IBM Plex Mono', monospace"
+                    fontFamily="'JetBrains Mono', monospace"
                     dominantBaseline="hanging"
                   >
                     {meters.toFixed(2)} m / {feet.toFixed(2)} ft

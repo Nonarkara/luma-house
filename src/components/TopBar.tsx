@@ -1,6 +1,6 @@
 import React from 'react'
 import { LanguageSwitch, useI18n } from '../i18n'
-import { Logo, IconButton } from './ui'
+import { GlyphExport, Logo, IconButton } from './ui'
 
 interface TopBarProps {
   projectName: string
@@ -121,6 +121,7 @@ export const TopBar = React.memo(function TopBar({
         )}
 
         <button className="button primary" type="button" onClick={exportPlan} aria-label={tr('Export')}>
+          <GlyphExport />
           <span className="btn-label">{tr('Export')}</span>
         </button>
       </div>

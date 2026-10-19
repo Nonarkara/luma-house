@@ -349,8 +349,8 @@ body { overflow-y: auto; }
 .is-plan > .draw-hint { position: static; grid-column: 1 / -1; grid-row: 5; max-width: none; width: auto; margin: 0; padding: var(--space-2); font-size: var(--font-note); border: 0; border-top: var(--rule-control) solid var(--studio-border); }
 .is-plan > .furniture-tray { position: static; grid-column: 1 / -1; grid-row: 6; width: 100%; max-width: none; transform: none; }
 .is-plan > .furniture-chip { position: static; grid-column: 1 / -1; grid-row: 7; margin: var(--space-2); width: fit-content; max-width: calc(100% - 16px); }
-/* The opening status must not take a grid row. A new row shrinks the sheet and the wall the user just aimed at is no longer under the cursor. */
-.is-plan > .furniture-chip.is-overlay { position: absolute; top: 8px; left: 12px; bottom: auto; grid-row: auto; grid-column: auto; margin: 0; z-index: 8; pointer-events: auto; }
+/* Opening status sits in its own row so “Window” does not cover Calibrate or the selection strip. */
+.app-shell .is-plan > .furniture-chip.is-overlay { position: static; top: auto; left: auto; bottom: auto; grid-row: 7; grid-column: 1 / -1; margin: 8px; z-index: 1; width: fit-content; max-width: calc(100% - 16px); }
 .is-plan > .ruler-chip { position: static; grid-column: 1 / -1; grid-row: 8; width: 100%; max-width: none; transform: none; }
 .is-plan > .trace-note { position: static; grid-column: 1 / -1; grid-row: 9; margin: var(--space-2); }
 .is-plan > .overlap-warning { position: static; grid-column: 1 / -1; grid-row: 10; width: auto; max-width: none; margin: var(--space-2); transform: none; }
@@ -368,7 +368,7 @@ body { overflow-y: auto; }
 .plan-room-key button:hover { background: var(--studio-support); }
 .plan-room-key button[aria-pressed="true"] { background: var(--studio-selection); box-shadow: inset 3px 0 var(--studio-sienna) !important; }
 .room-key-number, .plan-room-key .room-area { display: block; font: 500 var(--font-note)/1.4 var(--type-mono); margin: 0; white-space: nowrap; }
-.plan-room-key .room-name { font: 600 var(--font-note)/1.4 var(--type-body); overflow-wrap: anywhere; }
+.plan-room-key .room-name { font: 600 var(--font-note)/1.4 var(--type-body); overflow-wrap: normal; word-break: normal; }
 .dimension, .scale-label { font-size: var(--font-note); opacity: 1; letter-spacing: 0; }
 .scale-label { bottom: -52px; }
 .dimension-x { bottom: -24px; }
@@ -822,7 +822,7 @@ body { overflow-y: auto; }
 .topbar-meta .location-toggle { min-height: 44px; min-width: 44px; }
 .app-shell .topbar-center .icon-button,
 .app-shell .top-actions .icon-button { width: 44px; height: 44px; }
-.menu-project-name { margin: 4px 8px; font-size: var(--font-note); overflow-wrap: anywhere; }
+.menu-project-name { margin: 4px 8px; font-size: var(--font-note); overflow-wrap: normal; word-break: normal; }
 .app-shell .top-more-menu > .menu-location { display: flex; }
 @media (max-width: 720px) {
   .app-shell .journey-step { min-height: 44px; }
@@ -948,10 +948,19 @@ body { overflow-y: auto; }
   min-height: 44px !important;
 }
 .app-shell input[type='range'] { height: 44px !important; }
-.app-shell .toggle {
+.app-shell .toggle:not(.spatial-tb-btn) {
   width: 44px !important;
   height: 44px !important;
   border-radius: 0;
+}
+.app-shell .spatial-tb-btn {
+  width: auto !important;
+  height: auto !important;
+  min-width: max-content !important;
+  max-width: none;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 8px 10px;
 }
 .app-shell .toggle span { width: 16px; height: 16px; top: 12px; }
 .app-shell .toggle.is-on span { transform: translateX(22px); }
@@ -1005,9 +1014,168 @@ body { overflow-y: auto; }
   .app-shell .canvas-tools .toolbar-pill-btn .toolbar-pill-label {
     display: block;
     white-space: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+    word-break: normal;
     text-align: center;
   }
-  .app-shell .journey-step span { white-space: normal; overflow-wrap: anywhere; text-align: center; }
-  .app-shell .view-switch button { max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
+  .app-shell .journey-step { flex: 0 0 auto; min-width: max-content; }
+  .app-shell .journey-step span { white-space: nowrap; overflow-wrap: normal; word-break: normal; text-align: center; }
+  .app-shell .view-switch button { max-width: none; overflow: visible; text-overflow: clip; white-space: nowrap; }
+}
+
+/* Thai breaks on syllable boundaries. Chinese keeps whole words. Neither splits a Latin word. */
+html[lang="th"] .app-shell {
+  word-break: normal;
+  line-break: strict;
+  overflow-wrap: normal;
+}
+html[lang="zh-Hans"] .app-shell {
+  word-break: normal;
+  line-break: strict;
+  overflow-wrap: normal;
+}
+.app-shell .mark { display: block; width: 16px; height: 16px; }
+.app-shell .furniture-chip { flex-wrap: wrap; max-width: calc(100% - 16px); height: auto; }
+.app-shell .furniture-chip .chip-action {
+  width: auto !important;
+  min-width: max-content !important;
+  height: auto !important;
+  min-height: 44px !important;
+  padding: 8px 10px;
+  white-space: nowrap;
+  overflow: visible;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.app-shell .scale-chip .ruler-arm {
+  flex: none;
+  width: auto !important;
+  min-width: max-content !important;
+  white-space: nowrap;
+  overflow: visible;
+}
+@media (max-width: 720px) {
+  .app-shell .plan-canvas { container-type: inline-size; }
+  .app-shell .opening {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+  .app-shell .opening-window::before,
+  .app-shell .opening-door::before {
+    left: 50%;
+    right: auto;
+    width: calc(var(--span, 0) * 1cqw);
+    margin-left: calc(var(--span, 0) * -0.5cqw);
+  }
+  .app-shell .opening-door i {
+    left: 50%;
+    top: 50%;
+    width: calc(var(--span, 0) * 1cqw);
+    height: calc(var(--span, 0) * 1cqw);
+    margin-left: calc(var(--span, 0) * -0.5cqw);
+    margin-top: calc(var(--span, 0) * -0.5cqw);
+    aspect-ratio: auto;
+  }
+}
+.app-shell button.opening::before,
+.app-shell button.opening i { content: none; display: none; }
+.app-shell .opening-glyph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 6px;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  pointer-events: none;
+}
+.app-shell .opening-glyph.is-door {
+  top: calc(50% - 2px);
+  height: 100%;
+  max-height: 26px;
+  transform: translate(-50%, 0);
+}
+@media (max-width: 720px) {
+  .app-shell .opening-glyph,
+  .app-shell .opening-glyph.is-door {
+    width: calc(var(--span, 0) * 1cqw);
+  }
+}
+.app-shell .render-thumbs button {
+  grid-template-columns: max-content;
+  width: max-content !important;
+  max-width: none;
+  height: auto !important;
+  flex: 0 0 auto;
+}
+.app-shell .render-thumbs strong,
+.app-shell .render-thumbs small {
+  white-space: nowrap !important;
+}
+.app-shell .render-nav button {
+  width: max-content !important;
+  max-width: none;
+  white-space: nowrap;
+}
+.app-shell .toolbar-more-menu {
+  width: max-content;
+  min-width: max-content;
+  max-width: calc(100vw - 16px);
+}
+.app-shell .toolbar-more-menu button {
+  width: 100%;
+  white-space: nowrap;
+  overflow: visible;
+  text-align: left;
+}
+.app-shell .scale-chip {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.app-shell .scale-chip .ruler-arm {
+  width: max-content !important;
+  min-width: max-content !important;
+  height: auto !important;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+.app-shell details:not([open]) > :not(summary) {
+  display: none !important;
+}
+.app-shell .topbar-meta .location-toggle,
+.app-shell .menu-location,
+.app-shell .location-toggle {
+  width: max-content;
+  min-width: max-content;
+  max-width: none;
+}
+.app-shell .location-toggle > span { overflow-wrap: normal; white-space: nowrap; }
+@media (max-width: 720px) {
+  .app-shell .canvas-tools { overflow-x: auto; }
+  .app-shell .canvas-tools .floating-island-toolbar { width: max-content; max-width: none; flex-wrap: nowrap; }
+  .app-shell .canvas-tools .toolbar-pill-btn,
+  .app-shell .canvas-tools .room-options-launch {
+    flex: 0 0 auto !important;
+    width: max-content !important;
+    min-width: max-content !important;
+    height: auto !important;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .app-shell .canvas-tools .toolbar-pill-btn .toolbar-pill-label { white-space: nowrap; }
+}
+@media (min-width: 721px) {
+  .app-shell .design-stage { grid-template-columns: max-content max-content minmax(0, 1fr); }
+  .app-shell .journey-step { min-width: max-content; }
+  .app-shell .journey-step span { white-space: nowrap; }
+  .app-shell .canvas-tools .toolbar-pill-btn,
+  .app-shell .canvas-tools .room-options-launch {
+    width: max-content;
+    min-width: max-content;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .app-shell .canvas-tools .toolbar-pill-btn .toolbar-pill-label { white-space: nowrap; }
 }

@@ -60,7 +60,7 @@ import { WebAppAccess } from './components/WebAppAccess'
 import { ExportDialog } from './components/ExportDialog'
 import { ScienceDock } from './components/ScienceDock'
 import { ValueLens, type ValueLensMode } from './components/ValueLens'
-import { IconButton } from './components/ui'
+import { GlyphPhoto, GlyphRotate, IconButton } from './components/ui'
 import { evaluateJourney } from './journey/evaluateJourney'
 import {
   readVisited,
@@ -214,6 +214,17 @@ function App() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   // The city picks the pricing currency until the user chooses one.
   const [currencyOverride, setCurrency] = useState<CurrencyCode | null>(null)
+  const locationClockKey = `${projectLocation.latitude.toFixed(4)}|${projectLocation.longitude.toFixed(4)}|${projectLocation.timezone}`
+  const seenClockKey = useRef(locationClockKey)
+  useEffect(() => {
+    if (seenClockKey.current === locationClockKey) return
+    seenClockKey.current = locationClockKey
+    const start = studyStartIn(projectLocation)
+    setDay(start.day)
+    setHour(start.hour)
+    setStudyYear(start.year)
+    setCurrency(null)
+  }, [locationClockKey, projectLocation])
   const pinnedBaseline = plan.comparison
   const [abComparisonModalOpen, setABComparisonModalOpen] = useState(false)
   const [roomOptionsOpen, setRoomOptionsOpen] = useState(false)
@@ -1498,7 +1509,7 @@ function App() {
             <div className="tool-group history-tools">
               <IconButton label={tr('Undo')} onClick={undo} disabled={!past.length}>{tr('Undo')}</IconButton>
               <IconButton label={tr('Redo')} onClick={redo} disabled={!future.length}>{tr('Redo')}</IconButton>
-              <IconButton label={tr('Concept photo')} onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}>{tr('Concept photo')}</IconButton>
+              <IconButton label={tr('Concept photo')} onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><GlyphPhoto /></IconButton>
             </div>
           )}
         </>}
@@ -1522,7 +1533,7 @@ function App() {
         <main className="design-stage">
           {locationOpen && <section className="location-workspace" aria-label={tr('Project location and sun chart')}>
             <button className="location-close" type="button" onClick={() => setLocationOpen(false)}>{tr('Close city search')}</button>
-            <CityPicker location={projectLocation} onChange={(next: ProjectLocation) => commit(current => ({ ...current, location: next }), 'Change project location')} />
+            <CityPicker location={projectLocation} onChange={(next: ProjectLocation) => { commit(current => ({ ...current, location: next }), 'Change project location'); setLocationOpen(false) }} />
             <SunChart latitude={projectLocation.latitude} location={projectLocation} day={day} hour={hour} year={studyYear} locationLabel={projectLocation.label} />
           </section>}
 
@@ -1766,17 +1777,17 @@ function App() {
                     {furnitureConflicts.has(furnitureItem.id) ? ' · blocks a door swing' : ''}
                   </small>
                 </span>
-                <IconButton label={tr('Rotate furniture')} onClick={rotateFurniture}>{tr('Rotate furniture')}</IconButton>
-                <IconButton label={tr('Remove furniture')} onClick={deleteFurniture}>{tr('Remove furniture')}</IconButton>
+                <button type="button" className="chip-action" aria-label={tr('Rotate furniture')} onClick={rotateFurniture}><GlyphRotate /><span>{tr('Rotate furniture')}</span></button>
+                <button type="button" className="chip-action" aria-label={tr('Remove furniture')} onClick={deleteFurniture}><span>{tr('Remove furniture')}</span></button>
               </div>
             )}
             {view === 'plan' && selectedOpening && !furnitureItem && (
               <div className="furniture-chip is-overlay" role="status">
                 <span>
-                  <strong>{plan.openings.find((item) => item.id === selectedOpening)?.type === 'door' ? 'Door' : 'Window'}</strong>
-                  <small>Drag along the wall · Delete key removes</small>
+                  <strong>{tr(plan.openings.find((item) => item.id === selectedOpening)?.type === 'door' ? 'Door' : 'Window')}</strong>
+                  <small>{tr('Drag along the wall · Delete key removes')}</small>
                 </span>
-                <IconButton label={tr('Remove opening')} onClick={deleteOpening}>{tr('Remove opening')}</IconButton>
+                <button type="button" className="chip-action" aria-label={tr('Remove opening')} onClick={deleteOpening}><span>{tr('Remove opening')}</span></button>
               </div>
             )}
             {view === 'plan' && overlaps.size > 0 && (
