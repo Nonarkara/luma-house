@@ -1,4 +1,4 @@
-import { clockLabel } from '../location/solar'
+import { clockLabel, dayLabel } from '../location/solar'
 import React from 'react'
 import { ArrowDownRight, ArrowUpRight, CircleHelp, CloudSun, Snowflake, Sun, Thermometer } from 'lucide-react'
 import type { HeatFlowSnapshot } from '../analysis'
@@ -12,7 +12,7 @@ function seasonName(day: number): string {
   if (day === 355) return 'December solstice'
   if (day === 172) return 'June solstice'
   if (day === 80 || day === 266) return 'Equinox'
-  return `Day ${day}`
+  return dayLabel(day)
 }
 
 export const ScienceDock = React.memo(function ScienceDock({
@@ -63,7 +63,7 @@ export const ScienceDock = React.memo(function ScienceDock({
         </div>
         <div className="science-metric">
           <CloudSun />
-          <span><small>Through glass</small><strong>{watts(heat.solarW)} <em>solar</em></strong></span>
+          <span><small>Through glass</small><strong>{heat.windowM2 > 0 ? <>{watts(heat.solarW)} <em>solar</em></> : <em>no windows yet</em>}</strong></span>
         </div>
         <div className="science-metric">
           {entering ? <Thermometer /> : <Snowflake />}
@@ -71,7 +71,7 @@ export const ScienceDock = React.memo(function ScienceDock({
         </div>
         <div className={`science-net is-${heat.mode}`}>
           <HeatIcon />
-          <span><small>Net right now</small><strong>{watts(heat.netW)} {heat.mode === 'balanced' ? 'balanced' : heat.mode === 'heat-in' ? 'entering' : 'leaving'}</strong></span>
+          <span><small>{heat.windowM2 > 0 ? 'Net right now' : 'Net through walls'}</small><strong>{watts(heat.netW)} {heat.mode === 'balanced' ? 'balanced' : heat.mode === 'heat-in' ? 'entering' : 'leaving'}</strong></span>
         </div>
       </div>
 

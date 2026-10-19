@@ -2,7 +2,7 @@ import { CityPicker } from './components/CityPicker'
 import { SunChart } from './canvas/SunChart'
 import { locationForTimeZone } from './location/timeZoneLocation'
 import { sanitizeLocation, starterLocations } from './location/locations'
-import { citySunPosition, clockLabel, normalizedCivilHour } from './location/solar'
+import { citySunPosition, clockLabel, normalizedCivilHour, todayIn } from './location/solar'
 import type { ProjectLocation } from './types'
 import type { StudyCapture, StudyScene, StudySettings } from './study/types'
 import { readTheme, saveTheme } from './design/themes'
@@ -19,6 +19,7 @@ import { contentBox, useCanvasViewport } from './canvas/useCanvasViewport'
 import { useRoomGestures } from './canvas/useRoomGestures'
 import { appendStrokePoint, clampRoom, clientToPercent, moveOpening, moveRoom, snapRoomDraft, type StrokePoint } from './canvas/geometry'
 import { applyNapkinStroke } from './canvas/napkinStroke'
+import { currencyForLocation } from './boq/currency'
 import { nearestWallHit, openingHalfSpanPct, type WallHit } from './canvas/wallHost'
 import { downloadBlob, downloadPlanPng, drawPlan, planToDxf } from './export/planExchange'
 import { houseMesh } from './fabricate/houseMesh'
@@ -36,6 +37,7 @@ import {
   CHINA_PROJECT_KEY,
   CHINA_PROJECT_NAME,
   calculateChinaApartmentBudget,
+  convertApartmentBudget,
   chinaApartmentPlan,
   chinaApartmentVariants,
   chinaLightingChannels,
@@ -166,9 +168,10 @@ function App() {
   const projectLocation = plan.location ?? starterLocations[0]
   const [locationOpen, setLocationOpen] = useState(false)
   const [styleKeywords, setStyleKeywords] = useState<string>(() => readString('style-keywords:shanghai-50', 'luma-style-keywords:shanghai-50') || SAMPLE_STYLE_KEYWORDS)
-  const [hour, setHour] = useState(10)
-  const [day, setDay] = useState(355)
-  const [studyYear, setStudyYear] = useState(() => new Date().getFullYear())
+  // The sun study opens on today, now, in the project's city; Dec/Mar/Jun stay as shortcuts.
+  const [hour, setHour] = useState(() => todayIn(projectLocation).hour)
+  const [day, setDay] = useState(() => todayIn(projectLocation).day)
+  const [studyYear, setStudyYear] = useState(() => todayIn(projectLocation).year)
   const [outsideC, setOutsideC] = useState(34)
   const [valueLens, setValueLens] = useState<ValueLensMode>('off')
   const [windFrom, setWindFrom] = useState(180)
@@ -184,6 +187,8 @@ function App() {
     setToast(`That clock time is skipped by daylight saving in ${projectLocation.name}. Showing ${clockLabel(actual > 24 ? actual - 24 : actual)}.`)
   }, [projectLocation, day, hour, studyYear])
   const [inspectorOpen, setInspectorOpen] = useState(false)
+  /** Phone only: the panel peeks at the bottom until the user asks for more. */
+  const [sheetExpanded, setSheetExpanded] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [snapGrid, setSnapGrid] = useState(true)
   const [showGrid, setShowGrid] = useState(true)
@@ -205,7 +210,8 @@ function App() {
   const [liveDragRect, setLiveDragRect] = useState<{ id: string; x: number; y: number; w: number; h: number } | null>(null)
   const [alignGuides, setAlignGuides] = useState<{ x: number[]; y: number[] } | null>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const [currency, setCurrency] = useState<CurrencyCode>('CNY')
+  // The city picks the pricing currency until the user chooses one.
+  const [currencyOverride, setCurrency] = useState<CurrencyCode | null>(null)
   const pinnedBaseline = plan.comparison
   const [abComparisonModalOpen, setABComparisonModalOpen] = useState(false)
   const [roomOptionsOpen, setRoomOptionsOpen] = useState(false)
@@ -267,7 +273,8 @@ function App() {
     return () => cancelAnimationFrame(frame)
   }, [fitRequest, fitBuilding])
 
-  const budget = useMemo(() => calculateChinaApartmentBudget(plan), [plan])
+  const currency: CurrencyCode = currencyOverride ?? currencyForLocation(projectLocation)
+  const budget = useMemo(() => convertApartmentBudget(calculateChinaApartmentBudget(plan), currency), [plan, currency])
   const site = useMemo<SiteSpec>(() => siteOf(plan), [plan])
   const sun = useMemo(() => citySunPosition(projectLocation, day, hour, studyYear), [projectLocation, day, hour, studyYear])
   const patches = useMemo(() => sunPatches(plan, sun.azimuth, sun.altitude), [plan, sun.azimuth, sun.altitude])
@@ -291,11 +298,12 @@ function App() {
       ...plan,
       openings: [...plan.openings, { id: '__allowance__', type: 'window' as const, x: -100, y: -100, rotation: 0 as const }],
     })
+    const k = convertApartmentBudget({ ...baseline, total: 1 }, currency).total
     return {
-      opening: Math.max(0, withOpening.total - budget.total),
-      envelope: Math.max(0, envelope.total - baseline.total),
+      opening: Math.max(0, withOpening.total * k - budget.total),
+      envelope: Math.max(0, (envelope.total - baseline.total) * k),
     }
-  }, [budget.total, plan])
+  }, [budget.total, currency, plan])
   const daylight = useMemo(() => daylightPotential(plan), [plan])
   const daylightBandList = useMemo(() => daylight.flatMap((item) => item.bands), [daylight])
   const windRooms = useMemo(() => windFlowPotential(plan, windFrom, windSpeed), [plan, windFrom, windSpeed])
@@ -487,7 +495,13 @@ function App() {
     if (nav.mode) setMode(nav.mode)
     if (nav.view) setView(nav.view)
     if (nav.tool) setActiveTool(nav.tool)
-    else if (nav.inspector !== undefined && !pointerIsDownRef.current) setInspectorOpen(nav.inspector)
+    else if (nav.inspector !== undefined && !pointerIsDownRef.current) {
+      // Phone: the stage itself is the answer. 3D opens with no panel; other stages
+      // open their panel as a short bottom sheet that never covers the stage bar.
+      const phone = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 720px)').matches
+      setInspectorOpen(phone && nav.mode === 'plan' && nav.view === 'spatial' ? false : nav.inspector)
+      setSheetExpanded(false)
+    }
   }, [])
 
   const commitSnapshot = useCallback((snapshot: PlanState, label = 'Auto-save') => {
@@ -1640,7 +1654,7 @@ function App() {
               view === 'spatial' || (mode === 'light' && valueLens === 'off') ? localLightControls : valueLens === 'off' ? (
                 <button className="science-preview" type="button" onClick={() => setMode('light')}>
                   <span className="science-live" />
-                  <span><small>Live sun + heat</small><strong>{Math.abs(heatFlow.netW) >= 1000 ? `${(Math.abs(heatFlow.netW) / 1000).toFixed(1)} kW` : `${Math.round(Math.abs(heatFlow.netW))} W`} {heatFlow.mode === 'heat-out' ? 'leaving' : 'entering'}</strong></span>
+                  <span><small>{heatFlow.windowM2 > 0 ? 'Live sun + heat' : 'Heat through walls (no windows yet)'}</small><strong>{Math.abs(heatFlow.netW) >= 1000 ? `${(Math.abs(heatFlow.netW) / 1000).toFixed(1)} kW` : `${Math.round(Math.abs(heatFlow.netW))} W`} {heatFlow.mode === 'heat-out' ? 'leaving' : 'entering'}</strong></span>
                   <Sun />
                 </button>
               ) : null
@@ -1823,6 +1837,8 @@ function App() {
           settingsOpen={settingsOpen}
           setSettingsOpen={setSettingsOpen}
           inspectorOpen={inspectorOpen}
+          sheetExpanded={sheetExpanded}
+          setSheetExpanded={setSheetExpanded}
           setInspectorOpen={setInspectorOpen}
           plan={plan}
           commit={commit}

@@ -31,16 +31,21 @@ export function CityPicker({ location, onChange }: { location: ProjectLocation; 
     }, 350)
     return () => { clearTimeout(timer); clearTimeout(timeout); timeout = undefined; controller.abort() }
   }, [query])
+  // The current city is never offered as a result.
+  const isCurrent = (item: ProjectLocation) => item.label === location.label || (Math.abs(item.latitude - location.latitude) < 0.01 && Math.abs(item.longitude - location.longitude) < 0.01)
+  const choice = (item: ProjectLocation) => <button type="button" key={`${item.label}:${item.latitude}:${item.longitude}`} onClick={() => { onChange(item); setQuery('') }}>
+    <strong>{item.label}</strong><small>{item.latitude.toFixed(3)}°, {item.longitude.toFixed(3)}° · {item.timezone}</small>
+  </button>
   return <section className="city-picker" aria-label="Worldwide city search">
     <label className="field-label">Search any city or postal code
       <input type="search" aria-label="Search any city" placeholder="Cape Town, Oslo, Tokyo…" value={query} maxLength={100} onChange={e => setQuery(e.target.value)} />
     </label>
     <p role="status">{status}</p>
-    <div className="city-results">
-      {(query.trim().length >= 2 ? results : starterLocations).map(item => <button type="button" key={`${item.label}:${item.latitude}:${item.longitude}`} onClick={() => { onChange(item); setQuery('') }}>
-        <strong>{item.label}</strong><small>{item.latitude.toFixed(3)}°, {item.longitude.toFixed(3)}° · {item.timezone}</small>
-      </button>)}
-    </div>
+    {query.trim().length >= 2 ? <div className="city-results">
+      {results.filter(item => !isCurrent(item)).map(choice)}
+    </div> : <details className="city-starters"><summary>Suggested cities</summary><div className="city-results">
+      {starterLocations.filter(item => !isCurrent(item)).map(choice)}
+    </div></details>}
     <details className="city-coordinates"><summary>Use exact coordinates · works offline</summary>
       <form onSubmit={e => {
         e.preventDefault()

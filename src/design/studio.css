@@ -911,3 +911,25 @@ body { overflow-y: auto; }
     background: var(--bg, #fcfcf8);
   }
 }
+
+/* Phone stage panels: a bottom sheet that peeks (30% of the screen) and grows
+   on request, always below the stage bar so every stage stays one tap away. */
+.sheet-grow { display: none; }
+@media (max-width: 720px) {
+  .app-shell .inspector {
+    position: fixed;
+    inset: auto 0 0 0;
+    top: auto;
+    width: auto;
+    height: 30dvh;
+    max-height: 30dvh;
+    overflow-y: auto;
+    z-index: 55;
+    border-left: 0;
+    border-top: 2px solid var(--studio-ink);
+  }
+  .app-shell .inspector.is-sheet-expanded { height: calc(100dvh - 128px); max-height: calc(100dvh - 128px); }
+  .app-shell .inspector-head { position: sticky; top: 0; z-index: 1; min-height: 0; background: var(--studio-sheet); padding: 8px 16px; gap: 8px; }
+  .app-shell .inspector-content { grid-template-columns: minmax(0, 1fr); padding: 16px; gap: 16px; }
+  .sheet-grow { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin-left: auto; padding: 0 12px; border: 1px solid var(--border); background: transparent; color: var(--studio-ink); font: inherit; }
+}

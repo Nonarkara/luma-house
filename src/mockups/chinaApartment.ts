@@ -1,5 +1,6 @@
 import { siteOf, totalAreaFor, type CarbonLine } from '../plan'
-import type { PlanState, Room } from '../types'
+import type { CurrencyCode, PlanState, Room } from '../types'
+import { FX_PER_CNY } from '../boq/currency'
 
 export const CHINA_PROJECT_NAME = 'South Light 50 · 向阳之家'
 export const CHINA_PROJECT_KEY = 'designon:plan:south-light-shanghai-50:v4'
@@ -133,11 +134,24 @@ export const apartmentSystems = [
 
 export interface ApartmentBudget {
   area: number
-  currency: 'CNY'
+  currency: CurrencyCode
   subtotal: number
   contingencyRate: number
   total: number
   items: Array<{ label: string; amount: number; quantity: number; unit: string; rate: number }>
+}
+
+/** The same authored Shanghai budget, converted to the city's currency. */
+export function convertApartmentBudget(budget: ApartmentBudget, to: CurrencyCode): ApartmentBudget {
+  if (to === budget.currency) return budget
+  const k = FX_PER_CNY[to] / FX_PER_CNY[budget.currency]
+  return {
+    ...budget,
+    currency: to,
+    subtotal: budget.subtotal * k,
+    total: budget.total * k,
+    items: budget.items.map((item) => ({ ...item, rate: item.rate * k, amount: item.amount * k })),
+  }
 }
 
 export function calculateChinaApartmentBudget(plan: PlanState): ApartmentBudget {

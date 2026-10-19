@@ -1,5 +1,5 @@
 import type { ProjectLocation } from '../types'
-import { citySunPosition, citySunTimes, clockLabel, normalizedCivilHour } from '../location/solar'
+import { citySunPosition, citySunTimes, clockLabel, normalizedCivilHour, dayLabel } from '../location/solar'
 import React, { useMemo } from 'react'
 import { solarPosition } from '../plan'
 
@@ -93,7 +93,7 @@ export const SunChart = React.memo(function SunChart({
         </span>
         {location && <span>{location.timezone} · {location.latitude.toFixed(3)}°, {location.longitude.toFixed(3)}°</span>}
         {times && <span>{times.alwaysUp ? 'Midnight sun · no sunset' : times.alwaysDown ? 'Polar night · no sunrise' : `Sunrise ${formatTime(times.sunrise)} · Sunset ${formatTime(times.sunset)}`}</span>}
-        <small>Day {day} · {year} · <a href="https://github.com/mourner/suncalc" target="_blank" rel="noreferrer">SunCalc</a> · clear horizon</small>
+        <small>{dayLabel(day, year)} {year} · <a href="https://github.com/mourner/suncalc" target="_blank" rel="noreferrer">SunCalc</a> · clear horizon</small>
       </div>
     </div>
   )

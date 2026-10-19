@@ -47,3 +47,19 @@ export function clockLabel(hour: number) {
   const minutes = Math.round(hour * 60)
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 }
+
+/** Today's day of year, year and quarter-hour in the city's own time zone. */
+export function todayIn(location: Pick<ProjectLocation, 'timezone'>, now = new Date()) {
+  let wall: number
+  try { wall = zoneParts(now, location.timezone) } catch { wall = now.getTime() }
+  const d = new Date(wall)
+  const year = d.getUTCFullYear()
+  const day = Math.floor((wall - Date.UTC(year, 0, 1)) / 86400000) + 1
+  const hour = Math.round((d.getUTCHours() + d.getUTCMinutes() / 60) * 4) / 4
+  return { day: Math.min(365, day), year, hour }
+}
+
+/** "19 Oct" for a day of year, so the study stamp reads as a date, not "Day 292". */
+export function dayLabel(day: number, year = new Date().getFullYear()) {
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(year, 0, day)))
+}

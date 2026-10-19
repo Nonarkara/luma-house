@@ -1,3 +1,4 @@
+import { FX_SOURCE } from '../boq/currency'
 import { clockLabel } from '../location/solar'
 import { CityPicker } from './CityPicker'
 import type { ProjectLocation } from '../types'
@@ -67,6 +68,8 @@ export interface InspectorProps {
   settingsOpen: boolean
   setSettingsOpen: (open: boolean) => void
   inspectorOpen: boolean
+  sheetExpanded?: boolean
+  setSheetExpanded?: (expanded: boolean) => void
   setInspectorOpen: (open: boolean) => void
   plan: PlanState
   commit: (next: PlanState | ((current: PlanState) => PlanState)) => void
@@ -133,6 +136,8 @@ export const Inspector = React.memo(function Inspector({
   settingsOpen,
   setSettingsOpen,
   inspectorOpen,
+  sheetExpanded = false,
+  setSheetExpanded,
   setInspectorOpen,
   plan,
   commit,
@@ -238,7 +243,7 @@ export const Inspector = React.memo(function Inspector({
   }
 
   return (
-    <aside className="inspector">
+    <aside className={`inspector${sheetExpanded ? ' is-sheet-expanded' : ''}`}>
       <div className="inspector-head">
         <div>
           <p className="eyebrow">{settingsOpen ? 'workspace' : mode}</p>
@@ -248,7 +253,7 @@ export const Inspector = React.memo(function Inspector({
               : mode === 'plan'
                 ? 'Plan intelligence'
                 : mode === 'light'
-                  ? 'Shanghai sun study'
+                  ? `${projectLocation.name} sun study`
                   : mode === 'wellbeing'
                     ? 'Living logic'
                     : mode === 'climate'
@@ -258,6 +263,9 @@ export const Inspector = React.memo(function Inspector({
                         : 'Detailed fit-out BOQ'}
           </h2>
         </div>
+        <button type="button" className="sheet-grow" aria-expanded={sheetExpanded} onClick={() => setSheetExpanded?.(!sheetExpanded)}>
+          {sheetExpanded ? 'Less' : 'More'}
+        </button>
         <IconButton label="Collapse inspector" onClick={() => setInspectorOpen(false)}>
           <X />
         </IconButton>
@@ -681,7 +689,7 @@ export const Inspector = React.memo(function Inspector({
               )}
             </div>
           </section>
-          <p className="legal-note">Shanghai’s due-south planning reference window is 09:00–15:00. This interactive model is a design study; a formal sunlight report requires approved analysis software and local professional sign-off.</p>
+          <p className="legal-note">{projectLocation.timezone === 'Asia/Shanghai' ? 'Shanghai’s due-south planning reference window is 09:00–15:00. ' : ''}This interactive model is a design study; a formal sunlight report requires approved analysis software and local professional sign-off.</p>
           <section className="panel-section">
             <div className="section-title">
               <h3>Openings</h3>
@@ -1081,11 +1089,13 @@ export const Inspector = React.memo(function Inspector({
             <label className="field-label" style={{ marginBottom: 10 }}>
               Pricing Region
               <select value={currency} onChange={(e) => setCurrency?.(e.target.value as CurrencyCode)}>
-                <option value="CNY">Shanghai / East Asia (RMB ¥)</option>
+                <option value="THB">Thailand (THB ฿)</option>
+                <option value="CNY">China (RMB ¥)</option>
                 <option value="USD">North America (USD $)</option>
                 <option value="EUR">Western Europe (EUR €)</option>
               </select>
             </label>
+            {currency !== 'CNY' && <p className="legal-note">The authored RMB specification, converted at {FX_SOURCE}. Not a local market rate card.</p>}
             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
               <button type="button" className="button secondary full" onClick={onPinBaseline}>
                 Pin Plan A
@@ -1193,7 +1203,7 @@ export const Inspector = React.memo(function Inspector({
               />
             </label>
             <p className="legal-note" style={{ marginTop: 6, fontSize: '10.5px', lineHeight: '1.4' }}>
-              Design language feeds concept images. The detailed BOQ remains fixed to the authored Shanghai specification so visual adjectives cannot silently alter quantities.
+              Design language feeds concept images. The detailed BOQ remains fixed to the authored reference specification so visual adjectives cannot silently alter quantities.
             </p>
           </section>
 

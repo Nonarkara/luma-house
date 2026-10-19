@@ -1,4 +1,4 @@
-import { clockLabel } from '../location/solar'
+import { clockLabel, dayLabel } from '../location/solar'
 import { themeTokens, type StudioTheme } from '../design/themes'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
@@ -901,7 +901,7 @@ export default function Spatial3D({
       <div className="spatial-sun-hud" aria-live="polite">
         <span className="sun-orb" style={{ opacity: sunAltitude > 0 ? 1 : 0.25 }} />
         <div>
-          <small>{displayStyle} · {year} · day {day} · local geometry</small>
+          <small>{displayStyle} · {dayLabel(day, year)} {year} · local geometry</small>
           <strong>{clockLabel(hour)} · {sunAltitude.toFixed(1)}° altitude</strong>
           <em>{sunAzimuth.toFixed(1)}° azimuth · {locationLabel}</em>
         </div>
