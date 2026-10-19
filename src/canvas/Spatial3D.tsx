@@ -779,7 +779,7 @@ export default function Spatial3D({
               title={tr(`3D section cut at ${sectionHeight.toFixed(1)} m — anything above is clipped`)}
               aria-label={tr('3D section cut height')}
             />
-            <span className="spatial-section-value">{sectionHeight.toFixed(1)} m</span>
+            <span className="spatial-section-value">{`${sectionHeight.toFixed(1)} m`}</span>
           </div>
         </div>
       </div>

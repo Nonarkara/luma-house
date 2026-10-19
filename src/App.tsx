@@ -509,12 +509,16 @@ function App() {
     if (nav.mode) setMode(nav.mode)
     if (nav.view) setView(nav.view)
     if (nav.tool) setActiveTool(nav.tool)
-    else if (nav.inspector !== undefined && !pointerIsDownRef.current) {
-      // Phone: the stage itself is the answer. 3D opens with no panel; other stages
-      // open their panel as a short bottom sheet that never covers the stage bar.
+    if (nav.inspector !== undefined && !pointerIsDownRef.current) {
+      // Phone: the stage itself is the answer. 3D and Draw open with no panel.
+      // Other stages open a short bottom sheet that stays above the tool dock.
       const phone = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 720px)').matches
-      setInspectorOpen(phone && nav.mode === 'plan' && nav.view === 'spatial' ? false : nav.inspector)
-      setSheetExpanded(false)
+      const draw = phone && nav.mode === 'plan' && nav.view === 'plan' && nav.tool === 'draw'
+      const spatial = phone && nav.mode === 'plan' && nav.view === 'spatial'
+      if (draw || spatial || !nav.tool) {
+        setInspectorOpen(draw || spatial ? false : nav.inspector)
+        setSheetExpanded(false)
+      }
     }
   }, [])
 
@@ -1570,17 +1574,19 @@ function App() {
             {view === 'plan' && !narrow && <button type="button" className="room-options-launch" disabled={isEmpty} onClick={() => setRoomOptionsOpen(true)}>{tr('Room options')}</button>}
           </div>
 
-          {view === 'plan' && (room || selectedOpening) && (
+          {view === 'plan' && (
             <div className="canvas-selection">
-              <ContextualActionBar
-                room={room}
-                opening={plan.openings.find((item) => item.id === selectedOpening)}
-                site={site}
-                onUpdateRoom={(updates) => updateRoom(updates)}
-                onDeleteRoom={() => deleteRoom()}
-                onUpdateOpening={(id, updates) => updateOpening(id, updates)}
-                onDeleteOpening={() => deleteOpening()}
-              />
+              {(room || selectedOpening) && (
+                <ContextualActionBar
+                  room={room}
+                  opening={plan.openings.find((item) => item.id === selectedOpening)}
+                  site={site}
+                  onUpdateRoom={(updates) => updateRoom(updates)}
+                  onDeleteRoom={() => deleteRoom()}
+                  onUpdateOpening={(id, updates) => updateOpening(id, updates)}
+                  onDeleteOpening={() => deleteOpening()}
+                />
+              )}
             </div>
           )}
 
@@ -1774,7 +1780,7 @@ function App() {
                         ? `${spec.d} × ${spec.w} m`
                         : `${spec.w} × ${spec.d} m`
                     })()}
-                    {furnitureConflicts.has(furnitureItem.id) ? ' · blocks a door swing' : ''}
+                    {furnitureConflicts.has(furnitureItem.id) ? ` · ${tr('blocks a door swing')}` : ''}
                   </small>
                 </span>
                 <button type="button" className="chip-action" aria-label={tr('Rotate furniture')} onClick={rotateFurniture}><GlyphRotate /><span>{tr('Rotate furniture')}</span></button>

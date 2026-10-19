@@ -21,6 +21,32 @@ const SEVERITY_SHORT: Record<CodeIssue['severity'], string> = {
   info: 'INFO',
 }
 
+const SEVERITY_LABEL: Record<CodeIssue['severity'], string> = {
+  critical: 'Critical',
+  warning: 'Warning',
+  info: 'Info',
+}
+
+function ruleLabel(ref: string): string {
+  switch (ref) {
+    case 'MODEL-EGRESS': return 'Modeled route outdoors'
+    case 'MODEL-ENVELOPE': return 'Modeled envelope'
+    case 'MODEL-VENTILATION': return 'Modeled air path'
+    case 'ASHRAE-62.2-WHOLE-DWELLING': return 'Whole-dwelling ventilation'
+    case 'ASHRAE-62.2-KITCHEN': return 'Kitchen exhaust'
+    case 'ASHRAE-62.2-BATHROOM': return 'Bathroom exhaust'
+    case 'ADA-404.2.3': return 'Accessible door'
+    case 'IBC-1010.1.1': return 'Door size rule'
+    case 'ADA-304.3': return 'Turning space'
+    case 'IRC-2021-R304.1':
+    case 'IRC-2021-R304.2':
+    case 'IRC-2021-R305.1':
+      return 'Residential room rule'
+    default:
+      return ref
+  }
+}
+
 /**
  * The building-standards code-check list. Each row carries a standards
  * reference ("2021 IRC R305.1"), a one-line title, a one-sentence body with the
@@ -65,19 +91,17 @@ export const CodeIssuesPanel: React.FC<CodeIssuesPanelProps> = ({
         </span>
       </div>
       {sorted.map((issue, index) => {
-        const refShort = issue.ref.replace(/^IBC-/, 'IBC ').replace(/^ASHRAE-/, 'ASHRAE ').replace(/^ADA-/, 'ADA ').replace(/^ISO-/, 'ISO ')
-        const refDisplay = refShort.replace(/IBC /, 'IBC ')
         const roomName = roomNameById(issue.roomId)
         return (
           <div key={`${issue.ref}-${issue.roomId ?? ''}-${issue.openingId ?? ''}-${index}`} className="code-issue-row">
             <div className="code-issue-ref">
               <span
                 className={`standards-badge is-${issue.severity}`}
-                title={issue.name}
+                title={`${issue.ref} — ${issue.name}`}
               >
-                {refDisplay}
+                {tr(ruleLabel(issue.ref))}
               </span>
-              <span className="code-issue-sev">{SEVERITY_SHORT[issue.severity]}</span>
+              <span className="code-issue-sev" title={SEVERITY_SHORT[issue.severity]}>{tr(SEVERITY_LABEL[issue.severity])}</span>
             </div>
             <div className="code-issue-body-block">
               <div className="code-issue-title">

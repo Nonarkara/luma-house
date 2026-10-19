@@ -349,8 +349,21 @@ body { overflow-y: auto; }
 .is-plan > .draw-hint { position: static; grid-column: 1 / -1; grid-row: 5; max-width: none; width: auto; margin: 0; padding: var(--space-2); font-size: var(--font-note); border: 0; border-top: var(--rule-control) solid var(--studio-border); }
 .is-plan > .furniture-tray { position: static; grid-column: 1 / -1; grid-row: 6; width: 100%; max-width: none; transform: none; }
 .is-plan > .furniture-chip { position: static; grid-column: 1 / -1; grid-row: 7; margin: var(--space-2); width: fit-content; max-width: calc(100% - 16px); }
-/* Opening status sits in its own row so “Window” does not cover Calibrate or the selection strip. */
-.app-shell .is-plan > .furniture-chip.is-overlay { position: static; top: auto; left: auto; bottom: auto; grid-row: 7; grid-column: 1 / -1; margin: 8px; z-index: 1; width: fit-content; max-width: calc(100% - 16px); }
+/* The opening status must not take a grid row. A new row shrinks the sheet
+   and the wall the user just aimed at is no longer under the cursor. */
+.app-shell .is-plan > .furniture-chip.is-overlay {
+  position: absolute;
+  grid-row: 2;
+  grid-column: 1;
+  top: auto;
+  bottom: 8px;
+  left: 12px;
+  right: auto;
+  margin: 0;
+  z-index: 8;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+}
 .is-plan > .ruler-chip { position: static; grid-column: 1 / -1; grid-row: 8; width: 100%; max-width: none; transform: none; }
 .is-plan > .trace-note { position: static; grid-column: 1 / -1; grid-row: 9; margin: var(--space-2); }
 .is-plan > .overlap-warning { position: static; grid-column: 1 / -1; grid-row: 10; width: auto; max-width: none; margin: var(--space-2); transform: none; }
@@ -470,12 +483,12 @@ body { overflow-y: auto; }
 
 .app-shell .topbar-left { min-width: 0; display: flex; align-items: center; gap: 12px; }
 .app-shell .topbar-left .brand { flex: none; }
-.app-shell .project-picker { flex: none; min-width: max-content; height: auto; padding: 0; }
-.app-shell .project-picker strong { display: block; font-size: 16px; line-height: 1.1; white-space: nowrap; overflow: visible; text-overflow: clip; }
-.app-shell .project-picker small { font-size: 12px; }
+.app-shell .project-picker { flex: 1 1 auto; min-width: 0; height: auto; padding: 0; overflow: hidden; }
+.app-shell .project-picker strong { display: block; font-size: 16px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-shell .project-picker small { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.topbar-meta { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
-.app-shell .topbar-left { height: 48px; overflow: hidden; }
+.topbar-meta { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; min-width: max-content; flex: none; overflow: visible; }
+.app-shell .topbar-left { height: 48px; min-width: 0; overflow: hidden; }
 .topbar-meta .location-toggle { white-space: nowrap; flex: none; display: inline-flex; align-items: center; gap: 4px; }
 .top-more-extra { display: grid; gap: 8px; }
 .topbar-meta .stage-area { display: inline-flex; align-items: center; gap: 4px; font: 500 12px/1 'JetBrains Mono', monospace; color: var(--text-secondary); white-space: nowrap; }
@@ -499,11 +512,13 @@ body { overflow-y: auto; }
 .top-more[open] > summary { color: var(--accent-primary); }
 .top-more:not([open]) > .top-more-menu { display: none !important; }
 .top-more-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 80;
-  width: 280px;
+  position: fixed;
+  right: 8px;
+  top: 56px;
+  z-index: 220;
+  width: max-content;
+  min-width: min(320px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
   display: grid;
   padding: 4px;
   background: var(--bg-elevated);
@@ -632,13 +647,16 @@ body { overflow-y: auto; }
 }
 .app-shell .dock-history { display: none; }
 
-/* Selection: appears only when something is selected. */
+/* Selection stays a fixed row. Appearing and disappearing changes the sheet height,
+   and the aspect-ratio canvas then changes width under the cursor. */
 .app-shell .canvas-selection {
   grid-area: selection;
   display: flex;
   align-items: center;
-  min-height: 48px;
+  height: 52px;
+  min-height: 52px;
   max-height: 52px;
+  box-sizing: border-box;
   padding: 0 8px;
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
@@ -849,8 +867,9 @@ body { overflow-y: auto; }
 .app-shell .top-more-extra { grid-template-columns: minmax(0, 1fr); }
 .app-shell .top-more-extra > * { grid-column: 1; grid-row: auto; min-width: 0; }
 
-/* Doors and windows at their real width; drag to move, drag an end to resize. */
-.app-shell .opening { min-width: 0; height: 44px; min-height: 44px; }
+/* Doors and windows keep a 44px hit box on every viewport. The glyph stays the wall span. */
+.app-shell .opening { min-width: 44px; height: 44px; min-height: 44px; }
+.app-shell .plan-canvas { container-type: inline-size; }
 .app-shell .opening-window::before,
 .app-shell .opening-door::before { left: 0; right: 0; width: auto; margin-left: 0; }
 .app-shell .opening-door i { left: 0; top: 50%; width: 100%; height: auto; aspect-ratio: 1; }
@@ -895,17 +914,17 @@ body { overflow-y: auto; }
 @media (max-width: 720px) {
   .app-shell .inspector {
     position: fixed;
-    inset: auto 0 0 0;
+    inset: auto 0 56px 0;
     top: auto;
     width: auto;
     height: 30dvh;
-    max-height: 30dvh;
+    max-height: calc(100dvh - 128px);
     overflow-y: auto;
     z-index: 55;
     border-left: 0;
     border-top: 2px solid var(--studio-ink);
   }
-  .app-shell .inspector.is-sheet-expanded { height: calc(100dvh - 128px); max-height: calc(100dvh - 128px); }
+  .app-shell .inspector.is-sheet-expanded { height: calc(100dvh - 184px); max-height: calc(100dvh - 184px); }
   .app-shell .inspector-head { position: sticky; top: 0; z-index: 1; min-height: 0; background: var(--studio-sheet); padding: 8px 16px; gap: 8px; }
   .app-shell .inspector-content { grid-template-columns: minmax(0, 1fr); padding: 16px; gap: 16px; }
   .sheet-grow { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin-left: auto; padding: 0 12px; border: 1px solid var(--border); background: transparent; color: var(--studio-ink); font: inherit; }
@@ -1084,7 +1103,7 @@ html[lang="zh-Hans"] .app-shell {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 100%;
+  width: calc(var(--span, 0) * 1cqw);
   height: 6px;
   transform: translate(-50%, -50%);
   overflow: visible;
@@ -1153,6 +1172,20 @@ html[lang="zh-Hans"] .app-shell {
 }
 .app-shell .location-toggle > span { overflow-wrap: normal; white-space: nowrap; }
 @media (max-width: 720px) {
+  .app-shell .toolbar-more-menu {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: 60px;
+    top: auto;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    max-height: min(70dvh, 520px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    z-index: 220;
+  }
   .app-shell .canvas-tools { overflow-x: auto; }
   .app-shell .canvas-tools .floating-island-toolbar { width: max-content; max-width: none; flex-wrap: nowrap; }
   .app-shell .canvas-tools .toolbar-pill-btn,
@@ -1178,4 +1211,70 @@ html[lang="zh-Hans"] .app-shell {
     padding-right: 10px;
   }
   .app-shell .canvas-tools .toolbar-pill-btn .toolbar-pill-label { white-space: nowrap; }
+  .app-shell .workspace { grid-template-columns: minmax(0, 1fr); }
+  .app-shell .inspector {
+    position: fixed;
+    top: 48px;
+    right: 0;
+    bottom: 0;
+    width: 344px;
+    height: auto;
+    z-index: 15;
+  }
+}
+@media (min-width: 721px) and (max-width: 1180px) {
+  .app-shell .inspector { width: 310px; }
+}
+.app-shell .top-more-menu .theme-picker {
+  flex: none;
+  width: auto;
+  min-width: max-content;
+  max-width: none;
+}
+.app-shell .top-more-menu .theme-picker > span {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  white-space: nowrap;
+}
+.app-shell .top-more-menu .theme-picker select {
+  width: auto;
+  min-width: 16em;
+  max-width: none;
+  white-space: nowrap;
+}
+.app-shell .spatial-toolbar {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-height: 56px;
+}
+.app-shell .spatial-toolbar > div { flex-wrap: nowrap; max-width: none; }
+.app-shell .spatial-tb-btn {
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px;
+  white-space: nowrap;
+}
+.app-shell .spatial-section,
+.app-shell .spatial-section-label,
+.app-shell .spatial-section-value {
+  white-space: nowrap;
+  flex: none;
+}
+.app-shell .spatial-section { height: 44px; align-items: center; }
+.app-shell .spatial-section-label,
+.app-shell .spatial-section-value {
+  height: auto;
+  line-height: 1;
+  white-space: nowrap !important;
+  min-width: max-content;
+  flex: 0 0 auto;
+}
+.app-shell .spatial-section-range { flex: none; width: 72px; height: 44px; }
+.app-shell .wellbeing-hero {
+  background: var(--studio-sheet);
+  border-radius: 0;
 }

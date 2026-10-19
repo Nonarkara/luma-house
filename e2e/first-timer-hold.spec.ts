@@ -15,6 +15,8 @@ type Lang = (typeof LANGS)[number]
 const MORE: Record<Lang, string> = { en: 'More actions', th: 'คำสั่งเพิ่ม', zh: '更多操作' }
 const SUN_TIME: Record<Lang, string> = { en: 'Inspector sun time', th: 'เวลาแดดในแผง', zh: '面板中的日照时间' }
 const PLACE: Record<Lang, string> = { en: 'Place a window', th: 'วางหน้าต่าง', zh: '放置窗户' }
+const WINDOW_TOOL: Record<Lang, string> = { en: 'Window', th: 'หน้าต่าง', zh: '窗' }
+const ROOM_TOOL: Record<Lang, string> = { en: 'Room', th: 'ห้อง', zh: '房间' }
 
 test.describe('play hold fixes', () => {
   test.beforeEach(({ }, testInfo) => {
@@ -35,6 +37,7 @@ test.describe('play hold fixes', () => {
         const welcome = page.locator('.welcome-card')
         if (await welcome.isVisible()) await welcome.getByRole('button').nth(1).click()
         await expect.poll(async () => (await page.locator('button.opening').first().boundingBox())?.width ?? 0).toBeGreaterThan(20)
+        const planWidths = viewport.name === '390' ? null : await stablePlanWidth(page, lang)
         const openingBox = await page.locator('button.opening').first().evaluate((el) => {
           const rect = el.getBoundingClientRect()
           const style = getComputedStyle(el)
@@ -64,7 +67,7 @@ test.describe('play hold fixes', () => {
           }
         }))
         fs.mkdirSync('/opt/cursor/artifacts', { recursive: true })
-        fs.appendFileSync('/opt/cursor/artifacts/hold-measures.jsonl', JSON.stringify({ viewport: viewport.name, lang, scan, stages, openings }) + '\n')
+        fs.appendFileSync('/opt/cursor/artifacts/hold-measures.jsonl', JSON.stringify({ viewport: viewport.name, lang, scan, stages, openings, planWidths }) + '\n')
         expect(scan.empty, JSON.stringify(scan.empty)).toEqual([])
         expect(scan.unnamed, JSON.stringify(scan.unnamed)).toEqual([])
         expect(scan.overflow, JSON.stringify(scan.overflow)).toEqual([])
@@ -87,17 +90,56 @@ test.describe('play hold fixes', () => {
         const more = page.getByRole('button', { name: /More tools|เครื่องมือเพิ่ม|更多工具/ })
         if (await more.count()) {
           await more.click()
+          const roomTool = page.getByRole('button', { name: ROOM_TOOL[lang], exact: true })
+          await expect(roomTool).toBeVisible()
+          const roomHit = await roomTool.evaluate((el) => {
+            const rect = el.getBoundingClientRect()
+            const target = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+            return !!target && (target === el || el.contains(target))
+          })
+          expect(roomHit, 'More tools item is covered').toBe(true)
           const named = await scanButtons(page)
           expect(named.overflow, JSON.stringify(named.overflow)).toEqual([])
           expect(named.empty, JSON.stringify(named.empty)).toEqual([])
+          if (viewport.name === '390') await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewport.name}-${lang}-more.png` })
+          await more.click()
+        }
+        expect(openings.length).toBeGreaterThan(0)
+        for (const opening of openings) {
+          expect(opening.hitW, JSON.stringify(opening)).toBeGreaterThanOrEqual(44)
+          expect(opening.hitH, JSON.stringify(opening)).toBeGreaterThanOrEqual(44)
+          expect(opening.glyphW, JSON.stringify(opening)).toBeGreaterThan(0)
+          expect(opening.glyphH, JSON.stringify(opening)).toBeGreaterThan(0)
+        }
+        if (lang !== 'en') {
+          const labels = await page.locator('button.room, button.opening, .plan-room-key, .plan-room-key button').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''))
+          expect(labels.join('\n')).not.toMatch(/square meters| opening /)
+        }
+        if (viewport.name !== '390') {
+          const city = page.locator('.topbar-meta .location-toggle')
+          const cityText = (await city.innerText()).trim()
+          expect(cityText).toBe('Shanghai')
+          expect(await clippedByAncestor(city)).toBe(false)
         }
         if (viewport.name === '390') {
-          expect(openings.length).toBeGreaterThan(0)
-          for (const opening of openings) {
-            expect(opening.hitW, JSON.stringify(opening)).toBeGreaterThanOrEqual(44)
-            expect(opening.hitH, JSON.stringify(opening)).toBeGreaterThanOrEqual(44)
-            expect(opening.glyphW, JSON.stringify(opening)).toBeGreaterThan(0)
-          }
+          await page.getByRole('button', { name: MORE[lang], exact: true }).click()
+          const theme = page.locator('.top-more-menu select')
+          await expect(theme).toBeVisible()
+          const themeFit = await theme.evaluate((el) => ({ over: el.scrollWidth > el.clientWidth + 1, text: (el as HTMLSelectElement).selectedOptions[0]?.textContent ?? '' }))
+          expect(themeFit.over, themeFit.text).toBe(false)
+          const themeHit = await theme.evaluate((el) => {
+            const rect = el.getBoundingClientRect()
+            const target = document.elementFromPoint(rect.x + Math.min(24, rect.width / 2), rect.y + rect.height / 2)
+            return !!target && (target === el || el.contains(target))
+          })
+          expect(themeHit, 'header More menu is under the opening strip').toBe(true)
+          const labelLines = await page.locator('.top-more-menu .theme-picker > span').evaluate((el) => {
+            const range = document.createRange()
+            range.selectNodeContents(el)
+            return range.getClientRects().length
+          })
+          expect(labelLines).toBe(1)
+          await page.keyboard.press('Escape')
         }
 
         await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewport.name}-${lang}-plan.png` })
@@ -124,9 +166,44 @@ test.describe('play hold fixes', () => {
         await page.locator('.journey-step').nth(5).click()
         await expect(page.locator('.budget-hero strong')).toContainText('ZAR')
         await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewport.name}-${lang}-cost.png` })
+        if (viewport.name === '390') {
+          await page.locator('.journey-step').nth(0).click()
+          await expect(page.locator('.inspector')).toHaveCount(0)
+          const toolHit = await page.locator('.canvas-tools').evaluate((el) => {
+            const rect = el.getBoundingClientRect()
+            const target = document.elementFromPoint(rect.x + 20, rect.y + rect.height / 2)
+            return !!target && (target === el || el.contains(target))
+          })
+          expect(toolHit, 'plan sheet covers the toolbar').toBe(true)
+        }
 
         await page.locator('.view-switch button').nth(1).click()
         await expect(page.locator('.spatial-tb-btn').first()).toBeVisible({ timeout: 25_000 })
+        const spatialFit = await page.evaluate(() => {
+          const bar = document.querySelector('.spatial-toolbar')!.getBoundingClientRect()
+          const hud = document.querySelector('.spatial-sun-hud')!.getBoundingClientRect()
+          const label = document.querySelector('.spatial-section-label')!
+          const value = document.querySelector('.spatial-section-value')!
+          const lines = (el: Element) => {
+            const range = document.createRange()
+            range.selectNodeContents(el)
+            const tops = new Set([...range.getClientRects()].map((rect) => Math.round(rect.top)))
+            return tops.size
+          }
+          const overlaps = (a: DOMRect, b: DOMRect) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1
+          return {
+            barH: Math.round(bar.height * 10) / 10,
+            hudCovered: overlaps(bar, hud),
+            labelLines: lines(label),
+            valueLines: lines(value),
+            valueText: value.textContent?.trim() ?? '',
+          }
+        })
+        fs.appendFileSync('/opt/cursor/artifacts/hold-measures.jsonl', JSON.stringify({ viewport: viewport.name, lang, spatialFit }) + '\n')
+        expect(spatialFit.barH).toBeLessThanOrEqual(56)
+        expect(spatialFit.hudCovered).toBe(false)
+        expect(spatialFit.labelLines).toBe(1)
+        expect(spatialFit.valueLines).toBe(1)
         const spatial = await scanButtons(page)
         fs.appendFileSync('/opt/cursor/artifacts/hold-measures.jsonl', JSON.stringify({ viewport: viewport.name, lang, view: 'spatial', scan: spatial }) + '\n')
         expect(spatial.empty, JSON.stringify(spatial.empty)).toEqual([])
@@ -136,6 +213,15 @@ test.describe('play hold fixes', () => {
 
         await page.locator('.view-switch button').nth(2).click()
         await expect(page.locator('.render-thumbs button').first()).toBeVisible()
+        await expect(page.locator('.render-stage.is-local-study .spatial-orbit-note')).toBeVisible()
+        const navNote = await page.evaluate(() => {
+          const nav = document.querySelector('.render-stage.is-local-study .render-nav')!.getBoundingClientRect()
+          const note = document.querySelector('.render-stage.is-local-study .spatial-orbit-note')!.getBoundingClientRect()
+          const overlapX = Math.min(nav.right, note.right) - Math.max(nav.left, note.left)
+          const overlapY = Math.min(nav.bottom, note.bottom) - Math.max(nav.top, note.top)
+          return { overlapX, overlapY }
+        })
+        expect(navNote.overlapX > 1 && navNote.overlapY > 1, JSON.stringify(navNote)).toBe(false)
         const picture = await scanButtons(page)
         fs.appendFileSync('/opt/cursor/artifacts/hold-measures.jsonl', JSON.stringify({ viewport: viewport.name, lang, view: 'picture', scan: picture }) + '\n')
         expect(picture.empty, JSON.stringify(picture.empty)).toEqual([])
@@ -145,6 +231,73 @@ test.describe('play hold fixes', () => {
     }
   }
 })
+
+test('og-image.png renders at 1200 by 630', async ({ page }) => {
+  const response = await page.request.get('/og-image.png')
+  expect(response.status()).toBe(200)
+  const bytes = Buffer.from(await response.body())
+  expect(bytes.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
+  expect(bytes.readUInt32BE(16)).toBe(1200)
+  expect(bytes.readUInt32BE(20)).toBe(630)
+  await page.goto('/')
+  await page.evaluate(() => {
+    const img = document.createElement('img')
+    img.id = 'og-check'
+    img.alt = 'designon preview'
+    img.src = '/og-image.png'
+    document.body.appendChild(img)
+  })
+  await expect.poll(() => page.locator('#og-check').evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(1200)
+  await expect.poll(() => page.locator('#og-check').evaluate((el: HTMLImageElement) => el.naturalHeight)).toBe(630)
+})
+
+async function stablePlanWidth(page: Page, lang: Lang) {
+  await page.waitForTimeout(400)
+  const widthOf = () => page.locator('.plan-canvas').evaluate((el) => el.offsetWidth)
+  const initial = await widthOf()
+  await page.locator('button.opening').first().dispatchEvent('pointerdown')
+  const selected = await widthOf()
+  await page.keyboard.press('Escape')
+  const escaped = await widthOf()
+  const before = await page.locator('button.opening').count()
+  await page.locator('.canvas-tools').getByRole('button', { name: WINDOW_TOOL[lang], exact: true }).click()
+  const spot = await page.locator('button.opening').first().boundingBox()
+  if (spot) {
+    const points = [
+      [spot.x + spot.width + 18, spot.y + spot.height / 2],
+      [spot.x - 18, spot.y + spot.height / 2],
+      [spot.x + spot.width / 2, spot.y - 18],
+      [spot.x + spot.width / 2, spot.y + spot.height + 18],
+    ]
+    for (const [x, y] of points) {
+      await page.mouse.click(x, y)
+      if (await page.locator('button.opening').count() > before) break
+    }
+  }
+  const placed = await widthOf()
+  const widths = { initial, selected, escaped, placed, count: await page.locator('button.opening').count(), before }
+  expect(widths.count, JSON.stringify(widths)).toBeGreaterThan(before)
+  for (const width of [selected, escaped, placed]) expect(Math.abs(width - initial), JSON.stringify(widths)).toBeLessThanOrEqual(1)
+  await page.keyboard.press('Escape')
+  return widths
+}
+
+async function clippedByAncestor(locator: ReturnType<Page['locator']>) {
+  return locator.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    let node: HTMLElement | null = el
+    while (node) {
+      const style = getComputedStyle(node)
+      const hidden = style.overflowX === 'hidden' || style.overflowX === 'clip'
+      if (hidden) {
+        const box = node.getBoundingClientRect()
+        if (rect.right > box.right + 1 || rect.left < box.left - 1) return true
+      }
+      node = node.parentElement
+    }
+    return el.scrollWidth > el.clientWidth + 1
+  })
+}
 
 async function openCity(page: Page, lang: Lang) {
   const direct = page.locator('.topbar-meta .location-toggle')

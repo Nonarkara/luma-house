@@ -36,4 +36,22 @@ describe('translate', () => {
     expect(translate('th', 'Change city · Bangkok')).toBe('เปลี่ยนเมือง · Bangkok')
     expect(translate('zh', 'Bangkok, Thailand · Change city')).toBe('Bangkok, Thailand · 更换城市')
   })
+
+  it('translates plan labels, the currency source and rule names', () => {
+    expect(translate('th', 'Living, 27.6 square meters')).toBe('นั่งเล่น 27.6 ตารางเมตร')
+    expect(translate('zh', 'Select South living room, 18.0 square meters')).toBe('选择朝南起居室，18.0 平方米')
+    expect(translate('th', 'Rooms in this drawing')).toBe('ห้องในภาพนี้')
+    expect(translate('zh', 'window opening 1.60 by 1.20 meters')).toBe('窗开口 1.60 乘 1.20 米')
+    expect(translate('th', 'door opening 0.90 by 2.10 meters')).toBe('ประตู ช่องเปิด 0.90 คูณ 2.10 เมตร')
+    const source = 'Bank of Thailand reference rates for THB, USD and EUR, and ECB via Frankfurter for ZAR and SGD, 15 Oct 2026'
+    expect(translate('th', `The authored RMB specification, converted at ${source}. Not a local market rate card.`)).not.toMatch(/reference rates|Not a local/)
+    expect(translate('zh', `The authored RMB specification, converted at ${source}. Not a local market rate card.`)).not.toMatch(/reference rates|Not a local/)
+    expect(translate('th', source)).toMatch(/ธนาคารแห่งประเทศไทย/)
+    expect(translate('zh', source)).toMatch(/泰国银行/)
+    expect(translate('th', 'MODEL-EGRESS')).toBe('MODEL-EGRESS')
+    expect(translate('zh', 'Modeled route outdoors')).toBe('建模的室外路径')
+    expect(translate('th', 'Whole-dwelling ventilation')).toBe('การระบายอากาศทั้งบ้าน')
+    expect(translate('zh', 'Info')).toBe('信息')
+    expect(translate('th', 'Warning')).toBe('คำเตือน')
+  })
 })

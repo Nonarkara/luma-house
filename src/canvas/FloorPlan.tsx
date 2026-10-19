@@ -224,7 +224,7 @@ export const FloorPlan = React.memo(function FloorPlan({
                   if (event.detail === 0) onRoomSelect(room)
                 }
               }}
-              aria-label={`${room.name}, ${roomAreaFor(room, site).toFixed(1)} square meters`}
+              aria-label={tr(`${room.name}, ${roomAreaFor(room, site).toFixed(1)} square meters`)}
               title={`${room.name} · ${roomAreaFor(room, site).toFixed(1)} m²`}
             >
               {selectedRoom === room.id && HANDLES.map((handle) => (
@@ -339,7 +339,7 @@ export const FloorPlan = React.memo(function FloorPlan({
                 onClick={(event) => {
                   if (activeTool === 'select') event.stopPropagation()
                 }}
-                aria-label={`${spec.label}, ${item.rotated ? dimensions.d : dimensions.w} by ${item.rotated ? dimensions.w : dimensions.d} meters${furnitureConflicts.has(item.id) ? ', blocks a door swing' : ''}`}
+                aria-label={tr(`${spec.label}, ${item.rotated ? dimensions.d : dimensions.w} by ${item.rotated ? dimensions.w : dimensions.d} meters${furnitureConflicts.has(item.id) ? ', blocks a door swing' : ''}`)}
                 title={`${spec.label} · ${dimensions.w} × ${dimensions.d} m`}
               >
                 <span>{item.kind === 'wc' ? 'WC' : furnitureLabelFor(item)}</span>
@@ -361,7 +361,7 @@ export const FloorPlan = React.memo(function FloorPlan({
                 style={{ left: `${opening.x}%`, top: `${opening.y}%`, width: `${spanPct}%`, ['--span' as string]: spanPct } as CSSProperties}
                 data-rotation={opening.rotation}
                 title={`${opening.type} ${w.toFixed(2)} × ${h.toFixed(2)} m — drag to move, drag an end to resize`}
-                aria-label={`${opening.type} opening ${w.toFixed(2)} by ${h.toFixed(2)} meters`}
+                aria-label={tr(`${opening.type} opening ${w.toFixed(2)} by ${h.toFixed(2)} meters`)}
                 onPointerDown={(event) => onOpeningPointerDown(event, opening)}
                 onClick={(event) => {
                   if (activeTool === 'select') event.stopPropagation()
