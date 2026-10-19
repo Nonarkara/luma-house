@@ -107,7 +107,7 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
           title="Close catalog"
           aria-label="Close catalog"
         >
-          
+          <span aria-hidden="true">×</span>
         </button>
       </header>
 

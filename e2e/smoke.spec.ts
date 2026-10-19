@@ -121,6 +121,20 @@ test.describe('shipability smoke', () => {
 // The studio must reserve the drawing surface for geometry, and controls must
 // still perform real edits after the duplicate toolbars are consolidated.
 test.describe('drawing studio', () => {
+  test('catalog close shows a times mark', async ({ page }) => {
+    await dismissWelcome(page)
+    await page.goto('/')
+    const catalog = page.getByRole('button', { name: 'Furniture Catalog', exact: true })
+    if (!(await catalog.isVisible())) await page.getByRole('button', { name: 'More actions', exact: true }).click()
+    await catalog.click()
+    const close = page.getByRole('button', { name: 'Close catalog', exact: true })
+    await expect(close).toBeVisible()
+    await expect(close).toHaveText('×')
+    const box = await close.boundingBox()
+    expect(box!.width).toBeGreaterThanOrEqual(44)
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+  })
+
   test('a blank napkin offers a manual underlay and no AI trace button', async ({ page }) => {
     await dismissWelcome(page)
     await page.goto('/')

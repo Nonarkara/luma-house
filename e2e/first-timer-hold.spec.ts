@@ -31,7 +31,8 @@ const STRIP_HINT: Record<Lang, string> = {
 const HOLD_DIR = path.join('test-results', 'hold')
 
 test.describe('play hold fixes', () => {
-  test.beforeEach(({ }, testInfo) => {
+  test.beforeEach(({ page }, testInfo) => {
+    void page
     test.skip(testInfo.project.name !== 'desktop', '390, 1280 and 1440 are set inside this spec')
   })
 
@@ -181,7 +182,6 @@ test.describe('play hold fixes', () => {
         }
         if (viewport.name === '390') {
           const roomList = page.locator('.plan-room-key button').first()
-          const dock = page.locator('.canvas-tools')
           const roomFit = await roomList.evaluate((button) => {
             const dock = document.querySelector('.canvas-tools')
             const area = button.querySelector('.room-area')
@@ -582,7 +582,8 @@ test.describe('play hold fixes', () => {
 })
 
 test.describe('header buttons stay apart', () => {
-  test.beforeEach(({ }, testInfo) => {
+  test.beforeEach(({ page }, testInfo) => {
+    void page
     test.skip(testInfo.project.name !== 'desktop', 'widths are set inside this spec')
   })
 
@@ -664,6 +665,58 @@ test.describe('header buttons stay apart', () => {
         if (width === 1440) expect(hits.planWidth, JSON.stringify(hits)).toBe(758)
       })
     }
+  }
+
+  for (const lang of LANGS) {
+    test(`390px ${lang} header labels stay apart`, async ({ page }) => {
+      await page.addInitScript((value) => localStorage.setItem('designon:lang', value), lang)
+      await page.setViewportSize({ width: 390, height: 844 })
+      await page.goto('/#plan=' + encodePlanToHash(chinaApartmentPlan))
+      const welcome = page.locator('.welcome-card')
+      if (await welcome.isVisible()) await welcome.getByRole('button').nth(1).click()
+      await expect(page.locator('.topbar')).toBeVisible()
+      const hits = await page.evaluate(() => {
+        const buttons = [...document.querySelectorAll('.topbar button, .topbar summary')].filter((button) => {
+          const rect = button.getBoundingClientRect()
+          const style = getComputedStyle(button)
+          return rect.width > 1 && rect.height > 1 && style.visibility !== 'hidden' && style.display !== 'none'
+        })
+        const boxes = buttons.map((button) => {
+          const rect = button.getBoundingClientRect()
+          const name = (button.getAttribute('aria-label') || button.textContent || '').replace(/\s+/g, ' ').trim()
+          return { name, x: rect.x, right: rect.right, y: rect.y, bottom: rect.bottom }
+        })
+        const overlaps: string[] = []
+        for (let i = 0; i < boxes.length; i++) {
+          for (let j = i + 1; j < boxes.length; j++) {
+            const a = boxes[i]
+            const b = boxes[j]
+            const overlapX = Math.min(a.right, b.right) - Math.max(a.x, b.x)
+            const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y)
+            if (overlapX > 0.5 && overlapY > 0.5) overlaps.push(`${a.name} × ${b.name} ${Math.round(overlapX)}`)
+          }
+        }
+        const missed: string[] = []
+        const clipped: string[] = []
+        for (const button of buttons) {
+          const rect = button.getBoundingClientRect()
+          const name = (button.getAttribute('aria-label') || button.textContent || '').replace(/\s+/g, ' ').trim()
+          for (const x of [rect.x + 2, rect.x + rect.width / 2, rect.right - 2]) {
+            const target = document.elementFromPoint(x, rect.y + rect.height / 2)
+            if (!target || (target !== button && !button.contains(target))) missed.push(`${name}@${Math.round(x)}`)
+          }
+          const label = button.querySelector('span') ?? button
+          if (label.scrollWidth > label.clientWidth + 1) clipped.push(name)
+        }
+        const bar = document.querySelector('.topbar')!.getBoundingClientRect()
+        return { overlaps, missed, clipped, barHeight: bar.height, count: buttons.length }
+      })
+      expect(hits.count, JSON.stringify(hits)).toBeGreaterThan(3)
+      expect(hits.overlaps, JSON.stringify(hits)).toEqual([])
+      expect(hits.missed, JSON.stringify(hits)).toEqual([])
+      expect(hits.clipped, JSON.stringify(hits)).toEqual([])
+      expect(hits.barHeight, JSON.stringify(hits)).toBeLessThanOrEqual(56)
+    })
   }
 })
 

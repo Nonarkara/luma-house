@@ -54,7 +54,7 @@ export function ABComparisonModal({
             </div>
           </div>
           <button type="button" className="icon-btn-close" onClick={onClose} aria-label="Close modal">
-            
+            <span aria-hidden="true">×</span>
           </button>
         </div>
 

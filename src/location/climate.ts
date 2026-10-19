@@ -4,6 +4,10 @@
  * This is a seasonal swing around a latitude mean, not a forecast and not the
  * worst-month peak used by the overheating check. Northern winter is coldest
  * near day 15; the southern hemisphere flips that phase.
+ *
+ * The cosine is biased cold against city climate normals: Shanghai in
+ * December lands near 5°C here, while the long-term December mean is closer
+ * to 8°C. It is a labelled assumption, not a corrected climatology.
  */
 export function assumedOutsideC(latitude: number, dayOfYear: number): number {
   const abs = Math.abs(latitude)

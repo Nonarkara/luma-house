@@ -5430,6 +5430,7 @@ summary:focus-visible {
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
+  font: 600 22px/1 'Source Sans 3', sans-serif;
 }
 
 .guided-tour-progress-bar {
@@ -6708,13 +6709,16 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 .catalog-close {
   display: inline-grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   background: transparent;
   border: 0;
   color: var(--text-tertiary);
   cursor: pointer;
   padding: 0;
+  font: 600 22px/1 'Source Sans 3', sans-serif;
 }
 
 .catalog-close:hover {

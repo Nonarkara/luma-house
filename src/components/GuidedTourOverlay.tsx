@@ -29,7 +29,7 @@ export function GuidedTourOverlay({
             onClick={onExit}
             aria-label="Exit Guided Tour"
           >
-            
+            <span aria-hidden="true">×</span>
           </button>
         </div>
 

@@ -1563,7 +1563,7 @@ function App() {
           dismissOverlays('export')
           setExportMenuOpen(true)
         }}
-        panelInMenu={compactBar}
+        panelInMenu={compactBar || narrow}
         sharePlan={shareProject}
         onNewSketch={newSketch}
         onOpenShortcuts={() => {
