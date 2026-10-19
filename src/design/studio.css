@@ -348,6 +348,7 @@ body { overflow-y: auto; }
 .is-plan > .science-preview, .is-plan > .sun-status { position: static; grid-column: 1; grid-row: 3; align-self: center; width: fit-content; max-width: 100%; min-width: 0; min-height: 44px; margin: var(--space-2); padding: var(--space-2); }
 .science-preview small { font-size: var(--font-note); text-transform: none; font-family: var(--type-body); }
 .science-preview strong { font-size: var(--font-note); font-family: var(--type-mono); }
+.is-plan > .plan-control-row > .science-preview strong { display: block; text-align: center; }
 .is-plan > .science-dock, .is-plan > .value-lens { position: static; grid-column: 1 / -1; grid-row: 4; width: 100%; max-width: none; margin: 0; transform: none; }
 .is-plan > .draw-hint { position: static; grid-column: 1 / -1; grid-row: 5; max-width: none; width: auto; margin: 0; padding: var(--space-2); font-size: var(--font-note); border: 0; border-top: var(--rule-control) solid var(--studio-border); }
 .is-plan > .furniture-tray { position: static; grid-column: 1 / -1; grid-row: 6; width: 100%; max-width: none; transform: none; }
@@ -541,46 +542,72 @@ body { overflow-y: auto; }
 .app-shell .top-actions .button { min-height: 36px; padding: 0 12px; border-radius: 0; }
 .app-shell .top-actions .icon-button { width: 36px; height: 36px; }
 
-/* 721px and up: the bar wraps whole groups onto new lines instead of letting
-   a shrinking grid cell paint Undo over Share. One line stays 48px tall when
-   the groups fit, so the drawing width at 1280 and 1440 does not move. */
+/* 721px and up: one row, 48px, never wraps. A long title ellipsizes inside the
+   name cluster so the drawing width at 1280 and 1440 stays put. */
 @media (min-width: 721px) {
-  .app-shell { grid-template-rows: auto minmax(0, 1fr); }
+  .app-shell { grid-template-rows: 48px minmax(0, 1fr); }
   .app-shell .topbar {
-    height: auto;
+    height: 48px;
     min-height: 48px;
+    max-height: 56px;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
-    align-content: center;
     column-gap: 8px;
     row-gap: 0;
   }
   .app-shell .topbar-left {
     flex: 1 1 auto;
-    min-width: min(100%, max-content);
+    min-width: 0;
     max-width: 100%;
-    height: auto;
-    min-height: 0;
+    height: 48px;
+    overflow: hidden;
   }
-  .app-shell .topbar-center {
+  .app-shell .topbar-center,
+  .app-shell .top-actions {
     flex: 0 0 auto;
-    flex-wrap: wrap;
-    max-width: 100%;
+    flex-wrap: nowrap;
     min-height: 0;
+    max-height: 48px;
   }
   .app-shell .topbar-center .view-switch,
   .app-shell .topbar-center .tool-group { padding: 0; }
-  .app-shell .top-actions {
-    flex: 0 0 auto;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    margin-left: auto;
-    max-width: 100%;
-  }
-  .app-shell .project-picker { min-width: 0; overflow: hidden; }
+  .app-shell .top-actions { justify-content: flex-end; margin-left: auto; }
+  .app-shell .topbar button,
+  .app-shell .topbar summary { white-space: nowrap; }
+  .app-shell .project-picker { flex: 1 1 auto; min-width: 0; max-width: 100%; overflow: hidden; }
+  .app-shell .project-picker > span { min-width: 0; overflow: hidden; grid-template-columns: minmax(0, 1fr); }
   .app-shell .project-picker strong,
-  .app-shell .project-picker small { overflow: hidden; text-overflow: ellipsis; }
+  .app-shell .project-picker small {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Below 1280 the wordmark, Renders, Concept photo and the panel control move
+   out of the row (into More, or behind the symbol). Share and Export keep a
+   real icon so the 44px hit target is never an empty box. */
+.app-shell .top-more > summary > .mark { display: none; }
+@media (min-width: 721px) and (max-width: 1279px) {
+  .app-shell .brand-wordmark { display: none; }
+  .app-shell .top-actions .btn-label,
+  .app-shell .top-more > summary .more-word { display: none; }
+  .app-shell .top-more > summary > .mark,
+  .app-shell .top-actions .top-action-label > .mark { display: block; }
+  .app-shell .top-actions .button.primary,
+  .app-shell .top-actions .button.secondary.top-action-label,
+  .app-shell .top-more > summary {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    height: 44px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+  }
 }
 
 .top-more { position: relative; }

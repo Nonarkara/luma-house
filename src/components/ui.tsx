@@ -17,6 +17,23 @@ export function GlyphExport() {
   )
 }
 
+export function GlyphCopy() {
+  return (
+    <Mark>
+      <rect x="5.5" y="5.5" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M3.5 10.5v-8h8" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    </Mark>
+  )
+}
+
+export function GlyphMore() {
+  return (
+    <Mark>
+      <path d="M3 4h10M3 8h10M3 12h10" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    </Mark>
+  )
+}
+
 export function GlyphRotate() {
   return (
     <Mark>

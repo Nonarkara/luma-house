@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 const STAGES = ['Draw', '3D', 'Sun', 'Living', 'Systems', 'Cost', 'Picture']
 const ALLOWED = new Set(
-  'designon Shanghai China Bangkok Thailand Chiang Mai Phuket Singapore Quito Ecuador Anchorage Alaska America Asia Guayaquil US SunCalc Open-Meteo GeoNames DOE WBDG DALI JSON GLB DXF STL PDF PNG SVG CAD BOQ THB RMB USD EUR ZAR SGD ICE EPD ePM Matter KNX PM SHGC WASD Esc ERV ISO IBC ASHRAE ADA UTC CO iPhone Chrome Safari Android kWp N EN'.split(/\s+/),
+  'designon Shanghai China Bangkok Thailand Chiang Mai Phuket Singapore Quito Ecuador Anchorage Alaska America Asia Guayaquil US SunCalc Open-Meteo GeoNames DOE WBDG DALI JSON GLB DXF STL PDF PNG SVG CAD BOQ THB RMB USD EUR ZAR SGD ECB Frankfurter ICE EPD ePM Matter KNX PM SHGC WASD Esc ERV ISO IBC ASHRAE ADA UTC CO iPhone Chrome Safari Android kWp N EN'.split(/\s+/),
 )
 
 test.beforeEach(async ({ page }) => {

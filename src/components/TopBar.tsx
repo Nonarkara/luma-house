@@ -1,6 +1,6 @@
 import React from 'react'
 import { LanguageSwitch, useI18n } from '../i18n'
-import { GlyphExport, Logo, IconButton } from './ui'
+import { GlyphCopy, GlyphExport, GlyphMore, Logo, IconButton } from './ui'
 
 interface TopBarProps {
   projectName: string
@@ -22,6 +22,8 @@ interface TopBarProps {
   onChangeLocation?: () => void
   locationName?: string
   hideLabeledShare?: boolean
+  /** Below the wide desktop, the panel control lives in More so the bar stays one row. */
+  panelInMenu?: boolean
 }
 
 export const TopBar = React.memo(function TopBar({
@@ -41,6 +43,7 @@ export const TopBar = React.memo(function TopBar({
   onChangeLocation,
   locationName,
   hideLabeledShare = false,
+  panelInMenu = false,
 }: TopBarProps) {
   const { tr } = useI18n()
   const menuRef = React.useRef<HTMLDetailsElement>(null)
@@ -61,7 +64,7 @@ export const TopBar = React.memo(function TopBar({
       <div className="topbar-left">
         <Logo />
         <div className="project-picker">
-          <span><strong>{tr(projectName)}</strong><small>{tr(lastSaved)}</small></span>
+          <span><strong title={tr(projectName)}>{tr(projectName)}</strong><small>{tr(lastSaved)}</small></span>
         </div>
         {meta && <div className="topbar-meta">{meta}</div>}
       </div>
@@ -73,7 +76,8 @@ export const TopBar = React.memo(function TopBar({
           if (event.key === 'Escape') { close(); menuRef.current?.querySelector('summary')?.focus() }
         }}>
           <summary role="button" className="icon-button" aria-label={tr('More actions')} title={tr('More actions')}>
-            {tr('More')}
+            <GlyphMore />
+            <span className="more-word">{tr('More')}</span>
           </summary>
           <div className="top-more-menu">
             <LanguageSwitch />
@@ -102,20 +106,28 @@ export const TopBar = React.memo(function TopBar({
                 {tr('Shortcuts and legend')} <kbd>?</kbd>
               </button>
             )}
+            {panelInMenu && (
+              <button type="button" className="menu-history" aria-label={panelLabel} onClick={run(onToggleInspector)}>
+                {panelLabel}
+              </button>
+            )}
             {menuExtra && <div className="top-more-extra">{menuExtra}</div>}
           </div>
         </details>
 
-        <IconButton
-          label={panelLabel}
-          className={inspectorOpen ? 'active' : ''}
-          onClick={onToggleInspector}
-        >
-          {panelShort}
-        </IconButton>
+        {!panelInMenu && (
+          <IconButton
+            label={panelLabel}
+            className={inspectorOpen ? 'active' : ''}
+            onClick={onToggleInspector}
+          >
+            {panelShort}
+          </IconButton>
+        )}
 
         {!hideLabeledShare && (
-          <button className="button secondary top-action-label" type="button" onClick={sharePlan} aria-label={tr('Share')}>
+          <button className="button secondary top-action-label" type="button" onClick={sharePlan} aria-label={tr('Share')} title={tr('Share')}>
+            <GlyphCopy />
             <span className="btn-label">{tr('Share')}</span>
           </button>
         )}

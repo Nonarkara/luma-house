@@ -580,18 +580,23 @@ test.describe('header buttons stay apart', () => {
     test.skip(testInfo.project.name !== 'desktop', 'widths are set inside this spec')
   })
 
-  for (const width of [768, 900, 1280]) {
+  for (const width of [721, 768, 900, 1024, 1280, 1440]) {
     for (const lang of LANGS) {
       test(`${width}px ${lang} long title`, async ({ page }) => {
         await page.addInitScript((value) => localStorage.setItem('designon:lang', value), lang)
-        await page.setViewportSize({ width, height: 800 })
+        await page.setViewportSize({ width, height: width === 1440 ? 900 : 800 })
         await page.goto('/#plan=' + encodePlanToHash(chinaApartmentPlan))
         const welcome = page.locator('.welcome-card')
         if (await welcome.isVisible()) await welcome.getByRole('button').nth(1).click()
         await expect(page.locator('.topbar')).toBeVisible()
         const hits = await page.evaluate((title) => {
-          const strong = document.querySelector('.project-picker strong')
-          if (strong) strong.textContent = title
+          const strong = document.querySelector('.project-picker strong') as HTMLElement | null
+          const original = (strong?.textContent ?? '').trim()
+          const originalTip = strong?.getAttribute('title') ?? ''
+          if (strong) {
+            strong.textContent = title
+            strong.setAttribute('title', title)
+          }
           const buttons = [...document.querySelectorAll('.topbar button, .topbar summary')].filter((button) => {
             const rect = button.getBoundingClientRect()
             const style = getComputedStyle(button)
@@ -619,11 +624,38 @@ test.describe('header buttons stay apart', () => {
             const name = (button.getAttribute('aria-label') || button.textContent || '').replace(/\s+/g, ' ').trim()
             if (!target || (target !== button && !button.contains(target))) missed.push(name)
           }
-          return { overlaps, missed, count: buttons.length }
+          const bar = document.querySelector('.topbar')!.getBoundingClientRect()
+          const share = document.querySelector('.top-actions .top-action-label')
+          const svg = share?.querySelector('svg')?.getBoundingClientRect()
+          const titleStyle = strong ? getComputedStyle(strong) : null
+          return {
+            overlaps,
+            missed,
+            count: buttons.length,
+            barHeight: bar.height,
+            buttonSpan: boxes.length ? Math.max(...boxes.map((box) => box.bottom)) - bar.top : 0,
+            flexWrap: getComputedStyle(document.querySelector('.topbar')!).flexWrap,
+            planWidth: (document.querySelector('.plan-canvas') as HTMLElement | null)?.offsetWidth ?? null,
+            share: svg ? { w: svg.width, h: svg.height, label: share?.getAttribute('aria-label') ?? '' } : null,
+            originalTipMatches: originalTip === original && original.length > 0,
+            titleTip: strong?.getAttribute('title') ?? '',
+            titleNowrap: titleStyle?.whiteSpace ?? '',
+            titleOverflow: titleStyle?.textOverflow ?? '',
+          }
         }, 'South Light Residence · a very long project title that must leave every header button clickable')
         expect(hits.count, JSON.stringify(hits)).toBeGreaterThan(4)
         expect(hits.overlaps, JSON.stringify(hits)).toEqual([])
         expect(hits.missed, JSON.stringify(hits)).toEqual([])
+        expect(hits.barHeight, JSON.stringify(hits)).toBeLessThanOrEqual(56)
+        expect(hits.buttonSpan, JSON.stringify(hits)).toBeLessThanOrEqual(56)
+        expect(hits.flexWrap, JSON.stringify(hits)).toBe('nowrap')
+        expect(hits.share && hits.share.w > 8 && hits.share.h > 8 && hits.share.label.length > 0, JSON.stringify(hits)).toBe(true)
+        expect(hits.originalTipMatches, JSON.stringify(hits)).toBe(true)
+        expect(hits.titleTip, JSON.stringify(hits)).toContain('very long project title')
+        expect(hits.titleNowrap, JSON.stringify(hits)).toBe('nowrap')
+        expect(hits.titleOverflow, JSON.stringify(hits)).toBe('ellipsis')
+        if (width === 1280) expect(hits.planWidth, JSON.stringify(hits)).toBe(618)
+        if (width === 1440) expect(hits.planWidth, JSON.stringify(hits)).toBe(758)
       })
     }
   }

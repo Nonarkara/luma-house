@@ -80,7 +80,9 @@ for (const theme of themes) for (const width of [375, 768, 1280]) {
       for (const { selector, ratio } of result) expect(ratio, `${theme.name} ${selector}`).toBeGreaterThanOrEqual(4.5)
     }
     await check(['.stage-head h1', '.theme-picker select', '.button.primary', '.journey-headline', '.room-name', '.room-area', '.scale-chip button', '.science-preview strong', '.toolbar-pill-btn.is-active'])
-    await page.getByRole('button', { name: 'Open panel', exact: true }).click()
+    const openPanel = page.getByRole('button', { name: 'Open panel', exact: true })
+    if (!(await openPanel.isVisible())) await openMore(page)
+    await openPanel.click()
     await check(['.inspector-head h2', '.inspector input', '.code-issue-title', '.code-issue-fix', '.style-preset-btn span', '.inspector .text-button'])
     await page.getByRole('button', { name: 'Collapse inspector', exact: true }).click()
     await page.locator('.journey-step').filter({ hasText: 'Cost' }).click()

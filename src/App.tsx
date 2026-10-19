@@ -265,6 +265,7 @@ function App() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [studyCapture, setStudyCapture] = useState<StudyCapture | null>(null)
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches)
+  const [compactBar, setCompactBar] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 721px) and (max-width: 1279px)').matches)
   const [openingGhost, setOpeningGhost] = useState<WallHit | null>(null)
   const [wallNote, setWallNote] = useState(false)
   const [cornerNote, setCornerNote] = useState<{ x: number; y: number } | null>(null)
@@ -586,6 +587,14 @@ function App() {
   useEffect(() => {
     const query = window.matchMedia('(max-width: 720px)')
     const apply = () => setNarrow(query.matches)
+    apply()
+    query.addEventListener('change', apply)
+    return () => query.removeEventListener('change', apply)
+  }, [])
+
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 721px) and (max-width: 1279px)')
+    const apply = () => setCompactBar(query.matches)
     apply()
     query.addEventListener('change', apply)
     return () => query.removeEventListener('change', apply)
@@ -1500,6 +1509,7 @@ function App() {
         }}
         exportPlan={() => setExportMenuOpen((open) => !open)}
         hideLabeledShare={narrow}
+        panelInMenu={compactBar}
         sharePlan={shareProject}
         onNewSketch={newSketch}
         onOpenShortcuts={() => setShortcutsOpen((prev) => !prev)}
@@ -1508,13 +1518,13 @@ function App() {
           <div className="view-switch" role="group" aria-label={tr('View mode')}>
             <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>{tr('Plan')}</button>
             <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>{tr('Spatial')}</button>
-            <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>{tr('Renders')}</button>
+            {!compactBar && <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>{tr('Renders')}</button>}
           </div>
           {!narrow && (
             <div className="tool-group history-tools">
               <IconButton label={tr('Undo')} onClick={undo} disabled={!past.length}>{tr('Undo')}</IconButton>
               <IconButton label={tr('Redo')} onClick={redo} disabled={!future.length}>{tr('Redo')}</IconButton>
-              <IconButton label={tr('Concept photo')} onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><GlyphPhoto /></IconButton>
+              {!compactBar && <IconButton label={tr('Concept photo')} onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><GlyphPhoto /></IconButton>}
             </div>
           )}
         </>}
@@ -1528,6 +1538,10 @@ function App() {
             {narrow && <>
             <button type="button" className="menu-history" aria-label={tr('Undo')} disabled={past.length === 0} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); undo() }}>{tr('Undo')}</button>
             <button type="button" className="menu-history" aria-label={tr('Redo')} disabled={future.length === 0} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); redo() }}>{tr('Redo')}</button>
+          </>}
+          {compactBar && <>
+            <button type="button" className="menu-history" aria-label={tr('Renders')} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); setInspectorOpen(false); setView('renders') }}>{tr('Renders')}</button>
+            <button type="button" className="menu-history" aria-label={tr('Concept photo')} disabled={isRendering || quotaLeft <= 0} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); void runConceptRender() }}>{tr('Concept photo')}</button>
           </>}
           <ThemePicker theme={theme} onChange={next => { saveTheme(next); setTheme(next) }} />
           <WebAppAccess />
