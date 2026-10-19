@@ -6,7 +6,7 @@ export function WebAppAccess() {
   const { tr } = useI18n()
   return (
     <details className="web-app-access">
-      <summary aria-label={tr('Add to Home Screen')}><img src="./brand/designon-app.png" alt="" width="28" height="28" /><span>{tr('Add to Home Screen')}</span></summary>
+      <summary aria-label={tr('Available on Android and iPhone')}><img src="./brand/designon-app.png" alt="" width="28" height="28" /><span>{tr('Available on Android and iPhone')} <small>{tr('Web app · Add to Home Screen')}</small></span></summary>
       <div className="web-app-instructions">
         <p><strong>{tr('Android')}</strong> — {tr('Open in Chrome. In the menu, choose')} <b>{tr('Add to Home Screen')}</b> {tr('or')} <b>{tr('Install app')}</b>.</p>
         <p><strong>{tr('iPhone')}</strong> — {tr('Open in Safari. Tap')} <b>{tr('Share → Add to Home Screen')}</b>. {tr('Keep')} <b>{tr('Open as Web App')}</b> {tr('enabled if shown.')}</p>

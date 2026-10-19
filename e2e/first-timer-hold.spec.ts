@@ -179,6 +179,28 @@ test.describe('play hold fixes', () => {
           expect(badge.count).toBeGreaterThan(0)
         }
         if (viewport.name === '390') {
+          const roomList = page.locator('.plan-room-key button').first()
+          const dock = page.locator('.canvas-tools')
+          const roomFit = await roomList.evaluate((button) => {
+            const dock = document.querySelector('.canvas-tools')
+            const area = button.querySelector('.room-area')
+            if (!dock || !area) return { missing: true }
+            const room = button.getBoundingClientRect()
+            const dockBox = dock.getBoundingClientRect()
+            const areaBox = area.getBoundingClientRect()
+            return {
+              roomBottom: room.bottom,
+              dockTop: dockBox.top,
+              areaTop: areaBox.top,
+              areaBottom: areaBox.bottom,
+              areaText: area.textContent?.trim() ?? '',
+            }
+          })
+          expect(roomFit.missing, JSON.stringify(roomFit)).toBeFalsy()
+          expect(roomFit.roomBottom, JSON.stringify(roomFit)).toBeLessThanOrEqual(roomFit.dockTop! + 0.5)
+          expect(roomFit.areaBottom, JSON.stringify(roomFit)).toBeLessThanOrEqual(roomFit.roomBottom! + 0.5)
+          expect(roomFit.areaTop, JSON.stringify(roomFit)).toBeGreaterThanOrEqual((roomFit.roomBottom! - 48))
+          expect(roomFit.areaText, JSON.stringify(roomFit)).toMatch(/m²/)
           await page.getByRole('button', { name: MORE[lang], exact: true }).click()
           const theme = page.locator('.top-more-menu select')
           await expect(theme).toBeVisible()
@@ -548,6 +570,60 @@ test.describe('play hold fixes', () => {
         }
         fs.mkdirSync(HOLD_DIR, { recursive: true })
         await page.screenshot({ path: path.join(HOLD_DIR, `hold-${viewport.name}-${lang}-stable.png`) })
+      })
+    }
+  }
+})
+
+test.describe('header buttons stay apart', () => {
+  test.beforeEach(({ }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'widths are set inside this spec')
+  })
+
+  for (const width of [768, 900, 1280]) {
+    for (const lang of LANGS) {
+      test(`${width}px ${lang} long title`, async ({ page }) => {
+        await page.addInitScript((value) => localStorage.setItem('designon:lang', value), lang)
+        await page.setViewportSize({ width, height: 800 })
+        await page.goto('/#plan=' + encodePlanToHash(chinaApartmentPlan))
+        const welcome = page.locator('.welcome-card')
+        if (await welcome.isVisible()) await welcome.getByRole('button').nth(1).click()
+        await expect(page.locator('.topbar')).toBeVisible()
+        const hits = await page.evaluate((title) => {
+          const strong = document.querySelector('.project-picker strong')
+          if (strong) strong.textContent = title
+          const buttons = [...document.querySelectorAll('.topbar button, .topbar summary')].filter((button) => {
+            const rect = button.getBoundingClientRect()
+            const style = getComputedStyle(button)
+            return rect.width > 1 && rect.height > 1 && style.visibility !== 'hidden' && style.display !== 'none'
+          })
+          const boxes = buttons.map((button) => {
+            const rect = button.getBoundingClientRect()
+            const name = (button.getAttribute('aria-label') || button.textContent || '').replace(/\s+/g, ' ').trim()
+            return { name, x: rect.x, y: rect.y, right: rect.right, bottom: rect.bottom, cx: rect.x + rect.width / 2, cy: rect.y + rect.height / 2 }
+          })
+          const overlaps: string[] = []
+          for (let i = 0; i < boxes.length; i++) {
+            for (let j = i + 1; j < boxes.length; j++) {
+              const a = boxes[i]
+              const b = boxes[j]
+              const overlapX = Math.min(a.right, b.right) - Math.max(a.x, b.x)
+              const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y)
+              if (overlapX > 0.5 && overlapY > 0.5) overlaps.push(`${a.name} × ${b.name} ${Math.round(overlapX * overlapY)}`)
+            }
+          }
+          const missed: string[] = []
+          for (const button of buttons) {
+            const rect = button.getBoundingClientRect()
+            const target = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+            const name = (button.getAttribute('aria-label') || button.textContent || '').replace(/\s+/g, ' ').trim()
+            if (!target || (target !== button && !button.contains(target))) missed.push(name)
+          }
+          return { overlaps, missed, count: buttons.length }
+        }, 'South Light Residence · a very long project title that must leave every header button clickable')
+        expect(hits.count, JSON.stringify(hits)).toBeGreaterThan(4)
+        expect(hits.overlaps, JSON.stringify(hits)).toEqual([])
+        expect(hits.missed, JSON.stringify(hits)).toEqual([])
       })
     }
   }

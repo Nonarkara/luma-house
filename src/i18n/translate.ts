@@ -58,6 +58,8 @@ const ROWS: Array<[string, string, string]> = [
   ['Start from a blank page', 'เริ่มจากหน้าว่าง', '从空白页开始'],
   ['Explore the 50 m² sample', 'ดูตัวอย่าง 50 ตร.ม.', '查看 50 平方米示例'],
   ['Add to Home Screen', 'เพิ่มไปที่หน้าจอหลัก', '添加到主屏幕'],
+  ['Available on Android and iPhone', 'ใช้ได้บนแอนดรอยด์และไอโฟน', '可用于安卓和 iPhone'],
+  ['Web app · Add to Home Screen', 'เว็บแอป · เพิ่มไปที่หน้าจอหลัก', '网页应用 · 添加到主屏幕'],
   ['Android', 'แอนดรอยด์', '安卓'],
   ['iPhone', 'ไอโฟน', 'iPhone'],
   ['Drag a box to make a room. Then click a wall to add a window.', 'ลากกล่องเพื่อสร้างห้อง แล้วแตะผนังเพื่อใส่หน้าต่าง', '拖一个框成为房间，再点墙放窗。'],
