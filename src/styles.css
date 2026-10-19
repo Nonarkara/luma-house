@@ -7328,7 +7328,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 .study-scene-grid article > div:last-child { display: flex; flex-wrap: wrap; gap: 6px; }
 .study-no-preview, .study-empty { padding: 18px; border: 1px dashed var(--studio-border); font-size: 12px; }
 .study-sheet-dialog { width: 1120px; }
-.drawing-sheet { display: block; width: 100%; height: auto; }
+.drawing-sheet, .drawing-sheet-key { display: block; width: 100%; height: auto; }
 .drawing-sheet-viewport { max-width: 100%; overflow: auto; }
 .study-dialog-controls select { min-height: 44px; padding: 8px; border: 1px solid var(--studio-border); background: var(--studio-sheet); color: var(--studio-ink); }
 .study-paper { background: white; color: #15202b; padding: 20px; }
@@ -7387,9 +7387,11 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   .study-sheet-dialog { position: static; inset: auto; width: auto; max-width: none; height: auto; max-height: none; overflow: visible; margin: 0; padding: 0; border: 0; background: white; }
   .study-sheet-dialog::backdrop { display: none; }
   .study-dialog-controls { display: none; }
-  .drawing-sheet { width: 281mm; height: 190mm; max-width: none; break-inside: avoid; }
+  .drawing-sheet, .drawing-sheet-key { width: 281mm; height: auto; max-width: none; break-inside: avoid; }
+  .drawing-sheet { break-after: page; }
+  .drawing-sheet-key { break-after: auto; }
   .drawing-sheet-viewport { overflow: visible; }
-  .drawing-sheet-viewport > div { width: 281mm !important; }
+  .drawing-sheet-viewport > div { width: auto !important; }
   .study-paper { page: study; width: 281mm; height: 190mm; display: grid; grid-template-rows: 20mm 146mm 16mm; gap: 4mm; padding: 0; margin: 0; break-inside: avoid; }
   .study-paper header { padding-bottom: 3mm; gap: 5mm; flex-wrap: nowrap; }
   .study-paper header > img { width: 30mm; }
