@@ -18,6 +18,7 @@ interface FloatingToolbarProps {
   onRoomOptions?: () => void
   onQuickAction?: () => void
   onConcept?: () => void
+  onUploadUnderlay?: () => void
 }
 
 /**
@@ -40,6 +41,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   onRoomOptions,
   onQuickAction,
   onConcept,
+  onUploadUnderlay,
 }) => {
   const { tr } = useI18n()
   const [moreOpen, setMoreOpen] = useState(false)
@@ -134,6 +136,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               <button type="button" aria-label={tr('Redo')} disabled={!canRedo} onClick={() => { setMoreOpen(false); onRedo?.() }}>{tr('Redo')}</button>
               {onRoomOptions && <button type="button" aria-label={tr('Room options')} onClick={() => { setMoreOpen(false); onRoomOptions() }}>{tr('Room options')}</button>}
               {onQuickAction && <button type="button" aria-label={tr('Quick action')} onClick={() => { setMoreOpen(false); onQuickAction() }}>{tr('Quick action')}</button>}
+              {onUploadUnderlay && <button type="button" aria-label={tr('Upload plan as underlay')} onClick={() => { setMoreOpen(false); onUploadUnderlay() }}>{tr('Upload plan as underlay')}</button>}
               {onConcept && <button type="button" aria-label={tr('Concept photo')} onClick={() => { setMoreOpen(false); onConcept() }}>{tr('Concept photo')}</button>}
             </div>
           )}

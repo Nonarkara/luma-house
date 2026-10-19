@@ -121,6 +121,21 @@ test.describe('shipability smoke', () => {
 // The studio must reserve the drawing surface for geometry, and controls must
 // still perform real edits after the duplicate toolbars are consolidated.
 test.describe('drawing studio', () => {
+  test('a blank napkin offers a manual underlay and no AI trace button', async ({ page }) => {
+    await dismissWelcome(page)
+    await page.goto('/')
+    const underlay = page.getByRole('button', { name: 'Upload plan as underlay', exact: true })
+    await expect(underlay).toBeVisible()
+    await expect(underlay).toBeEnabled()
+    const box = await underlay.boundingBox()
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+    await expect(page.getByRole('button', { name: 'Trace with AI', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Upload plan → trace with AI' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'More actions', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Upload plan as underlay', exact: true })).toHaveCount(2)
+  })
+
+
   test('a real pencil drag creates a wall without crashing the canvas', async ({ page }) => {
     const pageErrors: Error[] = []
     page.on('pageerror', error => pageErrors.push(error))

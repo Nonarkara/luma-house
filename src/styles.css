@@ -766,10 +766,20 @@ button:active {
   width: min(280px, 80%);
   margin: 0;
   transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   pointer-events: none;
   text-align: center;
   font: 600 16px/1.4 'Source Sans 3', sans-serif;
   color: var(--text-primary);
+}
+.canvas-empty-line p { margin: 0; }
+.canvas-empty-line .button {
+  pointer-events: auto;
+  min-height: 44px;
+  white-space: normal;
 }
 .wall-note {
   position: absolute;

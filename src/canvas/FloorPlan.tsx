@@ -62,7 +62,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   wallNote = false,
   cornerNote = null,
   showEmptyHint = false,
-  onPlaceOpening,
+  onUploadUnderlay,
   onRoomPointerDown,
   onRoomSelect,
   onOpeningPointerDown,
@@ -107,6 +107,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   wallNote?: boolean
   cornerNote?: { x: number; y: number } | null
   showEmptyHint?: boolean
+  onUploadUnderlay?: () => void
   onSetOpeningType?: (id: string, type: Opening['type']) => void
   onPlaceOpening?: (clientX: number, clientY: number) => void
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
@@ -407,7 +408,21 @@ export const FloorPlan = React.memo(function FloorPlan({
           {roomDraft && roomDraft.w > 0 && roomDraft.h > 0 && (
             <div className="room-draft" style={{ left: `${roomDraft.x}%`, top: `${roomDraft.y}%`, width: `${roomDraft.w}%`, height: `${roomDraft.h}%` }} aria-hidden="true" />
           )}
-          {showEmptyHint && <p className="canvas-empty-line">{tr('Drag a box to make a room. Then click a wall to add a window.')}</p>}
+          {showEmptyHint && (
+            <div className="canvas-empty-line">
+              <p>{tr('Drag a box to make a room. Then click a wall to add a window.')}</p>
+              {onUploadUnderlay && (
+                <button
+                  type="button"
+                  className="button primary"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => { event.stopPropagation(); onUploadUnderlay() }}
+                >
+                  {tr('Upload plan as underlay')}
+                </button>
+              )}
+            </div>
+          )}
           {wallNote && <p className="wall-note" role="status">{tr('Click a wall')}</p>}
           {cornerNote && (
             <p className="corner-note" role="status" style={{ left: `${cornerNote.x}%`, top: `${cornerNote.y}%` }}>

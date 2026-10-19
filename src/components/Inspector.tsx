@@ -53,7 +53,6 @@ export interface InspectorProps {
   sketchUrl: string | null
   setSketchUrl: (url: string | null) => void
   fileInputRef: React.RefObject<HTMLInputElement>
-  handleSketch: (event: React.ChangeEvent<HTMLInputElement>) => void
   runConceptRender: () => void
   isRendering: boolean
   quotaLeft: number
@@ -121,7 +120,6 @@ export const Inspector = React.memo(function Inspector({
   sketchUrl,
   setSketchUrl,
   fileInputRef,
-  handleSketch,
   runConceptRender,
   isRendering,
   quotaLeft,
@@ -301,7 +299,6 @@ export const Inspector = React.memo(function Inspector({
             </div>
           </section>
           <section className="upload-card">
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleSketch} hidden />
             {sketchUrl ? <img src={sketchUrl} alt={tr('Uploaded house plan sketch')} /> : null}
             <div>
               <h3>{sketchUrl ? tr('Underlay active') : tr(AI_ENABLED ? 'Upload a plan to trace' : 'Upload plan as underlay')}</h3>

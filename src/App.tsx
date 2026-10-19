@@ -1491,6 +1491,7 @@ function App() {
   return (
     <div className="app-shell">
       <input ref={traceFileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={runTrace} hidden />
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleSketch} hidden />
       {presetOpen && <LayoutPresetDialog onClose={() => setPresetOpen(false)} onApply={next => {
         commit(current => ({ ...next, location: projectLocation, studyScenes: current.studyScenes, comparison: current.comparison }), 'Apply layout preset')
         setSelectedRoom(next.rooms[0]?.id ?? null)
@@ -1598,6 +1599,7 @@ function App() {
           }}><span>{projectLocation.name}</span></button>
         </>}
         onChangeLocation={() => { dismissOverlays('location'); setLocationOpen(true) }}
+        onUploadUnderlay={() => fileInputRef.current?.click()}
         locationName={projectLocation.name}
         menuExtra={<>
             {narrow && <>
@@ -1653,6 +1655,7 @@ function App() {
                 onRoomOptions={() => { dismissOverlays('rooms'); setRoomOptionsOpen(true) }}
                 onQuickAction={() => document.getElementById('quick-action')?.focus()}
                 onConcept={AI_ENABLED ? () => void runConceptRender() : undefined}
+                onUploadUnderlay={narrow ? () => fileInputRef.current?.click() : undefined}
               />
             )}
             {view === 'plan' && !narrow && <button type="button" className="room-options-launch" disabled={isEmpty} onClick={() => { dismissOverlays('rooms'); setRoomOptionsOpen(true) }}>{tr('Room options')}</button>}
@@ -1708,6 +1711,7 @@ function App() {
                 wallNote={wallNote}
                 cornerNote={cornerNote}
                 showEmptyHint={isEmpty && !hasNapkinWalls && !draftStroke && !rulerArmed && !rulerLine && !roomDraft}
+                onUploadUnderlay={() => fileInputRef.current?.click()}
                 onSetOpeningType={(id, type) => updateOpening(id, { type })}
                 onPlaceOpening={commitOpeningAt}
                 onRoomPointerDown={onRoomPointerDown}
@@ -1954,7 +1958,6 @@ function App() {
           sketchUrl={sketchUrl}
           setSketchUrl={setSketchUrl}
           fileInputRef={fileInputRef}
-          handleSketch={handleSketch}
           runConceptRender={runConceptRender}
           isRendering={isRendering}
           quotaLeft={quotaLeft}

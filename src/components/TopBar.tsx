@@ -20,6 +20,7 @@ interface TopBarProps {
   /** Rarely used content placed at the bottom of the More menu. */
   menuExtra?: React.ReactNode
   onChangeLocation?: () => void
+  onUploadUnderlay?: () => void
   locationName?: string
   hideLabeledShare?: boolean
   /** Below the wide desktop, the panel control lives in More so the bar stays one row. */
@@ -41,6 +42,7 @@ export const TopBar = React.memo(function TopBar({
   meta,
   menuExtra,
   onChangeLocation,
+  onUploadUnderlay,
   locationName,
   hideLabeledShare = false,
   panelInMenu = false,
@@ -85,6 +87,11 @@ export const TopBar = React.memo(function TopBar({
             {onChangeLocation && (
               <button type="button" className="menu-location" aria-label={locationName ? tr(`Change city · ${locationName}`) : tr('Change city')} onClick={run(onChangeLocation)}>
                 {tr('Change city')} · {locationName}
+              </button>
+            )}
+            {onUploadUnderlay && (
+              <button type="button" aria-label={tr('Upload plan as underlay')} onClick={run(onUploadUnderlay)}>
+                {tr('Upload plan as underlay')}
               </button>
             )}
             {onToggleCatalog && (
