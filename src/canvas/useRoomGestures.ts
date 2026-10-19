@@ -8,7 +8,6 @@ import {
   resizeRoom,
   scaleRoomFromCenter,
   snap,
-  snapOpeningToWall,
   alignEdges,
   alignMovedRect,
   alignTolerance,

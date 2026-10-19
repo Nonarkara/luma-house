@@ -624,18 +624,13 @@ function App() {
     const points = strokePointsRef.current
     strokePointsRef.current = []
     setDraftStroke(null)
-    const sheet = stageRef.current
-    const result = applyNapkinStroke(plan, points, site, sheet ? {
-      widthPx: sheet.clientWidth,
-      heightPx: sheet.clientHeight,
-      zoom: viewport.zoom,
-    } : undefined)
+    const result = applyNapkinStroke(plan, points, site)
     if (!result.plan) {
       setCornerNote(null)
       setToast(result.toast)
       return
     }
-    setCornerNote(result.cornerNote ?? null)
+    setCornerNote(null)
     commit(result.plan, result.label)
     setSelectedRoom(result.selectRoom ?? null)
     setSelectedOpening(result.selectOpening ?? null)
@@ -644,7 +639,7 @@ function App() {
     if (result.selectRoom) setSettingsOpen(false)
     if (result.selectOpening) setWallNote(false)
     setToast(result.toast)
-  }, [commit, plan, site, viewport.zoom])
+  }, [commit, plan, site])
 
   const handleCanvasPointerDown = useCallback((event: ReactPointerEvent) => {
     if (rulerArmed) {
