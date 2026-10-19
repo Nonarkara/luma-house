@@ -1671,14 +1671,10 @@ function App() {
                 quotaLeft={quotaLeft}
               />
             )}
-            {view !== 'renders' && !isEmpty && (
-              view === 'spatial' || (mode === 'light' && valueLens === 'off') ? localLightControls : valueLens === 'off' ? (
-                <button className="science-preview" type="button" onClick={() => setMode('light')}>
-                  <span className="science-live" />
-                  <span><small>{heatFlow.windowM2 > 0 ? tr('Live sun + heat') : tr('Heat through walls (no windows yet)')}</small><strong>{Math.abs(heatFlow.netW) >= 1000 ? `${(Math.abs(heatFlow.netW) / 1000).toFixed(1)} kW` : `${Math.round(Math.abs(heatFlow.netW))} W`} {heatFlow.mode === 'heat-out' ? tr('leaving') : tr('entering')}</strong></span>
-                </button>
-              ) : null
+            {view !== 'renders' && view !== 'plan' && !isEmpty && (
+              view === 'spatial' || (mode === 'light' && valueLens === 'off') ? localLightControls : null
             )}
+            {view === 'plan' && mode === 'light' && valueLens === 'off' && !isEmpty && localLightControls}
             {view === 'plan' && !isEmpty && (
               <ValueLens
                 active={valueLens}
@@ -1788,15 +1784,6 @@ function App() {
                 <button type="button" className="chip-action" aria-label={tr('Remove furniture')} onClick={deleteFurniture}><span>{tr('Remove furniture')}</span></button>
               </div>
             )}
-            {view === 'plan' && selectedOpening && !furnitureItem && (
-              <div className="furniture-chip is-overlay" role="status">
-                <span>
-                  <strong>{tr(plan.openings.find((item) => item.id === selectedOpening)?.type === 'door' ? 'Door' : 'Window')}</strong>
-                  <small>{tr('Drag along the wall · Delete key removes')}</small>
-                </span>
-                <button type="button" className="chip-action" aria-label={tr('Remove opening')} onClick={deleteOpening}><span>{tr('Remove opening')}</span></button>
-              </div>
-            )}
             {view === 'plan' && overlaps.size > 0 && (
               <div className="overlap-warning" role="alert">
                 Rooms overlap — floor area is double-counted and climate analysis is unreliable
@@ -1834,10 +1821,27 @@ function App() {
             />
 
             {view === 'plan' && (
-              <div className="zoom-control">
-                <button type="button" onClick={zoomOut} aria-label={tr('Zoom out')} disabled={!canZoomOut}>−</button>
-                <button type="button" className="zoom-label" onClick={fitBuilding} aria-label={tr('Fit the building to the view')} title={tr('Fit the building to the view')}>{zoomPercent === 100 ? tr('Fit') : `${zoomPercent}%`}</button>
-                <button type="button" onClick={zoomIn} aria-label={tr('Zoom in')} disabled={!canZoomIn}>+</button>
+              <div className="plan-control-row">
+                {valueLens === 'off' && mode !== 'light' && !isEmpty && (
+                  <button className="science-preview" type="button" onClick={() => setMode('light')}>
+                    <span className="science-live" />
+                    <span><small>{heatFlow.windowM2 > 0 ? tr('Live sun + heat') : tr('Heat through walls (no windows yet)')}</small><strong>{Math.abs(heatFlow.netW) >= 1000 ? `${(Math.abs(heatFlow.netW) / 1000).toFixed(1)} kW` : `${Math.round(Math.abs(heatFlow.netW))} W`} {heatFlow.mode === 'heat-out' ? tr('leaving') : tr('entering')}</strong></span>
+                  </button>
+                )}
+                {selectedOpening && !furnitureItem && (
+                  <div className="furniture-chip is-overlay" role="status">
+                    <span>
+                      <strong>{tr(plan.openings.find((item) => item.id === selectedOpening)?.type === 'door' ? 'Door' : 'Window')}</strong>
+                      <small>{tr('Drag along the wall · Delete key removes')}</small>
+                    </span>
+                    <button type="button" className="chip-action" aria-label={tr('Remove opening')} onClick={deleteOpening}><span>{tr('Remove opening')}</span></button>
+                  </div>
+                )}
+                <div className="zoom-control">
+                  <button type="button" onClick={zoomOut} aria-label={tr('Zoom out')} disabled={!canZoomOut}>−</button>
+                  <button type="button" className="zoom-label" onClick={fitBuilding} aria-label={tr('Fit the building to the view')} title={tr('Fit the building to the view')}>{zoomPercent === 100 ? tr('Fit') : `${zoomPercent}%`}</button>
+                  <button type="button" onClick={zoomIn} aria-label={tr('Zoom in')} disabled={!canZoomIn}>+</button>
+                </div>
               </div>
             )}
             {view === 'plan' && <PlanRoomKey rooms={plan.rooms} site={site} selectedRoom={selectedRoom}

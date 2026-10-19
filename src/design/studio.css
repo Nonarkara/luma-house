@@ -340,7 +340,11 @@ body { overflow-y: auto; }
 .scale-chip .ruler-arm { min-height: 44px; margin-left: auto; padding: var(--space-2); color: var(--studio-ink); font-size: var(--font-body); border: var(--rule-control) solid var(--studio-border); }
 .scale-chip small { font-size: var(--font-note); }
 .is-plan > .value-lens-launch { position: static; grid-column: 2; grid-row: 1; justify-self: end; margin: var(--space-2); width: 44px; height: 44px; }
-.is-plan > .zoom-control { position: static; grid-column: 2; grid-row: 3; margin: var(--space-2); align-self: center; }
+/* 7px of block margin keeps this height-bound sheet at 618px on a 1280 screen and 758px on 1440. */
+.is-plan > .plan-control-row { position: relative; grid-column: 1; grid-row: 3; margin: 7px 8px; align-self: center; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; max-width: 100%; }
+.is-plan > .plan-control-row > .science-preview { position: static; inset: auto; right: auto; bottom: auto; z-index: auto; margin: 0 auto 0 0; flex: 0 0 auto; width: auto; max-width: 100%; min-width: max-content; }
+.is-plan > .plan-control-row > .zoom-control,
+.is-plan > .plan-control-row > .furniture-chip.is-overlay { position: static; inset: auto; margin: 0; }
 .zoom-control button { min-width: 44px; min-height: 44px; font-size: var(--font-body); }
 .is-plan > .science-preview, .is-plan > .sun-status { position: static; grid-column: 1; grid-row: 3; align-self: center; width: fit-content; max-width: 100%; min-width: 0; min-height: 44px; margin: var(--space-2); padding: var(--space-2); }
 .science-preview small { font-size: var(--font-note); text-transform: none; font-family: var(--type-body); }
@@ -350,21 +354,27 @@ body { overflow-y: auto; }
 .is-plan > .furniture-tray { position: static; grid-column: 1 / -1; grid-row: 6; width: 100%; max-width: none; transform: none; }
 .is-plan > .furniture-chip { position: static; grid-column: 1 / -1; grid-row: 7; margin: var(--space-2); width: fit-content; max-width: calc(100% - 16px); }
 /* The opening status must not take a grid row. A new row shrinks the sheet
-   and the wall the user just aimed at is no longer under the cursor. */
+   and the wall the user just aimed at is no longer under the cursor.
+   It also must not sit on the sheet: a strip over the corner eats wall clicks. */
 .app-shell .canvas-frame.is-plan { position: relative; }
-.app-shell .is-plan > .furniture-chip.is-overlay {
-  position: absolute;
-  grid-row: 2;
-  grid-column: 1;
-  top: 8px;
-  bottom: auto;
-  left: 12px;
-  right: auto;
+.app-shell .plan-control-row > .furniture-chip.is-overlay {
+  position: static;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(320px, 100%);
   margin: 0;
-  z-index: 4;
-  width: fit-content;
-  max-width: min(320px, 46%);
+  z-index: 1;
+  flex-wrap: nowrap;
+  align-items: center;
 }
+.app-shell .plan-control-row > .furniture-chip.is-overlay > span { min-width: 0; overflow: hidden; }
+.app-shell .plan-control-row > .furniture-chip.is-overlay strong,
+.app-shell .plan-control-row > .furniture-chip.is-overlay small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-shell .plan-control-row > .zoom-control { position: static; inset: auto; flex: none; }
 .app-shell .is-plan > .science-preview,
 .app-shell .is-plan > .sun-status {
   position: static;
@@ -457,7 +467,7 @@ body { overflow-y: auto; }
   .plan-room-key button { grid-template-columns: 16px minmax(0, 1fr); gap: var(--space-1); }
   .plan-room-key .room-area { grid-column: 2; }
   .scale-chip > span { display: none; }
-  .is-plan > .science-preview { grid-template-columns: 1fr; margin-right: 0; }
+  .is-plan .science-preview { grid-template-columns: 1fr; margin-right: 0; }
   .science-preview > .science-live, .science-preview > svg { display: none; }
   .assistant-bar input[type='text'] { font-size: var(--font-body); }
   .room-options-dialog p, .room-options-dialog button, .room-options-dialog select, .room-option-metrics { font-size: var(--font-note); }
@@ -786,7 +796,7 @@ body { overflow-y: auto; }
   .app-shell .is-plan > .science-dock,
   .app-shell .is-plan > .value-lens,
   .app-shell .is-plan > .furniture-tray { grid-column: 1; }
-  .app-shell .is-plan > .zoom-control { grid-column: 1; justify-self: end; }
+  .app-shell .is-plan > .plan-control-row { grid-column: 1; }
   .app-shell .is-plan > .plan-room-key {
     grid-column: 2;
     grid-row: 2 / span 12;
@@ -802,8 +812,9 @@ body { overflow-y: auto; }
    Room key becomes one swipeable row; numbers stay, so it still keys the plan. */
 @media (max-width: 720px) {
   .app-shell .is-plan > .scale-chip { padding-top: 2px; padding-bottom: 2px; min-height: 44px; }
-  .app-shell .is-plan > .science-preview, .app-shell .is-plan > .sun-status { margin: 2px 4px; padding: 4px 8px; }
-  .app-shell .is-plan > .zoom-control { margin: 2px 4px; }
+  .app-shell .is-plan > .science-preview, .app-shell .plan-control-row > .science-preview, .app-shell .is-plan > .sun-status { margin: 2px 4px; padding: 4px 8px; }
+  .app-shell .is-plan > .plan-control-row { margin: 2px 4px; }
+  .app-shell .plan-control-row > .furniture-chip.is-overlay { flex: 1 0 100%; max-width: 100%; }
   .app-shell .is-plan > .draw-hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 4px 8px; }
   .app-shell .is-plan > .plan-room-key {
     display: flex;
@@ -1065,6 +1076,7 @@ html[lang="zh-Hans"] .app-shell {
 .app-shell .mark { display: block; width: 16px; height: 16px; }
 .app-shell .furniture-chip { flex-wrap: wrap; max-width: calc(100% - 16px); height: auto; }
 .app-shell .furniture-chip .chip-action {
+  flex: none;
   width: auto !important;
   min-width: max-content !important;
   height: auto !important;
@@ -1076,6 +1088,7 @@ html[lang="zh-Hans"] .app-shell {
   align-items: center;
   gap: 6px;
 }
+.app-shell .furniture-chip .chip-action > span { display: inline; white-space: nowrap; min-width: 0; overflow: visible; }
 .app-shell .scale-chip .ruler-arm {
   flex: none;
   width: auto !important;

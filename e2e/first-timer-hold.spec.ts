@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
 import { chinaApartmentPlan } from '../src/mockups/chinaApartment'
 import { encodePlanToHash } from '../src/sharePlan'
@@ -17,6 +18,7 @@ const SUN_TIME: Record<Lang, string> = { en: 'Inspector sun time', th: 'เว�
 const PLACE: Record<Lang, string> = { en: 'Place a window', th: 'วางหน้าต่าง', zh: '放置窗户' }
 const WINDOW_TOOL: Record<Lang, string> = { en: 'Window', th: 'หน้าต่าง', zh: '窗' }
 const ROOM_TOOL: Record<Lang, string> = { en: 'Room', th: 'ห้อง', zh: '房间' }
+const HOLD_DIR = path.join('test-results', 'hold')
 
 test.describe('play hold fixes', () => {
   test.beforeEach(({ }, testInfo) => {
@@ -66,8 +68,8 @@ test.describe('play hold fixes', () => {
             glyphH: glyph ? Math.round(glyph.height * 10) / 10 : 0,
           }
         }))
-        fs.mkdirSync('/opt/cursor/artifacts', { recursive: true })
-        fs.appendFileSync('/opt/cursor/artifacts/hold-measures.jsonl', JSON.stringify({ viewport: viewport.name, lang, scan, stages, openings, planWidths }) + '\n')
+        fs.mkdirSync(HOLD_DIR, { recursive: true })
+        fs.appendFileSync(path.join(HOLD_DIR, 'hold-measures.jsonl'), JSON.stringify({ viewport: viewport.name, lang, scan, stages, openings, planWidths }) + '\n')
         expect(scan.empty, JSON.stringify(scan.empty)).toEqual([])
         expect(scan.unnamed, JSON.stringify(scan.unnamed)).toEqual([])
         expect(scan.overflow, JSON.stringify(scan.overflow)).toEqual([])
@@ -87,6 +89,38 @@ test.describe('play hold fixes', () => {
           return { overlapX, overlapY }
         })
         expect((covered.overlapX ?? 0) > 0 && (covered.overlapY ?? 0) > 0, JSON.stringify(covered)).toBe(false)
+        const onSheet = await page.evaluate(() => {
+          const clip = (el: Element) => {
+            const raw = el.getBoundingClientRect()
+            let left = raw.left
+            let top = raw.top
+            let right = raw.right
+            let bottom = raw.bottom
+            let node = el.parentElement
+            while (node) {
+              const style = getComputedStyle(node)
+              const clips = [style.overflow, style.overflowX, style.overflowY].some((value) => value === 'hidden' || value === 'clip' || value === 'auto' || value === 'scroll')
+              if (clips) {
+                const box = node.getBoundingClientRect()
+                left = Math.max(left, box.left)
+                top = Math.max(top, box.top)
+                right = Math.min(right, box.right)
+                bottom = Math.min(bottom, box.bottom)
+              }
+              node = node.parentElement
+            }
+            return { left, top, right, bottom }
+          }
+          const status = document.querySelector('.furniture-chip.is-overlay')
+          const sheet = document.querySelector('.plan-canvas')
+          if (!status || !sheet) return { missing: true }
+          const a = clip(status)
+          const b = clip(sheet)
+          const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left)
+          const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
+          return { overlapX, overlapY }
+        })
+        expect((onSheet.overlapX ?? 0) > 1 && (onSheet.overlapY ?? 0) > 1, JSON.stringify(onSheet)).toBe(false)
         const more = page.getByRole('button', { name: /More tools|เครื่องมือเพิ่ม|更多工具/ })
         if (await more.count()) {
           await more.click()
@@ -101,7 +135,7 @@ test.describe('play hold fixes', () => {
           const named = await scanButtons(page)
           expect(named.overflow, JSON.stringify(named.overflow)).toEqual([])
           expect(named.empty, JSON.stringify(named.empty)).toEqual([])
-          if (viewport.name === '390') await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewport.name}-${lang}-more.png` })
+          if (viewport.name === '390') await page.screenshot({ path: `${HOLD_DIR}/hold-${viewport.name}-${lang}-more.png` })
           await more.click()
         }
         expect(openings.length).toBeGreaterThan(0)
@@ -126,7 +160,7 @@ test.describe('play hold fixes', () => {
           expect(await clippedByAncestor(title), titleText).toBe(false)
           expect(planWidths?.initial).toBe(viewport.name === '1280' ? 618 : 758)
           const overlap = await walkModes(page, viewport.name, lang)
-          fs.appendFileSync('/opt/cursor/artifacts/hold-measures.jsonl', JSON.stringify({ viewport: viewport.name, lang, overlap }) + '\n')
+          fs.appendFileSync(path.join(HOLD_DIR, 'hold-measures.jsonl'), JSON.stringify({ viewport: viewport.name, lang, overlap }) + '\n')
           expect(overlap.collisions, JSON.stringify(overlap)).toEqual([])
           expect(overlap.drawWidth).toBe(planWidths?.initial)
           expect(overlap.restoredWidth).toBe(planWidths?.initial)
@@ -156,7 +190,7 @@ test.describe('play hold fixes', () => {
           await page.keyboard.press('Escape')
         }
 
-        await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewport.name}-${lang}-plan.png` })
+        await page.screenshot({ path: `${HOLD_DIR}/hold-${viewport.name}-${lang}-plan.png` })
         await page.locator('.journey-step').nth(2).click()
         await expect(page.getByRole('button', { name: PLACE[lang], exact: true })).toHaveCount(0)
         const sunTime = page.getByRole('slider', { name: SUN_TIME[lang], exact: true })
@@ -179,7 +213,7 @@ test.describe('play hold fixes', () => {
 
         await page.locator('.journey-step').nth(5).click()
         await expect(page.locator('.budget-hero strong')).toContainText('ZAR')
-        await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewport.name}-${lang}-cost.png` })
+        await page.screenshot({ path: `${HOLD_DIR}/hold-${viewport.name}-${lang}-cost.png` })
         if (viewport.name === '390') {
           await page.locator('.journey-step').nth(0).click()
           await expect(page.locator('.inspector')).toHaveCount(0)
@@ -213,17 +247,17 @@ test.describe('play hold fixes', () => {
             valueText: value.textContent?.trim() ?? '',
           }
         })
-        fs.appendFileSync('/opt/cursor/artifacts/hold-measures.jsonl', JSON.stringify({ viewport: viewport.name, lang, spatialFit }) + '\n')
+        fs.appendFileSync(path.join(HOLD_DIR, 'hold-measures.jsonl'), JSON.stringify({ viewport: viewport.name, lang, spatialFit }) + '\n')
         expect(spatialFit.barH).toBeLessThanOrEqual(56)
         expect(spatialFit.hudCovered).toBe(false)
         expect(spatialFit.labelLines).toBe(1)
         expect(spatialFit.valueLines).toBe(1)
         const spatial = await scanButtons(page)
-        fs.appendFileSync('/opt/cursor/artifacts/hold-measures.jsonl', JSON.stringify({ viewport: viewport.name, lang, view: 'spatial', scan: spatial }) + '\n')
+        fs.appendFileSync(path.join(HOLD_DIR, 'hold-measures.jsonl'), JSON.stringify({ viewport: viewport.name, lang, view: 'spatial', scan: spatial }) + '\n')
         expect(spatial.empty, JSON.stringify(spatial.empty)).toEqual([])
         expect(spatial.unnamed, JSON.stringify(spatial.unnamed)).toEqual([])
         expect(spatial.overflow, JSON.stringify(spatial.overflow)).toEqual([])
-        await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewport.name}-${lang}-spatial.png` })
+        await page.screenshot({ path: `${HOLD_DIR}/hold-${viewport.name}-${lang}-spatial.png` })
 
         await page.locator('.view-switch button').nth(2).click()
         await expect(page.locator('.render-thumbs button').first()).toBeVisible()
@@ -237,10 +271,96 @@ test.describe('play hold fixes', () => {
         })
         expect(navNote.overlapX > 1 && navNote.overlapY > 1, JSON.stringify(navNote)).toBe(false)
         const picture = await scanButtons(page)
-        fs.appendFileSync('/opt/cursor/artifacts/hold-measures.jsonl', JSON.stringify({ viewport: viewport.name, lang, view: 'picture', scan: picture }) + '\n')
+        fs.appendFileSync(path.join(HOLD_DIR, 'hold-measures.jsonl'), JSON.stringify({ viewport: viewport.name, lang, view: 'picture', scan: picture }) + '\n')
         expect(picture.empty, JSON.stringify(picture.empty)).toEqual([])
         expect(picture.unnamed, JSON.stringify(picture.unnamed)).toEqual([])
         expect(picture.overflow, JSON.stringify(picture.overflow)).toEqual([])
+      })
+    }
+  }
+
+  for (const viewport of VIEWPORTS) {
+    if (viewport.name === '390') continue
+    for (const lang of LANGS) {
+      test(`corner windows ${viewport.name} ${lang}`, async ({ page }) => {
+        test.setTimeout(90_000)
+        await page.addInitScript((value) => localStorage.setItem('designon:lang', value), lang)
+        await page.setViewportSize(viewport)
+        await page.goto('/')
+        const blank = page.getByRole('button', { name: /Start from a blank page|เริ่มจากหน้าว่าง|从空白页开始/ })
+        if (await blank.isVisible()) await blank.click()
+        await expect(blank).toBeHidden()
+        await page.waitForTimeout(400)
+        const widthOf = () => page.locator('.plan-canvas').evaluate((el) => (el as HTMLElement).offsetWidth)
+        const before = await widthOf()
+        await page.locator('.canvas-tools').getByRole('button', { name: ROOM_TOOL[lang], exact: true }).click()
+        const sheet = await page.locator('.plan-canvas').boundingBox()
+        if (!sheet) throw new Error('missing sheet')
+        await page.mouse.move(sheet.x + sheet.width * 0.03, sheet.y + sheet.height * 0.04)
+        await page.mouse.down()
+        await page.mouse.move(sheet.x + sheet.width * 0.42, sheet.y + sheet.height * 0.46, { steps: 12 })
+        await page.mouse.up()
+        await expect(page.locator('button.room')).toHaveCount(1)
+        await page.waitForTimeout(400)
+        const drawn = await widthOf()
+        await page.locator('.canvas-tools').getByRole('button', { name: WINDOW_TOOL[lang], exact: true }).click()
+        const room = await page.locator('button.room').boundingBox()
+        if (!room) throw new Error('missing room')
+        const walls = [
+          [room.x + room.width / 2, room.y + 4],
+          [room.x + room.width - 4, room.y + room.height / 2],
+          [room.x + room.width / 2, room.y + room.height - 4],
+          [room.x + 4, room.y + room.height / 2],
+        ]
+        for (let index = 0; index < walls.length; index++) {
+          const [x, y] = walls[index]
+          const hit = await page.evaluate(({ x, y }) => {
+            const target = document.elementFromPoint(x, y)
+            const chip = target?.closest('.furniture-chip')
+            return { chip: chip?.textContent?.replace(/\s+/g, ' ').trim() ?? null, tag: target?.className ?? '' }
+          }, { x, y })
+          expect(hit.chip, JSON.stringify(hit)).toBeNull()
+          await page.mouse.click(x, y)
+          await expect(page.locator('button.opening-window'), `click ${index + 1}`).toHaveCount(index + 1)
+        }
+        const after = await widthOf()
+        expect(after, `sheet moved ${before} → ${drawn} → ${after}`).toBe(drawn)
+        const strip = await page.evaluate(() => {
+          const clip = (el: Element) => {
+            const raw = el.getBoundingClientRect()
+            let left = raw.left
+            let top = raw.top
+            let right = raw.right
+            let bottom = raw.bottom
+            let node = el.parentElement
+            while (node) {
+              const style = getComputedStyle(node)
+              const clips = [style.overflow, style.overflowX, style.overflowY].some((value) => value === 'hidden' || value === 'clip' || value === 'auto' || value === 'scroll')
+              if (clips) {
+                const box = node.getBoundingClientRect()
+                left = Math.max(left, box.left)
+                top = Math.max(top, box.top)
+                right = Math.min(right, box.right)
+                bottom = Math.min(bottom, box.bottom)
+              }
+              node = node.parentElement
+            }
+            return { left, top, right, bottom }
+          }
+          const status = document.querySelector('.furniture-chip.is-overlay')
+          const sheet = document.querySelector('.plan-canvas')
+          const science = document.querySelector('.science-preview')
+          const overlap = (a: Element | null, b: Element | null) => {
+            if (!a || !b) return false
+            const A = clip(a)
+            const B = clip(b)
+            return Math.min(A.right, B.right) - Math.max(A.left, B.left) > 1 && Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top) > 1
+          }
+          return { onSheet: overlap(status, sheet), onScience: overlap(status, science) }
+        })
+        expect(strip).toEqual({ onSheet: false, onScience: false })
+        fs.mkdirSync(HOLD_DIR, { recursive: true })
+        await page.screenshot({ path: path.join(HOLD_DIR, `hold-${viewport.name}-${lang}-corner.png`) })
       })
     }
   }
@@ -300,10 +420,10 @@ async function walkModes(page: Page, viewportName: string, lang: Lang) {
         })
         return { count: els.length, spills }
       })
-      await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewportName}-${lang}-overlap-3d.png` })
+      await page.screenshot({ path: `${HOLD_DIR}/hold-${viewportName}-${lang}-overlap-3d.png` })
     }
-    if (mode.name === 'draw') await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewportName}-${lang}-overlap-draw.png` })
-    if (mode.name === 'living') await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewportName}-${lang}-overlap-living.png` })
+    if (mode.name === 'draw') await page.screenshot({ path: `${HOLD_DIR}/hold-${viewportName}-${lang}-overlap-draw.png` })
+    if (mode.name === 'living') await page.screenshot({ path: `${HOLD_DIR}/hold-${viewportName}-${lang}-overlap-living.png` })
   }
   await page.locator('.journey-step').nth(0).click()
   await expect(page.locator('.plan-canvas')).toBeVisible()
@@ -382,15 +502,13 @@ async function layoutCollisions(page: Page) {
     }
     const overlayNames = overlays.map(([, name]) => name).filter((name) => nodes.has(name))
     const controlNames = controls.map(([, name]) => name).filter((name) => nodes.has(name))
-    const allowed = new Set(['chip×canvas', 'chip×shell'])
     const collisions: string[] = []
     const bump = (a: string, b: string) => {
       const left = nodes.get(a)!
       const right = nodes.get(b)!
       if (left === right || left.contains(right) || right.contains(left)) return
-      const pair = `${a}×${b}`
-      if (allowed.has(pair) || hits(left, right) === false) return
-      collisions.push(pair)
+      if (hits(left, right) === false) return
+      collisions.push(`${a}×${b}`)
     }
     for (const overlay of overlayNames) {
       for (const control of controlNames) bump(overlay, control)
