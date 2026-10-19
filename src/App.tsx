@@ -510,10 +510,11 @@ function App() {
     if (nav.view) setView(nav.view)
     if (nav.tool) setActiveTool(nav.tool)
     if (nav.inspector !== undefined && !pointerIsDownRef.current) {
-      // Phone: the stage itself is the answer. 3D and Draw open with no panel.
-      // Other stages open a short bottom sheet that stays above the tool dock.
+      // Draw closes the side panel on every screen so the sheet returns to its
+      // full width. Phone 3D does the same. Other stages open the panel in its
+      // own column, beside the drawing.
       const phone = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 720px)').matches
-      const draw = phone && nav.mode === 'plan' && nav.view === 'plan' && nav.tool === 'draw'
+      const draw = nav.mode === 'plan' && nav.view === 'plan' && nav.tool === 'draw'
       const spatial = phone && nav.mode === 'plan' && nav.view === 'spatial'
       if (draw || spatial || !nav.tool) {
         setInspectorOpen(draw || spatial ? false : nav.inspector)

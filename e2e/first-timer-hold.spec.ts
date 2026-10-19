@@ -26,7 +26,7 @@ test.describe('play hold fixes', () => {
   for (const viewport of VIEWPORTS) {
     for (const lang of LANGS) {
       test(`${viewport.name} ${lang}`, async ({ page }) => {
-        test.setTimeout(90_000)
+        test.setTimeout(120_000)
         await page.clock.setFixedTime(new Date('2026-10-19T06:00:00Z'))
         await page.addInitScript((value) => localStorage.setItem('designon:lang', value), lang)
         await page.route('**/geocoding-api.open-meteo.com/**', (route) => route.fulfill({
@@ -120,6 +120,20 @@ test.describe('play hold fixes', () => {
           const cityText = (await city.innerText()).trim()
           expect(cityText).toBe('Shanghai')
           expect(await clippedByAncestor(city)).toBe(false)
+          const title = page.locator('.project-picker strong')
+          const titleText = (await title.innerText()).trim()
+          expect(titleText.endsWith('…') || titleText.endsWith('...'), titleText).toBe(false)
+          expect(await clippedByAncestor(title), titleText).toBe(false)
+          expect(planWidths?.initial).toBe(viewport.name === '1280' ? 618 : 758)
+          const overlap = await walkModes(page, viewport.name, lang)
+          fs.appendFileSync('/opt/cursor/artifacts/hold-measures.jsonl', JSON.stringify({ viewport: viewport.name, lang, overlap }) + '\n')
+          expect(overlap.collisions, JSON.stringify(overlap)).toEqual([])
+          expect(overlap.drawWidth).toBe(planWidths?.initial)
+          expect(overlap.restoredWidth).toBe(planWidths?.initial)
+          expect(overlap.panelOnDraw).toBe(0)
+          const badge = overlap.badge
+          expect(badge.spills, JSON.stringify(badge)).toEqual([])
+          expect(badge.count).toBeGreaterThan(0)
         }
         if (viewport.name === '390') {
           await page.getByRole('button', { name: MORE[lang], exact: true }).click()
@@ -250,6 +264,142 @@ test('og-image.png renders at 1200 by 630', async ({ page }) => {
   await expect.poll(() => page.locator('#og-check').evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(1200)
   await expect.poll(() => page.locator('#og-check').evaluate((el: HTMLImageElement) => el.naturalHeight)).toBe(630)
 })
+
+const DRAW_WIDTH: Record<string, number> = { '1280': 618, '1440': 758 }
+
+async function walkModes(page: Page, viewportName: string, lang: Lang) {
+  const modes = [
+    { step: 0, name: 'draw', spatial: false },
+    { step: 1, name: '3d', spatial: true },
+    { step: 2, name: 'sun', spatial: true },
+    { step: 3, name: 'living', spatial: false },
+    { step: 4, name: 'systems', spatial: false },
+    { step: 5, name: 'cost', spatial: false },
+  ]
+  const collisions: { mode: string; pairs: string[] }[] = []
+  const widths: Record<string, number | null> = {}
+  let badge = { count: 0, spills: [] as string[] }
+  for (const mode of modes) {
+    await page.locator('.journey-step').nth(mode.step).click()
+    if (mode.spatial) await expect(page.locator('.spatial3d-shell')).toBeVisible({ timeout: 25_000 })
+    else await expect(page.locator('.plan-canvas')).toBeVisible()
+    await page.waitForTimeout(400)
+    if (mode.name === 'draw') await page.locator('button.opening').first().dispatchEvent('pointerdown')
+    const report = await layoutCollisions(page)
+    widths[mode.name] = report.planWidth
+    if (report.collisions.length) collisions.push({ mode: mode.name, pairs: report.collisions })
+    if (mode.name === '3d') {
+      badge = await page.locator('.standards-badge').evaluateAll((els) => {
+        const spills = els.flatMap((el) => {
+          const text = (el.textContent ?? '').replace(/\s+/g, ' ').trim()
+          const box = el.getBoundingClientRect()
+          if (box.width < 1) return []
+          const wide = el.scrollWidth > el.clientWidth + 1
+          const tall = el.scrollHeight > el.clientHeight + 1
+          return wide || tall ? [`${text} ${el.scrollWidth}×${el.scrollHeight} in ${el.clientWidth}×${el.clientHeight}`] : []
+        })
+        return { count: els.length, spills }
+      })
+      await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewportName}-${lang}-overlap-3d.png` })
+    }
+    if (mode.name === 'draw') await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewportName}-${lang}-overlap-draw.png` })
+    if (mode.name === 'living') await page.screenshot({ path: `/opt/cursor/artifacts/hold-${viewportName}-${lang}-overlap-living.png` })
+  }
+  await page.locator('.journey-step').nth(0).click()
+  await expect(page.locator('.plan-canvas')).toBeVisible()
+  await page.waitForTimeout(400)
+  const restoredWidth = await page.locator('.plan-canvas').evaluate((el) => (el as HTMLElement).offsetWidth)
+  const panelOnDraw = await page.locator('.inspector').count()
+  const drawWidth = widths.draw
+  expect(drawWidth, JSON.stringify(widths)).toBe(DRAW_WIDTH[viewportName])
+  return { collisions: collisions.flatMap((item) => item.pairs.map((pair) => `${item.mode}:${pair}`)), widths, drawWidth, restoredWidth, panelOnDraw, badge }
+}
+
+async function layoutCollisions(page: Page) {
+  return page.evaluate(() => {
+    const shown = (selector: string) => {
+      const el = document.querySelector(selector)
+      if (!el) return null
+      const style = getComputedStyle(el)
+      const rect = el.getBoundingClientRect()
+      if (rect.width < 1 || rect.height < 1 || style.display === 'none' || style.visibility === 'hidden') return null
+      return el
+    }
+    const clip = (el: Element) => {
+      const raw = el.getBoundingClientRect()
+      let left = raw.left
+      let top = raw.top
+      let right = raw.right
+      let bottom = raw.bottom
+      let node = el.parentElement
+      while (node) {
+        const style = getComputedStyle(node)
+        const clips = [style.overflow, style.overflowX, style.overflowY].some((value) => value === 'hidden' || value === 'clip' || value === 'auto' || value === 'scroll')
+        if (clips) {
+          const box = node.getBoundingClientRect()
+          left = Math.max(left, box.left)
+          top = Math.max(top, box.top)
+          right = Math.min(right, box.right)
+          bottom = Math.min(bottom, box.bottom)
+        }
+        node = node.parentElement
+      }
+      return { left, top, right, bottom }
+    }
+    const hits = (a: Element, b: Element) => {
+      const A = clip(a)
+      const B = clip(b)
+      const overlapX = Math.min(A.right, B.right) - Math.max(A.left, B.left)
+      const overlapY = Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top)
+      return overlapX > 1 && overlapY > 1
+    }
+    const overlays = [
+      ['.inspector', 'inspector'],
+      ['.furniture-chip.is-overlay', 'chip'],
+      ['.science-preview', 'science'],
+      ['.sun-status', 'sun'],
+      ['.science-dock', 'dock'],
+      ['.study-launchers', 'study'],
+    ] as const
+    const controls = [
+      ['.ruler-arm', 'calibrate'],
+      ['.value-lens-launch', 'lens'],
+      ['.zoom-control', 'zoom'],
+      ['.plan-room-key', 'rooms'],
+      ['.spatial-toolbar', 'toolbar'],
+      ['.science-seasons', 'seasons'],
+      ['.outside-temperature', 'outside'],
+      ['.science-method', 'method'],
+      ['.spatial-sun-hud', 'hud'],
+      ['.assistant-bar button.button.secondary', 'quick'],
+      ['.plan-canvas', 'canvas'],
+      ['.spatial3d-shell', 'shell'],
+    ] as const
+    const nodes = new Map<string, Element>()
+    for (const [selector, name] of [...overlays, ...controls]) {
+      const el = shown(selector)
+      if (el) nodes.set(name, el)
+    }
+    const overlayNames = overlays.map(([, name]) => name).filter((name) => nodes.has(name))
+    const controlNames = controls.map(([, name]) => name).filter((name) => nodes.has(name))
+    const allowed = new Set(['chip×canvas', 'chip×shell'])
+    const collisions: string[] = []
+    const bump = (a: string, b: string) => {
+      const left = nodes.get(a)!
+      const right = nodes.get(b)!
+      if (left === right || left.contains(right) || right.contains(left)) return
+      const pair = `${a}×${b}`
+      if (allowed.has(pair) || hits(left, right) === false) return
+      collisions.push(pair)
+    }
+    for (const overlay of overlayNames) {
+      for (const control of controlNames) bump(overlay, control)
+      for (const other of overlayNames) if (other > overlay) bump(overlay, other)
+    }
+    const plan = document.querySelector('.plan-canvas') as HTMLElement | null
+    return { collisions, planWidth: plan ? plan.offsetWidth : null }
+  })
+}
 
 async function stablePlanWidth(page: Page, lang: Lang) {
   await page.waitForTimeout(400)
