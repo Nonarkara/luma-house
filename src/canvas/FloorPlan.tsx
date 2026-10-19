@@ -388,7 +388,7 @@ export const FloorPlan = React.memo(function FloorPlan({
               </svg>
               <div
                 className={`opening opening-${activeTool === 'door' ? 'door' : 'window'} rotate-${openingGhost.rotation} is-ghost`}
-                style={{ left: `${openingGhost.x}%`, top: `${openingGhost.y}%` }}
+                style={{ left: `${openingGhost.x}%`, top: `${openingGhost.y}%`, width: `${((activeTool === 'door' ? 0.9 : 1.6) / site.w) * 100}%` }}
                 aria-hidden="true"
               />
             </>

@@ -176,7 +176,7 @@ test.describe('drawing studio', () => {
       const measure = page.getByRole('button', { name: 'Tape Measure', exact: true })
       if (!(await measure.isVisible())) await page.getByRole('button', { name: 'More tools', exact: true }).click()
       await measure.click()
-      await page.getByRole('button', { name: 'Draw', exact: true }).click()
+      await page.getByRole('button', { name: 'Pencil', exact: true }).click()
       const measureAfter = page.getByRole('button', { name: 'Tape Measure', exact: true })
       if (!(await measureAfter.isVisible())) await page.getByRole('button', { name: 'More tools', exact: true }).click()
       await expect(measureAfter).toHaveAttribute('aria-pressed', 'false')

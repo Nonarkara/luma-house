@@ -9,6 +9,15 @@ import type { Room } from '../types'
  */
 export const OPENING_SNAP_PX = 24
 
+/** Default widths used when a new opening is placed (see openingDimensions). */
+export const DEFAULT_OPENING_WIDTH_M = { window: 1.6, door: 0.9 } as const
+
+/** Half a new opening's width, in percent of sheet width and height. */
+export function openingHalfSpanPct(type: 'window' | 'door', site: { w: number; h: number }): { x: number; y: number } {
+  const half = DEFAULT_OPENING_WIDTH_M[type] / 2
+  return { x: (half / site.w) * 100, y: (half / site.h) * 100 }
+}
+
 export interface WallHit {
   x: number
   y: number
@@ -34,6 +43,8 @@ export function nearestWallHit(
   rooms: Room[],
   stagePx: StagePx,
   maxPx = OPENING_SNAP_PX,
+  /** Half the opening's width, as percent of sheet width and height, so the whole opening sits on the wall. */
+  halfSpanPct: { x: number; y: number } = { x: 0, y: 0 },
 ): WallHit | null {
   if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return null
   if (!(stagePx.width > 0) || !(stagePx.height > 0)) return null
@@ -52,12 +63,16 @@ export function nearestWallHit(
       const along = horizontal ? edge.x : edge.y
       const start = horizontal ? edge.x1 : edge.y1
       const end = horizontal ? edge.x2 : edge.y2
-      const clamped = Math.max(start, Math.min(end, along))
+      const half = Math.min(horizontal ? halfSpanPct.x : halfSpanPct.y, (end - start) / 2)
+      const clamped = Math.max(start + half, Math.min(end - half, along))
       if (horizontal) edge.x = clamped
       else edge.y = clamped
+      // Distance to the wall line itself, so a click near a corner still finds the wall.
+      const onLineX = horizontal ? Math.max(start, Math.min(end, point.x)) : edge.x
+      const onLineY = horizontal ? edge.y : Math.max(start, Math.min(end, point.y))
       const px = Math.hypot(
-        ((point.x - edge.x) / 100) * stagePx.width,
-        ((point.y - edge.y) / 100) * stagePx.height,
+        ((point.x - onLineX) / 100) * stagePx.width,
+        ((point.y - onLineY) / 100) * stagePx.height,
       )
       if (px <= maxPx && (!best || px < best.px)) best = { hit: { ...edge }, px }
     }

@@ -19,7 +19,7 @@ import { contentBox, useCanvasViewport } from './canvas/useCanvasViewport'
 import { useRoomGestures } from './canvas/useRoomGestures'
 import { appendStrokePoint, clampRoom, clientToPercent, moveOpening, moveRoom, snapRoomDraft, type StrokePoint } from './canvas/geometry'
 import { applyNapkinStroke } from './canvas/napkinStroke'
-import { nearestWallHit, type WallHit } from './canvas/wallHost'
+import { nearestWallHit, openingHalfSpanPct, type WallHit } from './canvas/wallHost'
 import { downloadBlob, downloadPlanPng, drawPlan, planToDxf } from './export/planExchange'
 import { houseMesh } from './fabricate/houseMesh'
 import { meshToGlb } from './fabricate/formats'
@@ -756,7 +756,7 @@ function App() {
       const bounds = stageRef.current?.getBoundingClientRect()
       if (bounds) {
         const point = clientToPercent(event.clientX, event.clientY, bounds)
-        setOpeningGhost(point ? nearestWallHit(point, plan.rooms, { width: bounds.width, height: bounds.height }) : null)
+        setOpeningGhost(point ? nearestWallHit(point, plan.rooms, { width: bounds.width, height: bounds.height }, undefined, openingHalfSpanPct(activeTool, site)) : null)
       }
       return
     }

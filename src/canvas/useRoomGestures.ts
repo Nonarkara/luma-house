@@ -17,7 +17,7 @@ import {
   type ResizeHandle,
 } from './geometry'
 import { openingDimensions } from '../openingGeometry'
-import { nearestWallHit } from './wallHost'
+import { nearestWallHit, openingHalfSpanPct } from './wallHost'
 
 type GestureKind = 'move-room' | 'resize-room' | 'pinch-room' | 'move-opening' | 'resize-opening' | 'move-furniture'
 
@@ -302,7 +302,7 @@ export function useRoomGestures({
       if (!bounds || (activeTool !== 'window' && activeTool !== 'door')) return null
       const point = clientToPercent(clientX, clientY, bounds)
       if (!point) return null
-      const hit = nearestWallHit(point, planRef.current.rooms, { width: bounds.width, height: bounds.height })
+      const hit = nearestWallHit(point, planRef.current.rooms, { width: bounds.width, height: bounds.height }, undefined, openingHalfSpanPct(activeTool, siteOf(planRef.current)))
       if (!hit) return null
       return {
         id: `${activeTool}-${Date.now()}`,

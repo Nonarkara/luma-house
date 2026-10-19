@@ -17,7 +17,7 @@ test('blank page, room drag, window and door land on the walls', async ({ page }
   if (size && size.width <= 720) {
     const view = await page.locator('.plan-viewport').boundingBox()
     expect(view!.height / size.height).toBeGreaterThanOrEqual(0.55)
-    for (const name of ['Draw', 'Window', 'Door', 'Select', 'Undo', 'More tools']) {
+    for (const name of ['Pencil', 'Window', 'Door', 'Select', 'Undo', 'More tools']) {
       const box = await page.getByRole('button', { name, exact: true }).boundingBox()
       expect(box!.width).toBeGreaterThanOrEqual(44)
       expect(box!.height).toBeGreaterThanOrEqual(44)
