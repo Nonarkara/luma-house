@@ -16,6 +16,17 @@ const SECTION: Box = { x: 548, y: 52, w: 464, h: 190 }
 const ELEVATION: Box = { x: 548, y: 262, w: 464, h: 190 }
 const AXON: Box = { x: 28, y: 468, w: 984, h: 188 }
 
+/**
+ * The drawing sheet's fixed paper. Every panel is fitted above this line, so the
+ * printed drawing is the same physical size whatever the room key says — a
+ * sheet whose height grew with the length of a name would print one building at
+ * two different sizes, and the axonometric carries no scale bar to say which.
+ */
+const DRAWING_HEIGHT = AXON.y + AXON.h + 24
+
+/** Where the room key starts on its own sheet. */
+const KEY_TOP = 116
+
 function wrapNote(text: string, size: number, measure?: MeasureText): string[] {
   const lines: string[] = []
   let line = ''
@@ -510,9 +521,9 @@ export function DrawingSheet({ plan, styleId }: { plan: PlanState; styleId: Draw
   const measure = useTextMeasure(style.font)
   const sheet = useMemo(() => buildDrawingSheet(plan), [plan])
   // The key names every room, including hidden faces and plan names that do
-  // not fit. Wrap long names and grow the paper instead of clipping one line.
+  // not fit. Wrap long names and grow the key page instead of clipping one line.
   const keyRows: Array<{ x: number; y: number; lines: string[] }> = []
-  let keyBottom = 692
+  let keyBottom = KEY_TOP
   for (let index = 0; index < sheet.rooms.length; index += 2) {
     const pair = sheet.rooms.slice(index, index + 2).map((room, column) => {
       const lines = wrapNote(`${index + column + 1} ${room.name}`, 11, measure)
@@ -521,7 +532,7 @@ export function DrawingSheet({ plan, styleId }: { plan: PlanState; styleId: Draw
     keyRows.push(...pair)
     keyBottom += Math.max(...pair.map(entry => entry.lines.length)) * 15 + 4
   }
-  const footerY = Math.max(712, keyBottom + 12)
+  const footerY = Math.max(KEY_TOP + 20, keyBottom + 16)
   const planFit = useMemo(() => {
     const points: Array<[number, number]> = []
     for (const room of sheet.rooms) {
@@ -546,21 +557,28 @@ export function DrawingSheet({ plan, styleId }: { plan: PlanState; styleId: Draw
     : `Walls ${sheet.wallThickness.toFixed(2)} m, the same thickness as the 3D model. Section A is the cut through the most floor area.`
   const notes = [method, 'Concept drawing · panels fitted independently; use scale bar for plan · confirm dimensions before construction']
     .map(note => wrapNote(note, 11, measure))
-  const paperHeight = footerY + 62 + Math.max(...notes.map(lines => lines.length)) * 15
+  const keyHeight = footerY + 62 + Math.max(...notes.map(lines => lines.length)) * 15
 
+  // The drawing prints at a fixed physical scale, so its paper must not grow
+  // with the room key. A sheet whose size changed with the length of a room
+  // name would print the same building at two different sizes, and a drawing
+  // with no stated scale is not a drawing. The key and the notes print on their
+  // own sheet, as they do on any drawing set.
   return (
-    <svg className="drawing-sheet" viewBox={`0 0 1040 ${paperHeight}`} role="img" aria-label={`${style.name} drawing of the current plan, ${area.toFixed(1)} square meters`}>
+    <>
+    <svg className="drawing-sheet" viewBox={`0 0 1040 ${DRAWING_HEIGHT}`} role="img" aria-label={`${style.name} drawing of the current plan, ${area.toFixed(1)} square meters`}>
       <defs>
         <pattern id="sheet-hatch" width="7" height="7" patternUnits="userSpaceOnUse">
           <path d="M-1,1 l2,-2 M0,7 l7,-7 M6,8 l2,-2" stroke={style.ink} strokeWidth="0.6" />
         </pattern>
       </defs>
-      <rect width="1040" height={paperHeight} fill={style.paper} />
-      <text x={28} y={34} fill={style.ink} fontFamily={style.font} fontSize={20}>
-        {style.name}
+      <rect width="1040" height={DRAWING_HEIGHT} fill={style.paper} />
+      <SheetMasthead style={style} />
+      <text x={28} y={DRAWING_HEIGHT - 16} fill={style.muted} fontFamily={style.font} fontSize={11}>
+        {summary}
       </text>
-      <text x={1012} y={34} textAnchor="end" fill={style.muted} fontFamily={style.font} fontSize={12}>
-        {style.note}
+      <text x={1012} y={DRAWING_HEIGHT - 16} textAnchor="end" fill={style.muted} fontFamily={style.font} fontSize={11}>
+        Room key and notes overleaf
       </text>
 
       {planFit && sheet.rooms.length > 0 ? (
@@ -707,15 +725,47 @@ export function DrawingSheet({ plan, styleId }: { plan: PlanState; styleId: Draw
       <SectionDrawing sheet={sheet} style={style} />
       <ElevationDrawing sheet={sheet} style={style} />
       <AxonDrawing sheet={sheet} style={style} measure={measure} />
-
-      <text x={28} y={674} fill={style.muted} fontFamily={style.font} fontSize={11}>ROOM KEY · hidden faces are named here</text>
+    </svg>
+    <svg
+      className="drawing-sheet-key"
+      viewBox={`0 0 1040 ${keyHeight}`}
+      role="img"
+      aria-label={`${style.name} room key and notes, ${sheet.rooms.length} rooms`}
+      data-sheet-key-page=""
+    >
+      <rect width="1040" height={keyHeight} fill={style.paper} />
+      <SheetMasthead style={style} />
+      <text x={28} y={68} fill={style.ink} fontFamily={style.font} fontSize={14}>
+        ROOM KEY
+      </text>
+      <text x={28} y={86} fill={style.muted} fontFamily={style.font} fontSize={11}>
+        Every room, numbered as the plan. A face too small to hold its name carries the number alone.
+      </text>
       <g data-sheet-key="">
-        {keyRows.map(entry => entry.lines.map((line, i) => <text key={`${entry.x}-${entry.y}-${i}`} x={entry.x} y={entry.y + i * 15} fill={style.ink} fontFamily={style.font} fontSize={11}>{line}</text>))}
+        {keyRows.map(entry => entry.lines.map((line, i) => (
+          <text key={`${entry.x}-${entry.y}-${i}`} x={entry.x} y={entry.y + i * 15} fill={style.ink} fontFamily={style.font} fontSize={11}>{line}</text>
+        )))}
       </g>
       <line x1={28} y1={footerY} x2={1012} y2={footerY} stroke={style.muted} strokeWidth={0.6} />
       <text x={28} y={footerY + 22} fill={style.ink} fontFamily={style.font} fontSize={13}>{summary}</text>
-      {notes.map((lines, column) => lines.map((line, index) => <text key={`${column}-${index}`} data-sheet-note="" x={28 + column * 500} y={footerY + 42 + index * 15} fill={style.muted} fontFamily={style.font} fontSize={11}>{line}</text>))}
+      {notes.map((lines, column) => lines.map((line, index) => (
+        <text key={`${column}-${index}`} data-sheet-note="" x={28 + column * 500} y={footerY + 42 + index * 15} fill={style.muted} fontFamily={style.font} fontSize={11}>{line}</text>
+      )))}
     </svg>
+    </>
+  )
+}
+
+function SheetMasthead({ style }: { style: DrawingStyle }) {
+  return (
+    <g>
+      <text x={28} y={34} fill={style.ink} fontFamily={style.font} fontSize={20}>
+        {style.name}
+      </text>
+      <text x={1012} y={34} textAnchor="end" fill={style.muted} fontFamily={style.font} fontSize={12}>
+        {style.note}
+      </text>
+    </g>
   )
 }
 

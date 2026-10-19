@@ -292,8 +292,10 @@ test('axonometric names are named on their own faces and never collide', async (
   }
 
   // A room whose face cannot hold its name at a legible size is keyed rather
-  // than left unnamed or clipped, and a key mark is never orphaned.
-  const sheetText = (await drawing.locator('text').allTextContents()).join(' | ')
+  // than left unnamed or clipped, and a key mark is never orphaned. The key
+  // prints on its own sheet, so its text lives outside the drawing viewport.
+  const sheet = page.locator('svg.drawing-sheet-key')
+  const sheetText = (await sheet.locator('text').allTextContents()).join(' | ')
   expect(sheetText, 'every room must be named somewhere on the sheet').toContain('Shaded terrace')
   for (const label of labels.filter(entry => /^\d+$/.test(entry.text))) {
     expect(sheetText, `key mark ${label.text} must be listed in the key`).toMatch(new RegExp(`\\b${label.text}\\s+\\S`))
