@@ -25,4 +25,4 @@ export function assumedOutsideC(latitude: number, dayOfYear: number): number {
   return Math.round((mean + seasonal) * 10) / 10
 }
 
-export const OUTSIDE_ASSUMPTION = 'Assumed for this latitude and month. Not a forecast.'
+export const OUTSIDE_ASSUMPTION = 'Assumed for this latitude and month. Not a forecast. This curve runs cold versus city normals.'

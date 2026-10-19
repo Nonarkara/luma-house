@@ -247,7 +247,7 @@ const ROWS: Array<[string, string, string]> = [
   ['Predicted reduction', 'การลดที่คาด', '预计减少'],
   ['Illustrative typical savings from these toggles. Not a simulation of this plan.', 'ตัวเลขลดการใช้พลังงานนี้เป็นตัวอย่างจากสวิตช์เหล่านี้ ไม่ใช่การจำลองของผังนี้', '这些开关的节能比例是示意，不是对本方案的模拟。'],
   ['assumed', 'สมมติ', '假定'],
-  ['Assumed for this latitude and month. Not a forecast.', 'สมมติจากละติจูดและเดือนนี้ ไม่ใช่พยากรณ์', '按这个纬度和月份假定。不是预报。'],
+  ['Assumed for this latitude and month. Not a forecast. This curve runs cold versus city normals.', 'สมมติจากละติจูดและเดือนนี้ ไม่ใช่พยากรณ์ เส้นนี้อุณหภูมิต่ำกว่าค่าปกติของเมือง', '按这个纬度和月份假定。不是预报。这条曲线比城市常年值偏冷。'],
   ['Upload plan as underlay', 'อัปโหลดผังเป็นภาพรอง', '上传平面作为底图'],
   ['Upload a plan photo and trace it by hand. AI tracing is paused, so nothing is sent to a model.', 'อัปโหลดภาพผังแล้วลอกลายเอง การลอกลายด้วยเอไอหยุดไว้ จึงไม่มีการส่งไปยังโมเดล', '上传平面照片后手工描图。AI 描图已暂停，不会把内容发给模型。'],
   ['Concept photos are paused. The 3D view and the study sheet stay on this device.', 'ภาพแนวคิดหยุดไว้ มุมมองสามมิติและแผ่นศึกษาอยู่บนเครื่องนี้', '概念图已暂停。三维视图和学习图留在这台设备上。'],

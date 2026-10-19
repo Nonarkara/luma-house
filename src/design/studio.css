@@ -1586,6 +1586,7 @@ html[lang="zh-Hans"] .app-shell {
     white-space: nowrap;
   }
   .app-shell .top-more > summary .more-word { display: none; }
+  .app-shell .top-more > summary > .mark { display: block; }
   .app-shell .top-actions { gap: 0; }
   .app-shell .welcome-card {
     gap: 4px;

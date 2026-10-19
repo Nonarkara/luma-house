@@ -22,7 +22,7 @@ const ROOM_TOOL: Record<Lang, string> = { en: 'Room', th: 'ห้อง', zh: '�
 const DOOR_TOOL: Record<Lang, string> = { en: 'Door', th: 'ประตู', zh: '门' }
 const SELECT_TOOL: Record<Lang, string> = { en: 'Select', th: 'เลือก', zh: '选择' }
 const OPEN_PANEL: Record<Lang, string> = { en: 'Open panel', th: 'เปิดแผง', zh: '打开面板' }
-const CLOSE_PANEL: Record<Lang, string> = { en: 'Close panel', th: 'ปิดแผง', zh: '关闭面板' }
+const COLLAPSE: Record<Lang, string> = { en: 'Collapse inspector', th: 'พับแผง', zh: '收起面板' }
 const STRIP_HINT: Record<Lang, string> = {
   en: 'Drag along the wall · Delete key removes',
   th: 'ลากไปตามผนัง · ปุ่มลบเอาออก',
@@ -448,7 +448,14 @@ test.describe('play hold fixes', () => {
           await tool(SELECT_TOOL[lang])
           for (let guard = 0; guard < 24 && await page.locator('button.opening').count(); guard++) {
             await page.locator('button.opening').first().click({ force: true })
-            await page.locator('.opening-slot .chip-action').click()
+            const chip = page.locator('.opening-slot .chip-action')
+            const reachable = await chip.evaluate((el) => {
+              const rect = el.getBoundingClientRect()
+              const target = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+              return !!target && (target === el || el.contains(target))
+            })
+            expect(reachable, 'Remove opening is covered').toBe(true)
+            await chip.click()
           }
           await expect(page.locator('button.opening')).toHaveCount(0)
         }
@@ -456,8 +463,9 @@ test.describe('play hold fixes', () => {
           await page.locator('.journey-step').nth(stage.step).click()
           await expect(page.locator('.plan-canvas')).toBeVisible()
           if (phone) {
-            const close = page.getByRole('button', { name: CLOSE_PANEL[lang], exact: true })
-            if (await close.isVisible()) await close.click()
+            const collapse = page.locator('.inspector-head').getByRole('button', { name: COLLAPSE[lang], exact: true })
+            if (await collapse.isVisible()) await collapse.click()
+            await expect(page.locator('.inspector')).toHaveCount(0)
           } else {
             const open = page.getByRole('button', { name: OPEN_PANEL[lang], exact: true })
             if (await open.isVisible()) await open.click()
@@ -709,13 +717,94 @@ test.describe('header buttons stay apart', () => {
           if (label.scrollWidth > label.clientWidth + 1) clipped.push(name)
         }
         const bar = document.querySelector('.topbar')!.getBoundingClientRect()
-        return { overlaps, missed, clipped, barHeight: bar.height, count: buttons.length }
+        const mark = document.querySelector('.top-more > summary > .mark')
+        const markBox = mark?.getBoundingClientRect()
+        const markStyle = mark ? getComputedStyle(mark) : null
+        return {
+          overlaps,
+          missed,
+          clipped,
+          barHeight: bar.height,
+          count: buttons.length,
+          more: mark && markBox && markStyle ? { display: markStyle.display, w: markBox.width, h: markBox.height } : null,
+        }
       })
       expect(hits.count, JSON.stringify(hits)).toBeGreaterThan(3)
       expect(hits.overlaps, JSON.stringify(hits)).toEqual([])
       expect(hits.missed, JSON.stringify(hits)).toEqual([])
       expect(hits.clipped, JSON.stringify(hits)).toEqual([])
       expect(hits.barHeight, JSON.stringify(hits)).toBeLessThanOrEqual(56)
+      expect(hits.more && hits.more.display !== 'none' && hits.more.w > 8 && hits.more.h > 8, JSON.stringify(hits)).toBe(true)
+    })
+  }
+
+  for (const lang of LANGS) {
+    test(`390px ${lang} long city stays out of Plan and More`, async ({ page }) => {
+      await page.addInitScript((value) => localStorage.setItem('designon:lang', value), lang)
+      await page.setViewportSize({ width: 390, height: 844 })
+      await page.goto('/#plan=' + encodePlanToHash({
+        ...chinaApartmentPlan,
+        location: {
+          name: 'Phra Nakhon Si Ayutthaya',
+          label: 'Phra Nakhon Si Ayutthaya, Thailand',
+          latitude: 14.3532,
+          longitude: 100.5683,
+          timezone: 'Asia/Bangkok',
+        },
+      }))
+      const welcome = page.locator('.welcome-card')
+      if (await welcome.isVisible()) await welcome.getByRole('button').nth(1).click()
+      await expect(page.locator('.location-toggle span')).toHaveText('Phra Nakhon Si Ayutthaya')
+      const hits = await page.evaluate(() => {
+        const buttons = [...document.querySelectorAll('.topbar button, .topbar summary')].filter((button) => {
+          const rect = button.getBoundingClientRect()
+          const style = getComputedStyle(button)
+          return rect.width > 1 && rect.height > 1 && style.visibility !== 'hidden' && style.display !== 'none'
+        })
+        const boxes = buttons.map((button) => {
+          const rect = button.getBoundingClientRect()
+          const name = (button.getAttribute('aria-label') || button.textContent || '').replace(/\s+/g, ' ').trim()
+          return { name, x: rect.x, right: rect.right, y: rect.y, bottom: rect.bottom }
+        })
+        const overlaps: string[] = []
+        for (let i = 0; i < boxes.length; i++) {
+          for (let j = i + 1; j < boxes.length; j++) {
+            const a = boxes[i]
+            const b = boxes[j]
+            const overlapX = Math.min(a.right, b.right) - Math.max(a.x, b.x)
+            const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y)
+            if (overlapX > 0.5 && overlapY > 0.5) overlaps.push(`${a.name} × ${b.name} ${Math.round(overlapX)}`)
+          }
+        }
+        const missed: string[] = []
+        const clipped: string[] = []
+        for (const button of buttons) {
+          const rect = button.getBoundingClientRect()
+          const name = (button.getAttribute('aria-label') || button.textContent || '').replace(/\s+/g, ' ').trim()
+          for (const x of [rect.x + 2, rect.x + rect.width / 2, rect.right - 2]) {
+            const target = document.elementFromPoint(x, rect.y + rect.height / 2)
+            if (!target || (target !== button && !button.contains(target))) missed.push(`${name}@${Math.round(x)}`)
+          }
+          if (button.classList.contains('location-toggle')) continue
+          const label = button.querySelector('span') ?? button
+          if (label.scrollWidth > label.clientWidth + 1) clipped.push(name)
+        }
+        const city = document.querySelector('.location-toggle > span')
+        const mark = document.querySelector('.top-more > summary > .mark')
+        const markBox = mark?.getBoundingClientRect()
+        const markStyle = mark ? getComputedStyle(mark) : null
+        return {
+          overlaps,
+          missed,
+          clipped,
+          cityEllipsis: !!city && city.scrollWidth > city.clientWidth + 1,
+          more: mark && markBox && markStyle ? { display: markStyle.display, w: markBox.width, h: markBox.height } : null,
+        }
+      })
+      expect(hits.overlaps, JSON.stringify(hits)).toEqual([])
+      expect(hits.missed, JSON.stringify(hits)).toEqual([])
+      expect(hits.clipped, JSON.stringify(hits)).toEqual([])
+      expect(hits.more && hits.more.display !== 'none' && hits.more.w > 8 && hits.more.h > 8, JSON.stringify(hits)).toBe(true)
     })
   }
 })

@@ -1,3 +1,4 @@
+import { OUTSIDE_ASSUMPTION } from '../location/climate'
 import { clockLabel } from '../location/solar'
 import React from 'react'
 import type { HeatFlowSnapshot } from '../analysis'
@@ -76,9 +77,9 @@ export const ScienceDock = React.memo(function ScienceDock({
           <button type="button" className={day === 80 ? 'active' : ''} onClick={() => setDay(80)}>{tr('Mar')}</button>
           <button type="button" className={day === 172 ? 'active' : ''} onClick={() => setDay(172)}>{tr('Jun')}</button>
         </div>
-        <label className="outside-temperature" title={tr('Assumed for this latitude and month. Not a forecast.')}>
+        <label className="outside-temperature" title={tr(OUTSIDE_ASSUMPTION)}>
           {tr('Outside')}
-          <input aria-label={tr('Outside air temperature')} title={tr('Assumed for this latitude and month. Not a forecast.')} type="number" min="-30" max="55" value={outsideC} onChange={(event) => setOutsideC(Number(event.target.value))} />
+          <input aria-label={tr('Outside air temperature')} title={tr(OUTSIDE_ASSUMPTION)} type="number" min="-30" max="55" value={outsideC} onChange={(event) => setOutsideC(Number(event.target.value))} />
           <span>°C</span>
           <small>{tr('assumed')}</small>
         </label>
