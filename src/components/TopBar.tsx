@@ -1,5 +1,5 @@
 import React from 'react'
-import { Copy, Download, FilePlus2, HelpCircle, MoreHorizontal, PanelRight, Plus, Settings2 } from 'lucide-react'
+import { LanguageSwitch, useI18n } from '../i18n'
 import { Logo, IconButton } from './ui'
 
 interface TopBarProps {
@@ -42,6 +42,7 @@ export const TopBar = React.memo(function TopBar({
   locationName,
   hideLabeledShare = false,
 }: TopBarProps) {
+  const { tr } = useI18n()
   const menuRef = React.useRef<HTMLDetailsElement>(null)
   const close = () => menuRef.current?.removeAttribute('open')
   const run = (action?: () => void) => () => { close(); action?.() }
@@ -52,13 +53,15 @@ export const TopBar = React.memo(function TopBar({
     document.addEventListener('pointerdown', dismiss)
     return () => document.removeEventListener('pointerdown', dismiss)
   }, [])
+  const panelLabel = inspectorOpen ? tr('Close panel') : tr('Open panel')
+  const panelShort = inspectorOpen ? tr('Close') : tr('Open')
 
   return (
     <header className="topbar">
       <div className="topbar-left">
         <Logo />
         <div className="project-picker">
-          <span><strong>{projectName}</strong><small>{lastSaved}</small></span>
+          <span><strong>{tr(projectName)}</strong><small>{tr(lastSaved)}</small></span>
         </div>
         {meta && <div className="topbar-meta">{meta}</div>}
       </div>
@@ -69,29 +72,34 @@ export const TopBar = React.memo(function TopBar({
         <details className="top-more" ref={menuRef} onKeyDown={event => {
           if (event.key === 'Escape') { close(); menuRef.current?.querySelector('summary')?.focus() }
         }}>
-          <summary role="button" className="icon-button" aria-label="More actions" title="More actions">
-            <MoreHorizontal aria-hidden="true" />
+          <summary role="button" className="icon-button" aria-label={tr('More actions')} title={tr('More actions')}>
+            {tr('More')}
           </summary>
           <div className="top-more-menu">
-            <p className="menu-project-name">{projectName}<small>{lastSaved}</small></p>
-            {onChangeLocation && <button type="button" className="menu-location" onClick={run(onChangeLocation)}>Change city · {locationName}</button>}
-            {onToggleCatalog && (
-              <button type="button" aria-label="Furniture Catalog" onClick={run(onToggleCatalog)}>
-                <Plus aria-hidden="true" /> Furniture catalog
+            <LanguageSwitch />
+            <p className="menu-project-name">{tr(projectName)}<small>{tr(lastSaved)}</small></p>
+            {onChangeLocation && (
+              <button type="button" className="menu-location" aria-label={locationName ? tr(`Change city · ${locationName}`) : tr('Change city')} onClick={run(onChangeLocation)}>
+                {tr('Change city')} · {locationName}
               </button>
             )}
-            <button type="button" className="top-more-share" aria-label="Share" onClick={run(sharePlan)}>
-              <Copy aria-hidden="true" /> Share
+            {onToggleCatalog && (
+              <button type="button" aria-label={tr('Furniture Catalog')} onClick={run(onToggleCatalog)}>
+                {tr('Furniture catalog')}
+              </button>
+            )}
+            <button type="button" className="top-more-share" aria-label={tr('Share')} onClick={run(sharePlan)}>
+              {tr('Share')}
             </button>
-            <button type="button" onClick={run(onNewSketch)} title="Start a fresh napkin sketch. Undo brings the current one back.">
-              <FilePlus2 aria-hidden="true" /> New sketch
+            <button type="button" aria-label={tr('New sketch')} onClick={run(onNewSketch)} title={tr('New sketch')}>
+              {tr('New sketch')}
             </button>
-            <button type="button" onClick={run(onOpenSettings)}>
-              <Settings2 aria-hidden="true" /> Workspace settings
+            <button type="button" aria-label={tr('Workspace settings')} onClick={run(onOpenSettings)}>
+              {tr('Workspace settings')}
             </button>
             {onOpenShortcuts && (
-              <button type="button" onClick={run(onOpenShortcuts)}>
-                <HelpCircle aria-hidden="true" /> Shortcuts and legend <kbd>?</kbd>
+              <button type="button" aria-label={tr('Shortcuts and legend')} onClick={run(onOpenShortcuts)}>
+                {tr('Shortcuts and legend')} <kbd>?</kbd>
               </button>
             )}
             {menuExtra && <div className="top-more-extra">{menuExtra}</div>}
@@ -99,22 +107,21 @@ export const TopBar = React.memo(function TopBar({
         </details>
 
         <IconButton
-          label={inspectorOpen ? 'Close panel' : 'Open panel'}
+          label={panelLabel}
           className={inspectorOpen ? 'active' : ''}
           onClick={onToggleInspector}
         >
-          <PanelRight />
+          {panelShort}
         </IconButton>
 
         {!hideLabeledShare && (
-          <button className="button secondary top-action-label" type="button" onClick={sharePlan} aria-label="Share">
-            <Copy className="top-action-icon" aria-hidden="true" />
-            <span className="btn-label">Share</span>
+          <button className="button secondary top-action-label" type="button" onClick={sharePlan} aria-label={tr('Share')}>
+            <span className="btn-label">{tr('Share')}</span>
           </button>
         )}
 
-        <button className="button primary" type="button" onClick={exportPlan} aria-label="Export">
-          <Download /><span className="btn-label">Export</span>
+        <button className="button primary" type="button" onClick={exportPlan} aria-label={tr('Export')}>
+          <span className="btn-label">{tr('Export')}</span>
         </button>
       </div>
     </header>

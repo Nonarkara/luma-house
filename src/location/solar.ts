@@ -60,8 +60,8 @@ export function todayIn(location: Pick<ProjectLocation, 'timezone'>, now = new D
 }
 
 /** "19 Oct" for a day of year, so the study stamp reads as a date, not "Day 292". */
-export function dayLabel(day: number, year = new Date().getFullYear()) {
-  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(year, 0, day)))
+export function dayLabel(day: number, year = new Date().getFullYear(), locale = 'en-GB') {
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(year, 0, day)))
 }
 
 /** Today's date and the current hour in the city, but a night-time "now" falls back to 10:00 so a fresh sun study is never empty. */

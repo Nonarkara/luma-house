@@ -1,16 +1,16 @@
 import React from 'react'
-import { BrickWall, CircleHelp, Eye, Route, SunMedium, Wind, X } from 'lucide-react'
+import { useI18n } from '../i18n'
 import type { HeatFlowSnapshot, RoomDaylightPotential, RoomEgressRoute, RoomWindPotential } from '../analysis'
 import { formatCurrency } from '../plan'
 
 export type ValueLensMode = 'off' | 'daylight' | 'shade' | 'air' | 'escape' | 'shell'
 
-const LENSES: Array<{ id: Exclude<ValueLensMode, 'off'>; label: string; icon: typeof Eye }> = [
-  { id: 'daylight', label: 'Windows', icon: Eye },
-  { id: 'shade', label: 'Shade', icon: SunMedium },
-  { id: 'air', label: 'Air', icon: Wind },
-  { id: 'escape', label: 'Escape', icon: Route },
-  { id: 'shell', label: 'Envelope', icon: BrickWall },
+const LENSES: Array<{ id: Exclude<ValueLensMode, 'off'>; label: string }> = [
+  { id: 'daylight', label: 'Windows' },
+  { id: 'shade', label: 'Shade' },
+  { id: 'air', label: 'Air' },
+  { id: 'escape', label: 'Escape' },
+  { id: 'shell', label: 'Envelope' },
 ]
 
 function watts(value: number): string {
@@ -182,11 +182,11 @@ export const ValueLens = React.memo(function ValueLens({
   envelopeApplied: boolean
   onToggleEnvelope: () => void
 }) {
+  const { tr } = useI18n()
   if (active === 'off') {
     return (
-      <button className="value-lens-launch" type="button" aria-label="Open value lens" onClick={() => setActive('daylight')}>
-        <Eye />
-        <span><small>Compare decisions</small><strong>Open value lens</strong></span>
+      <button className="value-lens-launch" type="button" aria-label={tr('Open value lens')} onClick={() => setActive('daylight')}>
+        <span><small>{tr('Compare decisions')}</small><strong>{tr('Open value lens')}</strong></span>
       </button>
     )
   }
@@ -194,15 +194,15 @@ export const ValueLens = React.memo(function ValueLens({
   const copy = copyForLens({ active, daylight, wind, egress, currentHeat, baseHeat, upgradedHeat, directSunM2, currency, openingAllowance, envelopeAllowance })
 
   return (
-    <aside className="value-lens" aria-label="Design value lens">
+    <aside className="value-lens" aria-label={tr('Design value lens')}>
       <header>
-        <div><small>Value lens</small><strong>See the consequence on plan</strong></div>
-        <button type="button" onClick={() => setActive('off')} aria-label="Close value lens"><X /></button>
+        <div><small>{tr('Value lens')}</small><strong>{tr('See the consequence on plan')}</strong></div>
+        <button type="button" onClick={() => setActive('off')} aria-label={tr('Close value lens')}>{tr('Close')}</button>
       </header>
-      <nav aria-label="Value lens layer">
-        {LENSES.map(({ id, label, icon: Icon }) => (
+      <nav aria-label={tr('Value lens layer')}>
+        {LENSES.map(({ id, label }) => (
           <button type="button" key={id} className={active === id ? 'active' : ''} onClick={() => setActive(id)}>
-            <Icon /><span>{label}</span>
+            <span>{tr(label)}</span>
           </button>
         ))}
       </nav>
@@ -224,12 +224,12 @@ export const ValueLens = React.memo(function ValueLens({
         {active === 'air' && (
           <div className="wind-controls">
             <label>
-              <span>Wind from</span>
+              <span>{tr('Wind from')}</span>
               <input type="range" min="0" max="350" step="10" value={windFrom} onChange={(event) => setWindFrom(Number(event.target.value))} />
               <b>{windFrom}°</b>
             </label>
             <label>
-              <span>Speed</span>
+              <span>{tr('Speed')}</span>
               <input type="range" min="0.5" max="8" step="0.5" value={windSpeed} onChange={(event) => setWindSpeed(Number(event.target.value))} />
               <b>{windSpeed.toFixed(1)} m/s</b>
             </label>
@@ -237,13 +237,13 @@ export const ValueLens = React.memo(function ValueLens({
         )}
 
         <dl className="value-lens-values">
-          <div><dt>Worth it when</dt><dd>{copy.worth}</dd></div>
-          <div><dt>Aesthetic + lived</dt><dd>{copy.experience}</dd></div>
-          <div><dt>Technical</dt><dd>{copy.technical}</dd></div>
-          <div><dt>Expense</dt><dd>{copy.expense}</dd></div>
+          <div><dt>{tr('Worth it when')}</dt><dd>{copy.worth}</dd></div>
+          <div><dt>{tr('Aesthetic + lived')}</dt><dd>{copy.experience}</dd></div>
+          <div><dt>{tr('Technical')}</dt><dd>{copy.technical}</dd></div>
+          <div><dt>{tr('Expense')}</dt><dd>{copy.expense}</dd></div>
         </dl>
         <details className="value-lens-method">
-          <summary><CircleHelp /> Method <span>{copy.confidence}</span></summary>
+          <summary>{tr('Method')} <span>{tr(copy.confidence)}</span></summary>
           <div>{copy.method}</div>
         </details>
       </div>

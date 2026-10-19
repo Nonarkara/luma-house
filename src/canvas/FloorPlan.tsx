@@ -1,6 +1,6 @@
 import { openingDimensions } from '../openingGeometry'
-import { ArrowRight } from 'lucide-react'
 import React, { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { useI18n } from '../i18n'
 import { furnitureCatalog, furnitureLabelFor, furnitureRectFor, furnitureSpecFor, roomAreaFor, siteOf } from '../plan'
 import type { SunPatch } from '../plan'
 import type { Furniture, Opening, PlanState, PlanTool, Room, RoomKind } from '../types'
@@ -123,6 +123,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   onCanvasClick: (event: React.MouseEvent<HTMLDivElement>) => void
   stageRef: RefObject<HTMLDivElement>
 }) {
+  const { tr } = useI18n()
   const site = siteOf(plan)
   const rayX = Math.max(1, Math.min(99, 50 + 72 * Math.sin((sunAngle * Math.PI) / 180)))
   const rayY = Math.max(1, Math.min(99, 50 - 72 * Math.cos((sunAngle * Math.PI) / 180)))
@@ -185,7 +186,7 @@ export const FloorPlan = React.memo(function FloorPlan({
               />
             </svg>
           )}
-          <div className="north-mark" aria-label="North points upward"><ArrowRight /> <span>N</span></div>
+          <div className="north-mark" aria-label={tr('North points upward')}><span>N</span></div>
           <div className="scale-label">{site.unit} m grid <span>•</span> {site.w.toFixed(1)} × {site.h.toFixed(1)} m field</div>
           {showSun && (
             <svg className="sun-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" aria-hidden="true">
@@ -420,13 +421,13 @@ export const FloorPlan = React.memo(function FloorPlan({
               style={{ left: `calc(${opening.x}% + 24px)`, top: `calc(${opening.y}% - 22px)` }}
               onPointerDown={(event) => event.stopPropagation()}
             >
-              <button type="button" aria-pressed={opening.type === 'window'} onClick={chooseType('window')}>Window</button>
-              <button type="button" aria-pressed={opening.type === 'door'} onClick={chooseType('door')}>Door</button>
+              <button type="button" aria-pressed={opening.type === 'window'} onClick={chooseType('window')}>{tr('Window')}</button>
+              <button type="button" aria-pressed={opening.type === 'door'} onClick={chooseType('door')}>{tr('Door')}</button>
             </div>
             )
           })}
-          {showEmptyHint && <p className="canvas-empty-line">Drag a box to make a room. Then click a wall to add a window.</p>}
-          {wallNote && <p className="wall-note" role="status">Click a wall</p>}
+          {showEmptyHint && <p className="canvas-empty-line">{tr('Drag a box to make a room. Then click a wall to add a window.')}</p>}
+          {wallNote && <p className="wall-note" role="status">{tr('Click a wall')}</p>}
           {cornerNote && (
             <p className="corner-note" role="status" style={{ left: `${cornerNote.x}%`, top: `${cornerNote.y}%` }}>
               Corners don't meet

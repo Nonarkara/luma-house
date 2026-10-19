@@ -1,4 +1,5 @@
 import { clockLabel, dayLabel } from '../location/solar'
+import { useI18n } from '../i18n'
 import { themeTokens, type StudioTheme } from '../design/themes'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
@@ -623,6 +624,8 @@ export default function Spatial3D({
   windFrom?: number
   windSpeed?: number
 }) {
+  const { tr, lang } = useI18n()
+  const locale = lang === 'th' ? 'th-TH' : lang === 'zh' ? 'zh-Hans' : 'en-GB'
   const colors = themeTokens(theme)
   const site = useMemo(() => siteOf(plan), [plan])
   const edgeColor = colors['--studio-ink'] ?? WIREEDGE_COLOR
@@ -684,7 +687,7 @@ export default function Spatial3D({
   )
 
   return (
-    <div className="spatial3d-shell" ref={shellRef} aria-label="Local 3D light study" data-style={displayStyle} data-projection={walkMode || tourWaypoint ? 'perspective' : cameraRequest?.camera.projection ?? (preset === 'orbit' ? 'perspective' : 'orthographic')}>
+    <div className="spatial3d-shell" ref={shellRef} aria-label={tr('Local 3D light study')} data-style={displayStyle} data-projection={walkMode || tourWaypoint ? 'perspective' : cameraRequest?.camera.projection ?? (preset === 'orbit' ? 'perspective' : 'orthographic')}>
       <div className="spatial-toolbar">
         <div className="preset-group">
           <button
@@ -692,64 +695,64 @@ export default function Spatial3D({
             className={`spatial-tb-btn ${preset === 'orbit' && !walkMode ? 'active' : ''}`}
             onClick={() => { setCameraRequest(null); setPreset('orbit'); if (walkMode && onToggleWalkMode) onToggleWalkMode() }}
           >
-            3D Orbit
+            {tr('3D Orbit')}
           </button>
           <button
             type="button"
             className={`spatial-tb-btn ${preset === 'axonometric' ? 'active' : ''}`}
             onClick={() => { setCameraRequest(null); setPreset('axonometric'); if (walkMode && onToggleWalkMode) onToggleWalkMode() }}
           >
-            Axonometric
+            {tr('Axonometric')}
           </button>
           <button
             type="button"
             className={`spatial-tb-btn ${preset === 'topdown' ? 'active' : ''}`}
             onClick={() => { setCameraRequest(null); setPreset('topdown'); if (walkMode && onToggleWalkMode) onToggleWalkMode() }}
           >
-            Top-Down
+            {tr('Top-Down')}
           </button>
           <button
             type="button"
             className={`spatial-tb-btn ${walkMode ? 'active' : ''}`}
             onClick={onToggleWalkMode}
           >
-            Walk at 1.6 m
+            {tr('Walk at 1.6 m')}
           </button>
         </div>
 
         <div className="vector-group">
-          <button type="button" className={`spatial-tb-btn ${architectural ? 'active-layer' : ''}`} aria-pressed={architectural} onClick={() => setDisplayStyle('architectural')}>Architectural</button>
-          <button type="button" className={`spatial-tb-btn ${displayStyle === 'solid' ? 'active-layer' : ''}`} aria-pressed={displayStyle === 'solid'} onClick={() => setDisplayStyle('solid')}>Solid</button>
-          <button type="button" className={`spatial-tb-btn ${wireframe ? 'active-layer' : ''}`} aria-pressed={wireframe} onClick={() => setDisplayStyle('wireframe')}>Wireframe</button>
+          <button type="button" className={`spatial-tb-btn ${architectural ? 'active-layer' : ''}`} aria-pressed={architectural} onClick={() => setDisplayStyle('architectural')}>{tr('Architectural')}</button>
+          <button type="button" className={`spatial-tb-btn ${displayStyle === 'solid' ? 'active-layer' : ''}`} aria-pressed={displayStyle === 'solid'} onClick={() => setDisplayStyle('solid')}>{tr('Solid')}</button>
+          <button type="button" className={`spatial-tb-btn ${wireframe ? 'active-layer' : ''}`} aria-pressed={wireframe} onClick={() => setDisplayStyle('wireframe')}>{tr('Wireframe')}</button>
           <button type="button" className="spatial-tb-btn" onClick={onStartTour} disabled={ghost}>
-            Tour
+            {tr('Tour')}
           </button>
           <button type="button" className="spatial-tb-btn" onClick={onOpenScenarios} disabled={ghost}>
-            Conditions
+            {tr('Conditions')}
           </button>
           <button
             type="button"
             className={`spatial-tb-btn toggle ${showSunRays ? 'active-layer' : ''}`}
             onClick={() => setShowSunRays(!showSunRays)}
           >
-            Sun Rays
+            {tr('Sun Rays')}
           </button>
           <button
             type="button"
             className={`spatial-tb-btn toggle ${showAirPaths ? 'active-layer' : ''}`}
             onClick={() => setShowAirPaths(!showAirPaths)}
           >
-            Air Paths
+            {tr('Air Paths')}
           </button>
           <button
             type="button"
             className={`spatial-tb-btn toggle ${showRoof ? 'active-layer' : ''}`}
             onClick={() => { setShowRoof(!showRoof); if (!showRoof) setSectionHeight(4.5) }}
           >
-            3D Roof
+            {tr('3D Roof')}
           </button>
-          <button type="button" className={`spatial-tb-btn toggle ${showShadows ? 'active-layer' : ''}`} aria-pressed={showShadows} onClick={() => setShowShadows(value => !value)}>Shadows</button>
-          <button type="button" className="spatial-tb-btn" onClick={downloadView} disabled={ghost}>Save view PNG</button>
+          <button type="button" className={`spatial-tb-btn toggle ${showShadows ? 'active-layer' : ''}`} aria-pressed={showShadows} onClick={() => setShowShadows(value => !value)}>{tr('Shadows')}</button>
+          <button type="button" className="spatial-tb-btn" onClick={downloadView} disabled={ghost}>{tr('Save view PNG')}</button>
           {showRoof && (
             <button
               type="button"
@@ -757,12 +760,12 @@ export default function Spatial3D({
               onClick={() => setRoofStyle(ROOF_STYLES[(ROOF_STYLES.indexOf(roofStyle) + 1) % ROOF_STYLES.length])}
               title="Cycle roof shape: flat, gable, shed, green"
             >
-              Roof: {roofStyle}
+              {tr('Roof:')} {roofStyle}
             </button>
           )}
 
           <div className="spatial-section">
-            <span className="spatial-section-label">Section Cut</span>
+            <span className="spatial-section-label">{tr('Section Cut')}</span>
             <input
               type="range"
               className="spatial-section-range"
@@ -772,8 +775,8 @@ export default function Spatial3D({
               value={sectionHeight}
               disabled={walkMode || !!tourWaypoint}
               onChange={(event) => setSectionHeight(Number(event.target.value))}
-              title={`3D section cut at ${sectionHeight.toFixed(1)} m — anything above is clipped`}
-              aria-label="3D section cut height"
+              title={tr(`3D section cut at ${sectionHeight.toFixed(1)} m — anything above is clipped`)}
+              aria-label={tr('3D section cut height')}
             />
             <span className="spatial-section-value">{sectionHeight.toFixed(1)} m</span>
           </div>
@@ -901,17 +904,17 @@ export default function Spatial3D({
       <div className="spatial-sun-hud" aria-live="polite">
         <span className="sun-orb" style={{ opacity: sunAltitude > 0 ? 1 : 0.25 }} />
         <div>
-          <small>{displayStyle} · {dayLabel(day, year)} {year} · local geometry</small>
-          <strong>{clockLabel(hour)} · {sunAltitude.toFixed(1)}° altitude</strong>
-          <em>{sunAzimuth.toFixed(1)}° azimuth · {locationLabel}</em>
+          <small>{tr(displayStyle)} · {dayLabel(day, year, locale)} {year} · {tr('local geometry')}</small>
+          <strong>{tr(`${clockLabel(hour)} · ${sunAltitude.toFixed(1)}° altitude`)}</strong>
+          <em>{tr(`${sunAzimuth.toFixed(1)}° azimuth`)} · {locationLabel}</em>
         </div>
       </div>
       {exportError && <p role="alert" className="spatial-orbit-note">{exportError}</p>}
       <div className="spatial-orbit-note">
         {walkMode
-          ? 'Eye-level walk · click model to look · WASD moves · Esc exits · concept view has no wall collision'
-          : `${preset === 'topdown' ? 'North-up parallel view' : 'Drag to orbit'} · ${architectural ? 'cut faces filled · ' : ''}${showShadows ? 'full building in shadow model' : 'shadows off'}`}
-        {displayStyle === 'solid' && <span> · measured boxes while furniture models load, are unavailable or meet the section cut</span>}
+          ? tr('Eye-level walk · click model to look · WASD moves · Esc exits · concept view has no wall collision')
+          : tr(`${preset === 'topdown' ? 'North-up parallel view' : 'Drag to orbit'} · ${architectural ? 'cut faces filled · ' : ''}${showShadows ? 'full building in shadow model' : 'shadows off'}`)}
+        {displayStyle === 'solid' && <span> · {tr('measured boxes while furniture models load, are unavailable or meet the section cut')}</span>}
       </div>
     </div>
   )

@@ -1,4 +1,3 @@
-import { ChevronLeft, ChevronRight, Compass, Eye, X } from 'lucide-react'
 import type { GuidedTourChapter } from '../tour/guidedTour'
 
 export function GuidedTourOverlay({
@@ -21,7 +20,7 @@ export function GuidedTourOverlay({
       <div className="guided-tour-card">
         <div className="guided-tour-header">
           <div className="guided-tour-badge">
-            <Compass />
+            
             <span>Your drawing in 3D</span>
           </div>
           <button
@@ -30,7 +29,7 @@ export function GuidedTourOverlay({
             onClick={onExit}
             aria-label="Exit Guided Tour"
           >
-            <X />
+            
           </button>
         </div>
 
@@ -52,7 +51,7 @@ export function GuidedTourOverlay({
               className="guided-tour-focus-btn"
               onClick={() => onFocusRoom(chapter.focusedRoomId!)}
             >
-              <Eye />
+              
               <span>Inspect {chapter.focusLabel ?? 'this room'}</span>
             </button>
           )}
@@ -87,7 +86,7 @@ export function GuidedTourOverlay({
               onClick={onPrev}
               disabled={chapter.number === 1}
             >
-              <ChevronLeft />
+              
               <span>Previous</span>
             </button>
             <button
@@ -96,7 +95,7 @@ export function GuidedTourOverlay({
               onClick={onNext}
             >
               <span>{chapter.number === totalChapters ? 'Finish Tour' : 'Next Chapter'}</span>
-              <ChevronRight />
+              
             </button>
           </div>
         </div>

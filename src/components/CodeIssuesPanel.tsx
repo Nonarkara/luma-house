@@ -1,5 +1,5 @@
 import React from 'react'
-import { ArrowRight, Check } from 'lucide-react'
+import { useI18n } from '../i18n'
 import type { CodeIssue } from '../codes/checkPlan'
 import type { Room } from '../types'
 
@@ -34,9 +34,10 @@ export const CodeIssuesPanel: React.FC<CodeIssuesPanelProps> = ({
   rooms = [],
   onApply,
 }) => {
+  const { tr } = useI18n()
   if (issues.length === 0) {
     return (
-      <div className="code-issues-empty">No code issues detected.</div>
+      <div className="code-issues-empty">{tr('No code issues detected.')}</div>
     )
   }
   const sorted = [...issues].sort(
@@ -90,7 +91,7 @@ export const CodeIssuesPanel: React.FC<CodeIssuesPanelProps> = ({
                   className="code-issue-fix"
                   onClick={() => onApply(issue)}
                 >
-                  {fixLabel(issue.fixAction)} <ArrowRight className="fix-arrow" />
+                  {tr(fixLabel(issue.fixAction))}
                 </button>
               )}
             </div>
@@ -100,7 +101,7 @@ export const CodeIssuesPanel: React.FC<CodeIssuesPanelProps> = ({
       {counts.critical === 0 && counts.warning === 0 && (
         <div className="code-issues-summary" style={{ paddingTop: 8 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--success)' }}>
-            <Check /> All hard rules pass
+            {tr('All hard rules pass')}
           </span>
         </div>
       )}

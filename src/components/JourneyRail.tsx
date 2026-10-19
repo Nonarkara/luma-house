@@ -1,7 +1,7 @@
 import React from 'react'
-import { Check } from 'lucide-react'
 import type { EvaluatedStage } from '../journey/evaluateJourney'
 import type { StageNav } from '../journey/stages'
+import { useI18n } from '../i18n'
 
 export const JourneyRail = React.memo(function JourneyRail({
   stages,
@@ -14,13 +14,14 @@ export const JourneyRail = React.memo(function JourneyRail({
   headline: string
   onGo: (nav: StageNav, stageId: string) => void
 }) {
+  const { tr } = useI18n()
   return (
     <div className="journey-rail-wrap">
       <div className="journey-progress" aria-hidden="true">
         <i style={{ width: `${Math.round(progress * 100)}%` }} />
       </div>
-      <p className="journey-headline">{headline}</p>
-      <div className="deliverable-rail journey-rail" aria-label="Design decision sequence" role="list">
+      <p className="journey-headline">{tr(headline)}</p>
+      <div className="deliverable-rail journey-rail" aria-label={tr('Design decision sequence')} role="list">
         {stages.map((stage) => (
           <button
             key={stage.def.id}
@@ -29,14 +30,11 @@ export const JourneyRail = React.memo(function JourneyRail({
             className={`journey-step is-${stage.status}${stage.complete ? ' is-complete' : ''}`}
             onClick={() => onGo(stage.def.nav, stage.def.id)}
             aria-current={stage.status === 'current' ? 'step' : undefined}
-            title={`${stage.def.label}: ${stage.metric}`}
+            title={`${tr(stage.def.label)}: ${tr(stage.metric)}`}
           >
-            <small>
-              {stage.complete ? <Check aria-hidden="true" /> : stage.def.step}
-            </small>
             <span>
-              {stage.def.label}
-              <strong>{stage.metric}</strong>
+              {tr(stage.def.label)}
+              <strong>{tr(stage.metric)}</strong>
             </span>
           </button>
         ))}

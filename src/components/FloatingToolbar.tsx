@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { MousePointer2, Pencil, PanelLeftClose, DoorOpen, Ruler, Sparkles, Plus, Armchair, Undo2, MoreHorizontal } from 'lucide-react'
 import type { PlanTool } from '../types'
+import { useI18n } from '../i18n'
 
 interface FloatingToolbarProps {
   activeTool: PlanTool
@@ -22,8 +22,7 @@ interface FloatingToolbarProps {
 
 /**
  * Bottom-anchored tool bar. Sharp edges, single hairline border, the
- * single accent reserved for the active state. No glass, no shadow, no
- * rounded corners — per the Axiom Design Core.
+ * single accent reserved for the active state. Labels only — no stock icons.
  */
 export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   activeTool,
@@ -42,12 +41,13 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   onQuickAction,
   onConcept,
 }) => {
+  const { tr } = useI18n()
   const [moreOpen, setMoreOpen] = useState(false)
-  const tools: Array<{ id: PlanTool; label: string; shortcut: string; icon: typeof MousePointer2 }> = [
-    { id: 'select', label: 'Select', shortcut: 'V', icon: MousePointer2 },
-    { id: 'draw', label: 'Pencil', shortcut: 'W', icon: Pencil },
-    { id: 'window', label: 'Window', shortcut: 'O', icon: PanelLeftClose },
-    { id: 'door', label: 'Door', shortcut: 'D', icon: DoorOpen },
+  const tools: Array<{ id: PlanTool; label: string; shortcut: string }> = [
+    { id: 'select', label: 'Select', shortcut: 'V' },
+    { id: 'draw', label: 'Pencil', shortcut: 'W' },
+    { id: 'window', label: 'Window', shortcut: 'O' },
+    { id: 'door', label: 'Door', shortcut: 'D' },
   ]
   const ordered = compact
     ? [tools[1], tools[2], tools[3], tools[0]]
@@ -59,9 +59,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   }
 
   return (
-    <div className="floating-island-toolbar" role="toolbar" aria-label="Plan tools">
+    <div className="floating-island-toolbar" role="toolbar" aria-label={tr('Plan tools')}>
       {ordered.map((t) => {
-        const Icon = t.icon
         const isActive = activeTool === t.id && !isMeasuring
         return (
           <button
@@ -69,24 +68,23 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             type="button"
             className={`toolbar-pill-btn ${isActive ? 'is-active' : ''}`}
             onClick={() => choose(t.id)}
-            title={`${t.label} (${t.shortcut})`}
-            aria-label={t.label}
+            title={`${tr(t.label)} (${t.shortcut})`}
+            aria-label={tr(t.label)}
             aria-keyshortcuts={t.shortcut}
             aria-pressed={isActive}
           >
-            <Icon className="toolbar-pill-icon" aria-hidden="true" />
-            <span className="toolbar-pill-label">{t.label}</span>
+            <span className="toolbar-pill-label">{tr(t.label)}</span>
             <kbd className="toolbar-pill-kbd" aria-hidden="true">{t.shortcut}</kbd>
           </button>
         )
       })}
 
       {!compact && (
-        <button type="button" className={`toolbar-pill-btn ${activeTool === 'room' && !isMeasuring ? 'is-active' : ''}`} onClick={() => choose('room')} aria-label="Room" aria-pressed={activeTool === 'room' && !isMeasuring} title="Room — drag a box">
-          <Plus className="toolbar-pill-icon" aria-hidden="true" /><span className="toolbar-pill-label">Room</span>
+        <button type="button" className={`toolbar-pill-btn ${activeTool === 'room' && !isMeasuring ? 'is-active' : ''}`} onClick={() => choose('room')} aria-label={tr('Room')} aria-pressed={activeTool === 'room' && !isMeasuring} title={tr('Room')}>
+          <span className="toolbar-pill-label">{tr('Room')}</span>
         </button>
       )}
-      {!compact && onFurniture && <button type="button" className={`toolbar-pill-btn ${furnitureOpen ? 'is-active' : ''}`} onClick={onFurniture} aria-label="Add furniture" aria-pressed={furnitureOpen} title="Add furniture"><Armchair className="toolbar-pill-icon" /><span className="toolbar-pill-label">Furniture</span></button>}
+      {!compact && onFurniture && <button type="button" className={`toolbar-pill-btn ${furnitureOpen ? 'is-active' : ''}`} onClick={onFurniture} aria-label={tr('Add furniture')} aria-pressed={furnitureOpen} title={tr('Add furniture')}><span className="toolbar-pill-label">{tr('Furniture')}</span></button>}
       {!compact && <span className="toolbar-divider" aria-hidden="true" />}
 
       {!compact && (
@@ -94,13 +92,13 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           type="button"
           className={`toolbar-pill-btn ${isMeasuring ? 'is-active' : ''}`}
           onClick={onToggleMeasure}
-          title="Tape Measure (M)"
-          aria-label="Tape Measure"
+          title={`${tr('Tape Measure')} (M)`}
+          aria-label={tr('Tape Measure')}
+          aria-keyshortcuts="M"
           aria-pressed={isMeasuring}
         >
-          <Ruler className="toolbar-pill-icon" aria-hidden="true" />
-          <span className="toolbar-pill-label">Measure</span>
-          <kbd className="toolbar-pill-kbd">M</kbd>
+          <span className="toolbar-pill-label">{tr('Measure')}</span>
+          <kbd className="toolbar-pill-kbd" aria-hidden="true">M</kbd>
         </button>
       )}
 
@@ -109,37 +107,34 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           type="button"
           className="toolbar-pill-btn toolbar-pill-ai"
           onClick={onSynthesize}
-          title="Layout presets (S)"
-          aria-label="Layout presets"
+          title={tr('Layout presets')}
+          aria-label={tr('Layout presets')}
         >
-          <Sparkles className="toolbar-pill-icon" aria-hidden="true" />
-          <span className="toolbar-pill-label">Layout preset</span>
+          <span className="toolbar-pill-label">{tr('Layout preset')}</span>
         </button>
       )}
 
       {compact && (
-        <button type="button" className="toolbar-pill-btn" onClick={onUndo} disabled={!canUndo} aria-label="Undo" title="Undo">
-          <Undo2 className="toolbar-pill-icon" aria-hidden="true" />
-          <span className="toolbar-pill-label">Undo</span>
+        <button type="button" className="toolbar-pill-btn" onClick={onUndo} disabled={!canUndo} aria-label={tr('Undo')} title={tr('Undo')}>
+          <span className="toolbar-pill-label">{tr('Undo')}</span>
         </button>
       )}
 
       {compact && (
         <div className="toolbar-more">
-          <button type="button" className="toolbar-pill-btn" aria-label="More tools" aria-expanded={moreOpen} onClick={() => setMoreOpen((open) => !open)}>
-            <MoreHorizontal className="toolbar-pill-icon" aria-hidden="true" />
-            <span className="toolbar-pill-label">More</span>
+          <button type="button" className="toolbar-pill-btn" aria-label={tr('More tools')} aria-expanded={moreOpen} onClick={() => setMoreOpen((open) => !open)}>
+            <span className="toolbar-pill-label">{tr('More')}</span>
           </button>
           {moreOpen && (
-            <div className="toolbar-more-menu" aria-label="More tools">
-              <button type="button" aria-label="Room" onClick={() => choose('room')}>Room</button>
-              {onFurniture && <button type="button" aria-label="Add furniture" onClick={() => { setMoreOpen(false); onFurniture() }}>Furniture</button>}
-              <button type="button" aria-label="Tape Measure" aria-pressed={isMeasuring} onClick={() => { setMoreOpen(false); onToggleMeasure?.() }}>Measure</button>
-              {onSynthesize && <button type="button" aria-label="Layout presets" onClick={() => { setMoreOpen(false); onSynthesize() }}>Layout preset</button>}
-              <button type="button" aria-label="Redo" disabled={!canRedo} onClick={() => { setMoreOpen(false); onRedo?.() }}>Redo</button>
-              {onRoomOptions && <button type="button" aria-label="Room options" onClick={() => { setMoreOpen(false); onRoomOptions() }}>Room options</button>}
-              {onQuickAction && <button type="button" aria-label="Quick action" onClick={() => { setMoreOpen(false); onQuickAction() }}>Quick action</button>}
-              {onConcept && <button type="button" aria-label="Concept photo" onClick={() => { setMoreOpen(false); onConcept() }}>Concept photo</button>}
+            <div className="toolbar-more-menu" aria-label={tr('More tools')}>
+              <button type="button" aria-label={tr('Room')} onClick={() => choose('room')}>{tr('Room')}</button>
+              {onFurniture && <button type="button" aria-label={tr('Add furniture')} onClick={() => { setMoreOpen(false); onFurniture() }}>{tr('Furniture')}</button>}
+              <button type="button" aria-label={tr('Tape Measure')} aria-pressed={isMeasuring} onClick={() => { setMoreOpen(false); onToggleMeasure?.() }}>{tr('Measure')}</button>
+              {onSynthesize && <button type="button" aria-label={tr('Layout presets')} onClick={() => { setMoreOpen(false); onSynthesize() }}>{tr('Layout preset')}</button>}
+              <button type="button" aria-label={tr('Redo')} disabled={!canRedo} onClick={() => { setMoreOpen(false); onRedo?.() }}>{tr('Redo')}</button>
+              {onRoomOptions && <button type="button" aria-label={tr('Room options')} onClick={() => { setMoreOpen(false); onRoomOptions() }}>{tr('Room options')}</button>}
+              {onQuickAction && <button type="button" aria-label={tr('Quick action')} onClick={() => { setMoreOpen(false); onQuickAction() }}>{tr('Quick action')}</button>}
+              {onConcept && <button type="button" aria-label={tr('Concept photo')} onClick={() => { setMoreOpen(false); onConcept() }}>{tr('Concept photo')}</button>}
             </div>
           )}
         </div>

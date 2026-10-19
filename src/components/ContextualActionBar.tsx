@@ -1,6 +1,5 @@
 import { openingDimensions } from '../openingGeometry'
 import React from 'react'
-import { RotateCw, Trash2, Plus, Minus } from 'lucide-react'
 import type { Opening, Room, SiteSpec } from '../types'
 import { roomAreaFor } from '../plan'
 
@@ -63,7 +62,7 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
               title="Increase ceiling height"
               aria-label="Increase ceiling height"
             >
-              <Plus className="contextual-stepper-icon" aria-hidden="true" />
+              
             </button>
             <button
               type="button"
@@ -72,7 +71,7 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
               title="Decrease ceiling height"
               aria-label="Decrease ceiling height"
             >
-              <Minus className="contextual-stepper-icon" aria-hidden="true" />
+              
             </button>
           </div>
 
@@ -84,7 +83,7 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
               title="Delete room"
               aria-label="Delete room"
             >
-              <Trash2 className="contextual-icon-icon" aria-hidden="true" />
+              
             </button>
           )}
         </>
@@ -111,7 +110,7 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
               title="Increase width"
               aria-label="Increase opening width"
             >
-              <Plus className="contextual-stepper-icon" aria-hidden="true" />
+              
             </button>
             <button
               type="button"
@@ -120,7 +119,7 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
               title="Decrease width"
               aria-label="Decrease opening width"
             >
-              <Minus className="contextual-stepper-icon" aria-hidden="true" />
+              
             </button>
           </div>
 
@@ -131,7 +130,7 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
             title="Rotate orientation"
             aria-label="Rotate opening orientation"
           >
-            <RotateCw className="contextual-icon-icon" aria-hidden="true" />
+            
           </button>
 
           {onDeleteOpening && (
@@ -142,7 +141,7 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
               title="Delete opening"
               aria-label="Delete opening"
             >
-              <Trash2 className="contextual-icon-icon" aria-hidden="true" />
+              
             </button>
           )}
         </>

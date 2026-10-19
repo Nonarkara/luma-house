@@ -1,6 +1,7 @@
-import { Command, X } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 export function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
+  const { tr } = useI18n()
   const shortcutGroups = [
     {
       category: 'Plan tools',
@@ -45,23 +46,22 @@ export function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
       <section className="shortcuts-modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title" onClick={(event) => event.stopPropagation()}>
         <div className="shortcuts-modal-header">
           <div>
-            <Command />
-            <h2 id="shortcuts-title">Keyboard + drawing language</h2>
+            <h2 id="shortcuts-title">{tr('Keyboard + drawing language')}</h2>
           </div>
-          <button type="button" className="icon-btn-close" onClick={onClose} aria-label="Close modal">
-            <X />
+          <button type="button" className="icon-btn-close" onClick={onClose} aria-label={tr('Close modal')}>
+            {tr('Close')}
           </button>
         </div>
 
         <div className="shortcuts-grid">
           {shortcutGroups.map((group) => (
             <div key={group.category} className="shortcut-group">
-              <h3>{group.category}</h3>
+              <h3>{tr(group.category)}</h3>
               <div className="shortcut-list">
                 {group.items.map((item) => (
                   <div key={item.key} className="shortcut-item">
                     <kbd>{item.key}</kbd>
-                    <span>{item.description}</span>
+                    <span>{tr(item.description)}</span>
                   </div>
                 ))}
               </div>
@@ -70,14 +70,14 @@ export function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="legend-section">
-          <h3>Drawing language</h3>
+          <h3>{tr('Drawing language')}</h3>
           <div className="legend-grid">
             {visualLegend.map((item) => (
               <div key={item.label} className="legend-item">
                 <span className={`legend-swatch is-${item.style}`} />
                 <div>
-                  <strong>{item.label}</strong>
-                  <p>{item.role}</p>
+                  <strong>{tr(item.label)}</strong>
+                  <p>{tr(item.role)}</p>
                 </div>
               </div>
             ))}

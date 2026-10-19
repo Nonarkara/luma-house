@@ -1,13 +1,6 @@
-import { Check, Gauge, Play, Sun, SunDim, Wind, X } from 'lucide-react'
+import { useI18n } from '../i18n'
 import { evaluateScenario, type ClimateScenario } from '../scenarios/climateScenarios'
 import type { PlanState } from '../types'
-
-const ICON_MAP = {
-  Sun: Sun,
-  SunDim: SunDim,
-  Wind: Wind,
-  Gauge,
-}
 
 export function ScenarioPickerModal({
   scenarios,
@@ -26,23 +19,23 @@ export function ScenarioPickerModal({
   onSelectScenario: (scenario: ClimateScenario) => void
   onClose: () => void
 }) {
+  const { tr } = useI18n()
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <section className="scenario-modal" role="dialog" aria-modal="true" aria-labelledby="scenario-title" onClick={(event) => event.stopPropagation()}>
         <div className="scenario-modal-header">
           <div>
-            <p className="eyebrow">What-if inputs · {locationLabel}</p>
-            <h2 id="scenario-title">Test the same drawing in another condition</h2>
-            <p>These are comparison inputs, not weather records or code simulations.</p>
+            <p className="eyebrow">{tr('What-if inputs')} · {locationLabel}</p>
+            <h2 id="scenario-title">{tr('Test the same drawing in another condition')}</h2>
+            <p>{tr('These are comparison inputs, not weather records or code simulations.')}</p>
           </div>
-          <button type="button" className="icon-btn-close" onClick={onClose} aria-label="Close modal">
-            <X />
+          <button type="button" className="icon-btn-close" onClick={onClose} aria-label={tr('Close modal')}>
+            {tr('Close')}
           </button>
         </div>
 
         <div className="scenario-grid">
           {scenarios.map((scenario) => {
-            const IconComp = ICON_MAP[scenario.icon as keyof typeof ICON_MAP] ?? Sun
             const isActive = scenario.id === activeScenarioId
             const evaluation = evaluateScenario(scenario, plan, latitude)
 
@@ -54,24 +47,21 @@ export function ScenarioPickerModal({
                 onClick={() => onSelectScenario(scenario)}
               >
                 <div className="scenario-card-top">
-                  <div className="scenario-icon-wrapper">
-                    <IconComp />
-                  </div>
                   <span className={`scenario-badge status-${evaluation.status.toLowerCase()}`}>
-                    {evaluation.status}
+                    {tr(evaluation.status)}
                   </span>
                 </div>
 
-                <h3 className="scenario-title">{scenario.name}</h3>
-                <div className="scenario-tagline">{scenario.tagline}</div>
-                <p className="scenario-desc">{scenario.description}</p>
+                <h3 className="scenario-title">{tr(scenario.name)}</h3>
+                <div className="scenario-tagline">{tr(scenario.tagline)}</div>
+                <p className="scenario-desc">{tr(scenario.description)}</p>
 
-                <div className="scenario-headline">{evaluation.headline}</div>
+                <div className="scenario-headline">{tr(evaluation.headline)}</div>
 
                 <div className="scenario-metrics">
                   {evaluation.metrics.map((m) => (
                     <div key={m.label} className="scenario-metric-item">
-                      <span>{m.label}</span>
+                      <span>{tr(m.label)}</span>
                       <strong>{m.value}</strong>
                     </div>
                   ))}
@@ -79,12 +69,9 @@ export function ScenarioPickerModal({
 
                 <div className="scenario-action-bar">
                   {isActive ? (
-                    <span className="active-pill">
-                      <Check />
-                      Active
-                    </span>
+                    <span className="active-pill">{tr('Active')}</span>
                   ) : (
-                    <span className="run-scenario-btn"><Play /> Apply inputs</span>
+                    <span className="run-scenario-btn">{tr('Apply inputs')}</span>
                   )}
                 </div>
               </button>

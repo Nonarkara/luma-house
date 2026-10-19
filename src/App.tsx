@@ -12,7 +12,7 @@ import { LayoutPresetDialog } from './components/LayoutPresetDialog'
 import { TraceReview, type PendingTrace } from './components/TraceReview'
 import { updateOpeningDimensions } from './openingGeometry'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { Check, ImagePlus, MapPin, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
+import { useI18n } from './i18n'
 import { FloorPlan } from './canvas/FloorPlan'
 import { RenderGallery } from './canvas/RenderGallery'
 import { contentBox, useCanvasViewport } from './canvas/useCanvasViewport'
@@ -91,10 +91,11 @@ import { checkPlan, exteriorDoorPlacement, type CodeIssue as StandardsCodeIssue 
 const RoomOptionsDialog = lazy(() => import('./components/RoomOptionsDialog'))
 
 function EmptyStage({ onBack }: { onBack: () => void }) {
+  const { tr } = useI18n()
   return (
     <div className="empty-stage" role="status">
-      <p>Drag a box to make a room. Then click a wall to add a window.</p>
-      <button type="button" className="button primary" onClick={onBack}>Back to plan</button>
+      <p>{tr('Drag a box to make a room. Then click a wall to add a window.')}</p>
+      <button type="button" className="button primary" onClick={onBack}>{tr('Back to plan')}</button>
     </div>
   )
 }
@@ -149,6 +150,7 @@ function readSavedPlan(): PlanState {
 }
 
 function App() {
+  const { tr } = useI18n()
   const [theme, setTheme] = useState(readTheme)
   const [plan, setPlan] = useState<PlanState>(readSavedPlan)
   const [past, setPast] = useState<Array<{ state: PlanState; label: string; sketchUrl: string | null }>>([])
@@ -1487,29 +1489,29 @@ function App() {
         onOpenShortcuts={() => setShortcutsOpen((prev) => !prev)}
         onToggleCatalog={() => setIsCatalogOpen((prev) => !prev)}
         center={<>
-          <div className="view-switch" role="group" aria-label="View mode">
-            <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>Plan</button>
-            <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>Spatial</button>
-            <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>Renders</button>
+          <div className="view-switch" role="group" aria-label={tr('View mode')}>
+            <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>{tr('Plan')}</button>
+            <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>{tr('Spatial')}</button>
+            <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>{tr('Renders')}</button>
           </div>
           {!narrow && (
             <div className="tool-group history-tools">
-              <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
-              <IconButton label="Redo" onClick={redo} disabled={!future.length}><Redo2 /></IconButton>
-              <IconButton label="Concept photo" onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><ImagePlus /></IconButton>
+              <IconButton label={tr('Undo')} onClick={undo} disabled={!past.length}>{tr('Undo')}</IconButton>
+              <IconButton label={tr('Redo')} onClick={redo} disabled={!future.length}>{tr('Redo')}</IconButton>
+              <IconButton label={tr('Concept photo')} onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}>{tr('Concept photo')}</IconButton>
             </div>
           )}
         </>}
         meta={<>
-          <span className="stage-area"><Ruler /> {budget.area.toFixed(1)} m²</span>
-          <button type="button" className="location-toggle" title={projectLocation.label} aria-label={`${projectLocation.label} · Change city`} aria-expanded={locationOpen} onClick={() => setLocationOpen(open => !open)}><MapPin /><span>{projectLocation.name}</span></button>
+          <span className="stage-area">{budget.area.toFixed(1)} m²</span>
+          <button type="button" className="location-toggle" title={projectLocation.label} aria-label={tr(`${projectLocation.label} · Change city`)} aria-expanded={locationOpen} onClick={() => setLocationOpen(open => !open)}><span>{projectLocation.name}</span></button>
         </>}
         onChangeLocation={() => setLocationOpen(true)}
         locationName={projectLocation.name}
         menuExtra={<>
-          {narrow && <>
-            <button type="button" className="menu-history" aria-label="Undo" disabled={past.length === 0} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); undo() }}>Undo</button>
-            <button type="button" className="menu-history" aria-label="Redo" disabled={future.length === 0} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); redo() }}>Redo</button>
+            {narrow && <>
+            <button type="button" className="menu-history" aria-label={tr('Undo')} disabled={past.length === 0} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); undo() }}>{tr('Undo')}</button>
+            <button type="button" className="menu-history" aria-label={tr('Redo')} disabled={future.length === 0} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); redo() }}>{tr('Redo')}</button>
           </>}
           <ThemePicker theme={theme} onChange={next => { saveTheme(next); setTheme(next) }} />
           <WebAppAccess />
@@ -1518,8 +1520,8 @@ function App() {
 
       <div className="workspace">
         <main className="design-stage">
-          {locationOpen && <section className="location-workspace" aria-label="Project location and sun chart">
-            <button className="location-close" type="button" onClick={() => setLocationOpen(false)}>Close city search</button>
+          {locationOpen && <section className="location-workspace" aria-label={tr('Project location and sun chart')}>
+            <button className="location-close" type="button" onClick={() => setLocationOpen(false)}>{tr('Close city search')}</button>
             <CityPicker location={projectLocation} onChange={(next: ProjectLocation) => commit(current => ({ ...current, location: next }), 'Change project location')} />
             <SunChart latitude={projectLocation.latitude} location={projectLocation} day={day} hour={hour} year={studyYear} locationLabel={projectLocation.label} />
           </section>}
@@ -1554,7 +1556,7 @@ function App() {
                 onConcept={() => void runConceptRender()}
               />
             )}
-            {view === 'plan' && !narrow && <button type="button" className="room-options-launch" disabled={isEmpty} onClick={() => setRoomOptionsOpen(true)}>Room options</button>}
+            {view === 'plan' && !narrow && <button type="button" className="room-options-launch" disabled={isEmpty} onClick={() => setRoomOptionsOpen(true)}>{tr('Room options')}</button>}
           </div>
 
           {view === 'plan' && (room || selectedOpening) && (
@@ -1571,7 +1573,7 @@ function App() {
             </div>
           )}
 
-          <section className={`canvas-frame${view === 'plan' ? ' is-plan' : ''}`} ref={frameRef} aria-label="House design canvas" onWheel={onWheel}>
+          <section className={`canvas-frame${view === 'plan' ? ' is-plan' : ''}`} ref={frameRef} aria-label={tr('House design canvas')} onWheel={onWheel}>
             {view === 'plan' ? (
               <FloorPlan
                 plan={plan}
@@ -1626,11 +1628,11 @@ function App() {
                 {localSpatialView}
                 {(conceptImages.length > 0 || isRendering) && (
                   <div className="concept-strip" aria-live="polite">
-                    {isRendering && <div className="concept-loading"><RotateCcw className="spin" /> Rendering concept…</div>}
+                    {isRendering && <div className="concept-loading">{tr('Rendering concept…')}</div>}
                     {conceptImages.slice(0, 3).map((src, index) => (
                       <figure key={`${index}-${src.slice(0, 24)}`}>
                         <img src={src} alt={`Concept visualization ${index + 1}`} />
-                        <figcaption>Concept only — not a photo of a real building</figcaption>
+                        <figcaption>{tr('Concept only — not a photo of a real building')}</figcaption>
                       </figure>
                     ))}
                   </div>
@@ -1655,8 +1657,7 @@ function App() {
               view === 'spatial' || (mode === 'light' && valueLens === 'off') ? localLightControls : valueLens === 'off' ? (
                 <button className="science-preview" type="button" onClick={() => setMode('light')}>
                   <span className="science-live" />
-                  <span><small>{heatFlow.windowM2 > 0 ? 'Live sun + heat' : 'Heat through walls (no windows yet)'}</small><strong>{Math.abs(heatFlow.netW) >= 1000 ? `${(Math.abs(heatFlow.netW) / 1000).toFixed(1)} kW` : `${Math.round(Math.abs(heatFlow.netW))} W`} {heatFlow.mode === 'heat-out' ? 'leaving' : 'entering'}</strong></span>
-                  <Sun />
+                  <span><small>{heatFlow.windowM2 > 0 ? tr('Live sun + heat') : tr('Heat through walls (no windows yet)')}</small><strong>{Math.abs(heatFlow.netW) >= 1000 ? `${(Math.abs(heatFlow.netW) / 1000).toFixed(1)} kW` : `${Math.round(Math.abs(heatFlow.netW))} W`} {heatFlow.mode === 'heat-out' ? tr('leaving') : tr('entering')}</strong></span>
                 </button>
               ) : null
             )}
@@ -1683,8 +1684,7 @@ function App() {
               />
             )}
             {view === 'plan' && (
-              <div className="scale-chip" title="Grid scale — meters per cell">
-                <Ruler />
+              <div className="scale-chip" title={tr('Grid scale — meters per cell')}>
                 <input
                   type="number"
                   step="0.5"
@@ -1692,11 +1692,11 @@ function App() {
                   max={Math.min(site.w, site.h)}
                   value={site.unit}
                   onChange={(e) => setSiteScale(Number(e.target.value))}
-                  aria-label="Grid cell size in meters"
+                  aria-label={tr('Grid cell size in meters')}
                 />
-                <small>m / cell</small>
+                <small>{tr('m / cell')}</small>
                 <span>·</span>
-                <small className="site-dim">{site.w.toFixed(1)} × {site.h.toFixed(1)} m site</small>
+                <small className="site-dim">{site.w.toFixed(1)} × {site.h.toFixed(1)} {tr('m site')}</small>
                 <span>·</span>
                 <button
                   type="button"
@@ -1710,13 +1710,13 @@ function App() {
                     setToast('Drag along a wall whose real length you know')
                   }}
                 >
-                  {rulerArmed || rulerLine ? 'Cancel' : 'Calibrate'}
+                  {rulerArmed || rulerLine ? tr('Cancel') : tr('Calibrate')}
                 </button>
               </div>
             )}
             {view === 'plan' && rulerLine && !rulerArmed && (
-              <div className="ruler-chip" role="dialog" aria-label="Calibrate drawing scale">
-                <span><strong>Real length</strong><small>of the line you drew</small></span>
+              <div className="ruler-chip" role="dialog" aria-label={tr('Calibrate drawing scale')}>
+                <span><strong>{tr('Real length')}</strong><small>{tr('of the line you drew')}</small></span>
                 <input
                   type="number"
                   min="0.1"
@@ -1724,29 +1724,29 @@ function App() {
                   value={rulerMeters}
                   onChange={(event) => setRulerMeters(event.target.value)}
                   onKeyDown={(event) => { if (event.key === 'Enter') applyRulerCalibration() }}
-                  aria-label="Real length in meters"
+                  aria-label={tr('Real length in meters')}
                   autoFocus
                 />
                 <small>m</small>
-                <button className="button primary" type="button" onClick={applyRulerCalibration}>Apply</button>
+                <button className="button primary" type="button" onClick={applyRulerCalibration}>{tr('Apply')}</button>
               </div>
             )}
             {view === 'plan' && traceNote && (
               <div className="trace-note" role="status">
-                {isTracing ? 'AI reading plan…' : traceNote}
-                {!isTracing && <button className="text-button" style={{ marginLeft: 8 }} type="button" onClick={() => setTraceNote(null)}>Dismiss</button>}
+                {isTracing ? tr('AI reading plan…') : tr(traceNote)}
+                {!isTracing && <button className="text-button" style={{ marginLeft: 8 }} type="button" onClick={() => setTraceNote(null)}>{tr('Dismiss')}</button>}
               </div>
             )}
             {mode === 'light' && view === 'plan' && (
               <div className="sun-status">
-                <Sun /><span><strong>{hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? 'PM' : 'AM'}</strong><small>{sun.altitude.toFixed(0)}° altitude • {sun.azimuth.toFixed(0)}° azimuth</small></span>
+                <span><strong>{hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? tr('PM') : tr('AM')}</strong><small>{sun.altitude.toFixed(0)}° {tr('altitude')} • {sun.azimuth.toFixed(0)}° {tr('azimuth')}</small></span>
               </div>
             )}
             {view === 'plan' && furnitureTrayOpen && (
-              <div className="furniture-tray" aria-label="Add furniture at real size">
+              <div className="furniture-tray" aria-label={tr('Add furniture at real size')}>
                 {(Object.keys(furnitureCatalog) as FurnitureKind[]).map((kind) => (
                   <button key={kind} type="button" onClick={() => addFurniture(kind)}>
-                    <strong>{furnitureCatalog[kind].label}</strong>
+                    <strong>{tr(furnitureCatalog[kind].label)}</strong>
                     <small>{furnitureCatalog[kind].w} × {furnitureCatalog[kind].d} m</small>
                   </button>
                 ))}
@@ -1766,8 +1766,8 @@ function App() {
                     {furnitureConflicts.has(furnitureItem.id) ? ' · blocks a door swing' : ''}
                   </small>
                 </span>
-                <IconButton label="Rotate furniture" onClick={rotateFurniture}><RotateCw /></IconButton>
-                <IconButton label="Remove furniture" onClick={deleteFurniture}><Trash2 /></IconButton>
+                <IconButton label={tr('Rotate furniture')} onClick={rotateFurniture}>{tr('Rotate furniture')}</IconButton>
+                <IconButton label={tr('Remove furniture')} onClick={deleteFurniture}>{tr('Remove furniture')}</IconButton>
               </div>
             )}
             {view === 'plan' && selectedOpening && !furnitureItem && (
@@ -1776,7 +1776,7 @@ function App() {
                   <strong>{plan.openings.find((item) => item.id === selectedOpening)?.type === 'door' ? 'Door' : 'Window'}</strong>
                   <small>Drag along the wall · Delete key removes</small>
                 </span>
-                <IconButton label="Remove opening" onClick={deleteOpening}><Trash2 /></IconButton>
+                <IconButton label={tr('Remove opening')} onClick={deleteOpening}>{tr('Remove opening')}</IconButton>
               </div>
             )}
             {view === 'plan' && overlaps.size > 0 && (
@@ -1817,9 +1817,9 @@ function App() {
 
             {view === 'plan' && (
               <div className="zoom-control">
-                <button type="button" onClick={zoomOut} aria-label="Zoom out" disabled={!canZoomOut}>−</button>
-                <button type="button" className="zoom-label" onClick={fitBuilding} aria-label="Fit the building to the view" title="Fit the building to the view">{zoomPercent === 100 ? 'Fit' : `${zoomPercent}%`}</button>
-                <button type="button" onClick={zoomIn} aria-label="Zoom in" disabled={!canZoomIn}>+</button>
+                <button type="button" onClick={zoomOut} aria-label={tr('Zoom out')} disabled={!canZoomOut}>−</button>
+                <button type="button" className="zoom-label" onClick={fitBuilding} aria-label={tr('Fit the building to the view')} title={tr('Fit the building to the view')}>{zoomPercent === 100 ? tr('Fit') : `${zoomPercent}%`}</button>
+                <button type="button" onClick={zoomIn} aria-label={tr('Zoom in')} disabled={!canZoomIn}>+</button>
               </div>
             )}
             {view === 'plan' && <PlanRoomKey rooms={plan.rooms} site={site} selectedRoom={selectedRoom}
@@ -1989,7 +1989,7 @@ function App() {
         }}
       /></Suspense>}
 
-      {toast && <div className="toast" role="status"><Check /> {toast}</div>}
+      {toast && <div className="toast" role="status">{tr(toast)}</div>}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Camera, ChevronLeft, ChevronRight, LampDesk, Layers3, Moon, PanelsTopLeft, Sun } from 'lucide-react'
+import { useI18n } from '../i18n'
 import { siteOf } from '../plan'
 import type { PlanState, RoomKind } from '../types'
 import {
@@ -106,72 +106,66 @@ export const RenderGallery = React.memo(function RenderGallery({
   isRendering: boolean
   quotaLeft: number
 }) {
-  const views: Array<{ id: ViewId; title: string; note: string; icon: typeof Layers3 }> = [
-    { id: 'wireframe', title: 'Your space + light', note: 'Interactive · local · no AI call', icon: Layers3 },
-    { id: 'massing', title: 'Live 3D massing', note: 'Computed from your drawing', icon: Layers3 },
-    { id: 'sunlit', title: 'Sun direction diagram', note: `${sun.altitude.toFixed(0)}° altitude · schematic`, icon: Sun },
+  const { tr } = useI18n()
+  const views: Array<{ id: ViewId; title: string; note: string }> = [
+    { id: 'wireframe', title: 'Your space + light', note: 'Interactive · local · no AI call' },
+    { id: 'massing', title: 'Live 3D massing', note: 'Computed from your drawing' },
+    { id: 'sunlit', title: 'Sun direction diagram', note: `${sun.altitude.toFixed(0)}° altitude · schematic` },
   ]
   const references = [
-    { id: 'interior', title: 'South living room', note: 'Custom elm · winter 10:00', icon: PanelsTopLeft },
-    { id: 'joinery', title: 'Joinery detail', note: 'Made-to-measure, not flat-pack', icon: LampDesk },
-    { id: 'night', title: 'Tea scene', note: '2700 K · L05 at 78%', icon: Moon },
+    { id: 'interior', title: 'South living room', note: 'Custom elm · winter 10:00' },
+    { id: 'joinery', title: 'Joinery detail', note: 'Made-to-measure, not flat-pack' },
+    { id: 'night', title: 'Tea scene', note: '2700 K · L05 at 78%' },
   ]
   const [referenceIndex, setReferenceIndex] = useState(0)
   const reference = references[referenceIndex]
   const [activeIndex, setActiveIndex] = useState(0)
   const active = views[activeIndex]
-  const ActiveIcon = active.icon
 
   const move = (direction: number) => {
     setActiveIndex((index) => (index + direction + views.length) % views.length)
   }
 
   return (
-    <div className="render-gallery" aria-label="Plan-driven render gallery">
+    <div className="render-gallery" aria-label={tr('Plan-driven render gallery')}>
       <div className={`render-stage ${active.id === 'wireframe' ? 'is-local-study' : ''}`}>
         {active.id === 'wireframe' && localView}
         {active.id === 'massing' && <MassingFrame plan={plan} sun={sun} />}
         {active.id === 'sunlit' && <MassingFrame plan={plan} sun={sun} warm />}
         {active.id !== 'wireframe' && <div className="render-meta">
-          <span><ActiveIcon /></span>
           <div>
-            <small>View 0{activeIndex + 1}</small>
-            <strong>{active.title}</strong>
-            <em>{active.note}</em>
+            <strong>{tr(active.title)}</strong>
+            <em>{tr(active.note)}</em>
           </div>
         </div>}
         <div className="render-nav">
-          <button type="button" onClick={() => move(-1)} aria-label="Previous view"><ChevronLeft /></button>
+          <button type="button" onClick={() => move(-1)} aria-label={tr('Previous view')}>{tr('Previous view')}</button>
           <span>{activeIndex + 1} / {views.length}</span>
-          <button type="button" onClick={() => move(1)} aria-label="Next view"><ChevronRight /></button>
+          <button type="button" onClick={() => move(1)} aria-label={tr('Next view')}>{tr('Next view')}</button>
         </div>
       </div>
       {active.id === 'wireframe' && <div className="render-local-controls">{localControls}</div>}
       <div className="render-thumbs">
-        {views.map((item, index) => {
-          const Icon = item.icon
-          return (
+        {views.map((item, index) => (
             <button key={item.id} type="button" className={index === activeIndex ? 'active' : ''} onClick={() => setActiveIndex(index)}>
-              <Icon /><span><strong>{item.title}</strong><small>{item.note}</small></span>
+              <span><strong>{tr(item.title)}</strong><small>{tr(item.note)}</small></span>
             </button>
-          )
-        })}
+        ))}
       </div>
       <details className="render-references">
-        <summary>Concept references · photographs do not represent your drawing</summary>
-        <p><strong>Reference image only.</strong> This authored interior does not change with your rooms, city or sun. Study your actual shadows in “Your space + light” above.</p>
+        <summary>{tr('Concept references · photographs do not represent your drawing')}</summary>
+        <p><strong>{tr('Reference image only.')}</strong> {tr('This authored interior does not change with your rooms, city or sun. Study your actual shadows in “Your space + light” above.')}</p>
         <div className="render-thumbs">
-          {references.map((item, index) => {
-            const Icon = item.icon
-            return <button key={item.id} type="button" className={index === referenceIndex ? 'active' : ''} onClick={() => setReferenceIndex(index)}>
-              <Icon /><span><strong>{item.title}</strong><small>{item.note}</small></span>
+          {references.map((item, index) => (
+            <button key={item.id} type="button" className={index === referenceIndex ? 'active' : ''} onClick={() => setReferenceIndex(index)}>
+              <span><strong>{tr(item.title)}</strong><small>{tr(item.note)}</small></span>
             </button>
-          })}
+          ))}
         </div>
         <img className={`concept-hero authored-interior ${reference.id}`} src={conceptImages[0] ?? './assets/shanghai-apartment-concept.png'} alt={`${reference.title} — authored reference, unrelated to the current drawing`} />
       </details>
       <div className="render-disclaimer">
-        <Camera /> Local 3D uses your drawing and clear-sky sun angles · Interior references are optional concepts, not a prediction of your plan
+        {tr('Local 3D uses your drawing and clear-sky sun angles · Interior references are optional concepts, not a prediction of your plan')}
       </div>
     </div>
   )
