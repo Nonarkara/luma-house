@@ -141,7 +141,7 @@ function Wall({
         color={wireframe || architectural ? WIREFILL_COLOR : '#dfe0da'}
         roughness={0.9}
         metalness={0}
-        emissive="#f59e0b"
+        emissive="#f99d1b"
         emissiveIntensity={emissiveIntensity}
         transparent={wireframe}
         depthWrite={!wireframe}
@@ -285,7 +285,7 @@ export function OpeningPanel({ opening, site, wireframe, edgeColor, architectura
         metalness={0}
         transparent={wireframe || isWindow}
         opacity={wireframe ? WIREFILL_OPACITY : (isWindow ? 0.42 : 1)}
-        emissive={isWindow ? '#f59e0b' : '#000000'}
+        emissive={isWindow ? '#f99d1b' : '#000000'}
         emissiveIntensity={isWindow ? 0.06 : 0}
       />
       {(wireframe || architectural) && <Edges color={edgeColor} threshold={1} lineWidth={1} />}
@@ -336,7 +336,7 @@ function SunRayVectors({
     <group>
       {plan.openings.map(opening => {
         const ray = windowSunRay(plan, opening, azimuth, altitude)
-        return ray ? <VectorLine key={opening.id} start={ray.start} end={ray.end} color="#f59e0b" opacity={0.65} /> : null
+        return ray ? <VectorLine key={opening.id} start={ray.start} end={ray.end} color="#f99d1b" opacity={0.65} /> : null
       })}
     </group>
   )
@@ -372,7 +372,7 @@ function AirflowPathVectors({
         const footprint = roomFootprint(path.room, site)
         const start = wallPoint(footprint, path.inlet!)
         const end = wallPoint(footprint, path.outlet!)
-        return <VectorLine key={`air-${path.room.id}`} start={start} end={end} color="#f59e0b" opacity={0.9} />
+        return <VectorLine key={`air-${path.room.id}`} start={start} end={end} color="#f99d1b" opacity={0.9} />
       })}
     </group>
   )
@@ -828,7 +828,7 @@ export default function Spatial3D({
         {!architectural && visibleCut < 4.4 && (
           <mesh position={[0, visibleCut, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={1}>
             <planeGeometry args={[Math.max(20, site.w + 6), Math.max(16, site.h + 6)]} />
-            <meshBasicMaterial color="#f59e0b" transparent opacity={0.18} depthWrite={false} />
+            <meshBasicMaterial color="#f99d1b" transparent opacity={0.18} depthWrite={false} />
           </mesh>
         )}
         <Grid
@@ -848,7 +848,7 @@ export default function Spatial3D({
                 <mesh key={room.id} position={[fp.cx, h / 2, fp.cz]}>
                   <boxGeometry args={[fp.width, h, fp.depth]} />
                   <meshStandardMaterial color="#9aa3ad" transparent opacity={0.14} roughness={0.9} metalness={0} depthWrite={false} />
-                  <Edges color={wireframe ? edgeColor : '#f59e0b'} />
+                  <Edges color={wireframe ? edgeColor : '#f99d1b'} />
                 </mesh>
               )
             })

@@ -71,11 +71,12 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             onClick={() => choose(t.id)}
             title={`${t.label} (${t.shortcut})`}
             aria-label={t.label}
+            aria-keyshortcuts={t.shortcut}
             aria-pressed={isActive}
           >
             <Icon className="toolbar-pill-icon" aria-hidden="true" />
             <span className="toolbar-pill-label">{t.label}</span>
-            <kbd className="toolbar-pill-kbd">{t.shortcut}</kbd>
+            <kbd className="toolbar-pill-kbd" aria-hidden="true">{t.shortcut}</kbd>
           </button>
         )
       })}

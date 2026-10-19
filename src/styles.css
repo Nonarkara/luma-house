@@ -27,7 +27,7 @@
   --axiom-quiet: #8a8478;
 
   /* === Axiom Design Core: single accent === */
-  --axiom-accent: #a3ff00;
+  --axiom-accent: var(--accent-primary);
 
   /* === Axiom Design Core: spacing (4 px rhythm) === */
   --space-1: 4px;
@@ -47,22 +47,23 @@
   --fs-xl: 36px;
   --fs-2xl: 56px;
 
-  /* === designon application tokens (current product) === */
+  /* === designon application tokens (current product) ===
+     Hexes are Palette catalogue colours (github.com/Nonarkara/palette, tokens/palette.tokens.json):
+     Red #a72144, Yellow Orange #f99d1b, Orange Rufous #c16b27, Green #489b6e, Neutral Gray #b6bfc1, Andover Green #6d7e77. */
   --bg-primary: #f6f0e3;
   --bg-secondary: #eee4cf;
   --bg-elevated: #faf6ed;
   --text-primary: #26383f;
-  --text-secondary: #a1a1aa;
-  --text-tertiary: #71717a;
-  --accent-primary: #f59e0b;
-  --accent-deep: #d97706;
+  --text-secondary: #b6bfc1;
+  --text-tertiary: #6d7e77;
+  --accent-primary: #f99d1b;
+  --accent-deep: #c16b27;
   --border: rgba(var(--studio-ink-rgb, 38, 56, 63), 0.08);
   --dark: #000000;
-  --success: #4ade80;
-  --warning: #fbbf24;
-  --error: #f87171;
+  --success: #489b6e;
+  --warning: #f99d1b;
+  --error: #a72144;
   --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.5);
   --glass-bg: rgba(20, 20, 22, 0.65);
   --glass-border: rgba(var(--studio-ink-rgb, 38, 56, 63), 0.06);
   color: var(--text-primary);
@@ -270,19 +271,17 @@ button:active {
 
 .button:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
 }
 
 .button.primary {
-  background: linear-gradient(135deg, var(--accent-primary), #7ecc00);
+  background: var(--accent-primary);
   color: #000;
   border: none;
-  box-shadow: 0 4px 15px rgba(var(--studio-action-rgb, 138, 76, 22), 0.3);
 }
 
 .button.primary:hover {
-  background: linear-gradient(135deg, #baff33, #8fde00);
-  box-shadow: 0 6px 20px rgba(var(--studio-action-rgb, 138, 76, 22), 0.4);
+  background: var(--accent-deep);
 }
 
 .button.secondary {
@@ -951,7 +950,7 @@ button:active {
   font-size: 11px;
   font-weight: 600;
   color: var(--accent-primary);
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
   max-width: calc(100% - 32px);
 }
 
@@ -999,7 +998,7 @@ button:active {
 }
 
 .furniture.is-conflict {
-  border-color: #f87171;
+  border-color: #a72144;
   background: rgba(248, 113, 113, 0.16);
   color: var(--error);
 }
@@ -1059,7 +1058,7 @@ button:active {
   background: var(--bg-elevated);
   backdrop-filter: blur(12px);
   border-radius: 12px;
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
 }
 
 .furniture-chip span {
@@ -1355,9 +1354,9 @@ button:active {
   width: 34px;
   height: 6px;
   margin: -3px 0 0 -17px;
-  border: 1px solid #38bdf8;
-  border-left: 4px solid #38bdf8;
-  border-right: 4px solid #38bdf8;
+  border: 1px solid #006eb8;
+  border-left: 4px solid #006eb8;
+  border-right: 4px solid #006eb8;
   background: rgba(56, 189, 248, 0.3);
   backdrop-filter: blur(4px);
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
@@ -1371,7 +1370,7 @@ button:active {
   width: 26px;
   height: 3px;
   margin: -2px 0 0 -13px;
-  background: #fb923c;
+  background: #f68c50;
   box-shadow: 0 0 8px rgba(251, 146, 60, 0.5);
 }
 
@@ -1381,7 +1380,7 @@ button:active {
   height: 23px;
   left: calc(50% - 13px);
   top: calc(50% - 2px);
-  border: 1px solid #fb923c;
+  border: 1px solid #f68c50;
   border-left: 0;
   border-bottom: 0;
   border-radius: 0 100% 0 0;
@@ -1517,7 +1516,7 @@ button:active {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
   overflow: hidden;
   z-index: 9;
   backdrop-filter: blur(12px);
@@ -1613,7 +1612,7 @@ button:active {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid rgba(251, 191, 36, .28);
+  border: 1px solid rgba(249, 157, 27, .28);
   border-radius: 0;
   background: var(--bg-elevated);
   pointer-events: none;
@@ -1623,7 +1622,7 @@ button:active {
   width: 27px;
   height: 27px;
   border-radius: 50%;
-  background: #fbbf24;
+  background: #f99d1b;
 }
 
 .spatial-sun-hud div {
@@ -1714,7 +1713,7 @@ button:active {
   background: var(--bg-elevated);
   backdrop-filter: blur(14px);
   border-radius: 10px;
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
 }
 
 .render-meta>span {
@@ -1888,7 +1887,7 @@ button:active {
   backdrop-filter: blur(16px);
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
   transition: transform 0.3s ease;
 }
 
@@ -1940,7 +1939,7 @@ button:active {
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid rgba(251, 191, 36, 0.3);
+  border: 1px solid rgba(249, 157, 27, 0.3);
   background: var(--bg-elevated);
   backdrop-filter: blur(12px);
   padding: 8px 14px;
@@ -2018,14 +2017,14 @@ button:active {
 }
 
 .massing-window {
-  fill: #67e8f9;
-  stroke: #0e7490;
+  fill: #62c6bf;
+  stroke: #099197;
   stroke-width: 0.5;
 }
 
 .massing-door {
-  fill: #fb923c;
-  stroke: #9a3412;
+  fill: #f68c50;
+  stroke: #c16b27;
   stroke-width: 0.5;
 }
 
@@ -2115,7 +2114,7 @@ button:active {
   background: var(--bg-elevated);
   backdrop-filter: blur(12px);
   border-radius: 12px;
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
   white-space: nowrap;
 }
 
@@ -2178,8 +2177,8 @@ button:active {
 }
 
 .sun-chart-disk {
-  fill: rgba(251, 191, 36, 0.06);
-  stroke: rgba(251, 191, 36, 0.35);
+  fill: rgba(249, 157, 27, 0.06);
+  stroke: rgba(249, 157, 27, 0.35);
   stroke-width: 1.2;
 }
 
@@ -2202,7 +2201,7 @@ button:active {
 
 .sun-chart-path {
   fill: none;
-  stroke: rgba(251, 191, 36, 0.55);
+  stroke: rgba(249, 157, 27, 0.55);
   stroke-width: 1.6;
 }
 
@@ -2213,7 +2212,7 @@ button:active {
 }
 
 .sun-chart-beam {
-  stroke: rgba(251, 191, 36, 0.45);
+  stroke: rgba(249, 157, 27, 0.45);
   stroke-width: 1;
   stroke-dasharray: 2 2;
 }
@@ -2749,8 +2748,8 @@ select {
 }
 
 .light-card {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(251, 191, 36, 0.02));
-  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: transparent;
+  border: 1px solid var(--border);
 }
 
 .score-ring {
@@ -2828,8 +2827,8 @@ select {
 .insight-card {
   padding: 16px;
   border-radius: 12px;
-  border: 1px solid rgba(251, 191, 36, 0.2);
-  background: rgba(251, 191, 36, 0.05);
+  border: 1px solid rgba(249, 157, 27, 0.2);
+  background: rgba(249, 157, 27, 0.05);
   display: flex;
   gap: 14px;
   align-items: flex-start;
@@ -2839,7 +2838,7 @@ select {
   width: 20px;
   flex: 0 0 auto;
   color: var(--warning);
-  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.4));
+  filter: drop-shadow(0 0 8px rgba(249, 157, 27, 0.4));
 }
 
 .insight-card strong {
@@ -2903,7 +2902,7 @@ select {
 .energy-hero {
   padding: 20px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #111827, #000);
+  background: #111314;
   color: white;
   display: flex;
   justify-content: space-between;
@@ -3215,8 +3214,8 @@ select {
 
 .season-buttons button.active {
   color: var(--warning);
-  border-color: rgba(251, 191, 36, .34);
-  background: rgba(251, 191, 36, .08);
+  border-color: rgba(249, 157, 27, .34);
+  background: rgba(249, 157, 27, .08);
 }
 
 .channel-list {
@@ -3892,11 +3891,11 @@ select {
 }
 
 .climate-room.sev-3 {
-  border-left-color: var(--danger, #ef4444);
+  border-left-color: var(--danger, #a72144);
 }
 
 .climate-room.sev-2 {
-  border-left-color: var(--warning, #f59e0b);
+  border-left-color: var(--warning, #f99d1b);
 }
 
 .climate-room.sev-1 {
@@ -3904,7 +3903,7 @@ select {
 }
 
 .climate-room.sev-0 {
-  border-left-color: var(--success, #22c55e);
+  border-left-color: var(--success, #489b6e);
 }
 
 .climate-room-head {
@@ -3980,11 +3979,11 @@ select {
 }
 
 .suggestion-card.sev-3 {
-  border-left-color: var(--danger, #ef4444);
+  border-left-color: var(--danger, #a72144);
 }
 
 .suggestion-card.sev-2 {
-  border-left-color: var(--warning, #f59e0b);
+  border-left-color: var(--warning, #f99d1b);
 }
 
 .suggestion-card.sev-1 {
@@ -4132,7 +4131,6 @@ select {
   --bg-secondary: #eee4cf;
   --bg-elevated: #faf6ed;
   --shadow-sm: none;
-  --shadow-md: none;
   --glass-bg: rgba(14, 14, 14, 0.94);
   font-family: 'Source Sans 3', sans-serif;
 }
@@ -4826,7 +4824,7 @@ summary:focus-visible {
   z-index: 9;
   max-width: calc(100% - 24px);
   padding: 8px 12px;
-  border: 1px solid rgba(251, 191, 36, 0.4);
+  border: 1px solid rgba(249, 157, 27, 0.4);
   border-radius: 10px;
   background: var(--bg-elevated);
   backdrop-filter: blur(12px);
@@ -6062,7 +6060,7 @@ summary:focus-visible {
 .badge-plan-a {
   background: rgba(56, 189, 248, 0.15);
   color: var(--analysis-cool);
-  border: 1px solid #38bdf8;
+  border: 1px solid #006eb8;
   padding: 1px 5px;
   font: 700 9px/1 'JetBrains Mono', monospace;
   border-radius: 2px;
@@ -6071,7 +6069,7 @@ summary:focus-visible {
 .badge-plan-b {
   background: rgba(var(--studio-action-rgb, 138, 76, 22), 0.15);
   color: var(--warning);
-  border: 1px solid #f59e0b;
+  border: 1px solid #f99d1b;
   padding: 1px 5px;
   font: 700 9px/1 'JetBrains Mono', monospace;
   border-radius: 2px;
@@ -6490,7 +6488,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 
 .toolbar-pill-btn.is-active {
   color: var(--bg-primary);
-  background: var(--axiom-accent, #a3ff00);
+  background: var(--axiom-accent);
 }
 
 .toolbar-pill-btn.is-active .toolbar-pill-kbd,
@@ -6520,11 +6518,11 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
      surface — same single-accent rule, just emphasized. */
   font-weight: 600;
   color: var(--bg-primary);
-  background: var(--axiom-accent, #a3ff00);
+  background: var(--axiom-accent);
 }
 
 .toolbar-pill-ai:hover {
-  background: var(--axiom-accent, #a3ff00);
+  background: var(--axiom-accent);
   filter: brightness(0.92);
 }
 
@@ -6566,7 +6564,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 .contextual-action-area {
   font-family: var(--type-mono, 'IBM Plex Mono', monospace);
   font-size: 10px;
-  color: var(--axiom-accent, #a3ff00);
+  color: var(--axiom-accent);
   margin-top: 2px;
 }
 
@@ -6607,8 +6605,8 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .contextual-stepper-btn:hover {
-  color: var(--axiom-accent, #a3ff00);
-  border-color: var(--axiom-accent, #a3ff00);
+  color: var(--axiom-accent);
+  border-color: var(--axiom-accent);
 }
 
 .contextual-stepper-icon {
@@ -6639,7 +6637,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .contextual-icon-btn-danger:hover {
-  color: var(--error, #f87171);
+  color: var(--error, #a72144);
   background: var(--bg-secondary);
 }
 
@@ -6682,7 +6680,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 .catalog-title-icon {
   width: 14px;
   height: 14px;
-  color: var(--axiom-accent, #a3ff00);
+  color: var(--axiom-accent);
 }
 
 .catalog-title h4 {
@@ -6775,7 +6773,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 
 .catalog-tab.is-active {
   color: var(--bg-primary);
-  background: var(--axiom-accent, #a3ff00);
+  background: var(--axiom-accent);
 }
 
 .catalog-tab:hover:not(.is-active) {
@@ -6817,7 +6815,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   height: 24px;
   display: grid;
   place-items: center;
-  color: var(--axiom-accent, #a3ff00);
+  color: var(--axiom-accent);
 }
 
 .catalog-card-icon-svg {
@@ -6874,13 +6872,13 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 
 .spatial-section-range {
   width: 80px;
-  accent-color: var(--axiom-accent, #a3ff00);
+  accent-color: var(--axiom-accent);
 }
 
 .spatial-section-value {
   font-family: var(--type-mono, 'IBM Plex Mono', monospace);
   font-size: 11px;
-  color: var(--axiom-accent, #a3ff00);
+  color: var(--axiom-accent);
   min-width: 36px;
   text-align: right;
 }
@@ -6906,13 +6904,13 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .standards-badge.is-warning {
-  color: var(--warning, #fbbf24);
-  border-color: var(--warning, #fbbf24);
+  color: var(--warning, #f99d1b);
+  border-color: var(--warning, #f99d1b);
 }
 
 .standards-badge.is-critical {
-  color: var(--error, #f87171);
-  border-color: var(--error, #f87171);
+  color: var(--error, #a72144);
+  border-color: var(--error, #a72144);
 }
 
 /* Inline variant — sits next to a number, no border, just a monospace tag */
@@ -6935,11 +6933,11 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .standards-tag.is-warning {
-  color: var(--warning, #fbbf24);
+  color: var(--warning, #f99d1b);
 }
 
 .standards-tag.is-critical {
-  color: var(--error, #f87171);
+  color: var(--error, #a72144);
 }
 
 /* Data-rich room display — big monospace numbers */
@@ -7038,8 +7036,8 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   margin-top: 6px;
   padding: 3px 8px;
   background: transparent;
-  border: 1px solid var(--axiom-accent, #a3ff00);
-  color: var(--axiom-accent, #a3ff00);
+  border: 1px solid var(--axiom-accent);
+  color: var(--axiom-accent);
   font-family: var(--type-mono, 'IBM Plex Mono', monospace);
   font-size: 10px;
   letter-spacing: 0.04em;
@@ -7048,7 +7046,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .code-issue-fix:hover {
-  background: var(--axiom-accent, #a3ff00);
+  background: var(--axiom-accent);
   color: var(--bg-primary);
 }
 
@@ -7082,11 +7080,11 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .code-issues-summary-counts .count-critical {
-  color: var(--error, #f87171);
+  color: var(--error, #a72144);
 }
 
 .code-issues-summary-counts .count-warning {
-  color: var(--warning, #fbbf24);
+  color: var(--warning, #f99d1b);
 }
 
 .code-issues-summary-counts .count-info {
@@ -7140,7 +7138,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 /* Trace review keeps the source dominant; the draft is an overlay for checking. */
-.trace-review { width: min(780px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; margin: auto; padding: 20px; background: var(--bg-secondary); color: var(--text-primary); border: 2px solid var(--accent, #f59e0b); border-radius: 0; }
+.trace-review { width: min(780px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; margin: auto; padding: 20px; background: var(--bg-secondary); color: var(--text-primary); border: 2px solid var(--accent, #f99d1b); border-radius: 0; }
 .trace-review::backdrop { background: var(--bg-elevated); }
 .trace-review h2 { font-size: 20px; }
 .trace-review p, .trace-review label, .trace-review li { font-size: 14px; line-height: 1.5; }
@@ -7152,7 +7150,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 .trace-fields input, .trace-fields select { min-width: 0; width: 100%; min-height: 44px; background: var(--bg-elevated); color: var(--text-primary); border: 1px solid #777; border-radius: 0; padding: 8px; }
 .trace-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
 .trace-actions button { min-height: 44px; }
-.trace-review input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; accent-color: #f59e0b; }
+.trace-review input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; accent-color: #f99d1b; }
 @media (max-width: 600px) { .trace-fields { grid-template-columns: 1fr; } .trace-actions button { width: 100%; } }
 
 /* Keep physical proportions and source-image coordinates aligned at every size. */

@@ -9,7 +9,7 @@ interface EnergySimulationCardProps {
 }
 
 export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ energy, airQuality }) => {
-  const badgeColor = 'var(--accent, #f59e0b)'
+  const badgeColor = 'var(--accent, #f99d1b)'
 
   return (
     <section className="panel-section energy-simulation-card" style={{ background: 'var(--studio-sheet)', borderRadius: 0, padding: 12, marginBottom: 16 }}>

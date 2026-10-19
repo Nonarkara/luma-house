@@ -381,7 +381,7 @@ export const Inspector = React.memo(function Inspector({
                       padding: '6px 8px',
                       fontSize: '11px',
                       borderRadius: 0,
-                      border: isSelected ? '1px solid var(--accent-primary, #f59e0b)' : '1px solid var(--border)',
+                      border: isSelected ? '1px solid var(--accent-primary, #f99d1b)' : '1px solid var(--border)',
                       background: isSelected ? 'var(--studio-selection)' : 'var(--studio-sheet)',
                       color: 'var(--text-primary)',
                       cursor: 'pointer',

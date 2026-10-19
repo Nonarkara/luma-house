@@ -484,7 +484,8 @@ function App() {
       const completed = journey.stages.filter((s) => s.complete)
       const justDone = completed[completed.length - 1]
       if (justDone) {
-        setToast(`Step ${journey.doneCount} of ${journey.stages.length}: ${justDone.def.label}`)
+        const next = journey.stages.find((s) => !s.complete)
+        setToast(next ? `${justDone.def.label} done. Next: ${next.def.label.toLowerCase()}` : `${justDone.def.label} done. All stages done.`)
       }
     }
     prevDoneRef.current = journey.doneCount

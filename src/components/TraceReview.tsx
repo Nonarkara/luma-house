@@ -36,10 +36,10 @@ export function TraceReview({ draft, busy, onCancel, onAccept, onRetry }: {
         <img src={draft.image} alt="Source floor plan for comparison" />
         {overlay && draft.plan && <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Traced room boundaries over the source image">
           {draft.plan.rooms.map((room, index) => <g key={`${room.id}-${index}`}>
-            <rect x={room.x} y={room.y} width={room.w} height={room.h} fill="none" stroke="var(--accent, #f59e0b)" strokeWidth="0.5" />
-            <text x={room.x + 1} y={room.y + 4} fontSize="3" fill="var(--accent, #f59e0b)">{index + 1}</text>
+            <rect x={room.x} y={room.y} width={room.w} height={room.h} fill="none" stroke="var(--accent, #f99d1b)" strokeWidth="0.5" />
+            <text x={room.x + 1} y={room.y + 4} fontSize="3" fill="var(--accent, #f99d1b)">{index + 1}</text>
           </g>)}
-          {draft.plan.openings.map((opening, index) => <circle key={index} cx={opening.x} cy={opening.y} r="1" fill="var(--accent, #f59e0b)" />)}
+          {draft.plan.openings.map((opening, index) => <circle key={index} cx={opening.x} cy={opening.y} r="1" fill="var(--accent, #f99d1b)" />)}
         </svg>}
       </div>
       <p role="status">
