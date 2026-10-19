@@ -1,18 +1,12 @@
+import { OUTSIDE_ASSUMPTION } from '../location/climate'
 import { clockLabel } from '../location/solar'
 import React from 'react'
-import { ArrowDownRight, ArrowUpRight, CircleHelp, CloudSun, Snowflake, Sun, Thermometer } from 'lucide-react'
 import type { HeatFlowSnapshot } from '../analysis'
+import { useI18n } from '../i18n'
 
 function watts(value: number): string {
   const absolute = Math.abs(value)
   return absolute >= 1000 ? `${(absolute / 1000).toFixed(1)} kW` : `${Math.round(absolute)} W`
-}
-
-function seasonName(day: number): string {
-  if (day === 355) return 'December solstice'
-  if (day === 172) return 'June solstice'
-  if (day === 80 || day === 266) return 'Equinox'
-  return `Day ${day}`
 }
 
 export const ScienceDock = React.memo(function ScienceDock({
@@ -36,72 +30,70 @@ export const ScienceDock = React.memo(function ScienceDock({
   outsideC: number
   setOutsideC: (temperature: number) => void
 }) {
+  const { tr, lang } = useI18n()
   const [mobileExpanded, setMobileExpanded] = React.useState(false)
-  const entering = heat.mode !== 'heat-out'
-  const HeatIcon = entering ? ArrowDownRight : ArrowUpRight
   const sunPercent = Math.round((directSunM2 / Math.max(1, floorAreaM2)) * 100)
+  const dated = new Intl.DateTimeFormat(lang === 'th' ? 'th-TH' : lang === 'zh' ? 'zh-Hans' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(new Date().getFullYear(), 0, day)))
+  const seasonName = day === 355 || day === 172 || day === 80 || day === 266 ? tr(day === 355 ? 'December solstice' : day === 172 ? 'June solstice' : 'Equinox') : dated
 
   return (
-    <section className={`science-dock ${mobileExpanded ? 'is-mobile-expanded' : ''}`} aria-label="Live sun and heat snapshot">
+    <section className={`science-dock ${mobileExpanded ? 'is-mobile-expanded' : ''}`} aria-label={tr('Live sun and heat snapshot')}>
       <button
         className="science-mobile-toggle"
         type="button"
         aria-expanded={mobileExpanded}
         onClick={() => setMobileExpanded((expanded) => !expanded)}
       >
-        {mobileExpanded ? 'Done' : 'Adjust'}
+        {mobileExpanded ? tr('Done') : tr('Adjust')}
       </button>
       <div className="science-dock-summary">
         <div className="science-kicker">
           <span className="science-live" />
-          Live envelope snapshot
-          <small>clear-sky concept model</small>
+          {tr('Live envelope snapshot')}
+          <small>{tr('clear-sky concept model')}</small>
         </div>
         <div className="science-metric">
-          <Sun />
-          <span><small>Sunlit floor now</small><strong>{directSunM2.toFixed(1)} m² <em>{sunPercent}%</em></strong></span>
+          <span><small>{tr('Sunlit floor now')}</small><strong>{directSunM2.toFixed(1)} m² <em>{sunPercent}%</em></strong></span>
         </div>
         <div className="science-metric">
-          <CloudSun />
-          <span><small>Through glass</small><strong>{watts(heat.solarW)} <em>solar</em></strong></span>
+          <span><small>{tr('Through glass')}</small><strong>{heat.windowM2 > 0 ? <>{watts(heat.solarW)} <em>{tr('solar')}</em></> : <em>{tr('no windows yet')}</em>}</strong></span>
         </div>
         <div className="science-metric">
-          {entering ? <Thermometer /> : <Snowflake />}
-          <span><small>Walls + openings</small><strong>{watts(heat.wallW + heat.openingW)} <em>{heat.wallW + heat.openingW >= 0 ? 'in' : 'out'}</em></strong></span>
+          <span><small>{tr('Walls + openings')}</small><strong>{watts(heat.wallW + heat.openingW)} <em>{heat.wallW + heat.openingW >= 0 ? tr('in') : tr('out')}</em></strong></span>
         </div>
         <div className={`science-net is-${heat.mode}`}>
-          <HeatIcon />
-          <span><small>Net right now</small><strong>{watts(heat.netW)} {heat.mode === 'balanced' ? 'balanced' : heat.mode === 'heat-in' ? 'entering' : 'leaving'}</strong></span>
+          <span><small>{heat.windowM2 > 0 ? tr('Net right now') : tr('Net through walls')}</small><strong>{watts(heat.netW)} {heat.mode === 'balanced' ? tr('balanced') : heat.mode === 'heat-in' ? tr('entering') : tr('leaving')}</strong></span>
         </div>
       </div>
 
       <div className="science-controls">
         <label className="sun-scrubber">
-          <span><Sun /> {clockLabel(hour)}</span>
-          <input aria-label="Sun time of day" type="range" min="0" max="24" step="0.25" value={hour} onChange={(event) => setHour(Number(event.target.value))} />
-          <small>{seasonName(day)}</small>
+          <span>{tr(clockLabel(hour))}</span>
+          <input aria-label={tr('Sun time of day')} type="range" min="0" max="24" step="0.25" value={hour} onChange={(event) => setHour(Number(event.target.value))} />
+          <small>{seasonName}</small>
         </label>
-        <div className="science-seasons" aria-label="Season presets">
-          <button type="button" className={day === 355 ? 'active' : ''} onClick={() => setDay(355)}>Dec</button>
-          <button type="button" className={day === 80 ? 'active' : ''} onClick={() => setDay(80)}>Mar</button>
-          <button type="button" className={day === 172 ? 'active' : ''} onClick={() => setDay(172)}>Jun</button>
+        <div className="science-seasons" aria-label={tr('Season presets')}>
+          <button type="button" className={day === 355 ? 'active' : ''} onClick={() => setDay(355)}>{tr('Dec')}</button>
+          <button type="button" className={day === 80 ? 'active' : ''} onClick={() => setDay(80)}>{tr('Mar')}</button>
+          <button type="button" className={day === 172 ? 'active' : ''} onClick={() => setDay(172)}>{tr('Jun')}</button>
         </div>
-        <label className="outside-temperature">
-          Outside
-          <input aria-label="Outside air temperature" type="number" min="-30" max="55" value={outsideC} onChange={(event) => setOutsideC(Number(event.target.value))} />
+        <label className="outside-temperature" title={tr(OUTSIDE_ASSUMPTION)}>
+          {tr('Outside')}
+          <input aria-label={tr('Outside air temperature')} title={tr(OUTSIDE_ASSUMPTION)} type="number" min="-30" max="55" value={outsideC} onChange={(event) => setOutsideC(Number(event.target.value))} />
           <span>°C</span>
+          <small>{tr('assumed')}</small>
         </label>
         <details className="science-method">
-          <summary aria-label="How the heat snapshot is calculated"><CircleHelp /> Method</summary>
+          <summary aria-label={tr('How the heat snapshot is calculated')}>{tr('Method')}</summary>
           <div>
-            <strong>What this number means</strong>
-            <p><b>Transmission:</b> U × area × temperature difference. <b>Sun:</b> 800 W/m² clear-sky beam × glass area × SHGC × angle.</p>
-            <p>Inside is held at 26°C. Current assumptions: {heat.exteriorWallM2.toFixed(1)} m² opaque wall, {heat.windowM2.toFixed(1)} m² glass, {heat.doorM2.toFixed(1)} m² doors.</p>
-            <p className="science-caveat">Not included: roof, floor, air leaks, clouds, trees, overhangs, people or equipment. Use it to compare moves—not size an AC system.</p>
-            <nav aria-label="Method sources">
-              <a href="https://www.energy.gov/cmei/femp/purchasing-energy-efficient-residential-windows-doors-and-skylights" target="_blank" rel="noreferrer">DOE · U-factor & SHGC</a>
-              <a href="https://github.com/mourner/suncalc" target="_blank" rel="noreferrer">SunCalc · solar position</a>
-              <a href="https://www.wbdg.org/resources/natural-ventilation" target="_blank" rel="noreferrer">WBDG · ventilation</a>
+            <strong>{tr('What this number means')}</strong>
+            <p><b>{tr('Transmission:')}</b> U × area × ΔT. <b>{tr('Sun')}</b> 800 W/m² × {tr('glass')} × SHGC × angle.</p>
+            <p>{tr('Inside is held at 26°C. Current assumptions:')} {tr(`${heat.exteriorWallM2.toFixed(1)} m² opaque wall, ${heat.windowM2.toFixed(1)} m² glass, ${heat.doorM2.toFixed(1)} m² doors.`)}</p>
+            <p className="science-caveat">{tr('Not included: roof, floor, air leaks, clouds, trees, overhangs, people or equipment. Use it to compare moves—not size an AC system.')}</p>
+            <nav aria-label={tr('Method sources')}>
+              <a href="https://www.energy.gov/cmei/femp/purchasing-energy-efficient-residential-windows-doors-and-skylights" target="_blank" rel="noreferrer">{tr('DOE · U-factor & SHGC')}</a>
+              <a href="https://github.com/mourner/suncalc" target="_blank" rel="noreferrer">{tr('SunCalc · solar position')}</a>
+              <a href="https://www.wbdg.org/resources/natural-ventilation" target="_blank" rel="noreferrer">{tr('WBDG · ventilation')}</a>
             </nav>
           </div>
         </details>

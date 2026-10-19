@@ -1,5 +1,4 @@
 import React from 'react'
-import { Zap, Sun, Leaf, Flame, Wind, Clock } from 'lucide-react'
 import type { EnergySimulationResult } from '../analysis/energySimulation'
 import type { AirQualityReport } from '../analysis/airQuality'
 
@@ -9,13 +8,13 @@ interface EnergySimulationCardProps {
 }
 
 export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ energy, airQuality }) => {
-  const badgeColor = 'var(--accent, #f59e0b)'
+  const badgeColor = 'var(--accent, #f99d1b)'
 
   return (
     <section className="panel-section energy-simulation-card" style={{ background: 'var(--studio-sheet)', borderRadius: 0, padding: 12, marginBottom: 16 }}>
       <div className="section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Zap style={{ width: 18, height: 18, color: badgeColor }} />
+          
           <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Energy assumptions preview</h3>
         </div>
         <span
@@ -58,7 +57,7 @@ export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ ener
             Not calculated
           </strong>
           <small style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
-            <Clock style={{ width: 10, height: 10, display: 'inline', marginRight: 2 }} />
+            
             Needs a modeled baseline and intervention inventory
           </small>
         </div>
@@ -67,15 +66,15 @@ export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ ener
       {/* Breakdown List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span><Flame style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: 'var(--warning)' }} /> Heating Demand:</span>
+          <span> Heating Demand:</span>
           <strong>{energy.heatingDemandKwhPerM2Yr.toFixed(1)} kWh/m²/yr</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span><Wind style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: 'var(--analysis-cool)' }} /> Cooling Demand:</span>
+          <span> Cooling Demand:</span>
           <strong>{energy.coolingDemandKwhPerM2Yr.toFixed(1)} kWh/m²/yr</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span><Sun style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: 'var(--warning)' }} /> Solar PV Yield:</span>
+          <span> Solar PV Yield:</span>
           <strong style={{ color: 'var(--success)' }}>−{energy.solarPvGenerationKwhPerM2Yr.toFixed(1)} kWh/m²/yr</strong>
         </div>
       </div>
@@ -86,7 +85,7 @@ export const EnergySimulationCard: React.FC<EnergySimulationCardProps> = ({ ener
       {airQuality && (
         <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: '0.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'var(--text-secondary)' }}><Leaf style={{ width: 12, height: 12, display: 'inline', marginRight: 4, color: 'var(--success)' }} /> Assumed CO₂ scenario:</span>
+            <span style={{ color: 'var(--text-secondary)' }}> Assumed CO₂ scenario:</span>
             <strong style={{ color: airQuality.overallIaq === 'POOR' ? 'var(--error)' : airQuality.overallIaq === 'MODERATE' ? 'var(--warning)' : 'var(--success)' }}>
               {airQuality.averageCo2Ppm} ppm ({airQuality.overallIaq})
             </strong>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { PlanState, ProjectLocation } from '../types'
+import { useI18n } from '../i18n'
 import { clockLabel } from '../location/solar'
 import { geometryFingerprint } from './geometry'
 import { MAX_STUDY_SCENES, readPreviews, savePreview } from './scenes'
@@ -12,6 +13,7 @@ export function StudyPanel({ plan, title, location, day, hour, year, settings, c
   settings: StudySettings; capture: (time?: StudyTime) => Promise<StudyCapture>; restore: (scene: StudyScene) => void
   onScenesChange: (scenes: StudyScene[]) => void; onTimeChange: (day: number, hour: number, year: number) => void; disabled: boolean
 }) {
+  const { tr } = useI18n()
   const [open, setOpen] = useState(false), [sheet, setSheet] = useState<StudyCapture | null>(null)
   const [previews, setPreviews] = useState(readPreviews)
   const [name, setName] = useState(''), [busy, setBusy] = useState(false), [message, setMessage] = useState('')
@@ -60,28 +62,28 @@ export function StudyPanel({ plan, title, location, day, hour, year, settings, c
   }
   const date = new Date(Date.UTC(year, 0, day)).toISOString().slice(0, 10)
   return <>
-    <div className="study-launchers"><button type="button" disabled={disabled || busy} onClick={() => setOpen(true)}>Saved views</button><button type="button" disabled={disabled || busy} onClick={showSheet}>{busy && !open ? 'Preparing…' : 'Study sheet'}</button></div>
-    {open && <StudyDialog label="Saved study views" close={() => { if (!busy) setOpen(false) }}>
-      <div className="study-dialog-controls"><strong>Saved study views</strong><button type="button" disabled={busy} onClick={() => setOpen(false)}>Close saved views</button></div>
-      <p>Save a viewpoint and its sun settings. Previews record the drawing at capture time; opening a view uses your current drawing.</p>
+    <div className="study-launchers"><button type="button" disabled={disabled || busy} onClick={() => setOpen(true)}>{tr('Saved views')}</button><button type="button" disabled={disabled || busy} onClick={showSheet}>{busy && !open ? tr('Preparing…') : tr('Study sheet')}</button></div>
+    {open && <StudyDialog label={tr('Saved study views')} close={() => { if (!busy) setOpen(false) }}>
+      <div className="study-dialog-controls"><strong>{tr('Saved study views')}</strong><button type="button" disabled={busy} onClick={() => setOpen(false)}>{tr('Close saved views')}</button></div>
+      <p>{tr('Save a viewpoint and its sun settings. Previews record the drawing at capture time; opening a view uses your current drawing.')}</p>
       <div className="study-scene-inputs">
-        <label>View name<input aria-label="Study view name" maxLength={64} value={name} disabled={busy} onChange={e => setName(e.target.value)} placeholder={`${clockLabel(hour)} sun study`} /></label>
-        <label>Date<input type="date" aria-label="Study date" min="2000-01-01" max="2100-12-31" value={date} disabled={busy} onChange={e => {
+        <label>{tr('View name')}<input aria-label={tr('Study view name')} maxLength={64} value={name} disabled={busy} onChange={e => setName(e.target.value)} placeholder={`${clockLabel(hour)} sun study`} /></label>
+        <label>{tr('Date')}<input type="date" aria-label={tr('Study date')} min="2000-01-01" max="2100-12-31" value={date} disabled={busy} onChange={e => {
           const value = e.target.value, next = new Date(`${value}T12:00:00Z`)
           if (!value || !Number.isFinite(next.getTime()) || next.getUTCFullYear() < 2000 || next.getUTCFullYear() > 2100) return
           const y = next.getUTCFullYear(), d = Math.floor((next.getTime() - Date.UTC(y, 0, 1)) / 86400000) + 1
           onTimeChange(d, hour, y)
         }} /></label>
-        <label>Local time<input type="time" aria-label="Study local time" step={900} value={clockLabel(hour === 24 ? 0 : hour)} disabled={busy} onChange={e => { if (/^\d{2}:\d{2}$/.test(e.target.value)) { const [h, m] = e.target.value.split(':').map(Number); onTimeChange(day, h + m / 60, year) } }} /></label>
+        <label>{tr('Local time')}<input type="time" aria-label={tr('Study local time')} step={900} value={clockLabel(hour === 24 ? 0 : hour)} disabled={busy} onChange={e => { if (/^\d{2}:\d{2}$/.test(e.target.value)) { const [h, m] = e.target.value.split(':').map(Number); onTimeChange(day, h + m / 60, year) } }} /></label>
       </div>
-      <div className="study-save-actions"><button type="button" disabled={busy || scenes.length >= MAX_STUDY_SCENES} onClick={() => save()}>Save current view</button><button type="button" disabled={busy || scenes.length > MAX_STUDY_SCENES - 3} onClick={compare}>Compare 09:00 / 12:00 / 15:00</button><span>{scenes.length}/{MAX_STUDY_SCENES} views · {location.timezone}</span></div>
-      {message && <p role="status">{message}</p>}
-      {!scenes.length && <p className="study-empty">No saved views yet. Frame your model, then save a view or compare three sun times.</p>}
+      <div className="study-save-actions"><button type="button" disabled={busy || scenes.length >= MAX_STUDY_SCENES} onClick={() => save()}>{tr('Save current view')}</button><button type="button" disabled={busy || scenes.length > MAX_STUDY_SCENES - 3} onClick={compare}>{tr('Compare 09:00 / 12:00 / 15:00')}</button><span>{tr(`${scenes.length}/${MAX_STUDY_SCENES} views`)} · {location.timezone}</span></div>
+      {message && <p role="status">{tr(message)}</p>}
+      {!scenes.length && <p className="study-empty">{tr('No saved views yet. Frame your model, then save a view or compare three sun times.')}</p>}
       <div className="study-scene-grid">{scenes.map(scene => <article key={scene.id}>
-        {previews[previewId(scene)] ? <img src={previews[previewId(scene)]} alt={`Captured drawing: ${scene.name}`} /> : <div className="study-no-preview">Preview on the original device · open the view to inspect it here</div>}
+        {previews[previewId(scene)] ? <img src={previews[previewId(scene)]} alt={tr(`Captured drawing: ${scene.name}`)} /> : <div className="study-no-preview">{tr('Preview on the original device · open the view to inspect it here')}</div>}
         <strong>{scene.name}</strong><span>{scene.location.name} · {new Date(Date.UTC(scene.year, 0, scene.day)).toISOString().slice(0, 10)} · {clockLabel(scene.hour)}</span>
-        <small>{scene.geometryKey === geometryFingerprint(plan, scene.settings.roofStyle) ? 'Captured from this drawing' : 'Earlier drawing · update preview to refresh'}</small>
-        <div><button type="button" disabled={busy} onClick={() => { restore(scene); setOpen(false) }}>Open {scene.name}</button><button type="button" disabled={busy} onClick={() => save(scene)} aria-label={`Replace ${scene.name} with current view`}>Update</button><button type="button" disabled={busy} onClick={() => onScenesChange(scenes.filter(s => s.id !== scene.id))} aria-label={`Remove ${scene.name}`}>Remove</button></div>
+        <small>{tr(scene.geometryKey === geometryFingerprint(plan, scene.settings.roofStyle) ? 'Captured from this drawing' : 'Earlier drawing · update preview to refresh')}</small>
+        <div><button type="button" disabled={busy} onClick={() => { restore(scene); setOpen(false) }}>{tr(`Open ${scene.name}`)}</button><button type="button" disabled={busy} onClick={() => save(scene)} aria-label={tr(`Replace ${scene.name} with current view`)}>{tr('Update')}</button><button type="button" disabled={busy} onClick={() => onScenesChange(scenes.filter(s => s.id !== scene.id))} aria-label={tr(`Remove ${scene.name}`)}>{tr('Remove')}</button></div>
       </article>)}</div>
     </StudyDialog>}
     {sheet && <StudySheet plan={plan} title={title} location={location} day={day} hour={hour} year={year} settings={settings} capture={sheet} close={() => setSheet(null)} />}

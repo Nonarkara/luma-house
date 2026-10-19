@@ -29,7 +29,11 @@ test('export controls gate thin walls and downloaded GLB/STL/3MF open in indepen
   const requests: string[] = []
   await page.route('**/luma-concept-render.drnon.workers.dev/**', route => { requests.push(route.request().url()); return route.abort() })
   await page.goto('/#plan=' + encodePlanToHash(chinaApartmentPlan))
-  const open = async () => { await page.getByRole('button', { name: 'Export', exact: true }).click(); await expect(page.getByRole('dialog', { name: 'Take the design out' })).toBeVisible() }
+  const open = async () => {
+    await page.getByRole('button', { name: 'Export', exact: true }).click()
+    await page.getByRole('button', { name: 'Scale model', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: 'Take the design out' })).toBeVisible()
+  }
   await open()
   const glb = await download(page, info, '.glb', 'glb')
   const gltf = await new GLTFLoader().parseAsync(glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength), '')
@@ -77,6 +81,7 @@ test('a plate-edge print is blocked after wall thickening and an empty drawing s
   const oversized = { ...chinaApartmentPlan, site: { w: 50.05, h: 10, unit: 1 }, rooms: [{ id: 'r', name: 'Long room', kind: 'living' as const, x: 0, y: 0, w: 100, h: 100 }], openings: [] }
   await page.goto('/#plan=' + encodePlanToHash(oversized))
   await page.getByRole('button', { name: 'Export', exact: true }).click()
+  await page.getByRole('button', { name: 'Scale model', exact: true }).click()
   await page.getByLabel('Scale', { exact: true }).selectOption('200')
   await expect(page.getByText(/larger than a 256 mm plate/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Download .3mf', exact: true })).toBeDisabled()
@@ -84,6 +89,7 @@ test('a plate-edge print is blocked after wall thickening and an empty drawing s
   await page.goto('/#plan=' + encodePlanToHash({ ...chinaApartmentPlan, rooms: [], openings: [], furniture: [] }))
   await page.reload() // share hashes apply on document entry, not a hash-only navigation
   await page.getByRole('button', { name: 'Export', exact: true }).click()
+  await page.getByRole('button', { name: 'Scale model', exact: true }).click()
   await expect(page.getByRole('button', { name: '.json', exact: true })).toBeEnabled()
   await expect(page.getByRole('button', { name: '.glb', exact: true })).toBeDisabled()
   await expect(page.getByRole('button', { name: 'Download .3mf', exact: true })).toBeDisabled()

@@ -1,5 +1,6 @@
 import type { PlanState } from '../types'
 import { sanitizePlan } from '../sharePlan'
+import { aiEnabled, AI_PAUSED_MESSAGE } from './ai'
 import { canGenerateConcept, getQuotaRemaining, recordAiTrace } from '../concept/renderQuota'
 
 const DEFAULT_API =
@@ -58,6 +59,7 @@ export async function tracePlanFromImage(options: {
     signal?: AbortSignal
     apiUrl?: string
 }): Promise<TraceResult> {
+    if (!aiEnabled()) throw new Error(AI_PAUSED_MESSAGE)
     if (!canGenerateConcept()) {
         throw new Error(`Daily AI limit reached (${getQuotaRemaining()} left). Try again tomorrow.`)
     }

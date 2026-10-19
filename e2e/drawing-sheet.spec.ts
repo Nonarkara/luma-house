@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { clickAction } from './workspace'
 import { initialPlan } from '../src/plan'
 import { encodePlanToHash } from '../src/sharePlan'
 import type { PlanState } from '../src/types'
@@ -6,7 +7,7 @@ import type { PlanState } from '../src/types'
 async function openSheet(page: Page, plan: PlanState) {
   await page.goto('/#plan=' + encodePlanToHash(plan))
   await page.reload()
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   await page.getByRole('button', { name: 'Study sheet', exact: true }).click()
   await page.getByRole('button', { name: 'Elevation sheet', exact: true }).click()
   await page.evaluate(() => document.fonts.ready)

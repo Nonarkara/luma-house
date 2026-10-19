@@ -2,11 +2,11 @@ import React from 'react'
 import type { Room } from '../types'
 
 const ROOM_COLORS: Record<string, string> = {
-  living: 'rgba(163, 255, 0, 0.25)',
-  kitchen: 'rgba(56, 189, 248, 0.25)',
-  bedroom: 'rgba(232, 121, 249, 0.25)',
-  bathroom: 'rgba(45, 212, 191, 0.25)',
-  studio: 'rgba(251, 146, 60, 0.25)',
+  living: 'rgba(138, 76, 22, 0.25)',
+  kitchen: 'rgba(34, 80, 108, 0.25)',
+  bedroom: 'rgba(65, 72, 43, 0.25)',
+  bathroom: 'rgba(38, 56, 63, 0.2)',
+  studio: 'rgba(113, 60, 16, 0.25)',
   terrace: 'transparent',
 }
 

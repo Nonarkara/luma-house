@@ -1,5 +1,6 @@
 import type { ProjectLocation } from '../types'
-import { citySunPosition, citySunTimes, clockLabel, normalizedCivilHour } from '../location/solar'
+import { citySunPosition, citySunTimes, clockLabel, normalizedCivilHour, dayLabel } from '../location/solar'
+import { useI18n } from '../i18n'
 import React, { useMemo } from 'react'
 import { solarPosition } from '../plan'
 
@@ -19,6 +20,8 @@ export const SunChart = React.memo(function SunChart({
   locationLabel: string
   year?: number
 }) {
+  const { tr, lang } = useI18n()
+  const locale = lang === 'th' ? 'th-TH' : lang === 'zh' ? 'zh-Hans' : 'en-GB'
   const size = 180
   const cx = size / 2
   const cy = size / 2
@@ -65,8 +68,8 @@ export const SunChart = React.memo(function SunChart({
   const formatTime = (date: Date | null) => date && location ? new Intl.DateTimeFormat('en-GB', { timeZone: location.timezone, hour: '2-digit', minute: '2-digit' }).format(date) : '—'
 
   return (
-    <div className="sun-chart" aria-label={`Sun chart for ${locationLabel}`}>
-      <svg viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Daily sun path: north at top, horizon at rim, zenith at centre">
+    <div className="sun-chart" aria-label={tr(`Sun chart for ${locationLabel}`)}>
+      <svg viewBox={`0 0 ${size} ${size}`} role="img" aria-label={tr('Daily sun path: north at top, horizon at rim, zenith at centre')}>
         <circle cx={cx} cy={cy} r={R} className="sun-chart-disk" />
         <circle cx={cx} cy={cy} r={R * (2 / 3)} className="sun-chart-ring" />
         <circle cx={cx} cy={cy} r={R / 3} className="sun-chart-ring" />
@@ -88,12 +91,12 @@ export const SunChart = React.memo(function SunChart({
         <strong>{locationLabel}</strong>
         <span>
           {now
-            ? `${clockLabel(hour)} · ${now.altitude.toFixed(0)}° alt · ${now.azimuth.toFixed(0)}° az`
-            : `${clockLabel(hour)} · sun below horizon`}
+            ? tr(`${clockLabel(hour)} · ${now.altitude.toFixed(0)}° alt · ${now.azimuth.toFixed(0)}° az`)
+            : tr(`${clockLabel(hour)} · sun below horizon`)}
         </span>
         {location && <span>{location.timezone} · {location.latitude.toFixed(3)}°, {location.longitude.toFixed(3)}°</span>}
-        {times && <span>{times.alwaysUp ? 'Midnight sun · no sunset' : times.alwaysDown ? 'Polar night · no sunrise' : `Sunrise ${formatTime(times.sunrise)} · Sunset ${formatTime(times.sunset)}`}</span>}
-        <small>Day {day} · {year} · <a href="https://github.com/mourner/suncalc" target="_blank" rel="noreferrer">SunCalc</a> · clear horizon</small>
+        {times && <span>{times.alwaysUp ? tr('Midnight sun · no sunset') : times.alwaysDown ? tr('Polar night · no sunrise') : tr(`Sunrise ${formatTime(times.sunrise)} · Sunset ${formatTime(times.sunset)}`)}</span>}
+        <small>{dayLabel(day, year, locale)} {year} · <a href="https://github.com/mourner/suncalc" target="_blank" rel="noreferrer">SunCalc</a> · {tr('clear horizon')}</small>
       </div>
     </div>
   )

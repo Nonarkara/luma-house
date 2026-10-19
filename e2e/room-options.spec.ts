@@ -1,4 +1,4 @@
-import { clickAction } from './workspace'
+import { clickAction, clickTool } from './workspace'
 import { expect, test, type Page } from '@playwright/test'
 import { decodePlanFromHash, encodePlanToHash } from '../src/sharePlan'
 import { CHINA_PROJECT_KEY, chinaApartmentPlan } from '../src/mockups/chinaApartment'
@@ -27,7 +27,7 @@ test('preview is inert; Apply is one undo step, persists and shares without AI',
   await expect.poll(async () => (await saved(page)).furniture?.length).toBe(3)
   const original = await saved(page)
   await expect(page.getByRole('button', { name: 'Desk, 1.6 by 0.8 meters', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Room options', exact: true }).click()
+  await clickTool(page, 'Room options')
   const dialog = page.getByRole('dialog', { name: 'Room options', exact: true })
   await expect(dialog).toBeVisible()
   await expect(dialog.getByRole('img')).toHaveCount(2)
@@ -37,7 +37,7 @@ test('preview is inert; Apply is one undo step, persists and shares without AI',
   expect(await saved(page)).toEqual(original)
   await dialog.getByRole('button', { name: 'Keep current drawing', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled()
-  await page.getByRole('button', { name: 'Room options', exact: true }).click()
+  await clickTool(page, 'Room options')
   await dialog.getByRole('button', { name: 'Apply arrangement', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   await expect.poll(async () => JSON.stringify((await saved(page)).furniture)).not.toBe(JSON.stringify(original.furniture))
@@ -50,7 +50,7 @@ test('preview is inert; Apply is one undo step, persists and shares without AI',
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
   await expect.poll(() => saved(page)).toEqual(original)
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled()
-  await page.getByRole('button', { name: 'Redo', exact: true }).click()
+  await clickTool(page, 'Redo')
   await expect.poll(() => saved(page)).toEqual(applied)
   await clickAction(page, 'Share')
   const url = await page.evaluate(() => navigator.clipboard.readText())
@@ -64,9 +64,14 @@ test('preview is inert; Apply is one undo step, persists and shares without AI',
 
 test('empty room and failed search keep Apply disabled; undone room selection falls back', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash({ ...fixture, furniture: [] }))
-  await page.getByRole('button', { name: 'Add room', exact: true }).click()
+  await clickTool(page, 'Room')
+  const sheet = await page.locator('.plan-canvas').boundingBox()
+  await page.mouse.move(sheet!.x + sheet!.width * 0.62, sheet!.y + sheet!.height * 0.62)
+  await page.mouse.down()
+  await page.mouse.move(sheet!.x + sheet!.width * 0.9, sheet!.y + sheet!.height * 0.9, { steps: 8 })
+  await page.mouse.up()
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
-  await page.getByRole('button', { name: 'Room options', exact: true }).click()
+  await clickTool(page, 'Room options')
   const dialog = page.getByRole('dialog', { name: 'Room options', exact: true })
   await expect(dialog.getByLabel('Room', { exact: true })).toHaveValue('room')
   await expect(dialog.getByRole('status')).toContainText('Add movable furniture')
@@ -77,7 +82,7 @@ test('empty room and failed search keep Apply disabled; undone room selection fa
   await page.goto('/#plan=' + encodePlanToHash(impossible))
   // Share payloads are loaded on document entry, not on an in-page hash change.
   await page.reload()
-  await page.getByRole('button', { name: 'Room options', exact: true }).click()
+  await clickTool(page, 'Room options')
   await expect(dialog.getByRole('status')).toContainText('No alternative found')
   await expect(dialog.getByRole('button', { name: 'Apply arrangement', exact: true })).toBeDisabled()
 })

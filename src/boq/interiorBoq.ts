@@ -1,6 +1,7 @@
 import { openingDimensions } from '../openingGeometry'
 import { openingCompassForRoom } from '../analysis/walls'
 import type { CurrencyCode, Opening, PlanState, RegionalRateCard, Room, SiteSpec } from '../types'
+import { FX_PER_CNY } from './currency'
 import { roomHeight } from '../plan'
 
 export interface InteriorLine {
@@ -42,12 +43,24 @@ export const REGIONAL_RATE_CARDS: Record<CurrencyCode, RegionalRateCard> = {
   CNY: {
     code: 'CNY',
     symbol: '¥',
-    label: 'Shanghai / East Asia (RMB ¥)',
+    label: 'China (RMB ¥)',
     ratePerM2: 2400,
     windowUnitRate: 3500,
     doorUnitRate: 2800,
     insulationM2Rate: 180,
     solarSystemRate: 28000,
+  },
+  // The Shanghai card converted at the Bank of Thailand rate (see ../boq/currency.ts).
+  // A conversion of the authored specification, not a Thai market survey.
+  THB: {
+    code: 'THB',
+    symbol: '฿',
+    label: 'Thailand (THB ฿), converted from the RMB card',
+    ratePerM2: Math.round(2400 * FX_PER_CNY.THB),
+    windowUnitRate: Math.round(3500 * FX_PER_CNY.THB),
+    doorUnitRate: Math.round(2800 * FX_PER_CNY.THB),
+    insulationM2Rate: Math.round(180 * FX_PER_CNY.THB),
+    solarSystemRate: Math.round(28000 * FX_PER_CNY.THB),
   },
   USD: {
     code: 'USD',
@@ -68,6 +81,28 @@ export const REGIONAL_RATE_CARDS: Record<CurrencyCode, RegionalRateCard> = {
     doorUnitRate: 410,
     insulationM2Rate: 22,
     solarSystemRate: 11000,
+  },
+  // The Shanghai card converted at the ECB/Frankfurter rate. A conversion of
+  // the authored specification, not a South African or Singapore market survey.
+  ZAR: {
+    code: 'ZAR',
+    symbol: 'R',
+    label: 'South Africa (ZAR), converted from the RMB card',
+    ratePerM2: Math.round(2400 * FX_PER_CNY.ZAR),
+    windowUnitRate: Math.round(3500 * FX_PER_CNY.ZAR),
+    doorUnitRate: Math.round(2800 * FX_PER_CNY.ZAR),
+    insulationM2Rate: Math.round(180 * FX_PER_CNY.ZAR),
+    solarSystemRate: Math.round(28000 * FX_PER_CNY.ZAR),
+  },
+  SGD: {
+    code: 'SGD',
+    symbol: 'S$',
+    label: 'Singapore (SGD), converted from the RMB card',
+    ratePerM2: Math.round(2400 * FX_PER_CNY.SGD),
+    windowUnitRate: Math.round(3500 * FX_PER_CNY.SGD),
+    doorUnitRate: Math.round(2800 * FX_PER_CNY.SGD),
+    insulationM2Rate: Math.round(180 * FX_PER_CNY.SGD),
+    solarSystemRate: Math.round(28000 * FX_PER_CNY.SGD),
   },
 }
 

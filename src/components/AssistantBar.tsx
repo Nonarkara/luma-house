@@ -1,6 +1,5 @@
 import React from 'react'
-import { ArrowRight, Send, Sparkles } from 'lucide-react'
-import { IconButton } from './ui'
+import { useI18n } from '../i18n'
 
 interface AssistantBarProps {
   assistantText: string
@@ -20,28 +19,27 @@ export const AssistantBar = React.memo(function AssistantBar({
   cta,
   onCta,
 }: AssistantBarProps) {
+  const { tr } = useI18n()
   return (
     <div className="assistant-bar">
-      <div className="assistant-symbol">
-        <Sparkles />
-      </div>
       <input
         type="text"
         value={assistantText}
         onChange={(event) => setAssistantText(event.target.value)}
         onKeyDown={(event) => event.key === 'Enter' && runQuickAction()}
-        placeholder="Quick action: brighter, budget, photo…"
-        aria-label="Quick plan actions"
-        title={hint ? `Suggested next step: ${hint}` : undefined}
+        placeholder={tr('Quick action: brighter, budget, photo…')}
+        id="quick-action"
+        aria-label={tr('Quick plan actions')}
+        title={hint ? `${tr('Suggested next step:')} ${tr(hint)}` : undefined}
       />
       {cta && onCta && (
         <button type="button" className="button primary small assistant-cta" onClick={onCta}>
-          {cta} <ArrowRight />
+          {tr(cta)}
         </button>
       )}
-      <IconButton label="Run quick action" onClick={runQuickAction}>
-        <Send />
-      </IconButton>
+      <button type="button" className="button secondary" aria-label={tr('Run quick action')} onClick={runQuickAction}>
+        {tr('Run quick action')}
+      </button>
     </div>
   )
 })

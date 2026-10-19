@@ -2,6 +2,23 @@ import { siteOf } from '../plan'
 import type { Opening, PlanState, Room, SiteSpec } from '../types'
 import type { Compass, WallSegment } from './types'
 
+/** A window point on an exterior wall of this room. Prefers the requested face when that face is exterior. */
+export function exteriorWindowAnchor(
+  plan: PlanState,
+  room: Room,
+  preferred?: Compass,
+): { x: number; y: number; rotation: 0 | 90; compass: Compass } | null {
+  const present = new Set(
+    exteriorWalls(plan).filter((wall) => wall.roomId === room.id && wall.lengthPct > 0.5).map((wall) => wall.compass),
+  )
+  const compass = preferred && present.has(preferred) ? preferred : (['S', 'E', 'W', 'N'] as const).find((item) => present.has(item))
+  if (!compass) return null
+  const vertical = compass === 'W' || compass === 'E'
+  const x = compass === 'W' ? room.x : compass === 'E' ? room.x + room.w : room.x + room.w / 2
+  const y = compass === 'N' ? room.y : compass === 'S' ? room.y + room.h : room.y + room.h / 2
+  return { x: Math.round(x), y: Math.round(y), rotation: vertical ? 90 : 0, compass }
+}
+
 const EPS = 0.5 // percentage tolerance for "touching" / "shared wall"
 
 function coveredLength(intervals: Array<[number, number]>): number {

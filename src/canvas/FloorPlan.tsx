@@ -1,6 +1,6 @@
 import { openingDimensions } from '../openingGeometry'
-import { ArrowRight } from 'lucide-react'
 import React, { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { useI18n } from '../i18n'
 import { furnitureCatalog, furnitureLabelFor, furnitureRectFor, furnitureSpecFor, roomAreaFor, siteOf } from '../plan'
 import type { SunPatch } from '../plan'
 import type { Furniture, Opening, PlanState, PlanTool, Room, RoomKind } from '../types'
@@ -8,8 +8,9 @@ import type { DaylightBand, RoomEgressRoute, RoomWindPotential } from '../analys
 import { exteriorWalls } from '../analysis'
 import type { ValueLensMode } from '../components/ValueLens'
 import type { Compass } from '../analysis'
-import type { ResizeHandle, StrokePoint } from './geometry'
+import { type ResizeHandle, type StrokePoint } from './geometry'
 import type { NapkinCalibrationLine } from './napkinScale'
+import { type WallHit } from './wallHost'
 
 const roomColors: Record<RoomKind, string> = {
   living: 'rgba(var(--studio-action-rgb, 138, 76, 22), 0.07)',
@@ -56,6 +57,12 @@ export const FloorPlan = React.memo(function FloorPlan({
   alignGuides,
   measureStart,
   measureEnd,
+  openingGhost = null,
+  roomDraft = null,
+  wallNote = false,
+  cornerNote = null,
+  showEmptyHint = false,
+  onUploadUnderlay,
   onRoomPointerDown,
   onRoomSelect,
   onOpeningPointerDown,
@@ -95,6 +102,14 @@ export const FloorPlan = React.memo(function FloorPlan({
   alignGuides?: { x: number[]; y: number[] } | null
   measureStart?: { x: number; y: number } | null
   measureEnd?: { x: number; y: number } | null
+  openingGhost?: WallHit | null
+  roomDraft?: { x: number; y: number; w: number; h: number } | null
+  wallNote?: boolean
+  cornerNote?: { x: number; y: number } | null
+  showEmptyHint?: boolean
+  onUploadUnderlay?: () => void
+  onSetOpeningType?: (id: string, type: Opening['type']) => void
+  onPlaceOpening?: (clientX: number, clientY: number) => void
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
   onRoomSelect: (room: Room) => void
   onOpeningPointerDown: (event: ReactPointerEvent, opening: Opening, end?: 'start' | 'end') => void
@@ -108,6 +123,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   onCanvasClick: (event: React.MouseEvent<HTMLDivElement>) => void
   stageRef: RefObject<HTMLDivElement>
 }) {
+  const { tr } = useI18n()
   const site = siteOf(plan)
   const rayX = Math.max(1, Math.min(99, 50 + 72 * Math.sin((sunAngle * Math.PI) / 180)))
   const rayY = Math.max(1, Math.min(99, 50 - 72 * Math.cos((sunAngle * Math.PI) / 180)))
@@ -170,7 +186,7 @@ export const FloorPlan = React.memo(function FloorPlan({
               />
             </svg>
           )}
-          <div className="north-mark" aria-label="North points upward"><ArrowRight /> <span>N</span></div>
+          <div className="north-mark" aria-label={tr('North points upward')}><span>N</span></div>
           <div className="scale-label">{site.unit} m grid <span>•</span> {site.w.toFixed(1)} × {site.h.toFixed(1)} m field</div>
           {showSun && (
             <svg className="sun-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" aria-hidden="true">
@@ -209,7 +225,7 @@ export const FloorPlan = React.memo(function FloorPlan({
                   if (event.detail === 0) onRoomSelect(room)
                 }
               }}
-              aria-label={`${room.name}, ${roomAreaFor(room, site).toFixed(1)} square meters`}
+              aria-label={tr(`${room.name}, ${roomAreaFor(room, site).toFixed(1)} square meters`)}
               title={`${room.name} · ${roomAreaFor(room, site).toFixed(1)} m²`}
             >
               {selectedRoom === room.id && HANDLES.map((handle) => (
@@ -324,7 +340,7 @@ export const FloorPlan = React.memo(function FloorPlan({
                 onClick={(event) => {
                   if (activeTool === 'select') event.stopPropagation()
                 }}
-                aria-label={`${spec.label}, ${item.rotated ? dimensions.d : dimensions.w} by ${item.rotated ? dimensions.w : dimensions.d} meters${furnitureConflicts.has(item.id) ? ', blocks a door swing' : ''}`}
+                aria-label={tr(`${spec.label}, ${item.rotated ? dimensions.d : dimensions.w} by ${item.rotated ? dimensions.w : dimensions.d} meters${furnitureConflicts.has(item.id) ? ', blocks a door swing' : ''}`)}
                 title={`${spec.label} · ${dimensions.w} × ${dimensions.d} m`}
               >
                 <span>{item.kind === 'wc' ? 'WC' : furnitureLabelFor(item)}</span>
@@ -343,15 +359,27 @@ export const FloorPlan = React.memo(function FloorPlan({
                 key={opening.id}
                 type="button"
                 className={`opening opening-${opening.type} rotate-${opening.rotation} ${isSel ? 'is-selected' : ''}`}
-                style={{ left: `${opening.x}%`, top: `${opening.y}%`, width: `${spanPct}%` }}
+                style={{ left: `${opening.x}%`, top: `${opening.y}%`, width: `${spanPct}%`, ['--span' as string]: spanPct } as CSSProperties}
+                data-rotation={opening.rotation}
                 title={`${opening.type} ${w.toFixed(2)} × ${h.toFixed(2)} m — drag to move, drag an end to resize`}
-                aria-label={`${opening.type} opening ${w.toFixed(2)} by ${h.toFixed(2)} meters`}
+                aria-label={tr(`${opening.type} opening ${w.toFixed(2)} by ${h.toFixed(2)} meters`)}
                 onPointerDown={(event) => onOpeningPointerDown(event, opening)}
                 onClick={(event) => {
                   if (activeTool === 'select') event.stopPropagation()
                 }}
               >
-                {opening.type === 'door' && <i />}
+                {opening.type === 'window' ? (
+                  <svg className="opening-glyph" viewBox="0 0 34 6" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                    <rect x="0.5" y="0.5" width="33" height="5" fill="rgb(34 80 108 / 0.3)" stroke="#006eb8" strokeWidth="1" />
+                    <rect x="0" y="0" width="4" height="6" fill="#006eb8" />
+                    <rect x="30" y="0" width="4" height="6" fill="#006eb8" />
+                  </svg>
+                ) : (
+                  <svg className="opening-glyph is-door" viewBox="0 0 26 26" preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">
+                    <path d="M1 3h24" stroke="#f68c50" strokeWidth="3" />
+                    <path d="M1 3a22 22 0 0 1 22 22" fill="none" stroke="#f68c50" strokeWidth="1" />
+                  </svg>
+                )}
                 {isSel && (
                   <>
                     <span className="opening-handle is-start" aria-hidden="true" onPointerDown={(event) => onOpeningPointerDown(event, opening, 'start')} />
@@ -365,6 +393,42 @@ export const FloorPlan = React.memo(function FloorPlan({
             )
           })}
 
+          {openingGhost && (
+            <>
+              <svg className="draw-overlay wall-highlight" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <line x1={openingGhost.x1} y1={openingGhost.y1} x2={openingGhost.x2} y2={openingGhost.y2} className="wall-highlight-line" vectorEffect="non-scaling-stroke" />
+              </svg>
+              <div
+                className={`opening opening-${activeTool === 'door' ? 'door' : 'window'} rotate-${openingGhost.rotation} is-ghost`}
+                style={{ left: `${openingGhost.x}%`, top: `${openingGhost.y}%`, width: `${((activeTool === 'door' ? 0.9 : 1.6) / site.w) * 100}%` }}
+                aria-hidden="true"
+              />
+            </>
+          )}
+          {roomDraft && roomDraft.w > 0 && roomDraft.h > 0 && (
+            <div className="room-draft" style={{ left: `${roomDraft.x}%`, top: `${roomDraft.y}%`, width: `${roomDraft.w}%`, height: `${roomDraft.h}%` }} aria-hidden="true" />
+          )}
+          {showEmptyHint && (
+            <div className="canvas-empty-line">
+              <p>{tr('Drag a box to make a room. Then click a wall to add a window.')}</p>
+              {onUploadUnderlay && (
+                <button
+                  type="button"
+                  className="button primary"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => { event.stopPropagation(); onUploadUnderlay() }}
+                >
+                  {tr('Upload plan as underlay')}
+                </button>
+              )}
+            </div>
+          )}
+          {wallNote && <p className="wall-note" role="status">{tr('Click a wall')}</p>}
+          {cornerNote && (
+            <p className="corner-note" role="status" style={{ left: `${cornerNote.x}%`, top: `${cornerNote.y}%` }}>
+              Corners don't meet
+            </p>
+          )}
           {plan.walls && plan.walls.length > 0 && (
             <svg className="draw-overlay napkin-walls" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
               {plan.walls.map((wall) => (
@@ -434,7 +498,7 @@ export const FloorPlan = React.memo(function FloorPlan({
                     x="0" y="0"
                     fontSize="3.5"
                     fill="var(--accent-primary)"
-                    fontFamily="'IBM Plex Mono', monospace"
+                    fontFamily="'JetBrains Mono', monospace"
                     dominantBaseline="hanging"
                   >
                     {meters.toFixed(2)} m / {feet.toFixed(2)} ft

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { furnitureDoorConflicts, furnitureRectFor, roomOverlaps, siteOf, totalArea } from '../plan'
 import { roomOptionIssues } from '../options/roomOptions'
-import { calculateChinaApartmentBudget, chinaApartmentPlan, chinaApartmentVariants, chinaLightingChannels } from './chinaApartment'
+import { calculateChinaApartmentBudget, carbonForPlan, chinaApartmentPlan, chinaApartmentVariants, chinaLightingChannels } from './chinaApartment'
 
 describe('Shanghai sample', () => {
   // The first drawing a layperson opens must not already fail its own fit checks.
@@ -40,6 +40,19 @@ describe('Shanghai 50 m² apartment demo', () => {
     expect(blank.total).toBe(0)
     const withoutEnvelope = calculateChinaApartmentBudget({ ...chinaApartmentPlan, systems: { ...chinaApartmentPlan.systems, insulation: false } })
     expect(withoutEnvelope.total).toBeLessThan(calculateChinaApartmentBudget(chinaApartmentPlan).total)
+  })
+
+  it('keeps an empty sketch at zero carbon and counts the sample openings', () => {
+    const empty = carbonForPlan({ ...chinaApartmentPlan, rooms: [], openings: [], furniture: [], systems: { solar: false, insulation: false, climate: false, lighting: false } })
+    expect(empty.totalKg).toBe(0)
+    expect(empty.kgPerM2).toBe(0)
+    const sample = carbonForPlan(chinaApartmentPlan)
+    const glazing = sample.lines.find((line) => line.label === 'Glazing and doors')
+    expect(glazing?.basis).toBe(`${chinaApartmentPlan.openings.length} units × 72 kg`)
+    expect(glazing?.kgCO2e).toBe(chinaApartmentPlan.openings.length * 72)
+    const sketch = carbonForPlan({ ...chinaApartmentPlan, rooms: [{ ...chinaApartmentPlan.rooms[0], id: 'custom-room' }] })
+    expect(sketch.lines.some((line) => line.label === 'Windows & doors')).toBe(true)
+    expect(sketch.lines.some((line) => line.basis.includes('22 lin.m'))).toBe(false)
   })
 
   it('puts principal glazing on the due-south apartment boundary', () => {

@@ -1,4 +1,3 @@
-import { ArrowDownRight, ArrowUpRight, Check, Pin, X } from 'lucide-react'
 import type { ABComparisonResult } from '../analysis/abComparison'
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -37,11 +36,8 @@ export function ABComparisonModal({
     const isIncrease = val > 0
     const isGood = invertIsGood ? !isIncrease : isIncrease
     const sign = isIncrease ? '+' : ''
-    const Icon = isIncrease ? ArrowUpRight : ArrowDownRight
-
     return (
       <span className={`delta-tag ${isGood ? 'good' : 'warn'}`}>
-        <Icon className="w-3.5 h-3.5" />
         {sign}{val.toFixed(1)} {unit}
       </span>
     )
@@ -51,14 +47,14 @@ export function ABComparisonModal({
     <dialog ref={dialog} className="ab-modal" aria-labelledby="ab-comparison-title" onKeyDown={e => e.stopPropagation()} onCancel={e => { e.preventDefault(); onClose() }}>
         <div className="ab-modal-header">
           <div className="flex items-center gap-2">
-            <Pin className="w-5 h-5 text-amber-400" />
+            
             <div>
               <h2 id="ab-comparison-title">Side-by-Side Design Comparison</h2>
               <p>Compare baseline sketch ("Plan A") against active proposed modifications ("Plan B").</p>
             </div>
           </div>
           <button type="button" className="icon-btn-close" onClick={onClose} aria-label="Close modal">
-            <X className="w-5 h-5" />
+            <span aria-hidden="true">×</span>
           </button>
         </div>
 
@@ -144,7 +140,7 @@ export function ABComparisonModal({
                 className="button primary small"
                 onClick={onApplyProposedAsBaseline}
               >
-                <Check className="w-3.5 h-3.5" />
+                
                 Pin Plan B as New Baseline
               </button>
             )}

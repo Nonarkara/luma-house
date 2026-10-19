@@ -4,6 +4,7 @@ import { houseMesh, scaleToPrint } from '../fabricate/houseMesh'
 import { BASE_PRINT_MM, BUILD_PLATE_MM, checkPrint, PRINT_SCALES, PROCESS_LIMITS, recommendScale, type PrintProcess } from '../fabricate/printability'
 import { planToDxf } from '../export/planExchange'
 import type { PlanState } from '../types'
+import { useI18n } from '../i18n'
 
 function download(bytes: Uint8Array, filename: string, type: string) {
   const url = URL.createObjectURL(new Blob([bytes], { type }))
@@ -23,6 +24,7 @@ export function ExportDialog({ plan, baseName, onClose, onExportProject, onDone 
   onExportProject: () => void
   onDone: (message: string) => void
 }) {
+  const { tr } = useI18n()
   const dialog = useRef<HTMLDialogElement>(null)
   const [error, setError] = useState('')
   const save = (makeBytes: () => Uint8Array, filename: string, mime: string, message: string) => {
@@ -46,23 +48,23 @@ export function ExportDialog({ plan, baseName, onClose, onExportProject, onDone 
   const fileStem = `${baseName}-1-${scale}`
 
   return <dialog ref={dialog} className="trace-review export-dialog" aria-labelledby="export-title" onCancel={event => { event.preventDefault(); onClose() }}>
-    <h2 id="export-title">Take the design out</h2>
+    <h2 id="export-title">{tr('Take the design out')}</h2>
     {error && <p role="alert">{error}</p>}
 
     <section className="export-option">
-      <div><h3>Project file</h3><p>Everything you drew, for designon. Reopen it with Import.</p></div>
+      <div><h3>{tr('Project file')}</h3><p>{tr('Everything you drew, for designon. Reopen it with Import.')}</p></div>
       <button className="button secondary" type="button" onClick={() => { onExportProject(); onClose() }}>.json</button>
     </section>
 
     <section className="export-option">
-      <div><h3>3D model</h3><p>Walls with real door and window openings, in metres. Opens in Blender, Windows 3D Viewer and online model viewers. No roof, so you can look in.</p></div>
+      <div><h3>{tr('3D model')}</h3><p>Walls with real door and window openings, in metres. Opens in Blender, Windows 3D Viewer and online model viewers. No roof, so you can look in.</p></div>
       <button className="button secondary" type="button" disabled={!hasWalls} onClick={() => {
         save(() => meshToGlb(houseMesh(plan).parts, baseName), `${baseName}.glb`, 'model/gltf-binary', '3D model downloaded (.glb, metres)')
       }}>.glb</button>
     </section>
 
     <section className="export-option">
-      <div><h3>2D CAD drawing</h3><p>Rooms and pencil walls as metre LINE entities, plan north up. Opens in AutoCAD, BricsCAD, DraftSight, LibreCAD and anything that reads DXF — to trace, dimension or carry the outline into another tool.</p></div>
+      <div><h3>{tr('2D CAD drawing')}</h3><p>Rooms and pencil walls as metre LINE entities, plan north up. Opens in AutoCAD, BricsCAD, DraftSight, LibreCAD and anything that reads DXF — to trace, dimension or carry the outline into another tool.</p></div>
       <button className="button secondary" type="button" disabled={!plan.rooms.length && !plan.walls?.length} onClick={() => {
         save(() => new TextEncoder().encode(planToDxf(plan)), `${baseName}.dxf`, 'image/vnd.dxf', '2D CAD drawing downloaded (.dxf, metres, north up)')
       }}>.dxf</button>
@@ -70,14 +72,14 @@ export function ExportDialog({ plan, baseName, onClose, onExportProject, onDone 
 
     <section className="export-option export-print">
       <div>
-        <h3>3D print a scale model</h3>
+        <h3>{tr('3D print a scale model')}</h3>
         <p>A roofless model on a {BASE_PRINT_MM} mm base, for review in a slicer such as Bambu Studio, PrusaSlicer or Cura.</p>
       </div>
       <div className="trace-fields">
-        <label>Scale<select aria-label="Scale" value={scale} onChange={event => setScale(Number(event.target.value))}>
+        <label>{tr('Scale')}<select aria-label="Scale" value={scale} onChange={event => setScale(Number(event.target.value))}>
           {PRINT_SCALES.map(d => <option key={d} value={d}>1:{d}{recommended?.denominator === d ? ' (recommended)' : ''}</option>)}
         </select></label>
-        <label>Printer<select aria-label="Printer" value={process} onChange={event => setProcess(event.target.value as PrintProcess)}>
+        <label>{tr('Printer')}<select aria-label="Printer" value={process} onChange={event => setProcess(event.target.value as PrintProcess)}>
           {(Object.keys(PROCESS_LIMITS) as PrintProcess[]).map(p => <option key={p} value={p}>{PROCESS_LIMITS[p].label}</option>)}
         </select></label>
       </div>
@@ -95,7 +97,7 @@ export function ExportDialog({ plan, baseName, onClose, onExportProject, onDone 
         {check.bridgeMm > 0 && <li className={check.bridgeOk ? 'is-ok' : 'is-warn'}>
           Longest beam over an opening {mm(check.bridgeMm)} mm — {check.bridgeOk ? `within the ${limits.maxBridgeMm} mm bridge limit` : `over the ${limits.maxBridgeMm} mm bridge limit; turn on supports in your slicer`}
         </li>}
-      </ul> : <p role="alert">Draw at least one room with walls to print a model.</p>}
+      </ul> : <p role="alert">{tr('Draw at least one room with walls to print a model.')}</p>}
 
       <p className="export-source">Limits are conservative defaults from the design-for-printing guide in text-to-cad (Hubs and Formlabs guides, ISO/ASTM 52910). The {BUILD_PLATE_MM} mm plate is an assumption; check your printer’s width, depth and height. This checks dimensions and wall thickness, not print success. Review supports and toolpaths in your slicer.</p>
       <div className="trace-actions">
@@ -104,10 +106,10 @@ export function ExportDialog({ plan, baseName, onClose, onExportProject, onDone 
         }}>.stl</button>
         <button className="button primary" type="button" disabled={!hasWalls || !check.ok} onClick={() => {
           save(() => meshTo3mf(printParts(), baseName), `${fileStem}.3mf`, 'model/3mf', `Scale model 1:${scale} downloaded (.3mf)`)
-        }}>Download .3mf</button>
+        }}>{tr('Download .3mf')}</button>
       </div>
     </section>
 
-    <div className="trace-actions"><button className="button secondary" type="button" onClick={onClose}>Close</button></div>
+    <div className="trace-actions"><button className="button secondary" type="button" onClick={onClose}>{tr('Close')}</button></div>
   </dialog>
 }

@@ -89,7 +89,7 @@ test('canonical and sharing metadata identify the production domain', async ({ p
   const canonical = 'https://designon.nonarkara.org/'
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', canonical)
   await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', canonical)
-  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', canonical + 'og-image.svg')
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', canonical + 'og-image.png')
   const data = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? '{}')
   for (const entity of data['@graph']) expect(entity.url).toBe(canonical)
 })

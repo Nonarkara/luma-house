@@ -130,7 +130,7 @@ export interface ABComparisonState {
   pinnedAt: string
 }
 
-export type CurrencyCode = 'CNY' | 'USD' | 'EUR'
+export type CurrencyCode = 'CNY' | 'THB' | 'USD' | 'EUR' | 'ZAR' | 'SGD'
 
 export interface RegionalRateCard {
   code: CurrencyCode
@@ -159,6 +159,6 @@ export interface PlanAssemblies {
   climateResponseId: 'tropical-humid' | 'hot-arid' | 'cold-temperate' | 'high-altitude' | 'temperate-mixed' | null
 }
 
-export type PlanTool = 'select' | 'draw' | 'window' | 'door'
+export type PlanTool = 'select' | 'draw' | 'window' | 'door' | 'room'
 export type WorkspaceMode = 'plan' | 'light' | 'wellbeing' | 'climate' | 'systems' | 'budget'
 export type CanvasView = 'plan' | 'spatial' | 'renders'

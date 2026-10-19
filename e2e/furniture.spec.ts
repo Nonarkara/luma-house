@@ -52,7 +52,7 @@ async function placeVelvetSofa(page: Page) {
   await page.getByRole('button', { name: 'Furniture Catalog', exact: true }).click()
   await expect(page.getByRole('complementary', { name: 'Furniture catalog' })).toBeVisible()
   await page.getByRole('button', { name: /Add Velvet sofa/ }).click()
-  await expect(page.locator('.furniture-chip')).toContainText('Velvet sofa')
+  await expect(page.locator('.furniture-chip:not(.is-overlay)')).toContainText('Velvet sofa')
 }
 
 async function openSolidView(page: Page) {

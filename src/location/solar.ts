@@ -47,3 +47,27 @@ export function clockLabel(hour: number) {
   const minutes = Math.round(hour * 60)
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 }
+
+/** Today's day of year, year and quarter-hour in the city's own time zone. */
+export function todayIn(location: Pick<ProjectLocation, 'timezone'>, now = new Date()) {
+  let wall: number
+  try { wall = zoneParts(now, location.timezone) } catch { wall = now.getTime() }
+  const d = new Date(wall)
+  const year = d.getUTCFullYear()
+  const day = Math.floor((wall - Date.UTC(year, 0, 1)) / 86400000) + 1
+  const hour = Math.round((d.getUTCHours() + d.getUTCMinutes() / 60) * 4) / 4
+  return { day: Math.min(365, day), year, hour }
+}
+
+/** "19 Oct" for a day of year, so the study stamp reads as a date, not "Day 292". */
+export function dayLabel(day: number, year = new Date().getFullYear(), locale = 'en-GB') {
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(year, 0, day)))
+}
+
+/** Today's date and the current hour in the city, but a night-time "now" falls back to 10:00 so a fresh sun study is never empty. */
+export function studyStartIn(location: ProjectLocation, now = new Date()) {
+  const today = todayIn(location, now)
+  let up = false
+  try { up = citySunPosition(location, today.day, today.hour, today.year).altitude > 0 } catch { up = false }
+  return { ...today, hour: up ? today.hour : 10 }
+}

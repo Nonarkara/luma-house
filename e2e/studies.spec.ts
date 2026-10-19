@@ -6,7 +6,7 @@ import { decodePlanFromHash, encodePlanToHash } from '../src/sharePlan'
 
 test('parallel architectural views preserve camera, civil time and styles across save, share and reload', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(chinaApartmentPlan))
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   const canvas = page.locator('.spatial3d-shell canvas')
   await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   await expect(page.getByRole('button', { name: 'Architectural', exact: true })).toHaveAttribute('aria-pressed', 'true')
@@ -31,7 +31,7 @@ test('parallel architectural views preserve camera, civil time and styles across
   expect(decodePlanFromHash(new URL(url).hash)?.studyScenes).toEqual([scene])
   await page.reload()
   await expect(page.locator('button.room')).toHaveCount(chinaApartmentPlan.rooms.length)
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   await page.getByRole('button', { name: '3D Orbit', exact: true }).click()
   await page.getByRole('button', { name: 'Wireframe', exact: true }).click()
   await page.getByRole('button', { name: 'Saved views', exact: true }).click()
@@ -46,7 +46,7 @@ test('three sun comparisons contain distinct actual frames from the same camera 
   const calls: string[] = []
   await page.route('**/luma-concept-render.drnon.workers.dev/**', r => { calls.push(r.request().url()); return r.abort() })
   await page.goto('/#plan=' + encodePlanToHash(initialPlan))
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   const canvas = page.locator('.spatial3d-shell canvas')
   await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   await page.getByRole('button', { name: 'Saved views', exact: true }).click()
@@ -76,7 +76,7 @@ test('three sun comparisons contain distinct actual frames from the same camera 
 
 test('study sheets retain physical SVG scale and fit one landscape PDF page even on small sites', async ({ page }, testInfo) => {
   await page.goto('/#plan=' + encodePlanToHash({ ...initialPlan, site: { w: 3, h: 2, unit: 1 } }))
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   const canvas = page.locator('.spatial3d-shell canvas')
   await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   await page.getByRole('button', { name: 'Study sheet', exact: true }).click()
@@ -103,6 +103,8 @@ test('study sheets retain physical SVG scale and fit one landscape PDF page even
 })
 
 test('seasonal wall shadows and sections compute offline and each print on one A4 page', async ({ page }, testInfo) => {
+  // The study opens on today's date and hour; pin the clock so both cities are drawn in daylight.
+  await page.clock.setFixedTime(new Date('2026-10-19T09:00:00Z'))
   const cities = [
     { name: 'Cape Town', label: 'Cape Town, South Africa', latitude: -33.925, longitude: 18.424, timezone: 'Africa/Johannesburg' },
     { name: 'Tromsø', label: 'Tromsø, Norway', latitude: 69.65, longitude: 18.96, timezone: 'Europe/Oslo' },
@@ -111,7 +113,7 @@ test('seasonal wall shadows and sections compute offline and each print on one A
     await page.context().setOffline(false)
     await page.goto('/#plan=' + encodePlanToHash({ ...initialPlan, location, site: location.name === 'Tromsø' ? { w: 11, h: 5, unit: 1 } : initialPlan.site }))
     await page.reload() // Hash-only navigation retains the mounted app's previous plan.
-    await page.getByRole('button', { name: 'Renders', exact: true }).click()
+    await clickAction(page, 'Renders')
     await page.getByRole('button', { name: 'Study sheet', exact: true }).click()
     await page.context().setOffline(true)
     await page.getByRole('button', { name: 'Seasonal sun', exact: true }).click()
@@ -162,7 +164,7 @@ test('camera movement reuses actual offscreen shadow drawing and sun changes reb
   })
   const draws = () => page.evaluate(() => (window as Window & { shadowDraws?: number }).shadowDraws ?? 0)
   await page.goto('/#plan=' + encodePlanToHash(initialPlan))
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   await expect.poll(draws, { timeout: 20000 }).toBeGreaterThan(0)
   await page.waitForTimeout(1000)
   const before = await draws()
@@ -181,7 +183,7 @@ test('camera movement reuses actual offscreen shadow drawing and sun changes reb
 
 test('old previews are marked when the drawing changes and recover with undo', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(initialPlan))
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   await page.getByRole('button', { name: 'Saved views', exact: true }).click()
   await page.getByRole('button', { name: 'Save current view', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Saved study views' }).getByRole('status')).toHaveText('View added to project; preview cached on this device.')
@@ -191,19 +193,21 @@ test('old previews are marked when the drawing changes and recover with undo', a
   await page.locator('button.room').first().focus()
   await page.locator('button.room').first().press('Enter')
   await page.getByRole('button', { name: 'Increase ceiling height', exact: true }).click()
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   await page.getByRole('button', { name: 'Saved views', exact: true }).click()
   await expect(page.getByText('Earlier drawing · update preview to refresh', { exact: true })).toBeVisible()
   await expect(page.locator('.study-scene-grid img')).toHaveAttribute('src', original!)
   await page.getByRole('button', { name: 'Close saved views', exact: true }).click()
-  await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  const undo = page.getByRole('button', { name: 'Undo', exact: true })
+  if (!(await undo.first().isVisible())) await page.getByRole('button', { name: 'More actions', exact: true }).click()
+  await undo.first().click()
   await page.getByRole('button', { name: 'Saved views', exact: true }).click()
   await expect(page.getByText('Captured from this drawing', { exact: true })).toBeVisible()
 })
 
 test('the elevation sheet draws a real elevation and re-styles on demand', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(initialPlan))
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   const canvas = page.locator('.spatial3d-shell canvas')
   await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   await page.getByRole('button', { name: 'Study sheet', exact: true }).click()
@@ -231,7 +235,7 @@ test('the elevation sheet draws a real elevation and re-styles on demand', async
 
 test('axonometric names are named on their own faces and never collide', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(initialPlan))
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   const canvas = page.locator('.spatial3d-shell canvas')
   await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   await page.getByRole('button', { name: 'Study sheet', exact: true }).click()

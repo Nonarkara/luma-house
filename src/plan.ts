@@ -248,6 +248,8 @@ export function formatCurrency(value: number, currency: string): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
+    // Baht reads as ฿, not "THB", for Thai users.
+    ...(currency === 'THB' ? { currencyDisplay: 'narrowSymbol' as const } : {}),
     maximumFractionDigits: 0,
   }).format(value)
 }

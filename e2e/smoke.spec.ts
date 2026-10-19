@@ -1,4 +1,4 @@
-import { openMore } from './workspace'
+import { clickTool, openMore } from './workspace'
 import { test, expect, type Page } from '@playwright/test'
 import { decodePlanFromHash, encodePlanToHash } from '../src/sharePlan'
 import { initialPlan } from '../src/plan'
@@ -121,6 +121,35 @@ test.describe('shipability smoke', () => {
 // The studio must reserve the drawing surface for geometry, and controls must
 // still perform real edits after the duplicate toolbars are consolidated.
 test.describe('drawing studio', () => {
+  test('catalog close shows a times mark', async ({ page }) => {
+    await dismissWelcome(page)
+    await page.goto('/')
+    const catalog = page.getByRole('button', { name: 'Furniture Catalog', exact: true })
+    if (!(await catalog.isVisible())) await page.getByRole('button', { name: 'More actions', exact: true }).click()
+    await catalog.click()
+    const close = page.getByRole('button', { name: 'Close catalog', exact: true })
+    await expect(close).toBeVisible()
+    await expect(close).toHaveText('×')
+    const box = await close.boundingBox()
+    expect(box!.width).toBeGreaterThanOrEqual(44)
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+  })
+
+  test('a blank napkin offers a manual underlay and no AI trace button', async ({ page }) => {
+    await dismissWelcome(page)
+    await page.goto('/')
+    const underlay = page.getByRole('button', { name: 'Upload plan as underlay', exact: true })
+    await expect(underlay).toBeVisible()
+    await expect(underlay).toBeEnabled()
+    const box = await underlay.boundingBox()
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+    await expect(page.getByRole('button', { name: 'Trace with AI', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Upload plan → trace with AI' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'More actions', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Upload plan as underlay', exact: true })).toHaveCount(2)
+  })
+
+
   test('a real pencil drag creates a wall without crashing the canvas', async ({ page }) => {
     const pageErrors: Error[] = []
     page.on('pageerror', error => pageErrors.push(error))
@@ -158,21 +187,32 @@ test.describe('drawing studio', () => {
       const overlap = toolbarRect!.x < canvasRect!.x + canvasRect!.width && toolbarRect!.x + toolbarRect!.width > canvasRect!.x && toolbarRect!.y < canvasRect!.y + canvasRect!.height && toolbarRect!.y + toolbarRect!.height > canvasRect!.y
       expect(overlap, 'drawing tools stay outside the frame').toBe(false)
       expect(canvasRect!.height).toBeGreaterThanOrEqual(300)
-      await page.getByRole('button', { name: 'Add room', exact: true }).click()
+      await clickTool(page, 'Room')
+      const sheet = await page.locator('.plan-canvas').boundingBox()
+      await page.mouse.move(sheet!.x + sheet!.width * 0.55, sheet!.y + sheet!.height * 0.15)
+      await page.mouse.down()
+      await page.mouse.move(sheet!.x + sheet!.width * 0.9, sheet!.y + sheet!.height * 0.55, { steps: 8 })
+      await page.mouse.up()
       expect(await readRoomCount(page)).toBe(initialPlan.rooms.length + 1)
       await page.getByRole('button', { name: 'Undo', exact: true }).filter({ visible: true }).click()
       expect(await readRoomCount(page)).toBe(initialPlan.rooms.length)
       for (const name of ['Tape Measure', 'Layout presets']) {
-        await page.getByRole('button', { name, exact: true }).click({ trial: true })
+        const button = page.getByRole('button', { name, exact: true })
+        if (!(await button.isVisible())) await page.getByRole('button', { name: 'More tools', exact: true }).click()
+        await button.click({ trial: true })
       }
       await page.getByRole('button', { name: 'Calibrate', exact: true }).click({ trial: true })
-      await page.getByRole('button', { name: 'Tape Measure', exact: true }).click()
+      const measure = page.getByRole('button', { name: 'Tape Measure', exact: true })
+      if (!(await measure.isVisible())) await page.getByRole('button', { name: 'More tools', exact: true }).click()
+      await measure.click()
       await page.getByRole('button', { name: 'Pencil', exact: true }).click()
-      await expect(page.getByRole('button', { name: 'Tape Measure', exact: true })).toHaveAttribute('aria-pressed', 'false')
-      const hint = await page.locator('.draw-hint').boundingBox()
+      const measureAfter = page.getByRole('button', { name: 'Tape Measure', exact: true })
+      if (!(await measureAfter.isVisible())) await page.getByRole('button', { name: 'More tools', exact: true }).click()
+      await expect(measureAfter).toHaveAttribute('aria-pressed', 'false')
       const zoom = await page.locator('.zoom-control').boundingBox()
-      const intersects = hint!.x < zoom!.x + zoom!.width && hint!.x + hint!.width > zoom!.x && hint!.y < zoom!.y + zoom!.height && hint!.y + hint!.height > zoom!.y
-      expect(intersects, 'zoom controls must not cover the drawing grammar').toBe(false)
+      const drawing = await page.locator('.plan-viewport').boundingBox()
+      const intersects = zoom!.x < drawing!.x + drawing!.width && zoom!.x + zoom!.width > drawing!.x && zoom!.y < drawing!.y + drawing!.height && zoom!.y + zoom!.height > drawing!.y
+      expect(intersects, 'zoom controls must not cover the drawing').toBe(false)
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
       expect(overflow).toBeLessThanOrEqual(1)
     })
@@ -265,11 +305,9 @@ test.describe('PWA installability', () => {
     await openMore(page)
     const section = page.locator('.top-more-extra .web-app-access')
     await expect(section, 'install guidance is rendered').toHaveCount(1)
-    // Both platform strings must be present — the audit agent flagged that
-    // the guidance must explicitly cover Android and iPhone, not just one.
     const text = (await section.innerText()).toLowerCase()
     expect(text, 'mentions Android').toContain('android')
     expect(text, 'mentions iPhone').toContain('iphone')
-    expect(text, 'mentions Add to Home Screen').toContain('home screen')
+    expect(text, 'summary is Add to Home Screen').toContain('add to home screen')
   })
 })

@@ -22,26 +22,53 @@ export function sanitizeLocation(raw: unknown): ProjectLocation | undefined {
   return { name: c.name, label: c.label, latitude: c.latitude, longitude: c.longitude, timezone: c.timezone }
 }
 
-const cache = new Map<string, ProjectLocation[]>()
-export async function searchCities(query: string, signal?: AbortSignal): Promise<ProjectLocation[]> {
-  const term = query.trim().slice(0, 100)
-  if (term.length < 2) return []
-  const key = term.toLocaleLowerCase()
-  const hit = cache.get(key)
-  if (hit) return hit
+/** Thai script asks Open-Meteo in Thai; CJK asks in Chinese; everything else stays English. */
+export function geocodingLanguage(query: string): 'en' | 'th' | 'zh' {
+  if (/[\u0E00-\u0E7F]/.test(query)) return 'th'
+  if (/[\u3400-\u9FFF]/.test(query)) return 'zh'
+  return 'en'
+}
+
+async function fetchCities(term: string, language: string, signal?: AbortSignal): Promise<ProjectLocation[]> {
   const url = new URL('https://geocoding-api.open-meteo.com/v1/search')
-  url.search = new URLSearchParams({ name: term, count: '8', language: 'en', format: 'json' }).toString()
+  url.search = new URLSearchParams({ name: term, count: '8', language, format: 'json' }).toString()
   const response = await fetch(url, { signal })
   if (!response.ok) throw new Error('City search is unavailable. Try again or enter coordinates below.')
   const body: unknown = await response.json()
   const rows = body && typeof body === 'object' && 'results' in body ? (body as { results: unknown }).results : []
-  const results = (Array.isArray(rows) ? rows.slice(0, 8) : []).flatMap(row => {
+  return (Array.isArray(rows) ? rows.slice(0, 8) : []).flatMap(row => {
     if (!row || typeof row !== 'object') return []
     const c = row as Record<string, unknown>
     const label = [c.name, c.admin1, c.country].filter(v => typeof v === 'string' && v.length > 0).join(', ')
     const location = sanitizeLocation({ ...c, label })
     return location ? [location] : []
   })
+}
+
+const cache = new Map<string, ProjectLocation[]>()
+export async function searchCities(query: string, signal?: AbortSignal): Promise<ProjectLocation[]> {
+  const term = query.trim().slice(0, 100)
+  if (term.length < 2) return []
+  const language = geocodingLanguage(term)
+  const key = `${language}:${term.toLocaleLowerCase()}`
+  const hit = cache.get(key)
+  if (hit) return hit
+  const languages = language === 'en' ? ['en'] : [language, 'en']
+  const settled = await Promise.allSettled(languages.map((lang) => fetchCities(term, lang, signal)))
+  const fulfilled = settled.flatMap((item) => item.status === 'fulfilled' ? item.value : [])
+  if (fulfilled.length === 0 && settled.some((item) => item.status === 'rejected')) {
+    const failure = settled.find((item) => item.status === 'rejected')
+    throw failure && failure.status === 'rejected' ? failure.reason : new Error('City search is unavailable. Try again or enter coordinates below.')
+  }
+  const seen = new Set<string>()
+  const results: ProjectLocation[] = []
+  for (const item of fulfilled) {
+    const id = `${item.latitude.toFixed(2)}:${item.longitude.toFixed(2)}`
+    if (seen.has(id)) continue
+    seen.add(id)
+    results.push(item)
+    if (results.length >= 8) break
+  }
   if (cache.size >= 20) cache.delete(cache.keys().next().value!)
   cache.set(key, results)
   return results

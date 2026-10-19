@@ -1,34 +1,10 @@
+import { FX_SOURCE } from '../boq/currency'
 import { clockLabel } from '../location/solar'
 import { CityPicker } from './CityPicker'
 import type { ProjectLocation } from '../types'
 import { openingDimensions } from '../openingGeometry'
 import React from 'react'
-import {
-  ArrowRight,
-  Check,
-  CircleDollarSign,
-  CloudSun,
-  Compass,
-  Download,
-  Flame,
-  Grid2X2,
-  ImagePlus,
-  Layers3,
-  BrickWall,
-  Leaf,
-  Lightbulb,
-  PanelLeftClose,
-  RotateCcw,
-  Sprout,
-  Sun,
-  ShieldCheck,
-  Thermometer,
-  Trash2,
-  Upload,
-  Wind,
-  X,
-  Zap,
-} from 'lucide-react'
+import { useI18n } from '../i18n'
 import { IconButton, Toggle } from './ui'
 import { formatCurrency, roomAreaFor, siteOf } from '../plan'
 import type { CarbonLine, SunPatch } from '../plan'
@@ -61,12 +37,15 @@ import type { ClimateResponseId } from '../assemblies/types'
 import type { InteriorBoq } from '../boq/interiorBoq'
 import { SunChart } from '../canvas/SunChart'
 import { ARCHITECTURAL_STYLE_PRESETS } from '../concept/buildRenderPrompt'
+import { AI_ENABLED } from '../concept/ai'
 
 export interface InspectorProps {
   mode: WorkspaceMode
   settingsOpen: boolean
   setSettingsOpen: (open: boolean) => void
   inspectorOpen: boolean
+  sheetExpanded?: boolean
+  setSheetExpanded?: (expanded: boolean) => void
   setInspectorOpen: (open: boolean) => void
   plan: PlanState
   commit: (next: PlanState | ((current: PlanState) => PlanState)) => void
@@ -74,7 +53,6 @@ export interface InspectorProps {
   sketchUrl: string | null
   setSketchUrl: (url: string | null) => void
   fileInputRef: React.RefObject<HTMLInputElement>
-  handleSketch: (event: React.ChangeEvent<HTMLInputElement>) => void
   runConceptRender: () => void
   isRendering: boolean
   quotaLeft: number
@@ -133,6 +111,8 @@ export const Inspector = React.memo(function Inspector({
   settingsOpen,
   setSettingsOpen,
   inspectorOpen,
+  sheetExpanded = false,
+  setSheetExpanded,
   setInspectorOpen,
   plan,
   commit,
@@ -140,7 +120,6 @@ export const Inspector = React.memo(function Inspector({
   sketchUrl,
   setSketchUrl,
   fileInputRef,
-  handleSketch,
   runConceptRender,
   isRendering,
   quotaLeft,
@@ -191,7 +170,7 @@ export const Inspector = React.memo(function Inspector({
   energySimulation,
   airQualityReport,
 }: InspectorProps) {
-
+  const { tr } = useI18n()
 
   const [lightingLevels, setLightingLevels] = React.useState<Record<string, number>>(() => ({ ...lightingScenes.Entertain }))
   const [activeLightingScene, setActiveLightingScene] = React.useState('Entertain')
@@ -238,28 +217,31 @@ export const Inspector = React.memo(function Inspector({
   }
 
   return (
-    <aside className="inspector">
+    <aside className={`inspector${sheetExpanded ? ' is-sheet-expanded' : ''}`}>
       <div className="inspector-head">
         <div>
-          <p className="eyebrow">{settingsOpen ? 'workspace' : mode}</p>
+          <p className="eyebrow">{settingsOpen ? tr('Workspace') : tr(mode === 'plan' ? 'Plan' : mode === 'light' ? 'Sun' : mode === 'wellbeing' ? 'Living' : mode === 'climate' ? 'Climate' : mode === 'systems' ? 'Systems' : 'Cost')}</p>
           <h2>
             {settingsOpen
-              ? 'Settings'
+              ? tr('Settings')
               : mode === 'plan'
-                ? 'Plan intelligence'
+                ? tr('Plan intelligence')
                 : mode === 'light'
-                  ? 'Shanghai sun study'
+                  ? `${projectLocation.name} ${tr('sun study')}`
                   : mode === 'wellbeing'
-                    ? 'Living logic'
+                    ? tr('Living logic')
                     : mode === 'climate'
-                      ? 'Advice & climate'
+                      ? tr('Advice & climate')
                       : mode === 'systems'
-                        ? 'Intelligent space'
-                        : 'Detailed fit-out BOQ'}
+                        ? tr('Intelligent space')
+                        : tr('Detailed fit-out BOQ')}
           </h2>
         </div>
-        <IconButton label="Collapse inspector" onClick={() => setInspectorOpen(false)}>
-          <X />
+        <button type="button" className="sheet-grow" aria-expanded={sheetExpanded} onClick={() => setSheetExpanded?.(!sheetExpanded)}>
+          {sheetExpanded ? tr('Less') : tr('More')}
+        </button>
+        <IconButton label={tr('Collapse inspector')} onClick={() => setInspectorOpen(false)}>
+          {tr('Close')}
         </IconButton>
       </div>
 
@@ -267,23 +249,23 @@ export const Inspector = React.memo(function Inspector({
         <div className="inspector-content">
           <section className="panel-section" style={{ borderTop: 0, paddingTop: 0 }}>
             <div className="system-row">
-              <span className="system-icon"><Grid2X2 /></span>
-              <div><strong>Snap to grid</strong><small>1% steps while dragging</small></div>
+              
+              <div><strong>{tr('Snap to grid')}</strong><small>{tr('1% steps while dragging')}</small></div>
               <span />
               <Toggle label="Snap to grid" checked={snapGrid} onChange={() => setSnapGrid((value) => !value)} />
             </div>
             <div className="system-row">
-              <span className="system-icon"><Layers3 /></span>
-              <div><strong>Show grid</strong><small>Site module lines</small></div>
+              
+              <div><strong>{tr('Show grid')}</strong><small>{tr('Site module lines')}</small></div>
               <span />
               <Toggle label="Show grid" checked={showGrid} onChange={() => setShowGrid((value) => !value)} />
             </div>
             <button className="button secondary full" type="button" onClick={resetPlan}>
-              <RotateCcw /> Load the sample apartment
+               Load the sample apartment
             </button>
             <input ref={importInputRef} type="file" accept="application/json,.json" onChange={importProject} hidden />
             <button className="button secondary full" type="button" onClick={() => importInputRef.current?.click()}>
-              <Upload /> Import project JSON
+               Import project JSON
             </button>
             <button className="button dark full" type="button" onClick={() => setSettingsOpen(false)}>
               Back to {mode}
@@ -298,8 +280,8 @@ export const Inspector = React.memo(function Inspector({
             <section className="panel-section">
               <div className="section-title">
                 <div>
-                  <p className="eyebrow">Code check</p>
-                  <h3>Building standards</h3>
+                  <p className="eyebrow">{tr('Code check')}</p>
+                  <h3>{tr('Building standards')}</h3>
                 </div>
               </div>
               <CodeIssuesPanel issues={standardsIssues} rooms={plan.rooms} onApply={onApplyStandardsIssue} />
@@ -307,9 +289,9 @@ export const Inspector = React.memo(function Inspector({
           )}
           <section className="scale-calibration">
             <div>
-              <p className="eyebrow">One shared scale</p>
-              <h3>Calibrate the drawing field</h3>
-              <p>These dimensions drive the plan, furniture, 3D model, heat flow and quantities together.</p>
+              <p className="eyebrow">{tr('One shared scale')}</p>
+              <h3>{tr('Calibrate the drawing field')}</h3>
+              <p>{tr('These dimensions drive the plan, furniture, 3D model, heat flow and quantities together.')}</p>
             </div>
             <div className="calibration-fields">
               <label>Width <span><input aria-label="Drawing field width in meters" type="number" min="1" max="200" step="0.1" value={site.w} onChange={(event) => calibrateField('w', Number(event.target.value))} /> m</span></label>
@@ -317,47 +299,46 @@ export const Inspector = React.memo(function Inspector({
             </div>
           </section>
           <section className="upload-card">
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleSketch} hidden />
-            {sketchUrl ? (
-              <img src={sketchUrl} alt="Uploaded house plan sketch" />
-            ) : (
-              <div className="upload-icon"><ImagePlus /></div>
-            )}
+            {sketchUrl ? <img src={sketchUrl} alt={tr('Uploaded house plan sketch')} /> : null}
             <div>
-              <h3>{sketchUrl ? 'Underlay active' : 'Upload a plan to trace'}</h3>
-              <p>Upload an existing plan photo and let AI read the rooms — or use it as a manual tracing underlay.</p>
+              <h3>{sketchUrl ? tr('Underlay active') : tr(AI_ENABLED ? 'Upload a plan to trace' : 'Upload plan as underlay')}</h3>
+              <p>{tr(AI_ENABLED
+                ? 'Upload an existing plan photo and let AI read the rooms — or use it as a manual tracing underlay.'
+                : 'Upload a plan photo and trace it by hand. AI tracing is paused, so nothing is sent to a model.')}</p>
             </div>
 
-            <button
-              className="button primary full"
-              type="button"
-              onClick={() => traceFileInputRef.current?.click()}
-              disabled={isTracing || quotaLeft <= 0}
-            >
-              {isTracing ? (<><RotateCcw className="spin" /> AI reading plan…</>) : (<><ImagePlus /> Trace with AI</>)}
-            </button>
-            <button className="button secondary full" type="button" onClick={() => fileInputRef.current?.click()}>
-              <Upload /> Manual underlay
+            {AI_ENABLED ? (
+              <button
+                className="button primary full"
+                type="button"
+                onClick={() => traceFileInputRef.current?.click()}
+                disabled={isTracing || quotaLeft <= 0}
+              >
+                {isTracing ? tr('AI reading plan…') : tr('Trace with AI')}
+              </button>
+            ) : null}
+            <button className={`button ${AI_ENABLED ? 'secondary' : 'primary'} full`} type="button" onClick={() => fileInputRef.current?.click()}>
+              {tr(AI_ENABLED ? 'Manual underlay' : 'Upload plan as underlay')}
             </button>
             {sketchUrl && (
               <button className="text-button" type="button" onClick={() => setSketchUrl(null)}>
-                Remove underlay
+                {tr('Remove underlay')}
               </button>
             )}
             <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-              <button className="text-button" type="button" onClick={onOpenPresets} style={{ flex: 1.2, color: 'var(--accent-primary)', fontWeight: 600 }}>★ Load layout preset</button>
-              <button className="text-button" type="button" onClick={startBlank} style={{ flex: 1 }}>Blank canvas</button>
-              <button className="text-button" type="button" onClick={resetPlan} style={{ flex: 1 }}>Sample</button>
+              <button className="text-button" type="button" onClick={onOpenPresets} style={{ flex: 1.2, color: 'var(--accent-primary)', fontWeight: 600 }}>{tr('Load layout preset')}</button>
+              <button className="text-button" type="button" onClick={startBlank} style={{ flex: 1 }}>{tr('Blank canvas')}</button>
+              <button className="text-button" type="button" onClick={resetPlan} style={{ flex: 1 }}>{tr('Sample')}</button>
             </div>
-            <p className="legal-note" style={{ marginTop: 4 }}>AI trace is a draft — verify walls and openings before costing.</p>
+            {AI_ENABLED && <p className="legal-note" style={{ marginTop: 4 }}>{tr('AI trace is a draft — verify walls and openings before costing.')}</p>}
           </section>
 
-          <section className="panel-section">
+          {AI_ENABLED && <section className="panel-section">
             <div className="section-title">
-              <h3>Optional AI illustration</h3>
+              <h3>{tr('Optional AI illustration')}</h3>
               <span className="badge">{quotaLeft} left</span>
             </div>
-            <p className="section-intro">Spatial and Renders build your geometry locally. Use this optional API only when you want a separate style illustration.</p>
+            <p className="section-intro">{tr('Spatial and Renders build your geometry locally. Use this optional API only when you want a separate style illustration.')}</p>
             
             <div className="style-preset-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', marginBottom: '10px' }}>
               {ARCHITECTURAL_STYLE_PRESETS.map((preset) => {
@@ -373,7 +354,7 @@ export const Inspector = React.memo(function Inspector({
                       padding: '6px 8px',
                       fontSize: '11px',
                       borderRadius: 0,
-                      border: isSelected ? '1px solid var(--accent-primary, #f59e0b)' : '1px solid var(--border)',
+                      border: isSelected ? '1px solid var(--accent-primary, #f99d1b)' : '1px solid var(--border)',
                       background: isSelected ? 'var(--studio-selection)' : 'var(--studio-sheet)',
                       color: 'var(--text-primary)',
                       cursor: 'pointer',
@@ -390,10 +371,11 @@ export const Inspector = React.memo(function Inspector({
             </div>
 
             <label className="field-label" style={{ marginBottom: 12 }}>
-              Active style & prompt keywords
+              {tr('Active style & prompt keywords')}
               <input
                 type="text"
-                placeholder="e.g. cozy tropical cabin, warm wood, minimalist"
+                aria-label={tr('Picture prompt')}
+                placeholder={tr('e.g. cozy tropical cabin, warm wood, minimalist')}
                 value={styleKeywords}
                 onChange={(e) => setStyleKeywords(e.target.value)}
                 style={{ width: '100%', marginTop: 4 }}
@@ -406,9 +388,9 @@ export const Inspector = React.memo(function Inspector({
               disabled={isRendering || quotaLeft <= 0}
             >
               {isRendering ? (
-                <><RotateCcw className="spin" /> Rendering…</>
+                <> Rendering…</>
               ) : (
-                <><ImagePlus /> Generate AI illustration</>
+                <> Generate AI illustration</>
               )}
             </button>
             {conceptImages[0] && (
@@ -417,29 +399,30 @@ export const Inspector = React.memo(function Inspector({
                 <figcaption>Latest concept · {conceptImages.length} saved today</figcaption>
               </figure>
             )}
-          </section>
+          </section>}
+          {!AI_ENABLED && <p className="legal-note">{tr('Concept photos are paused. The 3D view and the study sheet stay on this device.')}</p>}
 
           {room && (
             <section className="panel-section room-calibration-section">
               <div className="section-title">
-                <h3>Selected room</h3>
-                <IconButton label="Delete room" onClick={deleteRoom}><Trash2 /></IconButton>
+                <h3>{tr('Selected room')}</h3>
+                <IconButton label={tr('Delete room')} onClick={deleteRoom}>{tr('Delete room')}</IconButton>
               </div>
               <div className="known-dimension-calibration">
                 <div>
-                  <p className="eyebrow">One known measurement</p>
-                  <strong>Scale the whole sketch</strong>
-                  <small>Enter either real dimension. Every room, opening, 3D view, and quantity rescales together.</small>
+                  <p className="eyebrow">{tr('One known measurement')}</p>
+                  <strong>{tr('Scale the whole sketch')}</strong>
+                  <small>{tr('Enter either real dimension. Every room, opening, 3D view, and quantity rescales together.')}</small>
                 </div>
                 <label>
-                  <span>Width</span>
+                  <span>{tr('Width')}</span>
                   <span className="dimension-entry"><input aria-label="Known room width in meters" type="number" min="0.5" max="100" step="0.1" value={knownWidth} onChange={(event) => setKnownWidth(event.target.value)} /> m</span>
-                  <button type="button" onClick={() => calibrateRoomFromDimension('w', Number(knownWidth))} disabled={!Number.isFinite(Number(knownWidth)) || Number(knownWidth) <= 0}>Use width</button>
+                  <button type="button" onClick={() => calibrateRoomFromDimension('w', Number(knownWidth))} disabled={!Number.isFinite(Number(knownWidth)) || Number(knownWidth) <= 0}>{tr('Use width')}</button>
                 </label>
                 <label>
-                  <span>Depth</span>
+                  <span>{tr('Depth')}</span>
                   <span className="dimension-entry"><input aria-label="Known room depth in meters" type="number" min="0.5" max="100" step="0.1" value={knownDepth} onChange={(event) => setKnownDepth(event.target.value)} /> m</span>
-                  <button type="button" onClick={() => calibrateRoomFromDimension('h', Number(knownDepth))} disabled={!Number.isFinite(Number(knownDepth)) || Number(knownDepth) <= 0}>Use depth</button>
+                  <button type="button" onClick={() => calibrateRoomFromDimension('h', Number(knownDepth))} disabled={!Number.isFinite(Number(knownDepth)) || Number(knownDepth) <= 0}>{tr('Use depth')}</button>
                 </label>
               </div>
               <label className="field-label">
@@ -497,11 +480,11 @@ export const Inspector = React.memo(function Inspector({
                     </div>
                     <div className="room-data-secondary">
                       <div className="room-data-cell">
-                        <span className="room-data-cell-label">Width</span>
+                        <span className="room-data-cell-label">{tr('Width')}</span>
                         <span className="room-data-cell-value">{widthM.toFixed(2)} m</span>
                       </div>
                       <div className="room-data-cell">
-                        <span className="room-data-cell-label">Depth</span>
+                        <span className="room-data-cell-label">{tr('Depth')}</span>
                         <span className="room-data-cell-value">{depthM.toFixed(2)} m</span>
                       </div>
                       <div className="room-data-cell">
@@ -539,7 +522,7 @@ export const Inspector = React.memo(function Inspector({
               <section className="panel-section">
                 <div className="section-title">
                   <h3>Selected {op.type === 'window' ? 'Window' : 'Door'}</h3>
-                  <IconButton label="Delete opening" onClick={() => deleteOpening?.(op.id)}><Trash2 /></IconButton>
+                  <IconButton label={tr('Remove opening')} onClick={() => deleteOpening?.(op.id)}>{tr('Remove opening')}</IconButton>
                 </div>
                 <div className="split-fields">
                   <label className="field-label">
@@ -605,34 +588,34 @@ export const Inspector = React.memo(function Inspector({
         <div className="inspector-content">
           <section className="score-card light-card">
             <div className="score-ring" style={{ '--score': `${directSunPercent * 3.6}deg` } as React.CSSProperties}>
-              <strong>{directSunPercent}</strong><span>% of floor</span>
+              <strong>{directSunPercent}</strong><span>{tr('% of floor')}</span>
             </div>
             <div>
-              <p className="eyebrow">Direct sun now</p>
+              <p className="eyebrow">{tr('Direct sun now')}</p>
               <h3>≈ {directSunM2.toFixed(1)} m² in direct light</h3>
-              <p>Estimated from {patches.length} window{patches.length === 1 ? '' : 's'} at this hour. Diffuse light not included.</p>
+              <p>{tr(`${new Set(patches.map((patch) => patch.windowId)).size} of ${plan.openings.filter((opening) => opening.type === 'window').length} windows get direct sun at ${clockLabel(hour)}. Diffuse light is not included.`)}</p>
             </div>
           </section>
           <SunChart location={projectLocation} latitude={lat} day={day} hour={hour} locationLabel={locationLabel} />
           <section className="panel-section">
             <CityPicker location={projectLocation} onChange={setProjectLocation} />
             <label className="range-label">
-              <span><strong>Time of day</strong><b>{clockLabel(hour)}</b></span>
-              <input aria-label="Inspector sun time" type="range" min="0" max="24" step="0.25" value={hour} onChange={(event) => setHour(Number(event.target.value))} />
+              <span><strong>{tr('Time of day')}</strong><b>{clockLabel(hour)}</b></span>
+              <input aria-label={tr('Inspector sun time')} type="range" min="0" max="24" step="0.25" value={hour} onChange={(event) => setHour(Number(event.target.value))} />
             </label>
             <div className="season-buttons" aria-label="Season presets">
-              <button type="button" className={day === 355 ? 'active' : ''} onClick={() => setDay(355)}>December solstice</button>
-              <button type="button" className={day === 80 ? 'active' : ''} onClick={() => setDay(80)}>Equinox</button>
-              <button type="button" className={day === 172 ? 'active' : ''} onClick={() => setDay(172)}>June solstice</button>
+              <button type="button" className={day === 355 ? 'active' : ''} onClick={() => setDay(355)}>{tr('December solstice')}</button>
+              <button type="button" className={day === 80 ? 'active' : ''} onClick={() => setDay(80)}>{tr('Equinox')}</button>
+              <button type="button" className={day === 172 ? 'active' : ''} onClick={() => setDay(172)}>{tr('June solstice')}</button>
             </div>
             <label className="range-label">
-              <span><strong>Day of year</strong><b>{day}</b></span>
-              <input type="range" min="1" max="365" value={day} onChange={(event) => setDay(Number(event.target.value))} />
+              <span><strong>{tr('Day of year')}</strong><b>{day}</b></span>
+              <input aria-label={tr('Day of year')} type="range" min="1" max="365" value={day} onChange={(event) => setDay(Number(event.target.value))} />
             </label>
           </section>
           <section className="panel-section lighting-schedule">
             <div className="section-title">
-              <div><p className="eyebrow">Control schedule</p><h3>Six lighting channels</h3></div>
+              <div><p className="eyebrow">{tr('Control schedule')}</p><h3>{tr('Six lighting channels')}</h3></div>
               <span className="badge">{lightingChannels.reduce((sum, channel) => sum + channel.loadWatts, 0)} W</span>
             </div>
             <div className="scene-buttons" aria-label="Lighting scenes">
@@ -643,7 +626,7 @@ export const Inspector = React.memo(function Inspector({
                   className={activeLightingScene === scene ? 'active' : ''}
                   onClick={() => { setActiveLightingScene(scene); setLightingLevels(levels) }}
                 >
-                  {scene}
+                  {tr(scene)}
                 </button>
               ))}
             </div>
@@ -651,7 +634,7 @@ export const Inspector = React.memo(function Inspector({
               {lightingChannels.map((channel) => (
                 <label key={channel.id} className="channel-row">
                   <span className="channel-code">{channel.circuit}</span>
-                  <span><strong>{channel.name}</strong><small>{channel.zone} · {channel.loadWatts} W · {channel.control}</small></span>
+                  <span><strong>{tr(channel.name)}</strong><small>{tr(channel.zone)} · {channel.loadWatts} W · {tr(channel.control)}</small></span>
                   <input
                     type="range"
                     min="0"
@@ -666,30 +649,32 @@ export const Inspector = React.memo(function Inspector({
             </div>
           </section>
           <section className="insight-card">
-            <CloudSun />
+            
             <div>
               {patches.length > 0 ? (
                 <>
                   <strong>Sun reaches {new Set(patches.map((patch) => patch.roomId)).size} room(s)</strong>
-                  <p>Drag windows or change the hour to move the light.</p>
+                  <p>{tr('Drag windows or change the hour to move the light.')}</p>
                 </>
               ) : (
                 <>
-                  <strong>No direct sun right now</strong>
-                  <p>The sun is below the horizon or no window faces it. Try another hour.</p>
+                  <strong>{tr('No direct sun right now')}</strong>
+                  <p>{tr('The sun is below the horizon or no window faces it. Try another hour.')}</p>
                 </>
               )}
             </div>
           </section>
-          <p className="legal-note">Shanghai’s due-south planning reference window is 09:00–15:00. This interactive model is a design study; a formal sunlight report requires approved analysis software and local professional sign-off.</p>
+          <p className="legal-note">{projectLocation.timezone === 'Asia/Shanghai' ? 'Shanghai’s due-south planning reference window is 09:00–15:00. ' : ''}This interactive model is a design study; a formal sunlight report requires approved analysis software and local professional sign-off.</p>
           <section className="panel-section">
             <div className="section-title">
-              <h3>Openings</h3>
+              <h3>{tr('Openings')}</h3>
               <span className="badge">{plan.openings.length}</span>
             </div>
-            <button className="button secondary full" type="button" onClick={() => setActiveTool('window')}>
-              <PanelLeftClose /> Place a window
-            </button>
+            {!plan.openings.some((opening) => opening.type === 'window') && (
+              <button className="button secondary full" type="button" onClick={() => setActiveTool('window')}>
+                {tr('Place a window')}
+              </button>
+            )}
           </section>
         </div>
       )}
@@ -697,36 +682,36 @@ export const Inspector = React.memo(function Inspector({
       {!settingsOpen && mode === 'wellbeing' && (
         <div className="inspector-content">
           <section className="wellbeing-hero">
-            <span><Compass /></span>
+            <span></span>
             <div>
-              <p className="eyebrow">Resident preference overlay</p>
-              <h3>South-facing, calm and legible</h3>
-              <p>Feng Shui is treated here as a cultural and personal design brief—not as medical or building-science evidence.</p>
+              <p className="eyebrow">{tr('Resident preference overlay')}</p>
+              <h3>{tr('South-facing, calm and legible')}</h3>
+              <p>{tr('Feng Shui is treated here as a cultural and personal design brief—not as medical or building-science evidence.')}</p>
             </div>
           </section>
 
           <section className="panel-section check-schedule">
-            <div className="section-title"><div><p className="eyebrow">Feng Shui brief</p><h3>Five preference checks</h3></div><span className="badge">5 / 5</span></div>
+            <div className="section-title"><div><p className="eyebrow">{tr('Feng Shui brief')}</p><h3>{tr('Five preference checks')}</h3></div><span className="badge">5 / 5</span></div>
             {preferenceChecks.map((item) => (
               <article className="check-row" key={item.title}>
-                <Check />
+                
                 <div><strong>{item.title}</strong><p>{item.detail}</p><small>{item.status}</small></div>
               </article>
             ))}
           </section>
 
           <section className="panel-section check-schedule hygiene-schedule">
-            <div className="section-title"><div><p className="eyebrow">Hygiene engineering</p><h3>Five technical controls</h3></div><span className="badge">GB/T brief</span></div>
+            <div className="section-title"><div><p className="eyebrow">{tr('Hygiene engineering')}</p><h3>{tr('Five technical controls')}</h3></div><span className="badge">{tr('GB/T brief')}</span></div>
             {hygieneChecks.map((item) => (
               <article className="check-row" key={item.title}>
-                <ShieldCheck />
+                
                 <div><strong>{item.title}</strong><p>{item.detail}</p></div>
               </article>
             ))}
           </section>
 
           <section className="panel-section interior-schedule">
-            <div className="section-title"><div><p className="eyebrow">Made for this plan</p><h3>Custom interior schedule</h3></div><span className="badge">No flat-pack</span></div>
+            <div className="section-title"><div><p className="eyebrow">{tr('Made for this plan')}</p><h3>{tr('Custom interior schedule')}</h3></div><span className="badge">{tr('No flat-pack')}</span></div>
             {customInteriorSchedule.map((item) => (
               <article key={item.zone}>
                 <span>{item.zone}</span>
@@ -735,7 +720,7 @@ export const Inspector = React.memo(function Inspector({
             ))}
           </section>
 
-          <p className="legal-note">Cultural checks require discussion with the resident. Hygiene, ventilation, electrical and fire requirements require local professional verification.</p>
+          <p className="legal-note">{tr('Cultural checks require discussion with the resident. Hygiene, ventilation, electrical and fire requirements require local professional verification.')}</p>
         </div>
       )}
 
@@ -745,17 +730,17 @@ export const Inspector = React.memo(function Inspector({
           <section className="score-card climate-card">
             <div className="climate-overall">
               <strong>{climateResult.scores.overall}</strong>
-              <span>overall</span>
+              <span>{tr('overall')}</span>
             </div>
             <div className="climate-scores">
-              <div><Wind /><strong>{climateResult.scores.ventilation}</strong><span>Ventilation</span></div>
-              <div><Sun /><strong>{climateResult.scores.solarGain}</strong><span>Solar balance</span></div>
-              <div><Leaf /><strong>{climateResult.scores.shade}</strong><span>Shade</span></div>
+              <div><strong>{climateResult.scores.ventilation}</strong><span>{tr('Ventilation')}</span></div>
+              <div><strong>{climateResult.scores.solarGain}</strong><span>{tr('Solar balance')}</span></div>
+              <div><strong>{climateResult.scores.shade}</strong><span>{tr('Shade')}</span></div>
             </div>
           </section>
 
           <section className="design-brief">
-            <p className="eyebrow">Design advice</p>
+            <p className="eyebrow">{tr('Design advice')}</p>
             <h3>{brief.headline}</h3>
             <p className="section-intro">{brief.summary}</p>
             <div className="brief-meta">
@@ -781,10 +766,10 @@ export const Inspector = React.memo(function Inspector({
                         }
                       }}
                     >
-                      Add <ArrowRight />
+                      Add 
                     </button>
                   )}
-                  {item.active && <span className="brief-done"><Check /> On</span>}
+                  {item.active && <span className="brief-done"> On</span>}
                 </article>
               )
             })}
@@ -799,8 +784,8 @@ export const Inspector = React.memo(function Inspector({
           <section className="panel-section">
             <div className="section-title">
               <div>
-                <p className="eyebrow">Climate response</p>
-                <h3>Pick a starting point for the latitude</h3>
+                <p className="eyebrow">{tr('Climate response')}</p>
+                <h3>{tr('Pick a starting point for the latitude')}</h3>
               </div>
             </div>
             {(() => {
@@ -826,9 +811,9 @@ export const Inspector = React.memo(function Inspector({
                     </select>
                   </label>
                   <p className="section-intro">{current.description}</p>
-                  <p className="design-note"><strong>Principle:</strong> {current.defaults.principle}</p>
-                  <p className="design-note"><strong>Ventilation:</strong> {current.defaults.ventilationStrategy}</p>
-                  <p className="design-note"><strong>Eave depth:</strong> {current.defaults.recommendedEaveDepthM.toFixed(1)} m on south + west</p>
+                  <p className="design-note"><strong>{tr('Principle:')}</strong> {current.defaults.principle}</p>
+                  <p className="design-note"><strong>{tr('Ventilation:')}</strong> {current.defaults.ventilationStrategy}</p>
+                  <p className="design-note"><strong>{tr('Eave depth:')}</strong> {current.defaults.recommendedEaveDepthM.toFixed(1)} m on south + west</p>
                   <ul className="design-notes-list">
                     {current.designNotes.map((note, i) => <li key={i}>{note}</li>)}
                   </ul>
@@ -840,29 +825,28 @@ export const Inspector = React.memo(function Inspector({
           <section className="panel-section">
             <div className="section-title">
               <div>
-                <p className="eyebrow">Envelope assemblies</p>
-                <h3>Walls, roof, floor — by layer, not by toggle</h3>
+                <p className="eyebrow">{tr('Envelope assemblies')}</p>
+                <h3>{tr('Walls, roof, floor — by layer, not by toggle')}</h3>
               </div>
             </div>
             {(() => {
               const resolved = resolvePlanAssemblies(plan.assemblies ?? DEFAULT_ASSEMBLIES)
-              const items: Array<{ key: 'wall' | 'roof' | 'floor'; label: string; icon: typeof BrickWall }> = [
-                { key: 'wall', label: 'Wall', icon: BrickWall },
-                { key: 'roof', label: 'Roof', icon: Layers3 },
-                { key: 'floor', label: 'Floor', icon: Sprout },
+              const items: Array<{ key: 'wall' | 'roof' | 'floor'; label: string }> = [
+                { key: 'wall', label: 'Wall' },
+                { key: 'roof', label: 'Roof' },
+                { key: 'floor', label: 'Floor' },
               ]
               const presets = listResolvedAssemblies('wall').concat(
                 listResolvedAssemblies('roof'),
                 listResolvedAssemblies('floor'),
               )
-              return items.map(({ key, label, icon: Icon }) => {
+              return items.map(({ key, label }) => {
                 const r = resolved[key]
                 return (
                   <details key={key} className="assembly-card">
                     <summary>
-                      <span className="assembly-icon"><Icon /></span>
                       <div className="assembly-head">
-                        <strong>{label}: {r.assembly.label}</strong>
+                        <strong>{tr(label)}: {r.assembly.label}</strong>
                         <div className="assembly-stats">
                           <span><strong>R-{r.totalRValue.toFixed(1)}</strong></span>
                           <span>U {r.uValue.toFixed(2)} W/m²·K</span>
@@ -881,7 +865,7 @@ export const Inspector = React.memo(function Inspector({
                       ))}
                     </ul>
                     <div className="assembly-swap">
-                      <span>Swap to:</span>
+                      <span>{tr('Swap to:')}</span>
                       {presets.filter((p) => p.assembly.kind === key && p.assembly.id !== r.assembly.id).map((p) => (
                         <button
                           key={p.assembly.id}
@@ -908,7 +892,7 @@ export const Inspector = React.memo(function Inspector({
           </section>
 
           <section className="panel-section">
-            <div className="section-title"><h3>Room diagnostics</h3></div>
+            <div className="section-title"><h3>{tr('Room diagnostics')}</h3></div>
             {climateResult.rooms.map((rc) => {
               const sevLabel =
                 rc.severity >= 3 ? 'Critical' : rc.severity === 2 ? 'Recommended' : rc.severity === 1 ? 'Nice-to-have' : 'Comfortable'
@@ -920,11 +904,11 @@ export const Inspector = React.memo(function Inspector({
                     <span className={`sev-badge ${sevClass}`}>{sevLabel}</span>
                   </div>
                   <div className="climate-room-stats">
-                    <span><Thermometer /> {rc.peakIndoorC.toFixed(0)}°C peak</span>
-                    <span><Zap /> +{rc.deltaC.toFixed(1)}°C over outdoor</span>
-                    <span><Wind /> {Math.round(rc.crossVentilation * 100)}% vent</span>
+                    <span> {rc.peakIndoorC.toFixed(0)}°C peak</span>
+                    <span> +{rc.deltaC.toFixed(1)}°C over outdoor</span>
+                    <span> {Math.round(rc.crossVentilation * 100)}% vent</span>
                     <span className={rc.overheatingHours > 0 ? 'overheat-stat' : ''}>
-                      <Flame /> {rc.overheatingHours > 0 ? `${rc.overheatingHours} h/yr >30°C` : 'No overheating'}
+                       {rc.overheatingHours > 0 ? `${rc.overheatingHours} h/yr >30°C` : 'No overheating'}
                     </span>
                   </div>
                   <small>{rc.ventilationNote}</small>
@@ -963,24 +947,17 @@ export const Inspector = React.memo(function Inspector({
 
           <section className="panel-section">
             <div className="section-title">
-              <h3>Suggestions</h3>
+              <h3>{tr('Suggestions')}</h3>
               <span className="badge">{climateResult.suggestions.length}</span>
             </div>
             {climateResult.suggestions.length === 0 && (
-              <p className="section-intro">No critical issues detected — a solid passive starting point.</p>
+              <p className="section-intro">{tr('No critical issues detected — a solid passive starting point.')}</p>
             )}
             {climateResult.suggestions.map((suggestion, index) => {
-              const icon =
-                suggestion.kind === 'ventilation' ? <Wind /> :
-                  suggestion.kind === 'shading' ? <Sun /> :
-                    suggestion.kind === 'insulation' ? <Thermometer /> :
-                      suggestion.kind === 'orientation' ? <Leaf /> :
-                        <Lightbulb />
               const sevClass = suggestion.severity === 3 ? 'sev-3' : suggestion.severity === 2 ? 'sev-2' : 'sev-1'
               const roomName = suggestion.roomId ? plan.rooms.find((r) => r.id === suggestion.roomId)?.name : null
               return (
                 <div key={`${suggestion.title}-${index}`} className={`suggestion-card ${sevClass}`}>
-                  <span className="suggestion-icon">{icon}</span>
                   <div>
                     <strong>{suggestion.title}</strong>
                     <p>{suggestion.body}</p>
@@ -988,7 +965,7 @@ export const Inspector = React.memo(function Inspector({
                   </div>
                   {suggestion.action && (
                     <button type="button" className="button primary small" onClick={() => applySuggestion(suggestion)}>
-                      Apply <ArrowRight />
+                      Apply 
                     </button>
                   )}
                 </div>
@@ -1002,25 +979,25 @@ export const Inspector = React.memo(function Inspector({
         <div className="inspector-content">
           <section className="energy-hero">
             <div>
-              <p className="eyebrow">Predicted reduction</p>
+              <p className="eyebrow">{tr('Predicted reduction')}</p>
               <strong>−{(plan.systems.solar ? 8 : 0) + (plan.systems.insulation ? 12 : 0) + (plan.systems.climate ? 13 : 0) + (plan.systems.lighting ? 7 : 0)}%</strong>
-              <span>annual energy use</span>
+              <span>{tr('annual energy use')}</span>
             </div>
             <div className="energy-bars"><i /><i /><i /><i /><i /></div>
           </section>
-          <p className="section-intro">Apartment-scale systems: clean air, low glare, local control and upgrades that do not assume ownership of the roof.</p>
+          <p className="legal-note">{tr('Illustrative typical savings from these toggles. Not a simulation of this plan.')}</p>
+          <p className="section-intro">{tr('Apartment-scale systems: clean air, low glare, local control and upgrades that do not assume ownership of the roof.')}</p>
           {([
-            ['solar', Sun, 'Conditional solar share', '2.2 kWp common roof, subject to approval', '−8%'],
-            ['insulation', Layers3, 'Glazing + air sealing', 'Secondary low-e panel + thermal curtains', '−12%'],
-            ['climate', Wind, 'Clean-air climate', 'ERV filtration + two heat-pump zones', '−13%'],
-            ['lighting', Lightbulb, 'Six-channel lighting', 'Presence, daylight and warm-dim scenes', '−7%'],
-          ] as const).map(([key, Icon, title, note, saving]) => (
+            ['solar', 'Conditional solar share', '2.2 kWp common roof, subject to approval', '−8%'],
+            ['insulation', 'Glazing + air sealing', 'Secondary low-e panel + thermal curtains', '−12%'],
+            ['climate', 'Clean-air climate', 'ERV filtration + two heat-pump zones', '−13%'],
+            ['lighting', 'Six-channel lighting', 'Presence, daylight and warm-dim scenes', '−7%'],
+          ] as const).map(([key, title, note, saving]) => (
             <section className="system-row" key={key}>
-              <span className="system-icon"><Icon /></span>
-              <div><strong>{title}</strong><small>{note}</small></div>
+              <div><strong>{tr(title)}</strong><small>{tr(note)}</small></div>
               <span className="saving">{saving}</span>
               <Toggle
-                label={title}
+                label={tr(title)}
                 checked={plan.systems[key]}
                 onChange={() =>
                   commit((current) => ({
@@ -1032,29 +1009,29 @@ export const Inspector = React.memo(function Inspector({
             </section>
           ))}
           <section className="insight-card green">
-            <Check />
+            
             <div>
-              <strong>Passive before powered</strong>
-              <p>South solar access is managed with movable interior shading; filtration, air sealing and efficient equipment follow.</p>
+              <strong>{tr('Passive before powered')}</strong>
+              <p>{tr('South solar access is managed with movable interior shading; filtration, air sealing and efficient equipment follow.')}</p>
             </div>
           </section>
           <section className="panel-section system-summary">
-            <div className="section-title"><h3>Installed capacity</h3><span className="badge">Coordinated</span></div>
+            <div className="section-title"><h3>{tr('Installed capacity')}</h3><span className="badge">{tr('Coordinated')}</span></div>
             <div className="system-metrics">
-              <span><strong>2.2 kWp</strong><small>conditional roof share</small></span>
-              <span><strong>150 m³/h</strong><small>filtered ERV</small></span>
-              <span><strong>2 zones</strong><small>heat-pump</small></span>
-              <span><strong>6</strong><small>DALI channels</small></span>
+              <span><strong>2.2 kWp</strong><small>{tr('conditional roof share')}</small></span>
+              <span><strong>150 m³/h</strong><small>{tr('filtered ERV')}</small></span>
+              <span><strong>{tr('2 zones')}</strong><small>{tr('heat-pump')}</small></span>
+              <span><strong>6</strong><small>{tr('DALI channels')}</small></span>
             </div>
           </section>
           <section className="panel-section apartment-system-list">
-            <div className="section-title"><h3>Coordination schedule</h3><span className="badge">5 systems</span></div>
+            <div className="section-title"><h3>{tr('Coordination schedule')}</h3><span className="badge">{tr('5 systems')}</span></div>
             {apartmentSystems.map((item) => (
               <div key={item.code}><span>{item.code}</span><p><strong>{item.title}</strong><small>{item.detail}</small></p></div>
             ))}
           </section>
           <section className="panel-section automation-list">
-            <div className="section-title"><h3>Automation rules</h3><span className="badge">4 active</span></div>
+            <div className="section-title"><h3>{tr('Automation rules')}</h3><span className="badge">{tr('4 active')}</span></div>
             {automationRules.map((rule, index) => (
               <div className="automation-row" key={rule.name}>
                 <span>0{index + 1}</span>
@@ -1071,28 +1048,32 @@ export const Inspector = React.memo(function Inspector({
           <section className="budget-hero">
             <p className="eyebrow">{site.w.toFixed(1)} × {site.h.toFixed(1)} m site · {site.unit} m grid · ±15%</p>
             <strong>{formatCurrency(budget.total, budget.currency)}</strong>
-            <span>{formatCurrency(budget.total / Math.max(1, budget.area), budget.currency)} / m² <b>incl. {Math.round(budget.contingencyRate * 100)}% contingency</b></span>
+            <span>{formatCurrency(budget.total / Math.max(1, budget.area), budget.currency)} / m² <b>{tr(`incl. ${Math.round(budget.contingencyRate * 100)}% contingency`)}</b></span>
           </section>
 
           <section className="panel-section">
             <div className="section-title">
-              <h3>Regional Rate Card & A/B Study</h3>
+              <h3>{tr('Regional Rate Card & A/B Study')}</h3>
             </div>
             <label className="field-label" style={{ marginBottom: 10 }}>
-              Pricing Region
+              {tr('Pricing Region')}
               <select value={currency} onChange={(e) => setCurrency?.(e.target.value as CurrencyCode)}>
-                <option value="CNY">Shanghai / East Asia (RMB ¥)</option>
-                <option value="USD">North America (USD $)</option>
-                <option value="EUR">Western Europe (EUR €)</option>
+                <option value="THB">{tr('Thailand (THB ฿)')}</option>
+                <option value="CNY">{tr('China (RMB ¥)')}</option>
+                <option value="SGD">{tr('Singapore (SGD)')}</option>
+                <option value="USD">{tr('North America (USD $)')}</option>
+                <option value="EUR">{tr('Western Europe (EUR €)')}</option>
+                <option value="ZAR">{tr('South Africa (ZAR)')}</option>
               </select>
             </label>
+            <p className="legal-note">{tr(`Shanghai specification rates in CN¥, converted at ${FX_SOURCE}. Not a local price list.`)}</p>
             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
               <button type="button" className="button secondary full" onClick={onPinBaseline}>
-                Pin Plan A
+                {tr('Pin Plan A')}
               </button>
               {hasBaselinePin && (
                 <button type="button" className="button primary full" onClick={onOpenABComparison}>
-                  Compare A vs B
+                  {tr('Compare A vs B')}
                 </button>
               )}
             </div>
@@ -1100,8 +1081,8 @@ export const Inspector = React.memo(function Inspector({
 
           <section className="panel-section cost-list">
             <div className="section-title">
-              <h3>Bill of quantities</h3>
-              <span className="badge">Live</span>
+              <h3>{tr('Bill of quantities')}</h3>
+              <span className="badge">{tr('Live')}</span>
             </div>
             {budget.items.map((item, index) => (
               <div className="cost-row" key={item.label}>
@@ -1111,12 +1092,12 @@ export const Inspector = React.memo(function Inspector({
               </div>
             ))}
             <div className="cost-subtotal">
-              <span>Subtotal</span><strong>{formatCurrency(budget.subtotal, budget.currency)}</strong>
+              <span>{tr('Subtotal')}</span><strong>{formatCurrency(budget.subtotal, budget.currency)}</strong>
             </div>
           </section>
           <section className="panel-section carbon-list">
             <div className="section-title">
-              <h3>Embodied carbon</h3>
+              <h3>{tr('Embodied carbon')}</h3>
               <span className="badge carbon-badge">{(carbon.totalKg / 1000).toFixed(1)} t CO₂e</span>
             </div>
             {carbon.lines.map((line) => (
@@ -1126,21 +1107,21 @@ export const Inspector = React.memo(function Inspector({
               </div>
             ))}
             <div className="cost-subtotal">
-              <span>Per m² of floor</span><strong>{Math.round(carbon.kgPerM2)} kg CO₂e</strong>
+              <span>{tr('Per m² of floor')}</span><strong>{Math.round(carbon.kgPerM2)} kg CO₂e</strong>
             </div>
-            <p className="legal-note">Concept-level factors in the spirit of the ICE Database. Product-specific EPDs replace these at tender.</p>
+            <p className="legal-note">{tr('Concept-level factors in the spirit of the ICE Database. Product-specific EPDs replace these at tender.')}</p>
           </section>
           <section className="panel-section">
             <div className="section-title">
-              <h3>Interior fit-out by room</h3>
-              <span className="badge">{interior.categories.length} categories</span>
+              <h3>{tr('Interior fit-out by room')}</h3>
+              <span className="badge">{tr(`${interior.categories.length} categories`)}</span>
             </div>
-            <p className="section-intro">Measured to the inner wall face, half a 0.15 m wall in from each drawn line. Skirting stops at doors; a door on a shared wall is one door set. Finishes are priced on the order quantity, measured plus waste.</p>
+            <p className="section-intro">{tr('Measured to the inner wall face, half a 0.15 m wall in from each drawn line. Skirting stops at doors; a door on a shared wall is one door set. Finishes are priced on the order quantity, measured plus waste.')}</p>
             <div className="interior-boq">
               {interior.rooms.map((r) => (
                 <div className="interior-boq-room" key={r.room.id}>
                   <div className="interior-boq-room-head">
-                    <strong>{r.room.name}</strong>
+                    <strong>{tr(r.room.name)}</strong>
                     <span>{r.floorM2.toFixed(1)} m² · {r.openings} openings</span>
                   </div>
                   {r.lines.map((line) => (
@@ -1153,54 +1134,55 @@ export const Inspector = React.memo(function Inspector({
                         </small>
                         <small className="interior-boq-basis">{line.basis}</small>
                       </span>
-                      <b>{formatCurrency(line.amount, 'THB')}</b>
+                      <b>{formatCurrency(line.amount, interior.currency)}</b>
                     </div>
                   ))}
                   <div className="interior-boq-line">
-                    <span><strong style={{ color: 'var(--text-primary)' }}>Room subtotal</strong></span>
-                    <b>{formatCurrency(r.subtotal, 'THB')}</b>
+                    <span><strong style={{ color: 'var(--text-primary)' }}>{tr('Room subtotal')}</strong></span>
+                    <b>{formatCurrency(r.subtotal, interior.currency)}</b>
                   </div>
                 </div>
               ))}
             </div>
             <div className="interior-boq-summary">
-              <span>Interior fit-out total</span>
-              <span>{formatCurrency(interior.total, 'THB')}</span>
+              <span>{tr('Interior fit-out total')}</span>
+              <span>{formatCurrency(interior.total, interior.currency)}</span>
             </div>
-            <p className="legal-note">Per-room quantities are transparent; rates are concept-level and replaced by supplier quotes at tender.</p>
+            <p className="legal-note">{tr('Per-room quantities are transparent; rates are concept-level and replaced by supplier quotes at tender.')}</p>
           </section>
 
           <section className="insight-card">
-            <CircleDollarSign />
+            
             <div>
               <strong>{budget.area.toFixed(1)} m² is the cost anchor</strong>
-              <p>The BOQ is a renovation and fit-out estimate—not a new-build structure—and preserves the measured net floor area.</p>
+              <p>{tr('The BOQ is a renovation and fit-out estimate—not a new-build structure—and preserves the measured net floor area.')}</p>
               <button type="button" onClick={() => applyVariant(2)}>
-                Compare work-from-home <ArrowRight />
+                Compare work-from-home 
               </button>
             </div>
           </section>
 
           <section className="panel-section">
             <label className="field-label">
-              Style & finish keywords
+              {tr('Style & finish keywords')}
               <input
                 type="text"
-                placeholder="e.g. luxury gold marble, minimalist cozy"
+                aria-label={tr('Cost note')}
+                placeholder={tr('e.g. luxury gold marble, minimalist cozy')}
                 value={styleKeywords}
                 onChange={(e) => setStyleKeywords(e.target.value)}
                 style={{ width: '100%', marginTop: 4 }}
               />
             </label>
-            <p className="legal-note" style={{ marginTop: 6, fontSize: '10.5px', lineHeight: '1.4' }}>
-              Design language feeds concept images. The detailed BOQ remains fixed to the authored Shanghai specification so visual adjectives cannot silently alter quantities.
+            <p className="legal-note">
+              {tr('Design language feeds concept images. The detailed BOQ remains fixed to the authored reference specification so visual adjectives cannot silently alter quantities.')}
             </p>
           </section>
 
           <button className="button dark full" type="button" onClick={exportPlan}>
-            <Download /> Export project + BOQ
+            {tr('Export project + BOQ')}
           </button>
-          <p className="legal-note">Concept estimate only. Local professionals must verify structure, code, quantities, and procurement before construction.</p>
+          <p className="legal-note">{tr('Concept estimate only. Local professionals must verify structure, code, quantities, and procurement before construction.')}</p>
         </div>
       )}
     </aside>

@@ -1,8 +1,9 @@
 import { openingDimensions } from '../openingGeometry'
 import React from 'react'
-import { RotateCw, Trash2, Plus, Minus } from 'lucide-react'
 import type { Opening, Room, SiteSpec } from '../types'
 import { roomAreaFor } from '../plan'
+import { useI18n } from '../i18n'
+import { GlyphRotate } from './ui'
 
 interface ContextualActionBarProps {
   room?: Room | null
@@ -28,6 +29,7 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
   onUpdateOpening,
   onDeleteOpening,
 }) => {
+  const { tr } = useI18n()
   if (!room && !opening) return null
 
   const isRoom = !!room
@@ -47,32 +49,32 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
       {isRoom && room && (
         <>
           <span className="contextual-action-label">
-            <strong>{room.name}</strong>
+            <strong>{tr(room.name)}</strong>
             <span className="contextual-action-area">{area.toFixed(1)} m²</span>
           </span>
 
           <span className="toolbar-divider" aria-hidden="true" />
 
-          <div className="contextual-stepper" aria-label="Ceiling height">
+          <div className="contextual-stepper" aria-label={tr('Ceiling height')}>
             <span className="contextual-stepper-label">H</span>
             <span className="contextual-stepper-value">{(room.wallHeight ?? 2.5).toFixed(1)} m</span>
             <button
               type="button"
               className="contextual-stepper-btn"
               onClick={() => onUpdateRoom?.({ wallHeight: Math.min(6.0, (room.wallHeight ?? 2.5) + 0.1) })}
-              title="Increase ceiling height"
-              aria-label="Increase ceiling height"
+              title={tr('Increase ceiling height')}
+              aria-label={tr('Increase ceiling height')}
             >
-              <Plus className="contextual-stepper-icon" aria-hidden="true" />
+              +
             </button>
             <button
               type="button"
               className="contextual-stepper-btn"
               onClick={() => onUpdateRoom?.({ wallHeight: Math.max(2.0, (room.wallHeight ?? 2.5) - 0.1) })}
-              title="Decrease ceiling height"
-              aria-label="Decrease ceiling height"
+              title={tr('Decrease ceiling height')}
+              aria-label={tr('Decrease ceiling height')}
             >
-              <Minus className="contextual-stepper-icon" aria-hidden="true" />
+              −
             </button>
           </div>
 
@@ -81,10 +83,10 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
               type="button"
               className="contextual-icon-btn contextual-icon-btn-danger"
               onClick={onDeleteRoom}
-              title="Delete room"
-              aria-label="Delete room"
+              title={tr('Delete room')}
+              aria-label={tr('Delete room')}
             >
-              <Trash2 className="contextual-icon-icon" aria-hidden="true" />
+              ×
             </button>
           )}
         </>
@@ -93,7 +95,7 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
       {!isRoom && opening && (
         <>
           <span className="contextual-action-label">
-            <strong>{opening.type === 'window' ? 'Window' : 'Door'}</strong>
+            <strong>{tr(opening.type === 'window' ? 'Window' : 'Door')}</strong>
             <span className="contextual-action-area">
               {(openingDimensions(opening).width).toFixed(2)} ×{' '}
               {(openingDimensions(opening).height).toFixed(2)} m
@@ -102,25 +104,25 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
 
           <span className="toolbar-divider" aria-hidden="true" />
 
-          <div className="contextual-stepper" aria-label="Width">
+          <div className="contextual-stepper" aria-label={tr('Width')}>
             <span className="contextual-stepper-label">W</span>
             <button
               type="button"
               className="contextual-stepper-btn"
               onClick={() => onUpdateOpening?.(opening.id, { widthM: Math.min(6.0, (opening.widthM ?? 1.6) + 0.1) })}
-              title="Increase width"
-              aria-label="Increase opening width"
+              title={tr('Increase opening width')}
+              aria-label={tr('Increase opening width')}
             >
-              <Plus className="contextual-stepper-icon" aria-hidden="true" />
+              +
             </button>
             <button
               type="button"
               className="contextual-stepper-btn"
               onClick={() => onUpdateOpening?.(opening.id, { widthM: Math.max(0.4, (opening.widthM ?? 1.6) - 0.1) })}
-              title="Decrease width"
-              aria-label="Decrease opening width"
+              title={tr('Decrease opening width')}
+              aria-label={tr('Decrease opening width')}
             >
-              <Minus className="contextual-stepper-icon" aria-hidden="true" />
+              −
             </button>
           </div>
 
@@ -128,10 +130,10 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
             type="button"
             className="contextual-icon-btn"
             onClick={() => onUpdateOpening?.(opening.id, { rotation: opening.rotation === 0 ? 90 : 0 })}
-            title="Rotate orientation"
-            aria-label="Rotate opening orientation"
+            title={tr('Rotate opening orientation')}
+            aria-label={tr('Rotate opening orientation')}
           >
-            <RotateCw className="contextual-icon-icon" aria-hidden="true" />
+            <GlyphRotate />
           </button>
 
           {onDeleteOpening && (
@@ -139,10 +141,10 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
               type="button"
               className="contextual-icon-btn contextual-icon-btn-danger"
               onClick={() => onDeleteOpening(opening.id)}
-              title="Delete opening"
-              aria-label="Delete opening"
+              title={tr('Delete opening')}
+              aria-label={tr('Delete opening')}
             >
-              <Trash2 className="contextual-icon-icon" aria-hidden="true" />
+              ×
             </button>
           )}
         </>

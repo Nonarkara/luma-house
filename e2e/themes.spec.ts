@@ -1,5 +1,5 @@
 import { expectSaved } from './workspace'
-import { chooseTheme, openMore } from './workspace'
+import { chooseTheme, clickTool, openMore } from './workspace'
 import { test, expect } from '@playwright/test'
 import { themes } from '../src/design/themes'
 import { initialPlan } from '../src/plan'
@@ -80,7 +80,9 @@ for (const theme of themes) for (const width of [375, 768, 1280]) {
       for (const { selector, ratio } of result) expect(ratio, `${theme.name} ${selector}`).toBeGreaterThanOrEqual(4.5)
     }
     await check(['.stage-head h1', '.theme-picker select', '.button.primary', '.journey-headline', '.room-name', '.room-area', '.scale-chip button', '.science-preview strong', '.toolbar-pill-btn.is-active'])
-    await page.getByRole('button', { name: 'Open panel', exact: true }).click()
+    const openPanel = page.getByRole('button', { name: 'Open panel', exact: true })
+    if (!(await openPanel.isVisible())) await openMore(page)
+    await openPanel.click()
     await check(['.inspector-head h2', '.inspector input', '.code-issue-title', '.code-issue-fix', '.style-preset-btn span', '.inspector .text-button'])
     await page.getByRole('button', { name: 'Collapse inspector', exact: true }).click()
     await page.locator('.journey-step').filter({ hasText: 'Cost' }).click()
@@ -89,11 +91,11 @@ for (const theme of themes) for (const width of [375, 768, 1280]) {
     await page.locator('.journey-step').filter({ hasText: 'Systems' }).click()
     await check(['.energy-hero .eyebrow', '.energy-hero strong', '.energy-hero span', '.system-row strong', '.system-row small', '.saving'])
     await page.getByRole('button', { name: 'Collapse inspector', exact: true }).click()
-    await page.getByRole('button', { name: 'Layout presets', exact: true }).click()
+    await clickTool(page, 'Layout presets')
     await expect(page.getByRole('dialog')).toBeVisible()
     await check(['.trace-review h2', '.trace-review p', '.trace-review select', '.trace-review .button.primary'])
     await page.getByRole('button', { name: 'Keep current project', exact: true }).click()
-    await page.getByRole('button', { name: 'Room options', exact: true }).click()
+    await clickTool(page, 'Room options')
     await expect(page.getByRole('dialog', { name: 'Room options', exact: true })).toBeVisible()
     await check(['.room-options-dialog p', '.room-options-dialog h2', '.room-options-dialog select', '.room-options-dialog button:not(:disabled)', '.room-option-metrics th', '.room-option-metrics td'])
     expect(await page.locator('.room-options-dialog').evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1)
