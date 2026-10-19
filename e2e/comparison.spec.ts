@@ -167,7 +167,10 @@ test('room options preview real 3D before Apply and every palette keeps comparis
   await page.goto('/#plan=' + encodePlanToHash(a))
   await expect.poll(async () => (await saved(page)).rooms?.length).toBe(1)
   const original = await saved(page)
-  await page.getByRole('button', { name: 'Room options', exact: true }).click()
+  // On phones Room options lives in the tool row's More tools menu.
+  const roomOptions = page.getByRole('button', { name: 'Room options', exact: true })
+  if (!await roomOptions.isVisible()) await page.getByRole('button', { name: 'More tools', exact: true }).click()
+  await roomOptions.click()
   await page.getByRole('button', { name: 'Preview in the full house', exact: true }).click()
   await page.getByRole('button', { name: '3D comparison', exact: true }).click()
   await expect(page.getByRole('region', { name: '3D comparison preview', exact: true })).toBeFocused()
