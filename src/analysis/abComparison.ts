@@ -1,6 +1,5 @@
 import type { PlanState } from '../types'
-import { calculateChinaApartmentBudget } from '../mockups/chinaApartment'
-import { estimateApartmentCarbon } from '../mockups/chinaApartment'
+import { calculateChinaApartmentBudget, carbonForPlan } from '../mockups/chinaApartment'
 import { daylightPotential } from './daylight'
 import { heatFlowSnapshot } from './heatFlow'
 import { windFlowPotential } from './windFlow'
@@ -51,7 +50,7 @@ export interface ABComparisonResult {
 export function comparePlans(baseline: PlanState, proposed: PlanState, context: ComparisonContext = REFERENCE_CONTEXT): ABComparisonResult {
   const getMetrics = (plan: PlanState) => {
     const b = calculateChinaApartmentBudget(plan)
-    const c = estimateApartmentCarbon(plan)
+    const c = carbonForPlan(plan)
     const dl = daylightPotential(plan)
     const h = heatFlowSnapshot({ plan, sunAzimuth: context.sunAzimuth, sunAltitude: context.sunAltitude, outsideC: context.outsideC })
     const w = windFlowPotential(plan, context.windFrom, context.windSpeed)

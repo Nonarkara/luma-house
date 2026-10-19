@@ -135,7 +135,32 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .inspector h2 { color: var(--studio-ink); }
 .inspector input, .inspector select, .trace-fields input, .trace-fields select { color: var(--studio-ink); background: var(--studio-sheet); border-color: var(--studio-border, #9d9f8a); }
 .inspector .panel-section, .inspector .score-card, .inspector .insight-card { background: transparent; border-color: var(--border); }
-.welcome-gate { background: var(--studio-paper); backdrop-filter: none; }
+.app-shell .welcome-gate {
+  position: absolute;
+  inset: auto 12px 64px auto;
+  z-index: 30;
+  display: block;
+  width: min(340px, calc(100% - 24px));
+  height: auto;
+  padding: 0;
+  place-items: stretch;
+  background: transparent;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+.app-shell .welcome-card {
+  pointer-events: auto;
+  width: 100%;
+  padding: 14px;
+  gap: 8px;
+  max-height: none;
+}
+.app-shell .welcome-card .welcome-brand { margin-bottom: 0; }
+.app-shell .welcome-card .welcome-brand img:first-child { width: 40px; height: 40px; }
+.app-shell .welcome-card .welcome-brand img:last-child { width: 140px; height: 40px; }
+@media (max-width: 720px) {
+  .app-shell .welcome-gate { left: 8px; right: 8px; bottom: 8px; width: auto; }
+}
 .welcome-card { background: var(--studio-sheet); border: 0; border-top: 6px solid var(--studio-olive); padding: 32px; width: min(680px, 100%); }
 .welcome-card h2 { font-size: var(--font-title); line-height: 1.15; color: var(--studio-ink); }
 .welcome-lead { font-size: var(--font-body); color: var(--text-secondary); }
@@ -500,6 +525,7 @@ body { overflow-y: auto; }
    ========================================================================== */
 
 .app-shell {
+  position: relative;
   height: 100dvh;
   min-height: 0;
   display: grid;
@@ -812,7 +838,10 @@ body { overflow-y: auto; }
   body { overflow: hidden; }
 
   .app-shell .topbar { grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; padding: 0 4px 0 8px; }
-  .app-shell .project-picker, .topbar-meta { display: none; }
+  .app-shell .project-picker { display: none; }
+  .topbar-meta { display: flex; min-width: 0; flex: 1 1 auto; overflow: hidden; }
+  .topbar-meta .location-toggle { min-width: 44px; max-width: 100%; }
+  .topbar-meta .location-toggle span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 92px; }
   .app-shell .topbar-left .brand { display: flex; }
   .app-shell .topbar-left .brand-wordmark { display: none; }
   .app-shell .topbar-left .brand-symbol { width: 28px; height: 28px; }
@@ -820,11 +849,10 @@ body { overflow-y: auto; }
   .app-shell .topbar-center .history-tools { display: none; }
   .app-shell .topbar-center .view-switch button { min-height: 44px; padding: 0 10px; }
   .app-shell .top-actions { gap: 2px; }
-  .app-shell .top-actions .top-action-label { display: none; }
-  .app-shell .top-actions .button.primary .btn-label { display: none; }
+  .app-shell .top-actions .button.primary .btn-label,
+  .app-shell .top-actions .button.top-action-label .btn-label { display: none; }
   .app-shell .top-actions .button, .app-shell .top-actions .icon-button, .top-more > summary { min-width: 44px; width: 44px; height: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; }
-  .top-more-share { display: flex !important; }
-  .app-shell .top-actions .button.top-action-label { display: none; }
+  .top-more-share { display: none !important; }
 
   .app-shell .workspace { display: block; height: 100%; }
   .app-shell .design-stage {

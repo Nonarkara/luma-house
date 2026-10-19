@@ -17,9 +17,9 @@ export interface Env {
  *
  * `Access-Control-Allow-Origin: *` meant any page on the internet could POST to
  * a paid key by embedding one line of script — the most likely way this quota
- * gets burned. A request carrying no Origin (curl, server-to-server) is still
- * served, because the browser is not the only client we care about; that path is
- * held down by the per-IP rate limit instead.
+ * gets burned. A request with no Origin is refused before any model call.
+ * The key can still be set on the worker; this gate is what keeps a curl
+ * client from spending it. Browsers on the shipped sites send Origin.
  */
 const ALLOWED_ORIGINS = new Set([
   'https://designon.nonarkara.org',
@@ -33,7 +33,6 @@ const ALLOWED_ORIGINS = new Set([
 function corsHeaders(request: Request): Record<string, string> {
   const base = { 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }
   const origin = request.headers.get('Origin')
-  // No Origin is not a browser. Serve it, and let the rate limit hold the line.
   if (!origin) return { ...base, Vary: 'Origin' }
   if (!ALLOWED_ORIGINS.has(origin)) return { Vary: 'Origin' }
   return { ...base, 'Access-Control-Allow-Origin': origin, Vary: 'Origin' }
@@ -113,6 +112,12 @@ export default {
 
     if (request.method !== 'POST') {
       return json({ error: 'POST only' }, 405, cors)
+    }
+
+    // Refuse before the body is read and before either Gemini path. A missing
+    // Origin used to reach the model check while GEMINI_API_KEY was still set.
+    if (!request.headers.get('Origin')) {
+      return json({ error: 'Requests with no Origin are refused. This service only answers the designon app.' }, 403, cors)
     }
 
     // A browser on a site that is not ours gets no CORS headers, which stops the

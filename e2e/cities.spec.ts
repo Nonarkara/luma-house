@@ -61,7 +61,7 @@ test('worldwide city updates its chart and actual shadows, persists through relo
     { name: 'Cape Town', admin1: 'Western Cape', country: 'South Africa', latitude: -33.9249, longitude: 18.4241, timezone: 'Africa/Johannesburg' },
   ] } }))
   await page.goto('/#plan=' + encodePlanToHash(initialPlan))
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   const canvas = page.locator('.spatial3d-shell canvas')
   await expect.poll(() => canvas.evaluate(c => (c as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   await page.waitForTimeout(500)
@@ -97,7 +97,7 @@ test('worldwide city updates its chart and actual shadows, persists through relo
 
 test('fixed interior images are labeled references and never the default render', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(initialPlan))
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   await expect(page.getByLabel('Local 3D light study')).toBeVisible()
   await expect(page.locator('.render-stage img')).toHaveCount(0)
   await page.getByText('Concept references · photographs do not represent your drawing', { exact: true }).click()

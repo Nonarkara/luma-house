@@ -1,4 +1,5 @@
 import type { PlanState } from '../types'
+import { aiEnabled, AI_PAUSED_MESSAGE } from './ai'
 import { buildRenderPrompt, buildRenderSummary } from './buildRenderPrompt'
 import { canGenerateConcept, getQuotaRemaining, recordConceptImage } from './renderQuota'
 
@@ -11,6 +12,19 @@ export interface ConceptResult {
   remaining: number
 }
 
+/** Pull a sentence out of a worker JSON body so the toast is not raw JSON. */
+export function conceptFailureMessage(detail: string, status: number): string {
+  const text = detail.trim()
+  try {
+    const error = (JSON.parse(text) as { error?: unknown }).error
+    if (typeof error === 'string' && error.trim()) return error.trim()
+  } catch { /* plain text */ }
+  if (!text || text.length > 240 || /[{}[\]"]/.test(text)) {
+    return `Concept photo failed (HTTP ${status}). The 3D view still works on this device.`
+  }
+  return text
+}
+
 export async function generateConceptPhoto(options: {
   plan: PlanState
   locationLabel: string
@@ -18,6 +32,7 @@ export async function generateConceptPhoto(options: {
   apiUrl?: string
   styleKeywords?: string
 }): Promise<ConceptResult> {
+  if (!aiEnabled()) throw new Error(AI_PAUSED_MESSAGE)
   if (!canGenerateConcept()) {
     throw new Error(`Daily concept limit reached (${getQuotaRemaining()} left). Try again tomorrow.`)
   }
@@ -44,7 +59,7 @@ export async function generateConceptPhoto(options: {
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '')
-    throw new Error(detail || `Concept render failed (${response.status})`)
+    throw new Error(conceptFailureMessage(detail, response.status))
   }
 
   const payload = (await response.json()) as { imageBase64?: string; mimeType?: string; error?: string }

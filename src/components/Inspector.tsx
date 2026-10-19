@@ -37,6 +37,7 @@ import type { ClimateResponseId } from '../assemblies/types'
 import type { InteriorBoq } from '../boq/interiorBoq'
 import { SunChart } from '../canvas/SunChart'
 import { ARCHITECTURAL_STYLE_PRESETS } from '../concept/buildRenderPrompt'
+import { AI_ENABLED } from '../concept/ai'
 
 export interface InspectorProps {
   mode: WorkspaceMode
@@ -303,24 +304,28 @@ export const Inspector = React.memo(function Inspector({
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleSketch} hidden />
             {sketchUrl ? <img src={sketchUrl} alt={tr('Uploaded house plan sketch')} /> : null}
             <div>
-              <h3>{sketchUrl ? 'Underlay active' : 'Upload a plan to trace'}</h3>
-              <p>{tr('Upload an existing plan photo and let AI read the rooms — or use it as a manual tracing underlay.')}</p>
+              <h3>{sketchUrl ? tr('Underlay active') : tr(AI_ENABLED ? 'Upload a plan to trace' : 'Upload plan as underlay')}</h3>
+              <p>{tr(AI_ENABLED
+                ? 'Upload an existing plan photo and let AI read the rooms — or use it as a manual tracing underlay.'
+                : 'Upload a plan photo and trace it by hand. AI tracing is paused, so nothing is sent to a model.')}</p>
             </div>
 
-            <button
-              className="button primary full"
-              type="button"
-              onClick={() => traceFileInputRef.current?.click()}
-              disabled={isTracing || quotaLeft <= 0}
-            >
-              {isTracing ? (<> AI reading plan…</>) : (<> Trace with AI</>)}
-            </button>
-            <button className="button secondary full" type="button" onClick={() => fileInputRef.current?.click()}>
-               Manual underlay
+            {AI_ENABLED ? (
+              <button
+                className="button primary full"
+                type="button"
+                onClick={() => traceFileInputRef.current?.click()}
+                disabled={isTracing || quotaLeft <= 0}
+              >
+                {isTracing ? tr('AI reading plan…') : tr('Trace with AI')}
+              </button>
+            ) : null}
+            <button className={`button ${AI_ENABLED ? 'secondary' : 'primary'} full`} type="button" onClick={() => fileInputRef.current?.click()}>
+              {tr(AI_ENABLED ? 'Manual underlay' : 'Upload plan as underlay')}
             </button>
             {sketchUrl && (
               <button className="text-button" type="button" onClick={() => setSketchUrl(null)}>
-                Remove underlay
+                {tr('Remove underlay')}
               </button>
             )}
             <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
@@ -328,10 +333,10 @@ export const Inspector = React.memo(function Inspector({
               <button className="text-button" type="button" onClick={startBlank} style={{ flex: 1 }}>{tr('Blank canvas')}</button>
               <button className="text-button" type="button" onClick={resetPlan} style={{ flex: 1 }}>{tr('Sample')}</button>
             </div>
-            <p className="legal-note" style={{ marginTop: 4 }}>{tr('AI trace is a draft — verify walls and openings before costing.')}</p>
+            {AI_ENABLED && <p className="legal-note" style={{ marginTop: 4 }}>{tr('AI trace is a draft — verify walls and openings before costing.')}</p>}
           </section>
 
-          <section className="panel-section">
+          {AI_ENABLED && <section className="panel-section">
             <div className="section-title">
               <h3>{tr('Optional AI illustration')}</h3>
               <span className="badge">{quotaLeft} left</span>
@@ -397,7 +402,8 @@ export const Inspector = React.memo(function Inspector({
                 <figcaption>Latest concept · {conceptImages.length} saved today</figcaption>
               </figure>
             )}
-          </section>
+          </section>}
+          {!AI_ENABLED && <p className="legal-note">{tr('Concept photos are paused. The 3D view and the study sheet stay on this device.')}</p>}
 
           {room && (
             <section className="panel-section room-calibration-section">
@@ -590,7 +596,7 @@ export const Inspector = React.memo(function Inspector({
             <div>
               <p className="eyebrow">{tr('Direct sun now')}</p>
               <h3>≈ {directSunM2.toFixed(1)} m² in direct light</h3>
-              <p>Estimated from {patches.length} window{patches.length === 1 ? '' : 's'} at this hour. Diffuse light not included.</p>
+              <p>{tr(`${new Set(patches.map((patch) => patch.windowId)).size} of ${plan.openings.filter((opening) => opening.type === 'window').length} windows get direct sun at ${clockLabel(hour)}. Diffuse light is not included.`)}</p>
             </div>
           </section>
           <SunChart location={projectLocation} latitude={lat} day={day} hour={hour} locationLabel={locationLabel} />
@@ -982,6 +988,7 @@ export const Inspector = React.memo(function Inspector({
             </div>
             <div className="energy-bars"><i /><i /><i /><i /><i /></div>
           </section>
+          <p className="legal-note">{tr('Illustrative typical savings from these toggles. Not a simulation of this plan.')}</p>
           <p className="section-intro">{tr('Apartment-scale systems: clean air, low glare, local control and upgrades that do not assume ownership of the roof.')}</p>
           {([
             ['solar', 'Conditional solar share', '2.2 kWp common roof, subject to approval', '−8%'],
@@ -1062,7 +1069,7 @@ export const Inspector = React.memo(function Inspector({
                 <option value="ZAR">{tr('South Africa (ZAR)')}</option>
               </select>
             </label>
-            {currency !== 'CNY' && <p className="legal-note">{tr(`The authored RMB specification, converted at ${FX_SOURCE}. Not a local market rate card.`)}</p>}
+            <p className="legal-note">{tr(`Shanghai specification rates in CN¥, converted at ${FX_SOURCE}. Not a local price list.`)}</p>
             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
               <button type="button" className="button secondary full" onClick={onPinBaseline}>
                 {tr('Pin Plan A')}

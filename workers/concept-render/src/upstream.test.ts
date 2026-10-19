@@ -16,7 +16,7 @@ const quotaEnv = {
 function traceRequest() {
   return new Request('https://worker.test/trace', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Origin: 'https://designon.nonarkara.org' },
     body: JSON.stringify({ image: IMG }),
   })
 }

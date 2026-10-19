@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import worker from './index'
+
+const APP = 'https://designon.nonarkara.org'
 
 const env = { GEMINI_API_KEY: 'k', GEMINI_MODEL: 'gemini-2.0-flash', TRACE_MODEL: 'gemini-2.0-flash' } as never
 const IMG = 'data:image/png;base64,' + 'AAAA'.repeat(300)
 
-function post(path: string, origin?: string) {
+function post(path: string, origin: string | null = APP) {
   return new Request(`https://worker.test${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(origin ? { Origin: origin } : {}) },
@@ -47,9 +49,14 @@ describe('who may call the AI', () => {
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost:5173')
   })
 
-  it('still serves a non-browser client, which the rate limit is there to hold', async () => {
-    const res = await worker.fetch(post('/trace'), env)
-    expect(res.status).not.toBe(403)
+  it('refuses a request with no Origin before any model call', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const res = await worker.fetch(post('/trace', null), env)
+    expect(res.status).toBe(403)
+    const body = await res.json() as { error?: string }
+    expect(body.error).toMatch(/Origin/)
+    expect(fetchSpy).not.toHaveBeenCalled()
+    fetchSpy.mockRestore()
   })
 
   it('does not hand a wildcard to any origin on a preflight', async () => {
@@ -65,7 +72,7 @@ describe('the request envelope', () => {
   })
 
   it('rejects a body that is not application/json before touching anything else', async () => {
-    const req = new Request('https://worker.test/trace', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: IMG })
+    const req = new Request('https://worker.test/trace', { method: 'POST', headers: { 'Content-Type': 'text/plain', Origin: APP }, body: IMG })
     const res = await worker.fetch(req, env)
     expect(res.status).toBe(415)
   })

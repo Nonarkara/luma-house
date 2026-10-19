@@ -15,7 +15,7 @@ export const WelcomeGate = React.memo(function WelcomeGate({
   if (!open) return null
 
   return (
-    <div className="welcome-gate" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+    <div className="welcome-gate" role="region" aria-labelledby="welcome-title">
       <div className="welcome-card">
         <div className="welcome-brand"><img src="./brand/designon-symbol.png" alt="" width="80" height="80" /><img src="./brand/designon-wordmark.png" alt="designon" width="220" height="64" /></div>
         <LanguageSwitch />

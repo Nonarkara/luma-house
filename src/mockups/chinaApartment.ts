@@ -1,4 +1,4 @@
-import { siteOf, totalAreaFor, type CarbonLine } from '../plan'
+import { estimateEmbodiedCarbon, siteOf, totalAreaFor, type CarbonLine } from '../plan'
 import type { CurrencyCode, PlanState, Room } from '../types'
 import { FX_PER_CNY } from '../boq/currency'
 
@@ -182,16 +182,36 @@ export function calculateChinaApartmentBudget(plan: PlanState): ApartmentBudget 
   return { area, currency: 'CNY', items, subtotal, contingencyRate, total: subtotal * (1 + contingencyRate) }
 }
 
+/** The authored 50 m² apartment, identified by its room ids. An empty list is not the sample. */
+export function isAuthoredApartment(plan: PlanState): boolean {
+  return plan.rooms.length > 0 && plan.rooms.every((room) => chinaApartmentPlan.rooms.some((sample) => sample.id === room.id))
+}
+
 export function estimateApartmentCarbon(plan: PlanState): { lines: CarbonLine[]; totalKg: number; kgPerM2: number } {
   const area = totalAreaFor(plan.rooms, siteOf(plan))
+  if (area <= 0) return { lines: [], totalKg: 0, kgPerM2: 0 }
+  const openings = plan.openings.length
   const lines: CarbonLine[] = [
     { label: 'Partitions & ceilings', basis: `${area.toFixed(1)} m² × 22 kg`, kgCO2e: area * 22 },
     { label: 'Floor and wall finishes', basis: `${area.toFixed(1)} m² × 31 kg`, kgCO2e: area * 31 },
-    { label: 'Bespoke joinery', basis: '22 lin.m × 46 kg', kgCO2e: 22 * 46 },
+    { label: 'Bespoke joinery', basis: '22 lin.m × 46 kg, authored sample allowance', kgCO2e: 22 * 46 },
     { label: 'MEP and sanitary fit-out', basis: `${area.toFixed(1)} m² × 27 kg`, kgCO2e: area * 27 },
-    { label: 'Glazing and doors', basis: '7 units × 72 kg', kgCO2e: 7 * 72 },
+    { label: 'Glazing and doors', basis: `${openings} units × 72 kg`, kgCO2e: openings * 72 },
   ]
   if (plan.systems.solar) lines.push({ label: 'Allocated common-roof PV', basis: '2.2 kWp × 400 kg/kWp', kgCO2e: 2.2 * 400 })
   const totalKg = lines.reduce((sum, line) => sum + line.kgCO2e, 0)
-  return { lines, totalKg, kgPerM2: totalKg / Math.max(1, area) }
+  return { lines, totalKg, kgPerM2: totalKg / area }
+}
+
+/**
+ * The sample keeps its authored fit-out factors. Every other drawing, including
+ * a blank napkin, uses the plan calculator so an empty sheet is not 1.5 t.
+ */
+export function carbonForPlan(plan: PlanState): { lines: CarbonLine[]; totalKg: number; kgPerM2: number } {
+  if (isAuthoredApartment(plan)) return estimateApartmentCarbon(plan)
+  const area = totalAreaFor(plan.rooms, siteOf(plan))
+  if (area <= 0 && plan.openings.length === 0 && !plan.systems.solar && !plan.systems.climate) {
+    return { lines: [], totalKg: 0, kgPerM2: 0 }
+  }
+  return estimateEmbodiedCarbon(plan)
 }

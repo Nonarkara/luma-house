@@ -16,22 +16,25 @@ export function CityPicker({ location, onChange }: { location: ProjectLocation; 
     setLatitude(String(location.latitude)); setLongitude(String(location.longitude)); setTimezone(location.timezone)
   }, [location])
   useEffect(() => {
+    const term = query.trim()
+    if (term.length === 0) { setResults([]); setStatus(''); return }
+    if (term.length < 2) { setResults([]); setStatus('Type at least two letters.'); return }
     const controller = new AbortController()
-    let timeout: ReturnType<typeof setTimeout> | undefined
-    setResults([])
-    if (query.trim().length === 0) { setStatus(''); return }
-    if (query.trim().length < 2) { setStatus('Type at least two letters.'); return }
+    let active = true
     setStatus('Searching…')
     const timer = setTimeout(() => {
-      timeout = setTimeout(() => controller.abort(), 8000)
+      const timeout = setTimeout(() => controller.abort(), 8000)
       searchCities(query, controller.signal).then(items => {
-        if (controller.signal.aborted) return
-        setResults(items); setStatus(items.length ? 'Choose a city below.' : 'No matching cities. Try a nearby town or enter coordinates.')
+        if (!active) return
+        setResults(items)
+        setStatus(items.length ? 'Choose a city below.' : 'No matching cities. Try a nearby town or enter coordinates.')
       }).catch(() => {
-        if (!controller.signal.aborted || timeout) setStatus('City search is unavailable. Try again or enter coordinates.')
+        if (!active) return
+        setResults([])
+        setStatus('City search is unavailable. Try again or enter coordinates.')
       }).finally(() => clearTimeout(timeout))
     }, 350)
-    return () => { clearTimeout(timer); clearTimeout(timeout); timeout = undefined; controller.abort() }
+    return () => { active = false; clearTimeout(timer); controller.abort() }
   }, [query])
   // The current city is never offered as a result.
   const isCurrent = (item: ProjectLocation) => item.label === location.label || (Math.abs(item.latitude - location.latitude) < 0.01 && Math.abs(item.longitude - location.longitude) < 0.01)

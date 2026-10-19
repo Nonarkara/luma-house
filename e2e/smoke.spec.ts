@@ -279,7 +279,6 @@ test.describe('PWA installability', () => {
     const text = (await section.innerText()).toLowerCase()
     expect(text, 'mentions Android').toContain('android')
     expect(text, 'mentions iPhone').toContain('iphone')
-    expect(text, 'mentions Add to Home Screen').toContain('home screen')
-    expect(text, 'summary names both phones').toContain('available on android and iphone')
+    expect(text, 'summary is Add to Home Screen').toContain('add to home screen')
   })
 })

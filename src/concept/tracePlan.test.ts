@@ -5,12 +5,20 @@ import { calibrateTrace, traceIssues, traceSiteFromImage } from './reviewTrace'
 import { synthesizeLayout } from './layoutSynthesizer'
 
 beforeEach(() => {
+  vi.stubEnv('VITE_AI_ENABLED', 'true')
   const storage = new Map<string, string>()
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value) })
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs() })
 
 describe('trace boundary', () => {
+  it('does not call the network while AI is paused', async () => {
+    vi.stubEnv('VITE_AI_ENABLED', '')
+    const fetcher = vi.fn()
+    vi.stubGlobal('fetch', fetcher)
+    await expect(tracePlanFromImage({ imageDataUrl: 'test' })).rejects.toThrow(/paused/)
+    expect(fetcher).not.toHaveBeenCalled()
+  })
   it('always returns an unconfirmed draft and preserves the requested coordinate field', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ plan: synthesizeLayout(), draft: false })))
     const result = await tracePlanFromImage({ imageDataUrl: 'data:image/png;base64,test', siteW: 20, siteH: 15 })

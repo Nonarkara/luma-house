@@ -31,7 +31,6 @@ export const ScienceDock = React.memo(function ScienceDock({
 }) {
   const { tr, lang } = useI18n()
   const [mobileExpanded, setMobileExpanded] = React.useState(false)
-  const entering = heat.mode !== 'heat-out'
   const sunPercent = Math.round((directSunM2 / Math.max(1, floorAreaM2)) * 100)
   const dated = new Intl.DateTimeFormat(lang === 'th' ? 'th-TH' : lang === 'zh' ? 'zh-Hans' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(new Date().getFullYear(), 0, day)))
   const seasonName = day === 355 || day === 172 || day === 80 || day === 266 ? tr(day === 355 ? 'December solstice' : day === 172 ? 'June solstice' : 'Equinox') : dated
@@ -77,10 +76,11 @@ export const ScienceDock = React.memo(function ScienceDock({
           <button type="button" className={day === 80 ? 'active' : ''} onClick={() => setDay(80)}>{tr('Mar')}</button>
           <button type="button" className={day === 172 ? 'active' : ''} onClick={() => setDay(172)}>{tr('Jun')}</button>
         </div>
-        <label className="outside-temperature">
+        <label className="outside-temperature" title={tr('Assumed for this latitude and month. Not a forecast.')}>
           {tr('Outside')}
-          <input aria-label={tr('Outside air temperature')} type="number" min="-30" max="55" value={outsideC} onChange={(event) => setOutsideC(Number(event.target.value))} />
+          <input aria-label={tr('Outside air temperature')} title={tr('Assumed for this latitude and month. Not a forecast.')} type="number" min="-30" max="55" value={outsideC} onChange={(event) => setOutsideC(Number(event.target.value))} />
           <span>°C</span>
+          <small>{tr('assumed')}</small>
         </label>
         <details className="science-method">
           <summary aria-label={tr('How the heat snapshot is calculated')}>{tr('Method')}</summary>

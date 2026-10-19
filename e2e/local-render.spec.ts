@@ -1,4 +1,4 @@
-import { chooseTheme } from './workspace'
+import { chooseTheme, clickAction } from './workspace'
 import { test, expect } from '@playwright/test'
 import { encodePlanToHash } from '../src/sharePlan'
 import type { PlanState } from '../src/types'
@@ -16,7 +16,7 @@ test('renders locally with AI blocked, supports every palette and exports an act
   const calls: string[] = []
   await page.route('**/luma-concept-render.drnon.workers.dev/**', route => { calls.push(route.request().url()); return route.abort() })
   await page.goto(`/#plan=${hash}`)
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   await expect(page.getByLabel('Local 3D light study')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Architectural', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('button', { name: 'Shadows', exact: true })).toHaveAttribute('aria-pressed', 'true')
@@ -63,7 +63,7 @@ test('sun controls change local geometry lighting without an API request', async
   const calls: string[] = []
   await page.route('**/luma-concept-render.drnon.workers.dev/**', route => { calls.push(route.request().url()); return route.abort() })
   await page.goto(`/#plan=${hash}`)
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   const canvas = page.locator('.spatial3d-shell canvas')
   await expect.poll(() => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL().length), { timeout: 20000 }).toBeGreaterThan(10000)
   const day = await canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL())
@@ -106,7 +106,7 @@ test('the GPU rests while idle and redraws when the sun changes', async ({ page 
     return draws()
   }
   await page.goto('/#plan=' + encodePlanToHash({ ...plan, site: { w: 30, h: 20, unit: 1 } }))
-  await page.getByRole('button', { name: 'Renders', exact: true }).click()
+  await clickAction(page, 'Renders')
   await expect.poll(draws, { timeout: 20000 }).toBeGreaterThan(0)
   const idle = await expectIdle()
   const adjust = page.getByRole('button', { name: 'Adjust', exact: true })
