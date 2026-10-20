@@ -324,7 +324,24 @@ small. It does mean the repository's `_headers` rules are not the last word
 on the primary host, and anything that depends on a header there should
 depend on something else too. Measured in §3.
 
-### 8.4 No declared browser targets
+### 8.4 The mirror has no cache headers at all
+
+GitHub Pages ignores `_headers` — it is a Cloudflare Pages feature — and
+serves everything with `cache-control: max-age=600`. A returning visitor to
+`nonarkara.github.io/luma-house/` therefore re-downloads the whole
+application every ten minutes, 341 kB at a time.
+
+The offline shell repairs this without the mirror's cooperation: the
+worker's cache-first rule for `/assets/*` applies whatever the server says
+about caching, and the filenames are content-hashed, so a cached file is
+always the right file. The mirror's own header policy stops mattering
+because the browser stops asking.
+
+The worker is served correctly on the mirror — `/luma-house/sw.js`,
+`content-type: application/javascript` — and takes its scope from its own
+location, so the same file serves both hosts.
+
+### 8.5 No declared browser targets
 
 `browserslist` is absent. The application uses `dialog`, `navigator.clipboard`
 and `ResizeObserver` — all modern-browser assumptions, declared nowhere. The
@@ -341,8 +358,8 @@ Firefox 44+ or Safari 15.4+.
   Chromium at 1280×800 and 390×844.
 - It did not load-test, and did not measure the worker on a cold device with
   an empty cache directory.
-- It did not verify the Cloudflare mirror build picks up `public/sw.js`. The
-  mirror is GitHub Actions-driven and needs a run to confirm.
+- It did not test the offline shell on a physical phone or on iOS Safari;
+  every offline measurement here is Chromium.
 
 ---
 
