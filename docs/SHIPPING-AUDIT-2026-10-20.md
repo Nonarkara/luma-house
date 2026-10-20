@@ -142,6 +142,38 @@ find out that a guard works.
 
 `Strict-Transport-Security` was added to the shared rule set.
 
+### What the CDN in front of the custom domain does with them
+
+Measured on `designon.nonarkara.org` after deploying, against the deployment
+URL for comparison:
+
+| Path | `_headers` says | The deployment serves | The custom domain serves |
+|---|---|---|---|
+| `/assets/*.js` | immutable | **immutable** | **immutable** |
+| `/brand/*.png` | `max-age=3600` | `max-age=3600` | `max-age=14400` |
+| `/sw.js` | `max-age=0` | `max-age=0` | `max-age=14400` |
+| `/` | (unset) | `max-age=0` | `max-age=0` |
+
+The custom domain sits behind a zone cache with a four-hour edge TTL, and it
+rewrites `Cache-Control` to match — except for `immutable`, which it
+honours. So the rule that matters most, the one that stops every release
+re-downloading the application, is the one that survives. `/brand/*` lands on
+four hours instead of one, which is harmless for artwork that changes
+rarely.
+
+`/sw.js` landing on four hours is not harmless, and it cannot be fixed from
+the repository, because the header that would prevent it is exactly the
+header the zone rewrites. So the application does not depend on it:
+**`registerOfflineShell()` calls `registration.update()` on every load.** The
+browser then asks for the worker script with `cache: 'no-cache'`, the edge
+revalidates it against the origin, and a corrected worker is in place on the
+next load rather than up to four hours later. Freshness stops depending on a
+cache policy that somebody else controls.
+
+This is worth recording as a rule rather than a fix: *a service worker whose
+freshness depends on a `Cache-Control` header is a service worker whose
+freshness depends on someone else's CDN.*
+
 ---
 
 ## 4. A crash must not blank the page — **Fixed**
@@ -222,6 +254,11 @@ The worker marks the shell it serves with `X-Designon-Shell: offline`, so an
 offline start is visible in the network panel rather than looking like an
 ordinary page load.
 
+The worker asks to be re-checked on every load. The browser only re-fetches
+a worker script on its own schedule, and the CDN in front of the custom
+domain holds it for four hours — see §3. A corrected worker therefore
+reaches the next visitor rather than the next visitor four hours later.
+
 ---
 
 ## 6. The gate set did not include the browser tests — **Fixed**
@@ -278,7 +315,16 @@ should be fixed before the app is shown to anyone whose opinion matters.
 Expected, and now much smaller (348 kB rather than 673 kB). The
 content-hashed filenames mean returning visitors pay nothing.
 
-### 8.3 No declared browser targets
+### 8.3 The custom domain rewrites `Cache-Control`
+
+The zone cache in front of `designon.nonarkara.org` applies a four-hour edge
+TTL and rewrites the header to match. Only `immutable` survives untouched.
+The hashed build files — the ones that matter — are immutable, so the cost is
+small. It does mean the repository's `_headers` rules are not the last word
+on the primary host, and anything that depends on a header there should
+depend on something else too. Measured in §3.
+
+### 8.4 No declared browser targets
 
 `browserslist` is absent. The application uses `dialog`, `navigator.clipboard`
 and `ResizeObserver` — all modern-browser assumptions, declared nowhere. The

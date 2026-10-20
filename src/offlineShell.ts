@@ -35,9 +35,20 @@ export function registerOfflineShell(): void {
   if (!('serviceWorker' in navigator)) return
   if (navigator.webdriver) return
   try {
-    navigator.serviceWorker.register(offlineShellUrl(document.baseURI)).catch(() => {
-      // A refused or unsupported registration must never break the desk.
-    })
+    navigator.serviceWorker
+      .register(offlineShellUrl(document.baseURI))
+      .then(registration => {
+        // Ask for the worker script again, explicitly. The browser only
+        // re-checks it on its own schedule, and a CDN in front of the site
+        // may hold the script for hours. Without this a corrected worker
+        // could sit on the shelf while the app that depends on it moves on.
+        registration.update().catch(() => {
+          // An update check that fails is not a failure of the shell.
+        })
+      })
+      .catch(() => {
+        // A refused or unsupported registration must never break the desk.
+      })
   } catch {
     // Some browsers throw rather than reject when registration is blocked.
   }
