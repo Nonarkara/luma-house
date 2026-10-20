@@ -27,7 +27,9 @@ async function collapseInspector(page: Page) {
 test('baseline survives real storage reload and sharing; Restore and Undo keep both drawings', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(b))
   await expect.poll(async () => (await saved(page)).comparison?.baselinePlan.furniture).toEqual(a.furniture)
-  await page.evaluate(() => history.replaceState(null, '', location.pathname))
+  // Drop the hash and reload, so the drawing has to come back from storage.
+  // ?studio=1 enters the desk directly; the landing sheet is the root route.
+  await page.evaluate(() => history.replaceState(null, '', '/?studio=1'))
   await page.reload()
   await compare(page)
   await expect(page.locator('.comparison-plan')).toHaveCount(2)

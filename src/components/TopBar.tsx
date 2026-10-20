@@ -12,6 +12,7 @@ interface TopBarProps {
   sharePlan: () => void
   onNewSketch: () => void
   onOpenShortcuts?: () => void
+  onOpenGuide?: () => void
   onToggleCatalog?: () => void
   /** View switch and history: the controls used every minute, kept in the bar. */
   center?: React.ReactNode
@@ -33,6 +34,7 @@ export const TopBar = React.memo(function TopBar({
   sharePlan,
   onNewSketch,
   onOpenShortcuts,
+  onOpenGuide,
   onToggleCatalog,
   center,
   meta,
@@ -87,6 +89,7 @@ export const TopBar = React.memo(function TopBar({
             <button type="button" onClick={run(onOpenSettings)}>
               <Settings2 aria-hidden="true" /> Workspace settings
             </button>
+            {onOpenGuide && <button type="button" onClick={run(onOpenGuide)}>Getting started guide</button>}
             {onOpenShortcuts && (
               <button type="button" onClick={run(onOpenShortcuts)}>
                 <HelpCircle aria-hidden="true" /> Shortcuts and legend <kbd>?</kbd>

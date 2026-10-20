@@ -1,3 +1,50 @@
+## Bauhaus landing sheet — 2026-10-20
+
+Design Read: the entry guide became a poster. Reference: Bauhaus primary-colour
+discipline — red, blue and yellow on a paper ground with ink black, flat colour
+fields, no ornament, geometric sans set tight and uppercase, and a grid that is
+deliberately asymmetric. The three primaries are not decoration; each does one
+job. Red is your mark (the pencil, the drawn room, the primary action). Blue is
+the measure (the plan, the floor plinth, the calibrated field). Yellow is the
+light (the sun, the daylight patch). The fit-out step is neutral. Ink carries
+structure, type and rules; paper carries the ground. The drawing is a sheet,
+not a picture: a bordered frame with registration ticks and its own title line,
+so it grows with the page and the caption sits on the sheet. Under it a
+horizontal title block prints the sample's own computed figures, never typed in
+by hand. The four steps sit on an ink band as number plates in red, blue, paper
+and yellow. Register: poster and technical drawing sheet at once; existing
+Source Sans 3 / JetBrains Mono; the studio's own palette is untouched.
+
+Authorized scope: restyle the entry guide to the Bauhaus palette and grid;
+keep the guide's route semantics, keyboard behaviour, print support and all
+existing tests. The palette is scoped to the landing sheet only and is asserted
+absent from `:root`, while the studio keeps its own single accent — the rule is
+now enforced by a test, not by intention. No new fonts, graphics libraries,
+generated photos or APIs.
+
+## Illustrated entry guide — 2026-10-19
+
+Design Read: a fold-out home-design instruction sheet explains the real tool
+sequence at a glance before opening the drawing desk. Reference: IKEA KALLAX
+assembly booklet AA-2326605-1, numbered actions, exploded line drawings and
+assembly leaders; original illustrations, no copied IKEA artwork or branding.
+The dominant element is one cutaway house and its plan, with four short tool
+instructions and a clear entry action. Thick building outlines, thin furniture
+details and dashed placement leaders serve different roles. Register:
+Institutional instruction sheet, existing Source Sans 3 / JetBrains Mono,
+paper and ink with the existing logo's yellow light as the sole guide accent.
+This named accent exception explains sunlight in the guide; workspace palettes
+remain unchanged. No new fonts, graphics libraries, generated photos or APIs.
+
+Authorized scope: expand WelcomeGate into a full-screen printable guide; add
+an original SVG house/plan diagram and scoped guide CSS; add explicit guide /
+studio entry URLs and a reopen action in More. Existing drawings, shared-plan
+arrival, Undo and the full workspace remain intact. Returning users can resume
+without creating a new drawing. Root opens the guide; ?studio=1 enters the desk;
+shared plans bypass the guide. Validate keyboard/focus, saved/shared entries,
+four palettes, one landscape view at1440/1024, phone flow at390 and printed A4.
+Save real screenshots and obtain independent visual review before CPDT.
+
 ## Drawing-sheet audit plan — 2026-10-18
 
 Design Read: a room name must occupy visible paper belonging to that room,

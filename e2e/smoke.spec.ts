@@ -84,7 +84,7 @@ test.describe('shipability smoke', () => {
   test('mobile viewport keeps Share / New sketch / Furniture Catalog reachable', async ({ page }) => {
     await dismissWelcome(page)
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto('/')
+    await page.goto('/?studio=1')
     // These three were hidden by the @media(max-width:1180px) rule that ate
     // `.top-actions .button.secondary`. The fix made them icon-only with
     // aria-label intact, so `getByRole('button', { name: ... })` resolves.
@@ -100,7 +100,7 @@ test.describe('shipability smoke', () => {
   test('mobile viewport does not horizontally overflow (16 px tolerance)', async ({ page }) => {
     await dismissWelcome(page)
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto('/')
+    await page.goto('/?studio=1')
     const overflow = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       clientWidth: document.documentElement.clientWidth,
@@ -261,7 +261,7 @@ test.describe('PWA installability', () => {
 
   test('WebAppAccess install guidance is reachable in the DOM', async ({ page }) => {
     await dismissWelcome(page)
-    await page.goto('/')
+    await page.goto('/?studio=1')
     await openMore(page)
     const section = page.locator('.top-more-extra .web-app-access')
     await expect(section, 'install guidance is rendered').toHaveCount(1)

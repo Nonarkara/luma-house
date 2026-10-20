@@ -8,6 +8,12 @@ export async function clickAction(page: Page, name: string) {
   if (!await action.isVisible()) await openMore(page)
   await action.click()
 }
+/** On a phone the inspector is a full-screen overlay that covers the top bar,
+ *  so any top-bar action needs the panel closed first. */
+export async function closeInspector(page: Page) {
+  const collapse = page.getByRole('button', { name: 'Collapse inspector', exact: true })
+  if (await collapse.count()) await collapse.click()
+}
 export async function chooseTheme(page: Page, id: string) {
   await openMore(page)
   await page.getByLabel('Colour scheme', { exact: true }).selectOption(id)

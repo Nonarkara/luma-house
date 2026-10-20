@@ -57,7 +57,6 @@ import { IconButton } from './components/ui'
 import { evaluateJourney } from './journey/evaluateJourney'
 import {
   readVisited,
-  readWelcomeDismissed,
   stageFromVisit,
   writeVisited,
   writeWelcomeDismissed,
@@ -83,6 +82,20 @@ import { checkPlan, exteriorDoorPlacement, type CodeIssue as StandardsCodeIssue 
 
 const RoomOptionsDialog = lazy(() => import('./components/RoomOptionsDialog'))
 const DRAW_HINT = 'Line = wall · tick on a wall = door or window · box = room or furniture'
+
+/** Explicit entry state survives reload; shared drawings open directly. */
+function guideIsOpen(): boolean {
+  const query = new URLSearchParams(window.location.search)
+  if (query.get('guide') === '1') return true
+  return query.get('studio') !== '1' && !decodePlanFromHash(window.location.hash)
+}
+
+function setEntryRoute(entry: 'guide' | 'studio') {
+  const url = new URL(window.location.href)
+  url.searchParams.delete(entry === 'guide' ? 'studio' : 'guide')
+  url.searchParams.set(entry, '1')
+  window.history.replaceState(null, '', url)
+}
 
 /** A truly blank plan — the napkin / tissue-paper starting point. */
 function blankPlan(): PlanState {
@@ -169,10 +182,9 @@ function App() {
   const [isRendering, setIsRendering] = useState(false)
   const [visitedStages, setVisitedStages] = useState<Set<JourneyStageId>>(() => readVisited())
   // Someone who opens a shared link came to see a drawing, not to be greeted.
-  // The gate used to open on top of the incoming plan and its biggest button
-  // wiped it: 5 rooms to 0, on phone and desktop alike. The gate is for
-  // arrivals with nothing, so it stays out of the way when there is a plan.
-  const [welcomeOpen, setWelcomeOpen] = useState(() => !readWelcomeDismissed() && readSavedPlan().rooms.length === 0 && !decodePlanFromHash(window.location.hash))
+  // Root is the instruction sheet. Saved work has a resume action; shared
+  // drawings bypass it and keep their imported content intact.
+  const [welcomeOpen, setWelcomeOpen] = useState(guideIsOpen)
   const [tourChapterIndex, setTourChapterIndex] = useState<number | null>(null)
   const [scenariosOpen, setScenariosOpen] = useState(false)
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
@@ -487,7 +499,11 @@ function App() {
     setLastSaved('Saving…')
     // A share link is an import, not a permanent override of later local edits.
     if (window.location.hash.startsWith('#plan=')) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+      const url = new URL(window.location.href)
+      url.hash = ''
+      url.searchParams.delete('guide')
+      url.searchParams.set('studio', '1')
+      window.history.replaceState(null, '', url)
     }
     const save = () => {
       try {
@@ -1076,6 +1092,13 @@ function App() {
     setToast('Fresh napkin — draw it, or upload a photo to trace')
   }, [startBlank])
 
+  const enterStudio = useCallback(() => {
+    writeWelcomeDismissed()
+    setWelcomeOpen(false)
+    setEntryRoute('studio')
+    requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('.view-switch button.active')?.focus())
+  }, [])
+
   // AI trace: read a plan from an uploaded image via the Gemini vision worker.
   const traceFileInputRef = useRef<HTMLInputElement>(null)
   const traceImage = useRef<string | null>(null)
@@ -1310,6 +1333,7 @@ function App() {
         exportPlan={() => setExportOpen(true)}
         sharePlan={shareProject}
         onNewSketch={newSketch}
+        onOpenGuide={() => { setEntryRoute('guide'); setWelcomeOpen(true) }}
         onOpenShortcuts={() => setShortcutsOpen((prev) => !prev)}
         onToggleCatalog={() => setIsCatalogOpen((prev) => !prev)}
         center={<>
@@ -1741,17 +1765,18 @@ function App() {
       </div>
       <WelcomeGate
         open={welcomeOpen}
+        hasDrawing={!!sketchUrl || plan.rooms.length > 0 || (plan.walls?.length ?? 0) > 0}
+        onContinue={enterStudio}
         onStart={() => {
-          writeWelcomeDismissed()
-          setWelcomeOpen(false)
-          startBlank()
+          enterStudio()
+          newSketch()
           goToStage({ mode: 'plan', view: 'plan', tool: 'draw', inspector: false })
           setToast('Blank page ready — draw one room with your finger or mouse')
         }}
         onSkip={() => {
-          writeWelcomeDismissed()
-          setWelcomeOpen(false)
+          enterStudio()
           resetPlan()
+          setSketchUrl(null)
         }}
       />
       {tourChapterIndex !== null && (
