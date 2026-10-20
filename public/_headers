@@ -3,3 +3,20 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# Vite writes content-hashed filenames, so a file under this path can never
+# change under the same name. Caching it for a year is safe, and it stops
+# every release from re-downloading the whole app for a returning visitor.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Brand artwork keeps stable names, so it is revalidated often enough to
+# pick up a change without costing a full download.
+/brand/*
+  Cache-Control: public, max-age=3600, must-revalidate
+
+# The offline worker itself must never be served stale: a corrected shell
+# that the browser never re-reads is a shell that never gets corrected.
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
