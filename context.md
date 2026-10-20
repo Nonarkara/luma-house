@@ -444,7 +444,9 @@ and asset roles are in docs/BRANDING.md. Core drawing/3D/analysis content remain
 Web-app availability appears in onboarding and a reachable footer, with Chrome
 and Safari home-screen instructions. Relative manifest paths respect Pages'
 /luma-house/ deployment. Dedicated OS icons have paper backing; UI logos have
-true alpha. No offline-cache promise or automatic data-sync claim is made.
+true alpha. The installed app carries an offline shell: `/sw.js` caches the
+document, the build's files and the fonts, and serves the document when there
+is no network. No automatic data-sync claim is made.
 The independent review caught an overflow-hidden desktop footer; the workspace
 now reserves its closed height and natural scrolling exposes expanded guidance.
 Tests check alpha/no white pixels, dimensions, themes, manifest resolution,

@@ -8,7 +8,7 @@ export function WebAppAccess() {
       <div className="web-app-instructions">
         <p><strong>Android</strong> — Open in Chrome. In the menu, choose <b>Add to Home screen</b> or <b>Install app</b>.</p>
         <p><strong>iPhone</strong> — Open in Safari. Tap <b>Share → Add to Home Screen</b>. Keep <b>Open as Web App</b> enabled if shown.</p>
-        <p className="web-app-note">Launch designon from your home screen. Drawings are saved locally in the browser or installed app you use. Use Share to move a plan between them. An internet connection is needed to load the app and use AI features.</p>
+        <p className="web-app-note">Launch designon from your home screen. Drawings are saved locally in the browser or installed app you use. Use Share to move a plan between them. The app keeps working with no signal after the first visit; AI features need the internet.</p>
       </div>
     </details>
   )

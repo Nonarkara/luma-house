@@ -21,10 +21,12 @@ part of those dedicated platform exports, not a CSS background on base logos.
 The manifest uses relative start/scope/icon paths for `/luma-house/` hosting.
 The platform guide is available in onboarding and below the workspace, with
 native collapsible instructions for Android Chrome and iPhone Safari. These
-are web-app instructions, not store-release badges. There is no offline shell
-or service-worker cache; loading the application and AI features needs internet.
-Plans remain local to the browser/installed app. Share carries a plan between
-contexts; installing does not promise data synchronization.
+are web-app instructions, not store-release badges. The application installs
+an offline shell (`/sw.js`): the shell, the build's files and the fonts are
+cached on the first visit, and the app opens with no network at all afterwards.
+AI features still need the network. Plans remain local to the browser/installed
+app. Share carries a plan between contexts; installing does not promise data
+synchronization.
 
 Installation references:
 [MDN installability](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable)

@@ -11,9 +11,11 @@ import App from './App'
 import { AppErrorBoundary } from './components/AppErrorBoundary'
 import { applyTheme, readTheme } from './design/themes'
 import { trackPageview } from './analytics'
+import { registerOfflineShell } from './offlineShell'
 
 applyTheme(readTheme())
 trackPageview()
+registerOfflineShell()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
