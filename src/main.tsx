@@ -8,6 +8,7 @@ import '@fontsource/jetbrains-mono/latin-700.css'
 import './styles.css'
 import './design/studio.css'
 import App from './App'
+import { AppErrorBoundary } from './components/AppErrorBoundary'
 import { applyTheme, readTheme } from './design/themes'
 import { trackPageview } from './analytics'
 
@@ -16,6 +17,8 @@ trackPageview()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
   </React.StrictMode>,
 )

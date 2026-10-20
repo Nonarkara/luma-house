@@ -871,3 +871,39 @@ body { overflow-y: auto; }
   .app-shell .canvas-tools .toolbar-divider { display: none; }
   .app-shell .canvas-tools .room-options-launch { margin-top: auto; height: 48px; min-height: 48px; box-sizing: border-box; }
 }
+
+/* Recovery sheet. A render crash must never leave a blank page, and the
+   drawing it was showing is still in this browser. */
+.app-failed {
+  position: fixed; inset: 0; z-index: 2000;
+  display: grid; place-items: center;
+  padding: 24px;
+  background: var(--studio-paper); color: var(--studio-ink);
+  font: 400 16px/1.45 'Source Sans 3', sans-serif;
+}
+.app-failed-card {
+  width: min(520px, 100%);
+  border: 2px solid var(--studio-ink);
+  border-top: 6px solid var(--accent-primary);
+  background: var(--studio-sheet);
+  padding: 32px;
+}
+.app-failed-eyebrow {
+  margin: 0 0 10px;
+  font: 500 12px/1 'JetBrains Mono', monospace;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent-primary);
+}
+.app-failed-card h1 { margin: 0 0 12px; font: 700 22px/1.2 'Source Sans 3', sans-serif; letter-spacing: -.4px; }
+.app-failed-lead { margin: 0 0 20px; font-size: 16px; line-height: 1.45; }
+.app-failed-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.app-failed-actions button {
+  min-height: 44px; padding: 11px 18px;
+  font: 700 16px/1.2 'Source Sans 3', sans-serif;
+  border: 2px solid var(--studio-ink); border-radius: 0;
+  cursor: pointer;
+}
+.app-failed-primary { background: var(--accent-primary); color: var(--studio-sheet); }
+.app-failed-secondary { background: transparent; color: var(--studio-ink); }
+.app-failed-actions button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; }
+.app-failed-note { margin: 16px 0 0; font: 500 12px/1.4 'JetBrains Mono', monospace; color: var(--studio-quiet); }
