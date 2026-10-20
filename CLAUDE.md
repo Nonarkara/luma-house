@@ -112,10 +112,16 @@ the timeout and the UI copy.
 
 - TypeScript stays strict; `tsc -b` is part of the build, not a separate chore.
 - Domain calculations live outside components and change with a test.
-- One accent: amber `#f59e0b`. Two font packages only — Source Sans 3 for body,
-  JetBrains Mono for dimensions and numbers; Source Sans 3 for titles and commands.
-  No third accent, no new font. The studio uses 22/16/12px roles, square surfaces,
-  an external numbered room key, and controls outside the physical drawing viewport.
+- One accent per appearance: the Wada 243 theme's action colour
+  (`--studio-sienna`), which is what `design/studio.css` ships — not the amber
+  `#f59e0b` token that it overrides. Two font packages only — Source Sans 3 for
+  body, JetBrains Mono for dimensions and numbers; Source Sans 3 for titles and
+  commands. No third accent, no new font. The studio uses 22/16/12px roles,
+  square surfaces, an external numbered room key, and controls outside the
+  physical drawing viewport.
+- The landing sheet at `/` is the one named exception: it carries the Bauhaus
+  palette — red, blue and yellow on paper, ink black — scoped to that sheet and
+  asserted absent from `:root`. The studio chrome keeps its own accent.
 - Anything the model produced is labelled a draft. Anything approximate says so
   on screen. Do not present an estimate as a measurement.
 - A feature ships with its test in the same commit.
