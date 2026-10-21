@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 
 /**
  * Cloudflare Pages `_headers` rules, parsed once so the preview server
@@ -49,9 +50,36 @@ function matches(pattern: string, url: string): boolean {
   return expression.test(path)
 }
 
+/**
+ * The commit the bundle came from. The page carries it, so "which code is
+ * live?" is answered by the site itself rather than by comparing bundle
+ * hashes — and the release gate can verify a deployment by reading one meta
+ * tag instead of guessing which asset is current.
+ */
+function buildStamp(): string | null {
+  const fromEnv = process.env.DESIGNON_BUILD_SHA?.trim()
+  if (fromEnv) return fromEnv
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+  } catch {
+    return null
+  }
+}
+
 export default defineConfig({
   plugins: [
     react(),
+    {
+      name: 'build-stamp',
+      transformIndexHtml: {
+        order: 'post',
+        handler(html) {
+          const stamp = buildStamp()
+          if (!stamp) return html
+          return html.replace('</head>', `    <meta name="designon-build" content="${stamp}" />\n  </head>`)
+        },
+      },
+    },
     {
       name: 'production-headers',
       configurePreviewServer(server) {
