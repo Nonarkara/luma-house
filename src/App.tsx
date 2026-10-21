@@ -1336,18 +1336,16 @@ function App() {
         onOpenGuide={() => { setEntryRoute('guide'); setWelcomeOpen(true) }}
         onOpenShortcuts={() => setShortcutsOpen((prev) => !prev)}
         onToggleCatalog={() => setIsCatalogOpen((prev) => !prev)}
-        center={<>
-          <div className="view-switch" role="group" aria-label="View mode">
-            <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>Plan</button>
-            <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>Spatial</button>
-            <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>Renders</button>
-          </div>
-          <div className="tool-group history-tools">
-            <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
-            <IconButton label="Redo" onClick={redo} disabled={!future.length}><Redo2 /></IconButton>
-            <IconButton label="Concept photo" onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><ImagePlus /></IconButton>
-          </div>
-        </>}
+        center={<div className="view-switch" role="group" aria-label="View mode">
+          <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>Plan</button>
+          <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>Spatial</button>
+          <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>Renders</button>
+        </div>}
+        actions={<div className="tool-group history-tools">
+          <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
+          <IconButton label="Redo" onClick={redo} disabled={!future.length}><Redo2 /></IconButton>
+          <IconButton label="Concept photo" onClick={() => void runConceptRender()} disabled={isRendering || quotaLeft <= 0}><ImagePlus /></IconButton>
+        </div>}
         meta={<>
           <span className="stage-area"><Ruler /> {budget.area.toFixed(1)} m²</span>
           <button type="button" className="location-toggle" title={projectLocation.label} aria-label={`${projectLocation.label} · Change city`} aria-expanded={locationOpen} onClick={() => setLocationOpen(open => !open)}><MapPin /><span>{projectLocation.name}</span></button>

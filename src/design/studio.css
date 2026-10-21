@@ -479,6 +479,12 @@ body { overflow-y: auto; }
 .app-shell .top-actions { justify-self: end; display: flex; align-items: center; gap: 6px; }
 .app-shell .top-actions .button { min-height: 36px; padding: 0 12px; border-radius: 0; }
 .app-shell .top-actions .icon-button { width: 36px; height: 36px; }
+/* Undo, redo and the concept photo act on the drawing, so they sit with the
+   other actions instead of a third of a bar away from them. The bar is three
+   parts: what you are looking at, which view you are in, and what you can do
+   — and the mode switch keeps the centre to itself. */
+.app-shell .top-actions .tool-group { border-radius: 0; box-shadow: none; padding: 2px; }
+.app-shell .top-actions .history-tools { margin-left: 0; }
 
 .top-more { position: relative; }
 .top-more > summary { list-style: none; display: grid; place-items: center; cursor: pointer; }
@@ -673,36 +679,37 @@ body { overflow-y: auto; }
   border: 1px solid var(--border);
 }
 
-@media (max-width: 1499px) {
+@media (max-width: 1350px) {
   .topbar-meta .stage-area { display: none; }
 }
 
-/* The bar is three parts — identity, the primary navigation, the actions —
-   and the two flanks are the same width. The left flank carries more than
-   the right, so when the row runs short something has to go. It is dropped
-   by decision, in priority order: the area figure (the plan shows it), the
-   wordmark (the house mark stays), the city (the More menu carries it) and
-   the project name (the More menu carries it). Nothing is crushed into a
-   fragment, and nothing is dropped without a way back to it.
+/* The bar is three parts — what you are looking at, which view you are in,
+   and what you can do — and the two flanks are the same width. The left
+   flank carries more than the right, so when the row runs short something
+   has to go. It is dropped by decision, in priority order: the area figure
+   (the drawing and the inspector both carry it), the wordmark (the house
+   mark stays), the city (the More menu carries it) and the project name
+   (the More menu carries it). Nothing is crushed into a fragment, and
+   nothing is dropped without a way back to it.
 
-   The thresholds are the widths measured in the real bar: the left flank is
-   (viewport - 385) / 2 wide, and the surviving group has to fit inside it
-   with room to spare — 451px with the wordmark, 313px without it, 214px
-   with the name alone. */
-@media (max-width: 1360px) {
+   The thresholds are measured, not guessed. The left flank is
+   (viewport - 233) / 2 px wide — 233 for the bar's own padding, its two
+   gaps and the centred view switch — and the surviving group has to fit
+   inside it with room to spare: 530px with everything, 455 without the
+   area, 317 without the wordmark, 218 without the city. Each band sits
+   where the next group down would stop fitting with about 30px to spare. */
+@media (max-width: 1200px) {
   .app-shell .topbar-left .brand-wordmark { display: none; }
   .app-shell .topbar-left .brand-symbol { width: 28px; height: 28px; }
 }
-@media (max-width: 1080px) {
+@media (max-width: 920px) {
   .app-shell .topbar-meta { display: none; }
 }
-@media (max-width: 1000px) {
-  /* Only the name goes. The save state stays in the bar: dropping a name is
-     a decision, losing the reader's reassurance is not. */
-  .app-shell .project-picker strong { display: none; }
+@media (max-width: 720px) {
+  /* The name and the save state leave the bar; the More menu carries both. */
   .menu-project-name { display: block; }
 }
-@media (min-width: 1001px) {
+@media (min-width: 721px) {
   .menu-project-name { display: none; }
 }
 
@@ -716,7 +723,7 @@ body { overflow-y: auto; }
   .app-shell .topbar-left .brand-wordmark { display: none; }
   .app-shell .topbar-left .brand-symbol { width: 28px; height: 28px; }
   .app-shell .topbar-center { justify-self: center; }
-  .app-shell .topbar-center .history-tools { display: none; }
+  .app-shell .top-actions .history-tools { display: none; }
   .app-shell .topbar-center .view-switch button { min-height: 44px; padding: 0 10px; }
   .app-shell .top-actions { gap: 2px; }
   .app-shell .top-actions .top-action-label { display: none; }

@@ -14,8 +14,12 @@ interface TopBarProps {
   onOpenShortcuts?: () => void
   onOpenGuide?: () => void
   onToggleCatalog?: () => void
-  /** View switch and history: the controls used every minute, kept in the bar. */
+  /** The view switch — which of Plan / Spatial / Renders you are in. It keeps
+   *  the centre of the bar to itself. */
   center?: React.ReactNode
+  /** Document actions that belong with the other bar actions — undo, redo —
+   *  and the rest of the controls you act on the drawing with. */
+  actions?: React.ReactNode
   /** Project facts (area, city, colour scheme) shown beside the name on wide screens. */
   meta?: React.ReactNode
   /** Rarely used content placed at the bottom of the More menu. */
@@ -37,6 +41,7 @@ export const TopBar = React.memo(function TopBar({
   onOpenGuide,
   onToggleCatalog,
   center,
+  actions,
   meta,
   menuExtra,
   onChangeLocation,
@@ -66,6 +71,7 @@ export const TopBar = React.memo(function TopBar({
       {center && <div className="topbar-center">{center}</div>}
 
       <div className="top-actions">
+        {actions}
         <details className="top-more" ref={menuRef} onKeyDown={event => {
           if (event.key === 'Escape') { close(); menuRef.current?.querySelector('summary')?.focus() }
         }}>

@@ -2,8 +2,8 @@
 
 **Date:** 2026-10-21
 **Scope:** the whole system, every surface, at 1600 / 1500 / 1440 / 1400 / 1361 / 1360 / 1280 / 1200 / 1081 / 1080 / 1024 / 1001 / 1000 / 900 / 768 / 390 px.
-**Gate:** `e2e/spatial.spec.ts` — 7 tests (6 desktop, 1 phone).
-**Result:** 5 findings fixed, 2 candidates refuted by measurement, 1 recorded as deliberate.
+**Gate:** `e2e/spatial.spec.ts` — 8 tests (7 desktop, 1 phone).
+**Result:** 6 findings fixed, 2 candidates refuted by measurement, 1 recorded as deliberate.
 
 ---
 
@@ -104,31 +104,66 @@ crushes:
 
 | Dropped | At | Where it goes |
 |---|---|---|
-| area figure | ≤ 1499 px | the More menu (the plan shows it) |
-| wordmark | ≤ 1360 px | the house mark stays |
-| city | ≤ 1080 px | the More menu — "Change city · Shanghai" is already there |
-| project name | ≤ 1000 px | the More menu, as `.menu-project-name` |
+| area figure | ≤ 1350 px | dropped — the drawing and the inspector both carry it |
+| wordmark | ≤ 1200 px | the house mark stays |
+| city | ≤ 920 px | the More menu — "Change city · Shanghai" is already there |
+| project name | ≤ 720 px | the More menu, as `.menu-project-name`, with the save state |
 
 **Only the name goes.** The "Saved locally" stamp beside it stays in the bar
-at every width. That was not the first attempt: hiding the whole project
-picker at ≤ 1000 px took the save state with it, and the theme suite caught
-it at 768 px. Dropping a name is a decision; losing the reader's
-reassurance is not. The gate now asserts the stamp stays.
+at every width the bar has room for. That was not the first attempt: hiding
+the whole project picker at ≤ 1000 px took the save state with it, and the
+theme suite caught it at 768 px. Dropping a name is a decision; losing the
+reader's reassurance is not. The gate now asserts the stamp stays.
 
-The thresholds are measured, not guessed: the left flank is
-`(viewport − 385) / 2` px wide, and the surviving group has to fit inside it
-with room to spare — 451 px with the wordmark, 313 px without it, 214 px with
-the name alone.
+The thresholds are measured, not guessed. The left flank is
+`(viewport − 233) / 2` px wide — 233 for the bar's own padding, its two gaps
+and the centred view switch — and the surviving group has to fit inside it
+with room to spare: 530 px with everything, 455 without the area, 317 without
+the wordmark, 218 without the city. Each band sits where the next group down
+would stop fitting with about 30 px to spare.
 
 Two structural rules now hold at every width: **the city is never cut** (the
 meta is `flex: 0 0 auto`, so it never gives ground), and **the name is only
 ever cut with an ellipsis** (which says "there is more here" instead of
 silently amputating the word).
 
-**Gate.** The fragment rule below, at 15 widths; plus the name is rendered
+**Gate.** The fragment rule below, at 16 widths; plus the name is rendered
 whole at 1440, 1280 and 1024.
 
-### SHM-4 — The More menu repeated what the bar already showed
+### SHM-4 — The bar's actions were scattered across it
+
+**Measured, at 1440 px.** The centre group held the view switch *and* the
+history group (undo, redo, concept photo). The right group held More, the
+panel toggle, Share and Export. The two groups were **248 px apart** — the
+width of the empty right grid column — and the space sat *between* them.
+At 1280 px it was 168 px.
+
+**Why it is a hallucination.** Scattered actions: the controls that act on
+the drawing were split from the other controls that act on the drawing, and
+the reader had to work out that undo and Share belonged together. Worse,
+the void fell *between two halves of the same thing*, and the one group that
+deserved the centre — the mode switch, the thing that changes the whole
+screen — shared it with a set of buttons.
+
+**Fixed.** The bar is now three parts and says so by its geometry: **what
+you are looking at** (brand, name, facts) on the left, **which view you are
+in** (Plan / Spatial / Renders) alone in the centre, **what you can do**
+(undo, redo, concept, More, panel, Share, Export) as one group at the
+right. The void did not disappear — symmetry needs it — but it now falls
+between the mode switch and the actions, which are different kinds of
+thing, instead of between two halves of the same kind.
+
+A second effect fell out of it: the centre shrank from 341 px to 189 px, so
+the left flank grew by 76 px. That is why the drop bands in SHM-3 could
+move *later* — the bar now carries the area figure down to 1350 px, the
+wordmark to 1200 px and the city to 920 px, each one still shown whole.
+
+**Gate.** The centre holds exactly one child; the history group is inside
+the actions group; the gap between the two is ≤ 12 px; and the quiet space
+between the mode switch and the actions is > 24 px, so the two are
+separated rather than merged.
+
+### SHM-5 — The More menu repeated what the bar already showed
 
 **Measured.** The menu always carried the project name and the "Saved
 locally" stamp, even at 1440 px where the bar showed both — pure
@@ -144,12 +179,13 @@ rule.
 share — so that it is a complete list. It repeats *information* — the name,
 the saved stamp — only when the bar has dropped it.** The bands above make
 the two halves complementary: at 1440 the bar holds the name and the menu
-hides it; at 900 the bar drops the name and the menu shows it.
+hides it; on a phone the bar drops the name and the menu shows it, with the
+save state beside it.
 
 **Gate.** While the bar shows the name, the menu does not. The moment the
 bar drops it, the menu shows the same text.
 
-### SHM-5 — The 3D style row scrolled behind a hidden scrollbar
+### SHM-6 — The 3D style row scrolled behind a hidden scrollbar
 
 **Measured.** `.spatial-toolbar` is `overflow-x: auto` with
 `scrollbar-width: none`. At 1280 px **"Save view PNG" was entirely
@@ -191,15 +227,18 @@ not "fix" them into bugs.
   deliberate, and the two columns have different visual languages (numbered
   stages with labels against icon tools). A later reader should not turn it
   into a bug.
-- **The right flank of the top bar still holds dead space** at wide widths.
-  That is the price of a centred navigation group, and the gap is between
-  two groups rather than inside one — it is breathing room, not an orphan.
+- **The quiet space between the centred mode switch and the actions** is
+  still there at wide widths — 174 px at 1440. It is the price of a centred
+  control, and after SHM-4 it falls between two *different* kinds of thing
+  rather than between two halves of the same kind. Measured, judged
+  deliberate, and recorded here so a later reader does not "fix" it into a
+  bug by moving the mode switch off centre.
 
 ---
 
 ## The gate
 
-`e2e/spatial.spec.ts` — 7 tests, run against the built bundle in real
+`e2e/spatial.spec.ts` — 8 tests, run against the built bundle in real
 Chromium, at real widths.
 
 | # | Rule | Test |
@@ -208,6 +247,7 @@ Chromium, at real widths.
 | 2 | A tool belongs with the tools. | "Room options" is the last tool, not the foot of the column |
 | 3 | Nothing is cut without saying so. | the top bar never cuts a run of text into a fragment |
 | 3 | …and the name is whole while the bar carries it. | the project name is shown whole while the bar carries it |
+| 3 | The bar is three parts, and the actions are one of them. | the bar is three parts: what it is, which view, what you can do |
 | 4 | What the bar drops, the menu carries — and only then. | the More menu carries the name exactly when the bar drops it |
 | 4 | …and the save state stays in the bar when the name goes. | *(same test)* |
 | 5 | A control that cannot be seen is not available. | every 3D style control stays on screen |
@@ -235,6 +275,7 @@ bundle, the gate was required to fail, and the bundle was restored.
 | the menu does not repeat the bar | the menu always shows the name | **failed** — after the assertion was fixed |
 | the journey numbers | the tick replaces the number again | **failed** |
 | the phone | the phone menu never carries the name | **failed** |
+| the bar is three parts | the history group put back in the centre | **failed** — the actions were two halves of a bar apart again |
 
 One of those gates was **vacuous on the first run** and had to be repaired
 before it counted. The rule "the menu must not repeat what the bar already
@@ -251,9 +292,13 @@ is to try to break it.
 
 - The top-bar thresholds assume the default project name (174 px). A much
   longer user name ellipsises the name rather than being dropped whole; the
-  name is then recoverable on hover and the city is still never cut. Making
-  the drop depend on the *measured* name rather than the viewport would need
-  a measurement in the component, not a media query.
+  city is still never cut, because the meta never gives ground. Making the
+  drop depend on the *measured* name rather than the viewport would need a
+  measurement in the component, not a media query.
+- The bands are set for the widths the sample project happens to have. A
+  project with a much longer name will see the name ellipsise before the
+  city is dropped. That is the intended order — the name gives first, the
+  facts give last — but it is an order, not a guarantee.
 - SHM is a geometry audit. It cannot see a composition that is *correct* and
   still reads as noise. That judgement still needs eyes on the screen — the
   gate proves the claims, it does not make them.

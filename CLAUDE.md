@@ -121,10 +121,10 @@ Three rules the studio now keeps, all gated by `e2e/spatial.spec.ts`:
 - **Drop by decision, never crush.** When a bar runs out of room, something
   goes in a measured priority order and gets a way back — the More menu
   carries whatever the bar dropped. The top bar drops the area figure
-  (≤1499px), the wordmark (≤1360px), the city (≤1080px) and the project name
-  (≤1000px), in that order. Do not add a breakpoint that squeezes a row
-  instead of dropping a thing. Dropping the name must not take the save state
-  with it: "Saved locally" stays in the bar at every width.
+  (≤1350px), the wordmark (≤1200px), the city (≤920px) and the project name
+  and its save state (≤720px), in that order. Do not add a breakpoint that
+  squeezes a row instead of dropping a thing. Dropping the name must not
+  take the save state with it.
 - **A cut must say so.** Text cut by an ancestor's `overflow: hidden` is a
   fragment ("Sh" for "Shanghai") and is a defect. Text cut by itself with
   `text-overflow: ellipsis` is a labelled truncation and is allowed. A
@@ -133,6 +133,13 @@ Three rules the studio now keeps, all gated by `e2e/spatial.spec.ts`:
 - **The menu repeats actions, not information.** The More menu repeats the
   city's and share's *actions* so that it is a complete list; it repeats the
   project name and the saved stamp only when the bar has dropped them.
+
+The top bar is three parts and its geometry says so: **what you are looking
+at** (brand, name, facts) on the left, **which view you are in** (Plan /
+Spatial / Renders) alone in the centre, **what you can do** (undo, redo,
+concept, More, panel, Share, Export) as one group at the right. Do not put a
+control in the centre next to the mode switch, and do not split the actions
+across the bar.
 
 Two things that look like bugs and are not: the phone room key is a
 deliberate scroller (`overflow-x: auto` + `scroll-snap`), and the two left
