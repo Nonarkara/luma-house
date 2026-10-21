@@ -31,7 +31,12 @@ export default defineConfig({
   // others finish in seconds, so this only constrains runaways.
   timeout: 60_000,
   webServer: {
-    command: 'npm run preview -- --port 4186 --strictPort',
+    // The local binary, not `npm run preview`: the npm wrapper is a second
+    // process the supervisor has to keep alive, and on a busy machine the
+    // server was being killed underneath the run — every test after that
+    // point failed with ERR_CONNECTION_REFUSED, which reads like a broken
+    // suite and is really a dead server.
+    command: 'node_modules/.bin/vite preview --port 4186 --strictPort',
     url: 'http://localhost:4186',
     reuseExistingServer: false,
     // A loaded machine can take a while to bind the port and answer the
