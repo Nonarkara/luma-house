@@ -453,11 +453,15 @@ body { overflow-y: auto; }
 
 .app-shell .topbar-left { min-width: 0; display: flex; align-items: center; gap: 12px; }
 .app-shell .topbar-left .brand { flex: none; }
-.app-shell .project-picker { min-width: 0; height: auto; padding: 0; }
+/* The name ellipsises rather than being crushed to a fragment; the city and
+   the area are never clipped mid-word. When the row cannot hold the name,
+   the name is dropped deliberately and the More menu carries it — the save
+   state beside it stays. */
+.app-shell .project-picker { min-width: 0; height: auto; padding: 0; flex: 0 1 auto; }
 .app-shell .project-picker strong { display: block; font-size: 16px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.app-shell .project-picker small { font-size: 12px; }
+.app-shell .project-picker small { display: block; font-size: 12px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.topbar-meta { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+.topbar-meta { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; min-width: 0; overflow: hidden; flex: 0 0 auto; }
 .app-shell .topbar-left { height: 48px; overflow: hidden; }
 .topbar-meta .location-toggle { white-space: nowrap; flex: none; display: inline-flex; align-items: center; gap: 4px; }
 .top-more-extra { display: grid; gap: 8px; }
@@ -554,8 +558,10 @@ body { overflow-y: auto; }
   text-align: center;
   grid-template-columns: minmax(0, 1fr);
 }
-.app-shell .journey-step small { font: 700 12px/1 'JetBrains Mono', monospace; }
-.app-shell .journey-step small svg { width: 14px; height: 14px; }
+/* The number is the mark; the tick only says "done". Replacing the number
+   with the tick left the sequence reading 02…07 with 01 missing. */
+.app-shell .journey-step small { display: flex; align-items: center; justify-content: center; gap: 3px; font: 700 12px/1 'JetBrains Mono', monospace; }
+.app-shell .journey-step small svg { width: 11px; height: 11px; color: var(--studio-sienna); }
 .app-shell .journey-step span { font-size: 12px; line-height: 1.1; }
 .app-shell .journey-step span strong { display: none; }
 .app-shell .journey-step.is-current { box-shadow: inset 2px 0 0 var(--accent-primary); }
@@ -577,6 +583,10 @@ body { overflow-y: auto; }
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
+  /* The palette was allowed to grow, which pushed "Room options" 315 px
+     down the rail, away from the tools it belongs with. A list that ends
+     where its content ends leaves the space at the end, which is honest. */
+  flex: 0 0 auto;
   gap: 0;
   padding: 0;
   border: 0;
@@ -663,8 +673,37 @@ body { overflow-y: auto; }
   border: 1px solid var(--border);
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1499px) {
   .topbar-meta .stage-area { display: none; }
+}
+
+/* The bar is three parts — identity, the primary navigation, the actions —
+   and the two flanks are the same width. The left flank carries more than
+   the right, so when the row runs short something has to go. It is dropped
+   by decision, in priority order: the area figure (the plan shows it), the
+   wordmark (the house mark stays), the city (the More menu carries it) and
+   the project name (the More menu carries it). Nothing is crushed into a
+   fragment, and nothing is dropped without a way back to it.
+
+   The thresholds are the widths measured in the real bar: the left flank is
+   (viewport - 385) / 2 wide, and the surviving group has to fit inside it
+   with room to spare — 451px with the wordmark, 313px without it, 214px
+   with the name alone. */
+@media (max-width: 1360px) {
+  .app-shell .topbar-left .brand-wordmark { display: none; }
+  .app-shell .topbar-left .brand-symbol { width: 28px; height: 28px; }
+}
+@media (max-width: 1080px) {
+  .app-shell .topbar-meta { display: none; }
+}
+@media (max-width: 1000px) {
+  /* Only the name goes. The save state stays in the bar: dropping a name is
+     a decision, losing the reader's reassurance is not. */
+  .app-shell .project-picker strong { display: none; }
+  .menu-project-name { display: block; }
+}
+@media (min-width: 1001px) {
+  .menu-project-name { display: none; }
 }
 
 /* Phone and small tablet. */
@@ -862,14 +901,18 @@ body { overflow-y: auto; }
 .align-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 8; overflow: visible; }
 .align-line { stroke: var(--accent-primary); stroke-width: 1; stroke-dasharray: 4 3; }
 
-/* One rule grid for the two left columns: every row 56 px, every rule shared. */
+/* One rule grid for the two left columns: every row 56 px, every rule shared.
+   "Room options" is the last tool, as it is on a phone, so it follows the
+   palette instead of being pinned to the foot of the column: 315 px of
+   nothing separated it from the tools it belongs with, and it landed in the
+   same row as the assistant bar, which is a different thing entirely. */
 .app-shell .journey-rail-wrap { position: relative; }
 .app-shell .journey-progress { position: absolute; top: 0; left: 0; right: 0; z-index: 1; }
 @media (min-width: 721px) {
   .app-shell .journey-step { height: 56px; min-height: 56px; box-sizing: border-box; }
   .app-shell .canvas-tools .toolbar-pill-btn { height: 56px; min-height: 56px; box-sizing: border-box; border-bottom: 1px solid var(--border); }
   .app-shell .canvas-tools .toolbar-divider { display: none; }
-  .app-shell .canvas-tools .room-options-launch { margin-top: auto; height: 48px; min-height: 48px; box-sizing: border-box; }
+  .app-shell .canvas-tools .room-options-launch { margin-top: 0; height: 48px; min-height: 48px; box-sizing: border-box; }
 }
 
 /* Recovery sheet. A render crash must never leave a blank page, and the

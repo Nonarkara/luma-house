@@ -32,7 +32,8 @@ export const JourneyRail = React.memo(function JourneyRail({
             title={`${stage.def.label}: ${stage.metric}`}
           >
             <small>
-              {stage.complete ? <Check aria-hidden="true" /> : stage.def.step}
+              {stage.def.step}
+              {stage.complete && <Check aria-hidden="true" />}
             </small>
             <span>
               {stage.def.label}

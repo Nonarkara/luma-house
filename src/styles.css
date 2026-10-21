@@ -5160,6 +5160,7 @@ summary:focus-visible {
   z-index: 10;
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 8px;
   overflow-x: auto;
   pointer-events: none;
@@ -5178,6 +5179,17 @@ summary:focus-visible {
   border: 1px solid var(--border);
   background: var(--bg-elevated);
   pointer-events: auto;
+}
+
+/* The style row ran out of room and pushed its last controls past the edge
+   behind an invisible scrollbar, so "Save view PNG" and "Section cut" were
+   unreachable without knowing they were there. The group wraps instead. */
+.spatial-toolbar > .vector-group {
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+  margin-left: auto;
+  row-gap: 3px;
 }
 
 .spatial-tb-btn {

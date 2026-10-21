@@ -108,6 +108,37 @@ plan draft. Three things you must not break:
 A vision call takes 30–60s. `TRACE_TIMEOUT_MS` is the single source of truth for
 the timeout and the UI copy.
 
+## Spatial rules (SHM)
+
+**SHM — spatial hallucination.** An interface that invents a reason to
+occupy space, instead of arranging things around how people read, choose and
+act. The test: *why is this here, why this size, and why this far from
+that?* If the answer is "the grid put it there", the layout has failed.
+`docs/SPATIAL-AUDIT-2026-10-21.md` holds the full pass.
+
+Three rules the studio now keeps, all gated by `e2e/spatial.spec.ts`:
+
+- **Drop by decision, never crush.** When a bar runs out of room, something
+  goes in a measured priority order and gets a way back — the More menu
+  carries whatever the bar dropped. The top bar drops the area figure
+  (≤1499px), the wordmark (≤1360px), the city (≤1080px) and the project name
+  (≤1000px), in that order. Do not add a breakpoint that squeezes a row
+  instead of dropping a thing. Dropping the name must not take the save state
+  with it: "Saved locally" stays in the bar at every width.
+- **A cut must say so.** Text cut by an ancestor's `overflow: hidden` is a
+  fragment ("Sh" for "Shanghai") and is a defect. Text cut by itself with
+  `text-overflow: ellipsis` is a labelled truncation and is allowed. A
+  sequence keeps its numbers: a done step adds a tick, it never replaces the
+  number.
+- **The menu repeats actions, not information.** The More menu repeats the
+  city's and share's *actions* so that it is a complete list; it repeats the
+  project name and the saved stamp only when the bar has dropped them.
+
+Two things that look like bugs and are not: the phone room key is a
+deliberate scroller (`overflow-x: auto` + `scroll-snap`), and the two left
+columns deliberately share one 56px rule grid. A deliberate scroller tells
+the reader it scrolls; an accidental one hides a control.
+
 ## Conventions
 
 - TypeScript stays strict; `tsc -b` is part of the build, not a separate chore.
