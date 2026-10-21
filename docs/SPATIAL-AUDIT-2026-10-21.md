@@ -1,9 +1,9 @@
 # Spatial audit — the SHM pass
 
 **Date:** 2026-10-21
-**Scope:** the whole system, every surface, at 1600 / 1500 / 1440 / 1400 / 1361 / 1360 / 1280 / 1200 / 1081 / 1080 / 1024 / 1001 / 1000 / 900 / 768 / 390 px.
-**Gate:** `e2e/spatial.spec.ts` — 8 tests (7 desktop, 1 phone).
-**Result:** 6 findings fixed, 2 candidates refuted by measurement, 1 recorded as deliberate.
+**Scope:** the whole system, every surface, at 1600 / 1500 / 1440 / 1400 / 1361 / 1360 / 1280 / 1200 / 1081 / 1080 / 1024 / 1001 / 1000 / 900 / 768 / 390 px. The second pass on the top bar swept every band edge as well: 1600 / 1500 / 1440 / 1400 / 1300 / 1225 / 1224 / 1200 / 1150 / 1149 / 1100 / 1025 / 1024 / 1000 / 950 / 920 / 919 / 900 / 860 / 820 / 819 / 800 / 780 / 768 / 740 / 721 / 720 / 390 px.
+**Gate:** `e2e/spatial.spec.ts` — 10 tests (9 desktop, 1 phone).
+**Result:** 7 findings fixed, 2 candidates refuted by measurement, 1 recorded as deliberate.
 
 ---
 
@@ -109,6 +109,10 @@ crushes:
 | city | ≤ 920 px | the More menu — "Change city · Shanghai" is already there |
 | project name | ≤ 720 px | the More menu, as `.menu-project-name`, with the save state |
 
+*(These thresholds were re-derived for the bar's new geometry in SHM-7, which
+is where the current table lives. They were correct for the grid this finding
+described, and wrong for the flex row that replaced it.)*
+
 **Only the name goes.** The "Saved locally" stamp beside it stays in the bar
 at every width the bar has room for. That was not the first attempt: hiding
 the whole project picker at ≤ 1000 px took the save state with it, and the
@@ -204,6 +208,79 @@ toolbar itself does not scroll.
 
 ---
 
+### SHM-7 — The bar's two equal flanks could not hold the actions
+
+The second pass on the top bar. SHM-3 fixed the bar crushing its identity;
+this is the other half of the same fault, and it was still there.
+
+**Measured, at 768 px.** The bar was a three-column grid with two equal
+flanks: `minmax(0, 1fr) auto minmax(0, 1fr)`. The identity carries **526 px**
+of content and the actions **441 px**, so the left flank needed 526 px and
+the right needed 441 — but a flank is only `(viewport − 233) / 2`, which is
+**267 px at 768**. The right flank could not hold the actions, so they spilled
+**left over the mode switch**: at 768 px the Undo button sat on top of the
+"Spatial" tab.
+
+The theme suite found it as a failure, not as a picture: *"`<button disabled
+title="Undo">` … intercepts pointer events"* on the Spatial tab, at 768 px, in
+nine routes. It was not a cosmetic overlap — the Spatial view could not be
+opened at all.
+
+**Why it is a hallucination.** The grid invented a symmetry the content did
+not have. Two flanks of equal width, holding 526 px and 441 px, is a shape
+with no argument behind it: the left flank was asked to hold more than the
+right, and the row answered by crushing one and overflowing the other.
+
+Measured on the live site, which was still running this layout:
+
+| Width | identity track | mode switch | actions | gap to the identity | gap to the actions |
+|---|---|---|---|---|---|
+| 1440 | 603 px (526 px of content) | 627–817 | 991–1432 | **12 px** | **174 px** |
+| 1024 | 395 px | 419–609 | 575–1016 | 12 px | **−34 px (overlap)** |
+| 768 | 267 px | 291–481 | 365–760 | 12 px | **−116 px (overlap)** |
+
+At 1440 the mode switch was **12 px** from the identity and **174 px** from
+the actions: the bar's centre was not in the middle of anything. At 768 the
+actions ran **116 px** over it — and the Spatial tab (344–409) sat under the
+Undo button (367–411). A hit test at the middle of the Spatial tab returned
+the Undo button, not the tab.
+
+**Fixed.** The bar is a flex row whose space is *shared*. The identity is the
+only part that gives ground, because the identity is the only part that drops
+by decision; the mode switch and the actions keep their width. The mode
+switch now ends the same distance from the identity and from the actions —
+at 1440 px, 132 px each side, where before it was 12 and 174.
+
+The bands were re-derived for the new geometry, and the bar now shows *more*
+at more widths: the area figure survives to 1224 px instead of 1350, and the
+wordmark to 1149 instead of 1200.
+
+| Dropped | At | Where it goes |
+|---|---|---|
+| the words on Share and Export | ≤ 1024 px | the icons stay, and the screen reader still has the names |
+| area figure | ≤ 1224 px | dropped — the drawing and the inspector both carry it |
+| wordmark | ≤ 1149 px | the house mark stays |
+| city | ≤ 918 px | the More menu — "Change city · Shanghai" is already there |
+| project name | ≤ 819 px | the More menu, as `.menu-project-name` |
+| save state | ≤ 720 px | the More menu, as `.menu-project-stamp` — the phone only |
+
+**The bands are measured, not guessed, and they are one-way.** The identity's
+own widths are 526 px with everything, 451 without the area, 317 without the
+wordmark, 218 without the city and 110 without the name; the bar's own
+padding, gaps, mode switch and actions take 674 px, or 577 once the action
+labels go. Each band sits where the group below would stop fitting with 24 px
+of air left for the mode switch. The action labels go at 1024 px because
+that is the one width where the identity is the *same* either side of the
+change — the labels cost 97 px, so shedding them hands that space straight
+back to the identity instead of dropping the city. A thing the bar has
+dropped never comes back at a narrower width.
+
+**Gate.** The three parts never overlap, at seventeen widths; the identity
+gives ground by decision and never by pressure; and the mode switch is
+equidistant from the two flanks.
+
+---
+
 ## Candidates refuted by measurement
 
 These looked like findings and are not. Recording them so a later reader does
@@ -238,7 +315,7 @@ not "fix" them into bugs.
 
 ## The gate
 
-`e2e/spatial.spec.ts` — 8 tests, run against the built bundle in real
+`e2e/spatial.spec.ts` — 10 tests, run against the built bundle in real
 Chromium, at real widths.
 
 | # | Rule | Test |
@@ -248,7 +325,10 @@ Chromium, at real widths.
 | 3 | Nothing is cut without saying so. | the top bar never cuts a run of text into a fragment |
 | 3 | …and the name is whole while the bar carries it. | the project name is shown whole while the bar carries it |
 | 3 | The bar is three parts, and the actions are one of them. | the bar is three parts: what it is, which view, what you can do |
-| 4 | What the bar drops, the menu carries — and only then. | the More menu carries the name exactly when the bar drops it |
+| 3 | …and the mode switch is the hinge between the two flanks. | *(same test)* |
+| 3 | …and the three parts never overlap. | the three parts of the bar never overlap |
+| 3 | The identity gives ground by decision, never by pressure. | the identity gives ground by decision, never by pressure |
+| 4 | What the bar drops, the menu carries — and only then. | the More menu carries the name and the save state exactly when the bar drops them |
 | 4 | …and the save state stays in the bar when the name goes. | *(same test)* |
 | 5 | A control that cannot be seen is not available. | every 3D style control stays on screen |
 | 2 | …on a phone, the tools stay in one row. | the phone keeps the tools in one row and the name in the menu |
@@ -259,6 +339,13 @@ ancestor, or the window — and asks whether that cut is *signalled*. Text cut
 by an ancestor is a fragment. Text cut by itself with
 `text-overflow: ellipsis` is a labelled truncation, which is a different
 thing, and is allowed.
+
+**The gate measures the real project.** The bar tests load the sample
+project — "South Light 50 · 向阳之家", 174 px of name — not the blank plan's
+"Untitled sketch". A gate that measures the bar while it carries a short name
+cannot see a squeezed identity, because a short name never fills the space:
+the first version of this pass measured the blank plan, and a band placed
+too late passed it.
 
 ### Mutation check
 
@@ -276,6 +363,11 @@ bundle, the gate was required to fail, and the bundle was restored.
 | the journey numbers | the tick replaces the number again | **failed** |
 | the phone | the phone menu never carries the name | **failed** |
 | the bar is three parts | the history group put back in the centre | **failed** — the actions were two halves of a bar apart again |
+| the parts never overlap | the bar put back on the equal-flank grid | **failed** — *"the mode switch must not run into the actions at 1025px"* |
+| the identity is never squeezed | the area band moved from 1224 px to 1149 px, so the band is too late | **failed** — *"the name must be whole at 1150px"* |
+| the space is shared | `justify-content: space-between` → `flex-start` | **failed** — the mode switch was merged with the actions |
+| …and it is shared *equally* | the identity pushed 60 px off the axis | **failed** — *"the mode switch is equidistant from the identity and the actions"* |
+| the menu carries what the bar dropped | the menu always shows the name | **failed** — *"the menu must not repeat what the bar already shows"* |
 
 One of those gates was **vacuous on the first run** and had to be repaired
 before it counted. The rule "the menu must not repeat what the bar already
@@ -286,19 +378,31 @@ The gate now opens the menu before asking, and the same mutation then fails
 it. A gate that cannot fail is worse than no gate, and the only way to know
 is to try to break it.
 
+**Two more were vacuous, in the same way.** The first draft of the second
+pass asked whether the identity's *content* grew as the window narrowed, and
+asked whether the identity's box was narrower than its content. Both were
+true by construction: the drop bands are `max-width` queries, so the ladder
+is one-way whatever the widths are; and a flex item that is squeezed shrinks
+its children first, so the box always equals the content that is left. The
+second question was replaced with the one that actually bites — *is the name
+still whole* — and it only bites once the gate measures the real project.
+
 ---
 
 ## Known limits
 
-- The top-bar thresholds assume the default project name (174 px). A much
-  longer user name ellipsises the name rather than being dropped whole; the
-  city is still never cut, because the meta never gives ground. Making the
-  drop depend on the *measured* name rather than the viewport would need a
-  measurement in the component, not a media query.
+- The top-bar thresholds are measured against the sample project's name
+  (174 px). A much longer user name ellipsises the name rather than being
+  dropped whole; the city is still never cut, because the meta never gives
+  ground. Making the drop depend on the *measured* name rather than the
+  viewport would need a measurement in the component, not a media query.
 - The bands are set for the widths the sample project happens to have. A
   project with a much longer name will see the name ellipsise before the
   city is dropped. That is the intended order — the name gives first, the
   facts give last — but it is an order, not a guarantee.
+- The bar's bands assume the action labels are worth their 97 px down to
+  1024 px. If the actions grow — a fourth button, a longer label — the
+  identity has to give up something else, and the bands move.
 - SHM is a geometry audit. It cannot see a composition that is *correct* and
   still reads as noise. That judgement still needs eyes on the screen — the
   gate proves the claims, it does not make them.

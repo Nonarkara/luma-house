@@ -441,17 +441,39 @@ body { overflow-y: auto; }
   overflow: hidden;
 }
 
+/* The bar is three parts and the geometry says so: what you are looking at on
+   the left, which view you are in in the centre, what you can do on the right.
+   The two outer parts are fixed — the mode switch and the actions keep their
+   width — and the identity is the only part that gives ground, because the
+   identity is the only part that drops by decision. The mode switch floats in
+   the space that is left, equidistant from both flanks.
+
+   This was a grid with two equal flanks, and equal flanks meant the identity
+   was crushed while the actions sat in 150px of nothing; below 1115px the
+   right flank could not hold the actions, so they spilled left over the mode
+   switch and swallowed the Spatial tab. A flex row with the centre's margins
+   automatic gives each flank exactly the room its content needs. */
 .app-shell .topbar {
   height: 48px;
   min-height: 48px;
   padding: 0 8px 0 12px;
   gap: 12px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  display: flex;
   align-items: center;
+  /* The space between the three parts is shared, not hoarded: the mode
+     switch ends the same distance from the identity and from the actions. */
+  justify-content: space-between;
 }
 
-.app-shell .topbar-left { min-width: 0; display: flex; align-items: center; gap: 12px; }
+.app-shell .topbar-left {
+  min-width: 0;
+  flex: 0 1 auto;
+  width: auto;
+  justify-content: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .app-shell .topbar-left .brand { flex: none; }
 /* The name ellipsises rather than being crushed to a fragment; the city and
    the area are never clipped mid-word. When the row cannot hold the name,
@@ -471,12 +493,23 @@ body { overflow-y: auto; }
 .topbar-meta .location-toggle small { display: none; }
 
 .topbar-center { display: flex; align-items: center; gap: 8px; }
+.app-shell .topbar-center { flex: 0 0 auto; }
 .app-shell .topbar-center .view-switch { position: static; transform: none; border-radius: 0; padding: 2px; }
 .app-shell .topbar-center .view-switch button { border-radius: 0; min-height: 36px; padding: 0 14px; font-size: 12px; }
 .app-shell .topbar-center .tool-group { border-radius: 0; box-shadow: none; padding: 2px; }
 .app-shell .topbar-center .icon-button { width: 36px; height: 36px; }
 
-.app-shell .top-actions { justify-self: end; display: flex; align-items: center; gap: 6px; }
+/* The small-phone sheet layout gives the bar's two groups the whole width.
+   In the studio the bar is one row, so those groups take their content's
+   width and the space between them belongs to the mode switch. */
+.app-shell .top-actions {
+  flex: 0 0 auto;
+  width: auto;
+  justify-content: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .app-shell .top-actions .button { min-height: 36px; padding: 0 12px; border-radius: 0; }
 .app-shell .top-actions .icon-button { width: 36px; height: 36px; }
 /* Undo, redo and the concept photo act on the drawing, so they sit with the
@@ -679,50 +712,67 @@ body { overflow-y: auto; }
   border: 1px solid var(--border);
 }
 
-@media (max-width: 1350px) {
+/* The bar drops by decision, in priority order: the area figure (the drawing
+   and the inspector both carry it), the wordmark (the house mark stays), the
+   city (the More menu carries it) and the project name (the More menu carries
+   it). The save state is never one of the things that goes — it stays in the
+   bar, and only the phone hands it to the menu. Nothing is crushed into a
+   fragment, and nothing is dropped without a way back to it.
+
+   The thresholds are measured, not guessed. The identity gets what the fixed
+   parts leave it — the bar's 20px of padding, its two 12px gaps, the 190px
+   mode switch and the 441px of actions — so the space available to it is
+   (viewport - 674) with the actions labelled and (viewport - 577) once they
+   are icons. The identity itself is 526px with everything, 451 without the
+   area, 317 without the wordmark, 218 without the city and 110 without the
+   name. Each band sits where the group down would stop fitting with 24px of
+   air left for the mode switch.
+
+   The action labels go at 1024px, which is the one width where the identity
+   is the same either side of the change: the labels cost 97px, so shedding
+   them there hands that space straight back to the identity instead of
+   dropping the city. Every band is one-way — a thing the bar has dropped
+   never comes back at a narrower width, which is the rule the gate checks. */
+@media (max-width: 1224px) {
   .topbar-meta .stage-area { display: none; }
 }
-
-/* The bar is three parts — what you are looking at, which view you are in,
-   and what you can do — and the two flanks are the same width. The left
-   flank carries more than the right, so when the row runs short something
-   has to go. It is dropped by decision, in priority order: the area figure
-   (the drawing and the inspector both carry it), the wordmark (the house
-   mark stays), the city (the More menu carries it) and the project name
-   (the More menu carries it). Nothing is crushed into a fragment, and
-   nothing is dropped without a way back to it.
-
-   The thresholds are measured, not guessed. The left flank is
-   (viewport - 233) / 2 px wide — 233 for the bar's own padding, its two
-   gaps and the centred view switch — and the surviving group has to fit
-   inside it with room to spare: 530px with everything, 455 without the
-   area, 317 without the wordmark, 218 without the city. Each band sits
-   where the next group down would stop fitting with about 30px to spare. */
-@media (max-width: 1200px) {
+@media (max-width: 1149px) {
   .app-shell .topbar-left .brand-wordmark { display: none; }
   .app-shell .topbar-left .brand-symbol { width: 28px; height: 28px; }
 }
-@media (max-width: 920px) {
+@media (max-width: 1024px) {
+  /* Share and Export keep their icons, their names for the screen reader and
+     their place in the bar; only the words go. */
+  .app-shell .top-actions .btn-label { display: none; }
+  .app-shell .top-actions .button { min-width: 44px; width: 44px; padding: 0; display: grid; place-items: center; }
+}
+@media (max-width: 918px) {
   .app-shell .topbar-meta { display: none; }
 }
-@media (max-width: 720px) {
-  /* The name and the save state leave the bar; the More menu carries both. */
+@media (max-width: 819px) {
+  /* Only the name goes. The save state beside it stays in the bar. */
+  .app-shell .project-picker strong { display: none; }
+}
+
+/* The menu carries what the bar dropped, and only that. */
+.menu-project-name, .menu-project-stamp { display: none; }
+@media (max-width: 819px) {
   .menu-project-name { display: block; }
 }
-@media (min-width: 721px) {
-  .menu-project-name { display: none; }
+@media (max-width: 720px) {
+  /* The phone hands the save state to the menu as well. */
+  .menu-project-stamp { display: block; }
 }
 
 /* Phone and small tablet. */
 @media (max-width: 720px) {
   body { overflow: hidden; }
 
-  .app-shell .topbar { grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; padding: 0 4px 0 8px; }
+  .app-shell .topbar { gap: 6px; padding: 0 4px 0 8px; }
   .app-shell .project-picker, .topbar-meta { display: none; }
   .app-shell .topbar-left .brand { display: flex; }
   .app-shell .topbar-left .brand-wordmark { display: none; }
   .app-shell .topbar-left .brand-symbol { width: 28px; height: 28px; }
-  .app-shell .topbar-center { justify-self: center; }
   .app-shell .top-actions .history-tools { display: none; }
   .app-shell .topbar-center .view-switch button { min-height: 44px; padding: 0 10px; }
   .app-shell .top-actions { gap: 2px; }
@@ -868,7 +918,7 @@ body { overflow-y: auto; }
   .app-shell .assistant-bar .assistant-cta { min-height: 44px; }
 }
 .app-shell .top-more-menu { max-height: calc(100dvh - 60px); overflow-y: auto; }
-.menu-project-name small { display: block; color: var(--text-secondary); font-size: var(--font-note); }
+.menu-project-stamp { margin: 0 8px 4px; color: var(--text-secondary); font-size: var(--font-note); }
 @media (max-width: 720px) {
   .app-shell .canvas-tools .floating-island-toolbar { grid-column: 1; grid-row: 1; }
   .app-shell .dock-history { transform: none; }

@@ -79,7 +79,8 @@ export const TopBar = React.memo(function TopBar({
             <MoreHorizontal aria-hidden="true" />
           </summary>
           <div className="top-more-menu">
-            <p className="menu-project-name">{projectName}<small>{lastSaved}</small></p>
+            <p className="menu-project-name">{projectName}</p>
+            <p className="menu-project-stamp">{lastSaved}</p>
             {onChangeLocation && <button type="button" className="menu-location" onClick={run(onChangeLocation)}>Change city · {locationName}</button>}
             {onToggleCatalog && (
               <button type="button" aria-label="Furniture Catalog" onClick={run(onToggleCatalog)}>
