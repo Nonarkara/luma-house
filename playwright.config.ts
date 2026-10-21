@@ -34,7 +34,10 @@ export default defineConfig({
     command: 'npm run preview -- --port 4186 --strictPort',
     url: 'http://localhost:4186',
     reuseExistingServer: false,
-    timeout: 60_000,
+    // A loaded machine can take a while to bind the port and answer the
+    // first request. Sixty seconds was not enough under load; the suite
+    // itself still has its own per-test budget.
+    timeout: 180_000,
     stdout: 'ignore',
     stderr: 'pipe',
   },
