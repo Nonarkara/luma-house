@@ -99,6 +99,18 @@ const TOOL_HINTS: Record<PlanTool, { Icon: typeof Pencil; text: string }> = {
   door: { Icon: DoorOpen, text: 'Click a wall to place a door' },
 }
 
+/** The tape measure and the furniture tray are modes too, and the line that
+ *  explains the canvas has to follow them. Armed with the measure, the canvas
+ *  was still saying "click a wall to place a window". */
+const MEASURE_HINT: { Icon: typeof Pencil; text: string } = {
+  Icon: Ruler,
+  text: 'Drag along a wall whose real length you know',
+}
+const FURNITURE_HINT: { Icon: typeof Pencil; text: string } = {
+  Icon: Pencil,
+  text: 'Pick a piece to place it in the plan at its real size',
+}
+
 /** Explicit entry state survives reload; shared drawings open directly. */
 function guideIsOpen(): boolean {
   const query = new URLSearchParams(window.location.search)
@@ -319,7 +331,6 @@ function App() {
     [plan, projectLocation],
   )
   const codeIssues = useMemo(() => checkPlan(plan), [plan])
-  const toolHint = TOOL_HINTS[activeTool]
   const energySimulation = useMemo(() => simulateEnergy(plan, projectLocation.latitude), [plan, projectLocation])
   const airQualityReport = useMemo(() => analyzeAirQuality(plan), [plan])
   const carbon = useMemo(() => estimateApartmentCarbon(plan), [plan])
@@ -334,6 +345,10 @@ function App() {
   const [traceNote, setTraceNote] = useState<string | null>(null)
   const [isCatalogOpen, setIsCatalogOpen] = useState(false)
   const [isMeasuring, setIsMeasuring] = useState(false)
+  // The line that explains the canvas follows the canvas, not the last tool
+  // that was pressed: armed with the tape measure it used to go on saying
+  // "click a wall to place a window".
+  const toolHint = rulerArmed || isMeasuring ? MEASURE_HINT : furnitureTrayOpen ? FURNITURE_HINT : TOOL_HINTS[activeTool]
   const isEmpty = plan.rooms.length === 0
   const hasNapkinWalls = (plan.walls?.length ?? 0) > 0
   const isAuthoredSample = plan.rooms.length > 0 && plan.rooms.every((room) => chinaApartmentPlan.rooms.some((sampleRoom) => sampleRoom.id === room.id))

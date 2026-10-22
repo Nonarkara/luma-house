@@ -408,6 +408,16 @@ test.describe('spatial layout', () => {
     expect(said.get('Select'), 'the Select tool must say it selects').toMatch(/select/i)
     expect(said.get('Pencil'), 'the pencil must keep the napkin vocabulary').toMatch(/wall/i)
     expect(new Set(said.values()).size, 'each tool must say its own thing').toBe(4)
+
+    // The tape measure arms the canvas without changing the tool, and the
+    // line used to go on saying "click a wall to place a window" — the canvas
+    // was armed for measuring and the sentence was about something else.
+    await page.getByRole('button', { name: 'Window', exact: true }).click()
+    const windowLine = (await page.locator('.draw-hint').innerText()).trim()
+    await page.getByRole('button', { name: 'Tape Measure', exact: true }).click()
+    const measureLine = (await page.locator('.draw-hint').innerText()).trim()
+    expect(measureLine, 'the measure must say what it measures').toMatch(/drag|measure|length/i)
+    expect(measureLine, 'the line must not still be about a window').not.toBe(windowLine)
   })
 
   test('switching tools never moves the drawing', async ({ page }) => {
