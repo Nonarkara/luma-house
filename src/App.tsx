@@ -625,6 +625,10 @@ function App() {
   }, [commit, plan, site])
 
   const handleCanvasPointerDown = useCallback((event: ReactPointerEvent) => {
+    // "The pointer moved" is a fact about one interaction, so it starts again
+    // at every press. A drag that happened earlier must not veto a click that
+    // happens now.
+    panMovedRef.current = false
     if (rulerArmed) {
       if (rulerPointerRef.current !== null) return
       const bounds = stageRef.current?.getBoundingClientRect()
@@ -669,7 +673,6 @@ function App() {
       target.classList.contains('dimension') ||
       target.classList.contains('sun-overlay')
     if (!isBackground) return
-    panMovedRef.current = false
     onViewportPointerDown(event)
   }, [activeTool, onViewportPointerDown, rulerArmed])
 
@@ -708,7 +711,14 @@ function App() {
       return
     }
     onViewportPointerMove(event)
-    if (Math.abs(event.movementX) + Math.abs(event.movementY) > 2) panMovedRef.current = true
+    // "The pointer moved" has to mean moved *while the button was down* — a
+    // drag, not a hover. Raising the flag on a hover meant that moving the
+    // mouse to a wall was enough to make the next click look like a drag, and
+    // the Window and Door tools silently did nothing: the tool said "click a
+    // wall to place a window" and the click was swallowed.
+    if (event.buttons !== 0 && Math.abs(event.movementX) + Math.abs(event.movementY) > 2) {
+      panMovedRef.current = true
+    }
   }, [isGesturing, isMeasuring, measureStart, onViewportPointerMove, plan.rooms, selectedRoom])
 
   const handleCanvasPointerUp = useCallback((event: ReactPointerEvent) => {
