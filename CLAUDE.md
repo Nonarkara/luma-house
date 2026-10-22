@@ -108,13 +108,18 @@ plan draft. Three things you must not break:
 A vision call takes 30–60s. `TRACE_TIMEOUT_MS` is the single source of truth for
 the timeout and the UI copy.
 
-## Spatial rules (SHM)
+## The design law (MSH)
 
-**SHM — spatial hallucination.** An interface that invents a reason to
-occupy space, instead of arranging things around how people read, choose and
+**SH — spatial hallucination.** An interface that invents a reason to
+occupy space, instead of arranging them around how people read, choose and
 act. The test: *why is this here, why this size, and why this far from
 that?* If the answer is "the grid put it there", the layout has failed.
-`docs/SPATIAL-AUDIT-2026-10-21.md` holds the full pass.
+
+**MSH — Massacre Spatial Hallucination.** The operation that removes it:
+*when you find SH, massacre*. `docs/MSH-DESIGN-LAW.md` is the owner's law,
+verbatim, and it governs every agent, every viewport and every visual surface.
+Read it before designing, building or reviewing any interface.
+`docs/SPATIAL-AUDIT-2026-10-21.md` holds the first full pass.
 
 Three rules the studio now keeps, all gated by `e2e/spatial.spec.ts`:
 
@@ -134,6 +139,18 @@ Three rules the studio now keeps, all gated by `e2e/spatial.spec.ts`:
 - **The menu repeats actions, not information.** The More menu repeats the
   city's and share's *actions* so that it is a complete list; it repeats the
   project name and the saved stamp only when the bar has dropped them.
+
+Two laws from the owner's law that are not yet automated, and so are the
+agent's job on every visual change:
+
+- **Chrome earns its pixels.** Measure the top and bottom chrome, their
+  combined height and the share of the viewport they take, at 390 × 844,
+  1024 and 1440 × 900. A large footprint is a prompt to investigate, not a
+  verdict — explain it against the task.
+- **The first screen must explain where the user is, what matters and what to
+  do.** If the task fits one screen, make it fit; if content earns a scroll,
+  say what earns it. Never force a fit by clipping, shrinking text or
+  hiding overflow.
 
 The top bar is three parts and its geometry says so: **what you are looking
 at** (brand, name, facts) on the left, **which view you are in** (Plan /
