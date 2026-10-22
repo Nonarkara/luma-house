@@ -119,7 +119,9 @@ that?* If the answer is "the grid put it there", the layout has failed.
 *when you find SH, massacre*. `docs/MSH-DESIGN-LAW.md` is the owner's law,
 verbatim, and it governs every agent, every viewport and every visual surface.
 Read it before designing, building or reviewing any interface.
-`docs/SPATIAL-AUDIT-2026-10-21.md` holds the first full pass.
+`docs/SPATIAL-AUDIT-2026-10-21.md` holds the first full pass;
+`docs/MSH-PASS-2026-10-22.md` holds the second — the tools that explain
+themselves and the page that stopped moving.
 
 Three rules the studio now keeps, all gated by `e2e/spatial.spec.ts`:
 
@@ -139,6 +141,18 @@ Three rules the studio now keeps, all gated by `e2e/spatial.spec.ts`:
 - **The menu repeats actions, not information.** The More menu repeats the
   city's and share's *actions* so that it is a complete list; it repeats the
   project name and the saved stamp only when the bar has dropped them.
+
+Two more, added on 2026-10-22 and gated by the same file:
+
+- **A tool says what it does.** Every tool in the plan palette carries its
+  own instruction, on a line that is always on screen and changes with the
+  tool. A tool that cannot explain itself makes the task a guess — the
+  Window and Door tools used to say nothing at all, so the only way to learn
+  that a click on a wall places an opening was to click and look.
+- **A transient message never changes the layout.** The toast lives inside
+  the drawing stage, in the band below the drawing; it is not a row of the
+  app-shell, and it never blocks a click. The same goes for the instruction
+  line: it is a permanent row, so choosing a tool cannot re-fit the drawing.
 
 Two laws from the owner's law that are not yet automated, and so are the
 agent's job on every visual change:

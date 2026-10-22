@@ -337,7 +337,11 @@ body { overflow-y: auto; }
 .is-plan .plan-canvas { width: min(86cqw, calc((100cqh - 68px) * var(--site-ratio, 1.4))); }
 .is-plan > .scale-chip { position: static; grid-column: 1 / -1; grid-row: 1; width: auto; max-width: none; margin: 0; padding: var(--space-2) 68px var(--space-2) var(--space-2); background: transparent; border: 0; gap: var(--space-1); }
 .scale-chip input { min-height: 44px; width: 52px; font-size: var(--font-body); }
-.scale-chip .ruler-arm { min-height: 44px; margin-left: auto; padding: var(--space-2); color: var(--studio-ink); font-size: var(--font-body); border: var(--rule-control) solid var(--studio-border); }
+/* The scale group and the Calibrate action belong together: the action is
+   the action for the number next to it. `margin-left: auto` pushed the
+   button to the far edge of a 1312px chip and left 947px of nothing between
+   the site dimension and the button, with a lone separator stranded in it. */
+.scale-chip .ruler-arm { min-height: 44px; margin-left: var(--space-2); padding: var(--space-2); color: var(--studio-ink); font-size: var(--font-body); border: var(--rule-control) solid var(--studio-border); }
 .scale-chip small { font-size: var(--font-note); }
 .is-plan > .value-lens-launch { position: static; grid-column: 2; grid-row: 1; justify-self: end; margin: var(--space-2); width: 44px; height: 44px; }
 .is-plan > .zoom-control { position: static; grid-column: 2; grid-row: 3; margin: var(--space-2); align-self: center; }
@@ -374,7 +378,64 @@ body { overflow-y: auto; }
 .assistant-cta { min-height: 44px; white-space: nowrap; }
 .web-app-access { font-size: var(--font-body); }
 .web-app-access small { font-size: var(--font-note); }
-.toast { position: static; width: 100%; transform: none; margin: 0; padding: var(--space-2) var(--space-3); font-size: var(--font-note); border: 0; border-top: var(--rule-control) solid var(--studio-border); }
+/* A transient status message must never change the layout.
+   The toast used to be `position: static` at the app-shell level, so it
+   became a third row of that grid: the drawing gave up 41px of height, the
+   canvas re-fitted and slid under the hand, and when the toast expired
+   everything snapped back. Measured: the drawing moved 114px at 1440 and
+   396px at 1024. It now lives inside the drawing stage, in the band below
+   the drawing, where it cannot become a row of anything. */
+.canvas-frame > .toast {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 30;
+  pointer-events: none;
+}
+
+/* In the plan view the band below the drawing already exists and already
+   holds the sun card and the zoom control. The toast joins that band as a
+   centred item; the row is taller than the toast, so nothing moves. */
+.is-plan > .toast {
+  position: static;
+  grid-column: 1 / -1;
+  grid-row: 3;
+  justify-self: center;
+  align-self: center;
+  transform: none;
+}
+
+.toast {
+  width: auto;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-note);
+  border: 1px solid var(--studio-border);
+  backdrop-filter: none;
+  z-index: 60;
+}
+
+/* The base keyframe slides the toast in by half its own width, which is
+   right for a pill centred with a transform and wrong for a grid item
+   centred with justify-self. */
+.is-plan > .toast { animation: studio-toast-in 200ms ease-out; }
+@keyframes studio-toast-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+/* The room-options dialog loads on demand; its placeholder is a status
+   message too, and it must not become a row of the app-shell either. A
+   placeholder for a dialog belongs in the middle of the screen, where the
+   dialog it stands in for will be. */
+.app-shell > .toast-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
 .room-options-dialog h2 { font-size: var(--font-title); font-family: var(--type-body) !important; }
 .room-options-dialog p, .room-options-dialog button, .room-options-dialog select, .room-option-metrics { font-size: var(--font-body); }
 .room-options-dialog .room-options-kicker, .room-options-dialog .room-option-method, .room-options-dialog footer a { font-size: var(--font-note); }
@@ -439,6 +500,7 @@ body { overflow-y: auto; }
   display: grid;
   grid-template-rows: 48px minmax(0, 1fr);
   overflow: hidden;
+  position: relative;
 }
 
 /* The bar is three parts and the geometry says so: what you are looking at on

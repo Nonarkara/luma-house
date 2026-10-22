@@ -44,6 +44,50 @@ async function openStudio(page: Page, width: number, height = 844, planHash = na
 }
 
 /**
+ * The drawing fits itself to the frame with an animation. A pixel measured
+ * mid-animation is a fact about the animation, not about the layout, so every
+ * measurement of the canvas waits for it to settle.
+ */
+async function settleCanvas(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready)
+  let previous = ''
+  let stable = 0
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const current = await page.evaluate(() => {
+      const el = document.querySelector('.plan-canvas')
+      if (!el) return ''
+      const rect = el.getBoundingClientRect()
+      return `${Math.round(rect.x)},${Math.round(rect.y)},${Math.round(rect.width)},${Math.round(rect.height)}`
+    })
+    stable = current === previous ? stable + 1 : 0
+    previous = current
+    if (stable >= 4) return
+    await page.waitForTimeout(120)
+  }
+}
+
+/** The geometry that a transient message must not be able to move. */
+async function layoutGeometry(page: Page) {
+  return page.evaluate(() => {
+    const box = (selector: string) => {
+      const el = document.querySelector(selector)
+      if (!el) return null
+      const rect = el.getBoundingClientRect()
+      return [Math.round(rect.x), Math.round(rect.y), Math.round(rect.width), Math.round(rect.height)].join(',')
+    }
+    const shell = document.querySelector('.app-shell')
+    return {
+      rows: shell ? getComputedStyle(shell).gridTemplateRows : '',
+      canvas: box('.plan-canvas'),
+      viewport: box('.plan-viewport'),
+      hint: box('.draw-hint'),
+      chip: box('.scale-chip'),
+      frame: box('.canvas-frame'),
+    }
+  })
+}
+
+/**
  * Every run of text in the top bar must be shown whole. An element clipped by
  * an ancestor is cut without an ellipsis unless it clips itself and says so
  * — "Sh" for "Shanghai" is a fragment, and it asks the reader to supply an
@@ -346,6 +390,130 @@ test.describe('spatial layout', () => {
       expect(hidden, `every 3D style control must be reachable at ${width}px`).toEqual([])
     }
   })
+
+  test('every tool says what it does', async ({ page }) => {
+    // A tool that cannot explain itself makes the whole task a guess. The
+    // Window and Door tools used to say nothing at all: the only way to learn
+    // that a click on a wall places an opening was to click and see.
+    await openStudio(page, 1440, 900)
+    const said = new Map<string, string>()
+    for (const tool of ['Select', 'Pencil', 'Window', 'Door']) {
+      await page.getByRole('button', { name: tool, exact: true }).click()
+      const hint = page.locator('.draw-hint')
+      await expect(hint, `the ${tool} tool must say what it does`).toBeVisible()
+      said.set(tool, (await hint.innerText()).trim())
+    }
+    expect(said.get('Window'), 'the Window tool must say it places a window').toMatch(/window/i)
+    expect(said.get('Door'), 'the Door tool must say it places a door').toMatch(/door/i)
+    expect(said.get('Select'), 'the Select tool must say it selects').toMatch(/select/i)
+    expect(said.get('Pencil'), 'the pencil must keep the napkin vocabulary').toMatch(/wall/i)
+    expect(new Set(said.values()).size, 'each tool must say its own thing').toBe(4)
+  })
+
+  test('switching tools never moves the drawing', async ({ page }) => {
+    // The instruction line is a fixed row in the drawing. It used to appear
+    // and disappear with the pencil, so choosing a tool resized the frame and
+    // the drawing slid under the hand.
+    await openStudio(page, 1440, 900)
+    await settleCanvas(page)
+    const seen: string[] = []
+    for (const tool of ['Select', 'Pencil', 'Window', 'Door']) {
+      await page.getByRole('button', { name: tool, exact: true }).click()
+      await page.waitForTimeout(150)
+      seen.push(JSON.stringify(await layoutGeometry(page)))
+    }
+    expect(new Set(seen).size, 'the drawing must not move when the tool changes').toBe(1)
+  })
+
+  test('a status message never changes the layout', async ({ page }) => {
+    // The toast used to be a static strip: a third row of the app-shell grid.
+    // The drawing gave up 41px, re-fitted and moved 114px at 1440 and 396px
+    // at 1024, then snapped back when the message expired.
+    await openStudio(page, 1440, 900)
+    await settleCanvas(page)
+    const before = await layoutGeometry(page)
+    expect(before.rows.split(' ').length, 'the app shell is two rows before the message').toBe(2)
+    await page.locator('.top-actions').getByRole('button', { name: 'Share', exact: true }).click()
+    const toast = page.locator('.toast')
+    await expect(toast, 'the action is confirmed').toBeVisible()
+    const during = await layoutGeometry(page)
+    expect(during, 'a transient message must not move the work').toEqual(before)
+    expect(during.rows.split(' ').length, 'the message must not become a row of the shell').toBe(2)
+    // and it must not eat a click while it is there
+    const pointerEvents = await toast.evaluate(el => getComputedStyle(el).pointerEvents)
+    expect(pointerEvents, 'a transient message must never block the work').toBe('none')
+  })
+
+  test('a finding is read, not squeezed into a ribbon', async ({ page }) => {
+    // The finding body was 202px of JetBrains Mono in a 344px panel: 21
+    // characters a line, with a 12px title over a 16px body.
+    await openStudio(page, 1440, 900)
+    await page.getByRole('button', { name: 'Open panel', exact: true }).click()
+    const row = page.locator('.code-issue-row').first()
+    await expect(row, 'the code check has findings').toBeVisible()
+    const measured = await row.evaluate(el => {
+      const body = el.querySelector('.code-issue-body')
+      const badge = el.querySelector('.standards-badge')
+      const title = el.querySelector('.code-issue-title')
+      if (!body || !badge || !title) return null
+      const style = getComputedStyle(body)
+      const probe = document.createElement('span')
+      probe.style.font = style.font
+      probe.style.position = 'absolute'
+      probe.style.visibility = 'hidden'
+      probe.textContent = 'x'
+      document.body.appendChild(probe)
+      const glyph = probe.getBoundingClientRect().width
+      probe.remove()
+      return {
+        family: style.fontFamily,
+        chars: Math.round(body.getBoundingClientRect().width / glyph),
+        bodyWidth: Math.round(body.getBoundingClientRect().width),
+        badgeWidth: Math.round(badge.getBoundingClientRect().width),
+        titleSize: parseFloat(getComputedStyle(title).fontSize),
+        bodySize: parseFloat(style.fontSize),
+      }
+    })
+    expect(measured, 'the finding has a body, a badge and a title').not.toBeNull()
+    expect(measured!.family, 'a finding is prose, so it is set in the body face').toContain('Source Sans 3')
+    expect(measured!.chars, 'a reading column needs a comfortable measure').toBeGreaterThanOrEqual(40)
+    expect(measured!.bodyWidth, 'the finding must be wider than the badge it sits under').toBeGreaterThan(measured!.badgeWidth)
+    expect(measured!.titleSize, 'the title must read before the body').toBeGreaterThan(measured!.bodySize)
+  })
+
+  test('the scale group and its action stay together', async ({ page }) => {
+    // The Calibrate action was pushed to the far edge of a 1312px chip with
+    // margin-left: auto, leaving 947px of nothing and a lone separator
+    // stranded in it.
+    await openStudio(page, 1440, 900)
+    const measured = await page.evaluate(() => {
+      const chip = document.querySelector('.scale-chip')
+      if (!chip) return null
+      const rect = (el: Element) => el.getBoundingClientRect()
+      const site = chip.querySelector('.site-dim')
+      const calibrate = chip.querySelector('.ruler-arm')
+      if (!site || !calibrate) return null
+      const separators = Array.from(chip.querySelectorAll('span')).filter(el => {
+        const style = getComputedStyle(el)
+        return style.display !== 'none' && (el.textContent ?? '').trim().length > 0
+      })
+      return {
+        gapToAction: Math.round(rect(calibrate).left - rect(site).right),
+        // a separator must sit between two things that are near each other
+        stranded: separators
+          .filter(el => {
+            const previous = el.previousElementSibling
+            const next = el.nextElementSibling
+            if (!previous || !next) return false
+            return rect(next).left - rect(previous).right > 24
+          })
+          .map(el => (el.textContent ?? '').trim()),
+      }
+    })
+    expect(measured, 'the chip carries the site size and the calibration').not.toBeNull()
+    expect(measured!.gapToAction, 'the action belongs with the number it acts on').toBeLessThanOrEqual(24)
+    expect(measured!.stranded, 'a separator must not stand alone in a void').toEqual([])
+  })
 })
 
 test.describe('spatial layout on a phone', () => {
@@ -375,5 +543,27 @@ test.describe('spatial layout on a phone', () => {
     await expect(menuName).toContainText(projectName)
     await expect(menuStamp, 'the phone carries the save state in the menu').toBeVisible()
     await expect(menuStamp).toContainText('Saved locally')
+  })
+
+  test('a status message on the phone does not move the drawing or cover the tools', async ({ page }) => {
+    await openStudio(page, 390, 844)
+    await settleCanvas(page)
+    const before = await layoutGeometry(page)
+    await openMore(page)
+    await page.getByRole('button', { name: 'Share', exact: true }).click()
+    const toast = page.locator('.toast')
+    await expect(toast, 'the action is confirmed').toBeVisible()
+    const during = await layoutGeometry(page)
+    expect(during, 'a transient message must not move the work').toEqual(before)
+    // the phone's tool dock is the last thing the hand reaches for
+    const covers = await toast.evaluate(el => {
+      const toastRect = el.getBoundingClientRect()
+      const dock = document.querySelector('.canvas-tools')
+      if (!dock) return 'the tool dock is missing'
+      const dockRect = dock.getBoundingClientRect()
+      const overlap = Math.max(0, Math.min(toastRect.bottom, dockRect.bottom) - Math.max(toastRect.top, dockRect.top))
+      return Math.round(overlap)
+    })
+    expect(covers, 'the message must not sit on the tools').toBe(0)
   })
 })

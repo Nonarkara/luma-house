@@ -6873,11 +6873,15 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 /* Code-check list — the architectural standards panel */
+/* A finding is a sentence, not a number. It used to be squeezed into a 202px
+   ribbon beside an 80px badge column — 21 characters per line, set in mono,
+   with a 12px title under a 16px body. The badge now sits on its own line,
+   the finding gets the full measure, and the body is set in the body face. */
 .code-issue-row {
   display: grid;
-  grid-template-columns: 80px 1fr;
-  gap: 12px;
-  padding: 10px 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 12px 0;
   border-top: 1px solid var(--axiom-mute, #2a2c30);
 }
 
@@ -6887,24 +6891,27 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 
 .code-issue-ref {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .code-issue-title {
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
+  line-height: 1.3;
   color: var(--text);
-  font-family: var(--type-body, 'IBM Plex Sans Thai', sans-serif);
+  font-family: var(--type-body, 'Source Sans 3', sans-serif);
 }
 
-.code-issue-body {
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
-  font-size: 11px;
+/* Beats `.inspector-content p`, which would otherwise force the body role
+   size onto a paragraph that has to be read as prose. */
+.inspector-content .code-issue-body {
+  font-family: var(--type-body, 'Source Sans 3', sans-serif);
+  font-size: 12px;
   color: var(--text-secondary);
-  line-height: 1.4;
-  margin-top: 2px;
+  line-height: 1.5;
+  margin: 0;
 }
 
 .code-issue-fix {
@@ -6916,10 +6923,10 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   background: transparent;
   border: 1px solid var(--axiom-accent, #a3ff00);
   color: var(--axiom-accent, #a3ff00);
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-family: var(--type-body, 'Source Sans 3', sans-serif);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: none;
   cursor: pointer;
 }
 
@@ -7006,8 +7013,8 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 .code-issue-room {
   color: var(--text-tertiary);
   font-weight: 400;
-  font-family: var(--type-mono, 'IBM Plex Mono', monospace);
-  font-size: 10.5px;
+  font-family: var(--type-body, 'Source Sans 3', sans-serif);
+  font-size: 12px;
 }
 
 .fix-arrow {

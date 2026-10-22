@@ -1,5 +1,5 @@
 import React from 'react'
-import { MousePointer2, Pencil, PanelLeftClose, DoorOpen, Ruler, Sparkles, Plus, Armchair } from 'lucide-react'
+import { MousePointer2, Pencil, AppWindow, DoorOpen, Ruler, Sparkles, Plus, Armchair } from 'lucide-react'
 import type { PlanTool } from '../types'
 
 interface FloatingToolbarProps {
@@ -31,7 +31,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   const tools: Array<{ id: PlanTool; label: string; shortcut: string; icon: typeof MousePointer2 }> = [
     { id: 'select', label: 'Select', shortcut: 'V', icon: MousePointer2 },
     { id: 'draw', label: 'Pencil', shortcut: 'W', icon: Pencil },
-    { id: 'window', label: 'Window', shortcut: 'O', icon: PanelLeftClose },
+    { id: 'window', label: 'Window', shortcut: 'O', icon: AppWindow },
     { id: 'door', label: 'Door', shortcut: 'D', icon: DoorOpen },
   ]
 

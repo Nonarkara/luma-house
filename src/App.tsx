@@ -12,7 +12,7 @@ import { LayoutPresetDialog } from './components/LayoutPresetDialog'
 import { TraceReview, type PendingTrace } from './components/TraceReview'
 import { updateOpeningDimensions } from './openingGeometry'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { Check, ImagePlus, MapPin, Pencil, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
+import { AppWindow, Check, DoorOpen, ImagePlus, MapPin, MousePointer2, Pencil, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
 import { FloorPlan } from './canvas/FloorPlan'
 import { RenderGallery } from './canvas/RenderGallery'
 import { contentBox, useCanvasViewport } from './canvas/useCanvasViewport'
@@ -82,6 +82,22 @@ import { checkPlan, exteriorDoorPlacement, type CodeIssue as StandardsCodeIssue 
 
 const RoomOptionsDialog = lazy(() => import('./components/RoomOptionsDialog'))
 const DRAW_HINT = 'Line = wall · tick on a wall = door or window · box = room or furniture'
+
+/**
+ * Every tool says what it does, and the hint is always on screen.
+ *
+ * The Window and Door tools used to say nothing at all, so the only way to
+ * learn that a click on a wall places an opening was to guess and then see
+ * what happened. A tool that cannot explain itself makes the whole task a
+ * guess. The line is also a fixed row in the drawing: it never appears and
+ * disappears, so switching tools never moves the drawing under the hand.
+ */
+const TOOL_HINTS: Record<PlanTool, { Icon: typeof Pencil; text: string }> = {
+  select: { Icon: MousePointer2, text: 'Click a room, door or window to select it' },
+  draw: { Icon: Pencil, text: DRAW_HINT },
+  window: { Icon: AppWindow, text: 'Click a wall to place a window' },
+  door: { Icon: DoorOpen, text: 'Click a wall to place a door' },
+}
 
 /** Explicit entry state survives reload; shared drawings open directly. */
 function guideIsOpen(): boolean {
@@ -303,6 +319,7 @@ function App() {
     [plan, projectLocation],
   )
   const codeIssues = useMemo(() => checkPlan(plan), [plan])
+  const toolHint = TOOL_HINTS[activeTool]
   const energySimulation = useMemo(() => simulateEnergy(plan, projectLocation.latitude), [plan, projectLocation])
   const airQualityReport = useMemo(() => analyzeAirQuality(plan), [plan])
   const carbon = useMemo(() => estimateApartmentCarbon(plan), [plan])
@@ -1537,7 +1554,6 @@ function App() {
                 <small>m / cell</small>
                 <span>·</span>
                 <small className="site-dim">{site.w.toFixed(1)} × {site.h.toFixed(1)} m site</small>
-                <span>·</span>
                 <button
                   type="button"
                   className={`ruler-arm ${rulerArmed ? 'active' : ''}`}
@@ -1597,9 +1613,9 @@ function App() {
                 <Sun /><span><strong>{hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? 'PM' : 'AM'}</strong><small>{sun.altitude.toFixed(0)}° altitude • {sun.azimuth.toFixed(0)}° azimuth</small></span>
               </div>
             )}
-            {view === 'plan' && activeTool === 'draw' && (
+            {view === 'plan' && (
               <div className="draw-hint" role="status" style={{ visibility: draftStroke ? 'hidden' : undefined }}>
-                <Pencil /> {DRAW_HINT}
+                <toolHint.Icon /> {toolHint.text}
               </div>
             )}
             {view === 'plan' && furnitureTrayOpen && (
@@ -1684,6 +1700,7 @@ function App() {
             )}
             {view === 'plan' && <PlanRoomKey rooms={plan.rooms} site={site} selectedRoom={selectedRoom}
               onSelect={room => { setSelectedRoom(room.id); setSelectedOpening(null); setSelectedFurniture(null) }} />}
+            {toast && <div className="toast" role="status"><Check /> {toast}</div>}
           </section>
 
           <AssistantBar
@@ -1835,7 +1852,7 @@ function App() {
         />
       )}
 
-      {roomOptionsOpen && <Suspense fallback={<div role="status" className="toast">Loading room options…</div>}><RoomOptionsDialog
+      {roomOptionsOpen && <Suspense fallback={<div role="status" className="toast toast-modal">Loading room options…</div>}><RoomOptionsDialog
         plan={plan}
         theme={theme}
         sunAzimuth={sun.azimuth}
@@ -1852,7 +1869,6 @@ function App() {
         }}
       /></Suspense>}
 
-      {toast && <div className="toast" role="status"><Check /> {toast}</div>}
     </div>
   )
 }
