@@ -444,6 +444,42 @@ test.describe('spatial layout', () => {
     expect(pointerEvents, 'a transient message must never block the work').toBe('none')
   })
 
+  test('a status message never covers a control', async ({ page }) => {
+    // The toast floats in the band below the drawing. On a phone that band is
+    // full — the sun card on the left, the zoom control on the right — and a
+    // centred message landed on both of them: "Live sun + hea" and "65%".
+    // A covered label is a cut label.
+    for (const [width, height] of [[390, 844], [1024, 768], [1440, 900]] as const) {
+      await openStudio(page, width, height)
+      await settleCanvas(page)
+      if (width <= 700) {
+        await openMore(page)
+        await page.getByRole('button', { name: 'Share', exact: true }).click()
+      } else {
+        await page.locator('.top-actions').getByRole('button', { name: 'Share', exact: true }).click()
+      }
+      const toast = page.locator('.toast')
+      await expect(toast, `the action is confirmed at ${width}px`).toBeVisible()
+      const covered = await toast.evaluate(el => {
+        const rect = el.getBoundingClientRect()
+        const selectors = [
+          '.zoom-control', '.science-preview', '.value-lens-launch', '.scale-chip',
+          '.draw-hint', '.canvas-tools', '.plan-room-key', '.topbar',
+        ]
+        return selectors.map((selector) => {
+          const other = document.querySelector(selector)
+          if (!other) return null
+          const box = other.getBoundingClientRect()
+          if (box.width === 0 || box.height === 0) return null
+          const overlap = Math.max(0, Math.min(rect.bottom, box.bottom) - Math.max(rect.top, box.top)) *
+            Math.max(0, Math.min(rect.right, box.right) - Math.max(rect.left, box.left))
+          return overlap > 0 ? { selector, overlap: Math.round(overlap) } : null
+        }).filter(Boolean)
+      })
+      expect(covered, `a transient message must not cover a control at ${width}px`).toEqual([])
+    }
+  })
+
   test('a finding is read, not squeezed into a ribbon', async ({ page }) => {
     // The finding body was 202px of JetBrains Mono in a 344px panel: 21
     // characters a line, with a 12px title over a 16px body.

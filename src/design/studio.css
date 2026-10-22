@@ -406,6 +406,23 @@ body { overflow-y: auto; }
   transform: none;
 }
 
+/* On a phone that band is full: the sun card on the left, the zoom control
+   on the right, and nothing between them. A centred toast landed on both and
+   cut their labels — "Live sun + hea" and "65%" — which is the same defect
+   as a clipped label, only with a dark box over it instead of an edge.
+
+   So on a phone the message floats over the drawing's own bottom margin: it
+   covers no control, cuts no text, and the drawing's box does not move. It
+   is still inside the drawing stage, and it still never takes a click. */
+@media (max-width: 700px) {
+  .is-plan > .toast {
+    grid-row: 2;
+    align-self: end;
+    justify-self: center;
+    margin-bottom: var(--space-2);
+  }
+}
+
 .toast {
   width: auto;
   max-width: calc(100% - 32px);
