@@ -75,6 +75,14 @@ export function CameraRig({ plan, preset, walking, touring, request, controlsRef
   useLayoutEffect(() => {
     if (!captureRef || !time) return // Read-only comparisons need a camera, not saved-view capture.
     const capture = async (): Promise<StudyCapture> => {
+      // OrbitControls can stop requesting frames with a tiny inertial delta
+      // still pending. Flush it once so later edits or sun captures cannot
+      // advance the viewpoint after we have recorded it.
+      const controls = controlsRef.current
+      if (controls) {
+        const damping = controls.enableDamping
+        controls.enableDamping = false; controls.update(); controls.enableDamping = damping
+      }
       invalidate()
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
       const state = get()
