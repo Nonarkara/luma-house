@@ -364,6 +364,23 @@ body { overflow-y: auto; }
 @container (max-width: 90px) or (max-height: 26px) { .furniture span { display: none; } }
 .contextual-action-bar * { font-size: var(--font-note); }
 .contextual-action-bar button { min-width: 44px; min-height: 44px; }
+/* The room's real size: the two numbers a person can correct. They sit in the
+   band above the drawing, never in the drawing itself. */
+.contextual-size { display: inline-flex; align-items: center; gap: var(--space-1); }
+.contextual-size-label, .contextual-size-times, .contextual-size-unit { font: 500 var(--font-note)/1.4 var(--type-mono); color: var(--text-secondary); }
+.contextual-size-input { width: 66px; min-height: 44px; padding: 0 var(--space-2); background: var(--studio-sheet); color: var(--studio-ink); border: 1px solid var(--studio-border); font: 500 var(--font-note)/1.4 var(--type-mono); }
+.contextual-size-input:focus { outline: 2px solid var(--studio-sienna); outline-offset: -1px; border-color: var(--studio-sienna); }
+/* The band must never crush the room's name into a sliver. The words keep
+   their width and the band carries them. */
+.contextual-action-label, .contextual-size, .contextual-stepper { flex: none; }
+/* On a phone the band cannot carry the size as well. Measured: the band
+   grows from 58px to 102px and the drawing falls from 423.41px to 371.40px
+   — 52px of the drawing, 12 % of it, for a number the panel already carries
+   (the panel and the band use the same control). So on a phone the band
+   stays as it was and the length is stated in the panel. */
+@media (max-width: 700px) {
+  .contextual-size { display: none; }
+}
 .room-number { position: absolute; top: var(--space-1); left: var(--space-1); z-index: 8; display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 var(--space-1); background: var(--studio-sheet); color: var(--studio-ink); font: 600 var(--font-note)/1 var(--type-mono); pointer-events: none; }
 .plan-room-key { grid-column: 1 / -1; grid-row: 11; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: var(--rule-structure) solid var(--studio-ink); }
 .plan-room-key button { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: var(--space-2); min-width: 0; min-height: 44px; padding: var(--space-2); text-align: left; align-items: baseline; background: var(--studio-sheet); color: var(--studio-ink); border: 0; border-bottom: var(--rule-control) solid var(--studio-border); cursor: pointer; }

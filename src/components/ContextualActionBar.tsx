@@ -3,6 +3,8 @@ import React from 'react'
 import { RotateCw, Trash2, Plus, Minus } from 'lucide-react'
 import type { Opening, Room, SiteSpec } from '../types'
 import { roomAreaFor } from '../plan'
+import { type SizeAxis } from '../canvas/roomSize'
+import { SizeField } from './SizeField'
 
 interface ContextualActionBarProps {
   room?: Room | null
@@ -12,6 +14,11 @@ interface ContextualActionBarProps {
   onDeleteRoom?: () => void
   onUpdateOpening?: (id: string, updates: Partial<Opening>) => void
   onDeleteOpening?: (id: string) => void
+  /**
+   * State the room's real width or depth. The text is what was typed; the
+   * parent reads it, refuses what cannot be drawn, and says why.
+   */
+  onStateRoomSize?: (axis: SizeAxis, text: string) => boolean
 }
 
 /**
@@ -27,6 +34,7 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
   onDeleteRoom,
   onUpdateOpening,
   onDeleteOpening,
+  onStateRoomSize,
 }) => {
   if (!room && !opening) return null
 
@@ -50,6 +58,23 @@ export const ContextualActionBar: React.FC<ContextualActionBarProps> = ({
             <strong>{room.name}</strong>
             <span className="contextual-action-area">{area.toFixed(1)} m²</span>
           </span>
+
+          <span className="toolbar-divider" aria-hidden="true" />
+
+          {/* The room's real size. The drawing field has one scale, and that
+              scale comes from a single known measurement, so every other
+              length on the sheet is that scale applied to a rough line. Type
+              the length you know and the room becomes that long: the wall
+              keeps its direction, the edge it was drawn from stays put, and
+              the far edge moves. */}
+          <div className="contextual-size" aria-label="Room size">
+            <span className="contextual-size-label" aria-hidden="true">W</span>
+            <SizeField room={room} axis="w" site={site} onState={onStateRoomSize} className="contextual-size-input" />
+            <span className="contextual-size-times" aria-hidden="true">×</span>
+            <span className="contextual-size-label" aria-hidden="true">D</span>
+            <SizeField room={room} axis="h" site={site} onState={onStateRoomSize} className="contextual-size-input" />
+            <span className="contextual-size-unit" aria-hidden="true">m</span>
+          </div>
 
           <span className="toolbar-divider" aria-hidden="true" />
 

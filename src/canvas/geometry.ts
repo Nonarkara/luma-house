@@ -19,11 +19,17 @@ export function snap(value: number, enabled: boolean): number {
 }
 
 export function clampRoom(room: Pick<Room, 'x' | 'y' | 'w' | 'h'>): Pick<Room, 'x' | 'y' | 'w' | 'h'> {
-  const w = Math.max(MIN_ROOM, Math.min(100, room.w))
-  const h = Math.max(MIN_ROOM, Math.min(100, room.h))
+  const w = Math.min(100, Math.max(0, room.w))
+  const h = Math.min(100, Math.max(0, room.h))
+  // MIN_ROOM is a floor on how small a room may be *dragged*, so it stays a
+  // grabbable shape on the sheet. A room the user has *stated* a real length
+  // for may be smaller than that — 1.2 m is a closet, not an error — so a
+  // room already below the floor is left alone rather than inflated.
+  const wFloor = Math.min(MIN_ROOM, w)
+  const hFloor = Math.min(MIN_ROOM, h)
   const x = Math.max(0, Math.min(100 - w, room.x))
   const y = Math.max(0, Math.min(100 - h, room.y))
-  return { x, y, w, h }
+  return { x, y, w: Math.max(wFloor, w), h: Math.max(hFloor, h) }
 }
 
 export function moveRoom(room: Room, dx: number, dy: number, snapGrid: boolean): Room {

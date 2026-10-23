@@ -37,6 +37,23 @@ describe('geometry', () => {
     expect(next.h).toBeGreaterThan(base.h)
   })
 
+  it('leaves a room that is already smaller than the drawing floor alone', () => {
+    // MIN_ROOM is a floor on how small a room may be *dragged*. A room whose
+    // real length the user has stated may be smaller than that, and a later
+    // move must not quietly inflate it back.
+    const stated = clampRoom({ x: 40, y: 40, w: 6, h: 5 })
+    expect(stated.w).toBe(6)
+    expect(stated.h).toBe(5)
+    expect(stated.x).toBe(40)
+    expect(stated.y).toBe(40)
+  })
+
+  it('still floors a room that is dragged below the minimum', () => {
+    const dragged = resizeRoom(base, 'se', 60, 60, false)
+    expect(dragged.w).toBeGreaterThanOrEqual(12)
+    expect(dragged.h).toBeGreaterThanOrEqual(12)
+  })
+
   it('snaps a rough drawn loop to a clean grid rectangle', () => {
     const points = Array.from({ length: 40 }, (_, i) => {
       const t = (i / 40) * 2 * Math.PI

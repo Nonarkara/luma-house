@@ -21,6 +21,7 @@ import { appendStrokePoint, clientToPercent, moveOpening, moveRoom, type StrokeP
 import { applyNapkinStroke } from './canvas/napkinStroke'
 import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
+import { parseLengthMetres, setRoomSizeM, sizeRefusalMessage, type SizeAxis } from './canvas/roomSize'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
 import { calibrateSiteFromRoom, defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureLabelFor, furnitureRectFor, furnitureSpecFor, roomAreaFor, roomOverlaps, siteOf, sunPatches } from './plan'
@@ -824,6 +825,33 @@ function App() {
     }), 'Edit room')
   }, [commit, selectedRoom])
 
+  /**
+   * State a room's real width or depth. The far edge of the room moves to the
+   * length that was given; the edge it was drawn from stays where it was. A
+   * length that cannot be drawn is refused and the plan does not change — and
+   * the room says why.
+   */
+  const stateRoomSize = useCallback((roomId: string, axis: SizeAxis, text: string): boolean => {
+    const target = plan.rooms.find((item) => item.id === roomId)
+    if (!target) return false
+    const metres = parseLengthMetres(text)
+    if (metres === null) {
+      setToast(sizeRefusalMessage('not-a-number', axis, site))
+      return false
+    }
+    const outcome = setRoomSizeM(target, site, axis, metres)
+    if (!outcome.changed) {
+      setToast(sizeRefusalMessage(outcome.refusal ?? 'not-a-number', axis, site))
+      return false
+    }
+    commit((current) => ({
+      ...current,
+      rooms: current.rooms.map((item) => (item.id === roomId ? outcome.room : item)),
+    }), `State the real ${axis === 'w' ? 'width' : 'depth'}`)
+    setSelectedRoom(roomId)
+    return true
+  }, [commit, plan.rooms, site])
+
   const setWallHeight = useCallback((roomId: string, height: number) => {
     const rounded = Math.round(Math.min(4.5, Math.max(2.2, height)) * 20) / 20
     commit((current) => ({
@@ -1445,6 +1473,7 @@ function App() {
                 opening={plan.openings.find((item) => item.id === selectedOpening)}
                 site={site}
                 onUpdateRoom={(updates) => updateRoom(updates)}
+                onStateRoomSize={(axis, text) => stateRoomSize(room?.id ?? '', axis, text)}
                 onDeleteRoom={() => deleteRoom()}
                 onUpdateOpening={(id, updates) => updateOpening(id, updates)}
                 onDeleteOpening={() => deleteOpening()}
@@ -1758,6 +1787,7 @@ function App() {
           room={room}
           deleteRoom={deleteRoom}
           updateRoom={updateRoom}
+          onStateRoomSize={(axis, text) => stateRoomSize(room?.id ?? '', axis, text)}
           calibrateRoomFromDimension={calibrateRoomFromDimension}
           applyVariant={applyVariant}
           patches={patches}

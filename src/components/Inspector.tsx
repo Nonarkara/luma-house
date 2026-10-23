@@ -30,6 +30,8 @@ import {
   Zap,
 } from 'lucide-react'
 import { IconButton, Toggle } from './ui'
+import { SizeField } from './SizeField'
+import { type SizeAxis } from '../canvas/roomSize'
 import { formatCurrency, roomAreaFor, siteOf } from '../plan'
 import type { CarbonLine, SunPatch } from '../plan'
 import {
@@ -82,6 +84,11 @@ export interface InspectorProps {
   room?: Room
   deleteRoom: () => void
   updateRoom: (updates: Partial<Room>) => void
+  /**
+   * State the room's real width or depth in metres. The parent reads the
+   * text, refuses what cannot be drawn, and says why.
+   */
+  onStateRoomSize?: (axis: SizeAxis, text: string) => boolean
   calibrateRoomFromDimension: (axis: 'w' | 'h', knownMeters: number) => void
   applyVariant: (index: number) => void
   patches: SunPatch[]
@@ -148,6 +155,7 @@ export const Inspector = React.memo(function Inspector({
   room,
   deleteRoom,
   updateRoom,
+  onStateRoomSize,
   calibrateRoomFromDimension,
   applyVariant,
   patches,
@@ -448,10 +456,10 @@ export const Inspector = React.memo(function Inspector({
               </label>
               <div className="split-fields">
                 <label className="field-label">
-                  Width <input aria-label="Room width in meters" type="number" value={((room.w / 100) * site.w).toFixed(1)} min="0.5" max={site.w} step="0.1" onChange={(event) => updateRoom({ w: (Number(event.target.value) / site.w) * 100 })} /><span>m</span>
+                  Width <SizeField room={room} axis="w" site={site} onState={onStateRoomSize} /><span>m</span>
                 </label>
                 <label className="field-label">
-                  Depth <input aria-label="Room depth in meters" type="number" value={((room.h / 100) * site.h).toFixed(1)} min="0.5" max={site.h} step="0.1" onChange={(event) => updateRoom({ h: (Number(event.target.value) / site.h) * 100 })} /><span>m</span>
+                  Depth <SizeField room={room} axis="h" site={site} onState={onStateRoomSize} /><span>m</span>
                 </label>
               </div>
               <label className="field-label" style={{ marginTop: 8 }}>
