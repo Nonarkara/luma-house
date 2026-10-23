@@ -1,3 +1,16 @@
+## Dense properties correction — 2026-10-23
+
+The owner rejected the previous “compact” preview: stacked labels, full-width
+numeric boxes, 44px fields and large group gaps still consumed space without a
+task reason. Apply MSH's dense-group32px rule explicitly; this supersedes the
+previous phone44px input choice. Reference: a CAD properties schedule, aligned
+label/value rows. Numeric inputs fit6digits, Name gets22characters, inspector300px,
+8px outer padding, 4px within a room group. Keep existing14/12px type, every
+control, metric, standards reference and drawing. Calibration follows the primary
+room fields, and remains expandable. Verify actual bounds at390/1024/1440 in all
+palettes, expanded/error/focus states, and compare the same phone geometry with
+runtime031a3e2. Obtain fresh visual review, then commit/push/gated deploy/live checks.
+
 ## Measurement and compact properties audit — 2026-10-23
 
 Scope: verify MiniMax's SpacePlanner port, preserve user-stated metres through

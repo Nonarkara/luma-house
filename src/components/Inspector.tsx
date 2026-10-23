@@ -434,6 +434,31 @@ export const Inspector = React.memo(function Inspector({
                 <h3>Selected room</h3>
                 <IconButton label="Delete room" onClick={deleteRoom}><Trash2 /></IconButton>
               </div>
+
+              <label className="field-label room-name-field">
+                Name
+                <input value={room.name} onChange={(event) => updateRoom({ name: event.target.value })} />
+              </label>
+              <div className="split-fields">
+                <label className="field-label">
+                  Width <SizeField room={room} axis="w" site={site} onState={onStateRoomSize} /><span>m</span>
+                </label>
+                <label className="field-label">
+                  Depth <SizeField room={room} axis="h" site={site} onState={onStateRoomSize} /><span>m</span>
+                </label>
+              </div>
+              <label className="field-label room-height-field">
+                Height
+                <input
+                  aria-label="Ceiling / Wall Height"
+                  type="number"
+                  step="0.1"
+                  min="2.0"
+                  max="6.0"
+                  value={room.wallHeight ?? 2.5}
+                  onChange={(e) => updateRoom({ wallHeight: Number(e.target.value) })}
+                />
+              </label>
               <details className="calibration-disclosure">
                 <summary>Calibrate from a known length</summary>
                 <div className="known-dimension-calibration">
@@ -450,29 +475,6 @@ export const Inspector = React.memo(function Inspector({
                 </label>
                 </div>
               </details>
-              <label className="field-label">
-                Name
-                <input value={room.name} onChange={(event) => updateRoom({ name: event.target.value })} />
-              </label>
-              <div className="split-fields">
-                <label className="field-label">
-                  Width <SizeField room={room} axis="w" site={site} onState={onStateRoomSize} /><span>m</span>
-                </label>
-                <label className="field-label">
-                  Depth <SizeField room={room} axis="h" site={site} onState={onStateRoomSize} /><span>m</span>
-                </label>
-              </div>
-              <label className="field-label" style={{ marginTop: 8 }}>
-                Ceiling / Wall Height
-                <input
-                  type="number"
-                  step="0.1"
-                  min="2.0"
-                  max="6.0"
-                  value={room.wallHeight ?? 2.5}
-                  onChange={(e) => updateRoom({ wallHeight: Number(e.target.value) })}
-                />
-              </label>
               {(() => {
                 const widthM = (room.w / 100) * site.w
                 const depthM = (room.h / 100) * site.h

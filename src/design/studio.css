@@ -1104,31 +1104,42 @@ body { overflow-y: auto; }
 .app-failed-actions button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; }
 .app-failed-note { margin: 16px 0 0; font: 500 12px/1.4 'JetBrains Mono', monospace; color: var(--studio-quiet); }
 
-/* Compact plan property sheet: retain the controls, remove repeated framing. */
-.inspector--plan .inspector-head { min-height: 48px; padding: 4px 12px; backdrop-filter: none; }
+/* Dense property schedule. Controls take a value's width, not a panel's width.
+   Owner's MSH rule: 32px dense touch rows; existing readable type stays. */
+.inspector--plan { width: min(300px, 100vw); }
+.inspector--plan .inspector-head { min-height: 0; padding: 2px 8px; backdrop-filter: none; }
 .inspector--plan .inspector-head h2 { font-size: var(--font-body); }
-.inspector--plan .inspector-content { padding: 12px; gap: 12px; }
-.inspector--plan .scale-calibration { padding: 0 0 12px; gap: 8px; border: 0; border-bottom: 1px solid var(--border); background: transparent; }
+.inspector--plan :is(.inspector-head, .section-title) .icon-button { width: 32px; height: 32px; min-width: 32px; min-height: 32px; padding: 6px; }
+.inspector--plan .inspector-content { padding: 8px; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+.inspector--plan .scale-calibration { padding: 0 0 6px; gap: 4px; border: 0; border-bottom: 1px solid var(--border); background: transparent; }
 .inspector--plan .scale-calibration h3 { font: 600 var(--font-body)/1.3 var(--type-body); }
-.inspector--plan .calibration-fields { gap: 12px; }
-.inspector--plan .calibration-fields label { font-size: var(--font-note); letter-spacing: 0; text-transform: none; }
-.inspector--plan .panel-section { padding-top: 12px; gap: 8px; }
-.inspector--plan .room-calibration-section { border-top: 0; padding-top: 0; }
+.inspector--plan .calibration-fields { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.inspector--plan .calibration-fields label { display: flex; align-items: center; gap: 4px; font-size: var(--font-note); letter-spacing: 0; text-transform: none; }
+.inspector--plan .calibration-fields input { width: calc(4ch + 22px); }
+.inspector--plan .panel-section { padding-top: 8px; gap: 6px; }
+.inspector--plan .room-calibration-section { border-top: 0; padding-top: 0; gap: 4px; }
+.inspector--plan .section-title { min-height: 0; }
 .inspector--plan .section-title h3 { margin: 0; }
 .inspector--plan .field-label { gap: 4px; font-size: var(--font-note); letter-spacing: 0; text-transform: none; }
-.inspector--plan .field-label :is(input, select), .inspector--plan .calibration-fields input { height: 36px; min-height: 36px; padding: 4px 8px; }
-.inspector--plan .field-label > span { bottom: 8px; }
-.inspector--plan .calibration-disclosure { border-bottom: 1px solid var(--border); }
-.inspector--plan .calibration-disclosure > summary { min-height: 36px; padding: 8px 0; font-size: var(--font-note); cursor: pointer; }
-.inspector--plan .known-dimension-calibration { border: 0; padding: 4px 0 8px; margin: 0; background: transparent; gap: 8px; }
-.inspector--plan .known-dimension-calibration :is(button, input) { min-height: 36px; }
-.inspector--plan .known-dimension-calibration button { padding: 4px 8px; font-size: var(--font-note); }
+.inspector--plan .field-label :is(input, select), .inspector--plan .calibration-fields input { height: 32px; min-height: 32px; padding: 3px 6px; }
+.inspector--plan .room-calibration-section > .field-label { display: grid; grid-template-columns: 5ch max-content; align-items: center; gap: 4px; }
+.inspector--plan .room-name-field input { width: min(22ch, 210px); }
+.inspector--plan .room-height-field input { width: calc(6ch + 24px); }
+.inspector--plan .split-fields { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.inspector--plan .split-fields .field-label { display: grid; grid-template-columns: 5ch max-content max-content; align-items: center; gap: 4px; }
+.inspector--plan .split-fields .field-label > span { position: static; }
+.inspector--plan .split-fields .field-label .size-field { position: relative; inset: auto; width: calc(7ch + 24px); font-size: var(--font-body); }
+.inspector--plan .calibration-disclosure { border: 0; }
+.inspector--plan .calibration-disclosure > summary { min-height: 32px; padding: 6px 0; font-size: var(--font-note); cursor: pointer; }
+.inspector--plan .known-dimension-calibration { border: 0; padding: 0 0 4px; margin: 0; background: transparent; gap: 4px; }
+.inspector--plan .known-dimension-calibration > label { grid-template-columns: 5ch max-content max-content; gap: 6px; font-size: var(--font-note); }
+.inspector--plan .known-dimension-calibration input { width: calc(6ch + 24px); }
+.inspector--plan .known-dimension-calibration :is(button, input) { min-height: 32px; height: 32px; }
+.inspector--plan .known-dimension-calibration button { padding: 3px 6px; font-size: var(--font-note); }
 .inspector--plan .known-dimension-calibration small { font-size: var(--font-note); }
-@media (pointer: coarse), (max-width: 700px) {
-  .inspector--plan .field-label :is(input, select), .inspector--plan .calibration-fields input,
-  .inspector--plan .calibration-disclosure > summary, .inspector--plan .known-dimension-calibration :is(button, input) { min-height: 44px; height: auto; }
-  .inspector--plan .field-label > span { bottom: 12px; }
-}
+.inspector--plan .room-data-primary { padding: 4px 0; gap: 6px; }
+.inspector--plan .room-data-secondary { margin-top: 0; gap: 4px 10px; }
+.inspector--plan .code-issue-row { padding: 6px 0; }
 
 .size-field { display: inline-flex; align-items: center; position: relative; min-width: 0; width: 100%; }
 .size-field--compact { width: 66px; }
