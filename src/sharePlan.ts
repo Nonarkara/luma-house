@@ -41,6 +41,15 @@ function sanitizeRoom(raw: unknown): Room | null {
   const room: Room = { id, name: str(candidate.name) ?? 'Room', kind, x, y, w, h }
   const wallHeight = num(candidate.wallHeight)
   if (wallHeight !== null && (wallHeight >= 1.5 || (kind === 'terrace' && wallHeight === 0)) && wallHeight <= 6) room.wallHeight = wallHeight
+  if (candidate.statedSize && typeof candidate.statedSize === 'object') {
+    const source = candidate.statedSize as Record<string, unknown>
+    const stated: { w?: number; h?: number } = {}
+    for (const axis of ['w', 'h'] as const) {
+      const value = num(source[axis])
+      if (value !== null && value >= 0.1 && value <= 999) stated[axis] = value
+    }
+    if (Object.keys(stated).length) room.statedSize = stated
+  }
   return room
 }
 

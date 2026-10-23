@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { formatMetres, parseLengthMetres, roomDepthM, roomWidthM, type SizeAxis } from '../canvas/roomSize'
+import { formatMetres, isStatedSize, parseLengthMetres, roomDepthM, roomWidthM, type SizeAxis } from '../canvas/roomSize'
 import type { Room, SiteSpec } from '../types'
 
 /**
@@ -26,6 +26,8 @@ export function SizeField({ room, axis, site, onState, className }: {
   const value = axis === 'w' ? roomWidthM(room, site) : roomDepthM(room, site)
   const [draft, setDraft] = useState(() => formatMetres(value))
   const typing = useRef(false)
+  const dirty = useRef(false)
+  const stated = isStatedSize(room, site, axis)
 
   // The figure follows the room, unless the user is mid-edit.
   useEffect(() => {
@@ -35,38 +37,46 @@ export function SizeField({ room, axis, site, onState, className }: {
   const what = axis === 'w' ? 'width' : 'depth'
   const commit = () => {
     typing.current = false
+    dirty.current = false
     const accepted = onState?.(axis, draft)
     // A refused length must not leave a figure on screen that the room does
     // not have: put the true length back, and let the room say why.
-    if (accepted === false) setDraft(formatMetres(value))
+    setDraft(formatMetres(accepted === false ? value : parseLengthMetres(draft) ?? value))
   }
   const revert = () => {
     typing.current = false
+    dirty.current = false
     setDraft(formatMetres(value))
   }
   const blur = () => {
+    if (!dirty.current) { revert(); return }
     const metres = parseLengthMetres(draft)
-    // A half-typed number is not a refusal worth announcing, and a length
-    // that is already the room's length needs no commit.
-    if (metres === null || Math.abs(metres - value) < 1e-9) { revert(); return }
+    // A half-typed number is not a refusal worth announcing. An explicitly
+    // edited equal length still states a measurement rather than a guess.
+    if (metres === null) { revert(); return }
     commit()
   }
 
   return (
+    <span className={`size-field${className ? ' size-field--compact' : ''}`}>
+      {!stated && <span className="size-field-estimate" aria-hidden="true">~</span>}
     <input
       className={className}
       type="text"
       inputMode="decimal"
       autoComplete="off"
       value={draft}
+      data-measurement={stated ? 'stated' : 'scaled'}
+      aria-description={stated ? 'Stated measurement; preserved through recalibration.' : 'Approximate from sketch scale. Type a known length to state a measurement.'}
       aria-label={`${room.name} ${what} in metres`}
-      title={`Type the real ${what} in metres and press Enter`}
-      onChange={(event) => { typing.current = true; setDraft(event.target.value) }}
+      title={`${stated ? 'Stated measurement' : '~ Approximate from sketch scale'}. Type the real ${what} in metres and press Enter`}
+      onChange={(event) => { typing.current = true; dirty.current = true; setDraft(event.target.value) }}
       onKeyDown={(event) => {
         if (event.key === 'Enter') { event.preventDefault(); commit() }
         else if (event.key === 'Escape') { event.preventDefault(); revert() }
       }}
       onBlur={blur}
     />
+    </span>
   )
 }

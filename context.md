@@ -1,3 +1,17 @@
+## Measurement and compact properties audit — 2026-10-23
+
+Scope: verify MiniMax's SpacePlanner port, preserve user-stated metres through
+calibration/save/share, mark scaled axis fields with ~, and refuse impossible
+scale changes atomically. Existing geometry resized by hand returns to scaled
+status. Legacy files remain scaled. No new APIs or borrowed code.
+
+Design Read: user screenshot shows excessive framing and duplicate calibration
+explanations in the phone inspector. Use a compact technical property sheet:
+48px header, paired field inputs, one disclosure for calibration from a known
+length, short labels, 12px section spacing. Existing palette and type tokens;
+44px touch targets on phones. Preserve all controls and help, including upload,
+AI, room properties and calibration. Verify 1440/1024/390 across all four themes.
+
 ## Bauhaus landing sheet — 2026-10-20
 
 Design Read: the entry guide became a poster. Reference: Bauhaus primary-colour

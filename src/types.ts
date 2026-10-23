@@ -11,6 +11,8 @@ export interface Room {
   w: number
   h: number
   wallHeight?: number
+  /** User-stated metres; valid only while the current axis still matches. */
+  statedSize?: { w?: number; h?: number }
 }
 
 export interface Opening {

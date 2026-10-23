@@ -122,3 +122,47 @@ describe('formatting', () => {
     expect(formatMetres(4)).toBe('4.00')
   })
 })
+
+import { clearInvalidStatements, isStatedSize, recalibratePlan } from './roomSize'
+import { initialPlan } from '../plan'
+import { decodePlanFromHash, encodePlanToHash, sanitizePlan } from '../sharePlan'
+
+describe('measurement provenance and recalibration', () => {
+  const stated = setRoomSizeM(room, site, 'w', 4.1234).room
+  const plan = { ...initialPlan, site, rooms: [stated] }
+  it('retains stated metres while the unmeasured axis follows scale', () => {
+    const result = recalibratePlan(plan, site, { ...site, w: 20, h: 15 })!
+    expect(roomWidthM(result.rooms[0], result.site!)).toBeCloseTo(4.1234, 9)
+    expect(roomDepthM(result.rooms[0], result.site!)).toBeCloseTo(3, 9)
+    expect(isStatedSize(result.rooms[0], result.site!, 'w')).toBe(true)
+    expect(isStatedSize(result.rooms[0], result.site!, 'h')).toBe(false)
+  })
+  it('refuses the whole calibration without modifying the old plan', () => {
+    const before = JSON.stringify(plan)
+    expect(recalibratePlan(plan, site, { ...site, w: 4 })).toBeNull()
+    expect(JSON.stringify(plan)).toBe(before)
+  })
+  it('does not resurrect a statement after a resize and coincident scale', () => {
+    const resized = { ...plan, rooms: [{ ...stated, w: 20 }] }
+    expect(clearInvalidStatements(resized, site).rooms[0].statedSize).toBeUndefined()
+    const result = recalibratePlan(resized, site, { ...site, w: 4.1234 / .2 })!
+    expect(isStatedSize(result.rooms[0], result.site!, 'w')).toBe(false)
+  })
+  it('preserves provenance through save, import and sharing', () => {
+    expect(sanitizePlan(JSON.parse(JSON.stringify(plan)))!.rooms[0].statedSize?.w).toBe(4.1234)
+    expect(decodePlanFromHash('#plan=' + encodePlanToHash(plan))!.rooms[0].statedSize?.w).toBe(4.1234)
+    expect(isStatedSize(room, site, 'w')).toBe(false)
+  })
+  it('rejects invalid imported provenance', () => {
+    expect(sanitizePlan({ ...plan, rooms: [{ ...room, statedSize: { w: '4', h: -1 } }] })!.rooms[0].statedSize).toBeUndefined()
+  })
+})
+
+it('keeps both axes and ignores a stale statement independently', () => {
+  const sized = setRoomSizeM(setRoomSizeM(room, site, 'w', 4).room, site, 'h', 3).room
+  const resized = { ...sized, w: 20 }
+  const plan = { ...initialPlan, site, rooms: [resized] }
+  const result = recalibratePlan(plan, site, { ...site, w: 20, h: 20 })!
+  expect(result.rooms[0].statedSize?.w).toBeUndefined()
+  expect(roomDepthM(result.rooms[0], result.site!)).toBe(3)
+})

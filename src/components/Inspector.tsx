@@ -31,7 +31,7 @@ import {
 } from 'lucide-react'
 import { IconButton, Toggle } from './ui'
 import { SizeField } from './SizeField'
-import { type SizeAxis } from '../canvas/roomSize'
+import { recalibratePlan, type SizeAxis } from '../canvas/roomSize'
 import { formatCurrency, roomAreaFor, siteOf } from '../plan'
 import type { CarbonLine, SunPatch } from '../plan'
 import {
@@ -217,6 +217,7 @@ export const Inspector = React.memo(function Inspector({
     setKnownDepth(((room.h / 100) * site.h).toFixed(1))
   }, [room, site.h, site.w])
 
+  const [calibrationError, setCalibrationError] = React.useState('')
   if (!inspectorOpen) return null
 
   const directSunPercent = Math.round((100 * directSunM2) / Math.max(1, budget.area))
@@ -226,11 +227,12 @@ export const Inspector = React.memo(function Inspector({
 
   const calibrateField = (axis: 'w' | 'h', value: number) => {
     if (!Number.isFinite(value) || value <= 0) return
-    commit((current) => {
-      const currentSite = siteOf(current)
-      const next = { ...currentSite, [axis]: Math.min(200, value) }
-      return { ...current, site: { ...next, unit: Math.min(next.unit, next.w, next.h) } }
-    })
+    const currentSite = siteOf(plan)
+    const next = { ...currentSite, [axis]: Math.min(200, value) }
+    const calibrated = recalibratePlan(plan, currentSite, { ...next, unit: Math.min(next.unit, next.w, next.h) })
+    if (!calibrated) { setCalibrationError('Scale unchanged — a stated room measurement would not fit in that field.'); return }
+    setCalibrationError('')
+    commit(calibrated)
   }
 
   const applyBriefItem = (id: 'insulation' | 'digital' | 'solar') => {
@@ -246,15 +248,15 @@ export const Inspector = React.memo(function Inspector({
   }
 
   return (
-    <aside className="inspector">
+    <aside className={`inspector${!settingsOpen && mode === 'plan' ? ' inspector--plan' : ''}`}>
       <div className="inspector-head">
         <div>
-          <p className="eyebrow">{settingsOpen ? 'workspace' : mode}</p>
+          {(settingsOpen || mode !== 'plan') && <p className="eyebrow">{settingsOpen ? 'workspace' : mode}</p>}
           <h2>
             {settingsOpen
               ? 'Settings'
               : mode === 'plan'
-                ? 'Plan intelligence'
+                ? 'Plan properties'
                 : mode === 'light'
                   ? 'Shanghai sun study'
                   : mode === 'wellbeing'
@@ -315,15 +317,14 @@ export const Inspector = React.memo(function Inspector({
           )}
           <section className="scale-calibration">
             <div>
-              <p className="eyebrow">One shared scale</p>
-              <h3>Calibrate the drawing field</h3>
-              <p>These dimensions drive the plan, furniture, 3D model, heat flow and quantities together.</p>
+              <h3>Drawing field · m</h3>
             </div>
             <div className="calibration-fields">
               <label>Width <span><input aria-label="Drawing field width in meters" type="number" min="1" max="200" step="0.1" value={site.w} onChange={(event) => calibrateField('w', Number(event.target.value))} /> m</span></label>
               <label>Depth <span><input aria-label="Drawing field depth in meters" type="number" min="1" max="200" step="0.1" value={site.h} onChange={(event) => calibrateField('h', Number(event.target.value))} /> m</span></label>
             </div>
           </section>
+          {calibrationError && <p role="alert">{calibrationError}</p>}
           <section className="upload-card">
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleSketch} hidden />
             {sketchUrl ? (
@@ -433,12 +434,10 @@ export const Inspector = React.memo(function Inspector({
                 <h3>Selected room</h3>
                 <IconButton label="Delete room" onClick={deleteRoom}><Trash2 /></IconButton>
               </div>
-              <div className="known-dimension-calibration">
-                <div>
-                  <p className="eyebrow">One known measurement</p>
-                  <strong>Scale the whole sketch</strong>
-                  <small>Enter either real dimension. Every room, opening, 3D view, and quantity rescales together.</small>
-                </div>
+              <details className="calibration-disclosure">
+                <summary>Calibrate from a known length</summary>
+                <div className="known-dimension-calibration">
+                <small>Scale the sketch from this room. Stated dimensions stay fixed.</small>
                 <label>
                   <span>Width</span>
                   <span className="dimension-entry"><input aria-label="Known room width in meters" type="number" min="0.5" max="100" step="0.1" value={knownWidth} onChange={(event) => setKnownWidth(event.target.value)} /> m</span>
@@ -449,7 +448,8 @@ export const Inspector = React.memo(function Inspector({
                   <span className="dimension-entry"><input aria-label="Known room depth in meters" type="number" min="0.5" max="100" step="0.1" value={knownDepth} onChange={(event) => setKnownDepth(event.target.value)} /> m</span>
                   <button type="button" onClick={() => calibrateRoomFromDimension('h', Number(knownDepth))} disabled={!Number.isFinite(Number(knownDepth)) || Number(knownDepth) <= 0}>Use depth</button>
                 </label>
-              </div>
+                </div>
+              </details>
               <label className="field-label">
                 Name
                 <input value={room.name} onChange={(event) => updateRoom({ name: event.target.value })} />

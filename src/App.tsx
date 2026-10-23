@@ -21,7 +21,7 @@ import { appendStrokePoint, clientToPercent, moveOpening, moveRoom, type StrokeP
 import { applyNapkinStroke } from './canvas/napkinStroke'
 import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
-import { parseLengthMetres, setRoomSizeM, sizeRefusalMessage, type SizeAxis } from './canvas/roomSize'
+import { clearInvalidStatements, parseLengthMetres, recalibratePlan, setRoomSizeM, sizeRefusalMessage, type SizeAxis } from './canvas/roomSize'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
 import { calibrateSiteFromRoom, defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureLabelFor, furnitureRectFor, furnitureSpecFor, roomAreaFor, roomOverlaps, siteOf, sunPatches } from './plan'
@@ -357,7 +357,10 @@ function App() {
 
   const commit = useCallback((next: PlanState | ((current: PlanState) => PlanState), label = 'Edit') => {
     setPast((items) => [...items.slice(-29), { state: plan, label, sketchUrl }])
-    setPlan((current) => (typeof next === 'function' ? next(current) : next))
+    setPlan((current) => {
+      const candidate = typeof next === 'function' ? next(current) : next
+      return clearInvalidStatements(candidate, siteOf(candidate))
+    })
     setFuture([])
   }, [plan, sketchUrl])
 
@@ -504,6 +507,7 @@ function App() {
 
   const commitSnapshot = useCallback((snapshot: PlanState, label = 'Auto-save') => {
     setPast((items) => [...items.slice(-29), { state: snapshot, label, sketchUrl }])
+    setPlan(current => clearInvalidStatements(current, siteOf(current)))
     setFuture([])
   }, [sketchUrl])
 
@@ -595,12 +599,14 @@ function App() {
       return
     }
     const { newSite, scaleRatio } = calibrateSiteFromNapkinLine(site, rulerLine, meters)
-    commit((current) => ({ ...current, site: newSite }), 'Calibrate scale')
+    const calibrated = recalibratePlan(plan, site, newSite)
+    if (!calibrated) { setToast('Scale unchanged — a stated room measurement would not fit in that field.'); return }
+    commit(calibrated, 'Calibrate scale')
     rulerLineRef.current = null
     setRulerLine(null)
     setRulerMeters('')
     setToast(`Scale calibrated ×${scaleRatio.toFixed(2)} — site is now ${newSite.w.toFixed(1)} × ${newSite.h.toFixed(1)} m`)
-  }, [commit, rulerLine, rulerMeters, site])
+  }, [commit, rulerLine, rulerMeters, site, plan])
 
   const cancelRulerCalibration = useCallback(() => {
     rulerLineRef.current = null
@@ -1141,12 +1147,19 @@ function App() {
     if (!selectedRoom || !Number.isFinite(knownMeters) || knownMeters <= 0) return
     const selected = plan.rooms.find((item) => item.id === selectedRoom)
     if (!selected) return
-    commit((current) => ({
-      ...current,
-      site: calibrateSiteFromRoom(siteOf(current), selected, axis, knownMeters),
-    }))
+    // This axis is the new scale reference, so it explicitly supersedes its
+    // previous statement. Other stated room axes retain their physical size.
+    const referencePlan = { ...plan, rooms: plan.rooms.map(item => item.id === selected.id
+      ? { ...item, statedSize: { ...item.statedSize, [axis]: undefined } } : item) }
+    const calibrated = recalibratePlan(referencePlan, siteOf(plan), calibrateSiteFromRoom(siteOf(plan), selected, axis, knownMeters))
+    if (!calibrated) { setToast('Scale unchanged — a stated room measurement would not fit in that field.'); return }
+    const reference = calibrated.rooms.find(item => item.id === selected.id)!
+    const stated = setRoomSizeM(reference, siteOf(calibrated), axis, knownMeters)
+    if (stated.refusal) { setToast('Scale unchanged — the reference measurement would not fit.'); return }
+    calibrated.rooms = calibrated.rooms.map(item => item.id === selected.id ? stated.room : item)
+    commit(calibrated)
     setToast(`Whole drawing calibrated from ${knownMeters.toFixed(1)} m ${axis === 'w' ? 'width' : 'depth'}`)
-  }, [commit, plan.rooms, selectedRoom])
+  }, [commit, plan, selectedRoom])
 
   /**
    * Start a fresh napkin. This is the second-visit path: without it a returning

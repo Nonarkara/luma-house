@@ -1,4 +1,4 @@
-import type { Room, SiteSpec } from '../types'
+import type { PlanState, Room, SiteSpec } from '../types'
 
 /**
  * Stating a real length.
@@ -90,7 +90,7 @@ export function setRoomSizeM(room: Room, site: SiteSpec, axis: SizeAxis, metres:
   if (near + percent > 100 + 1e-9) return { room, changed: false, refusal: 'will-not-fit' }
 
   return {
-    room: axis === 'w' ? { ...room, w: percent } : { ...room, h: percent },
+    room: { ...room, [axis]: percent, statedSize: { ...room.statedSize, [axis]: metres } },
     changed: true,
   }
 }
@@ -114,4 +114,40 @@ export function sizeRefusalMessage(refusal: SizeRefusal, axis: SizeAxis, site: S
     case 'will-not-fit':
       return `That ${what} will not fit from where the room is drawn — move the room first.`
   }
+}
+
+/** A stored statement ceases to apply after a geometric resize. */
+export function isStatedSize(room: Room, site: SiteSpec, axis: SizeAxis): boolean {
+  const metres = room.statedSize?.[axis]
+  const actual = axis === 'w' ? roomWidthM(room, site) : roomDepthM(room, site)
+  return typeof metres === 'number' && Number.isFinite(metres) && metres >= MIN_STATED_M && Math.abs(actual - metres) < 1e-7
+}
+
+/** Rescale the sketch while preserving valid, explicitly stated metres.
+ * Refuse the whole operation when a stated axis would no longer fit. */
+export function recalibratePlan(plan: PlanState, previous: SiteSpec, next: SiteSpec): PlanState | null {
+  if (![next.w, next.h, next.unit].every(v => Number.isFinite(v) && v > 0) || next.w > 999 || next.h > 999) return null
+  const rooms: Room[] = []
+  for (const room of plan.rooms) {
+    let resized = clearRoomStatements(room, previous)
+    for (const axis of ['w', 'h'] as const) {
+      if (!isStatedSize(room, previous, axis)) continue
+      const outcome = setRoomSizeM(resized, next, axis, room.statedSize![axis]!)
+      if (outcome.refusal) return null
+      resized = outcome.room
+    }
+    rooms.push(resized)
+  }
+  return { ...plan, site: next, rooms }
+}
+
+/** Drop provenance as soon as a geometric edit makes the statement untrue. */
+function clearRoomStatements(room: Room, site: SiteSpec): Room {
+  if (!room.statedSize) return room
+  const w = isStatedSize(room, site, 'w') ? room.statedSize.w : undefined
+  const h = isStatedSize(room, site, 'h') ? room.statedSize.h : undefined
+  return { ...room, statedSize: w === undefined && h === undefined ? undefined : { w, h } }
+}
+export function clearInvalidStatements(plan: PlanState, site: SiteSpec): PlanState {
+  return { ...plan, rooms: plan.rooms.map(room => clearRoomStatements(room, site)) }
 }
