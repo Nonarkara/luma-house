@@ -322,3 +322,43 @@ length on the sheet but one was the calibration applied to a rough line. The mec
 teaches is not "draw better" — it is *"the drawing is a sketch and the numbers are the truth,
 and you get to write the numbers."* designon had the second half of the product and not the
 first.
+
+---
+
+## 9. Production verification
+
+The change is live. The record, measured on the deployed host and not on a local build:
+
+**Deploy.** The feature commit `7706635` on `https://designon.nonarkara.org/`. At the moment of
+verification the page's own build stamp read `77066357d268037587166319e8f5a131d8650b02`, and the
+GitHub Pages mirror carried the same stamp. The release gate refused to publish until the CI
+run for that exact commit reported success.
+
+**The browser suite, run against the live host.** The whole suite — 18 specs, desktop 1280 × 800
+and phone 390 × 844 — was re-run with `baseURL` pointed at `https://designon.nonarkara.org/`
+rather than the local preview server:
+
+> **232 passed, 20 skipped, 0 failed (17.4 m)**
+
+That is the deployed bytes, not a build that resembles them.
+
+**The mechanic, driven on the live host.** A real Chromium session, three viewports:
+
+| viewport | figure before | stated | far edge | near edge | area before → after | refused at 99 m |
+|---|---|---|---|---|---|---|
+| 1440 × 900 | `3.92` | `3.50` | 28 % → 25 % | 18.75 % (fixed) | 9.8 → **8.8 m²** | "That width is longer than the 14.0 m drawing field." |
+| 1024 × 800 | `3.92` | `3.50` | 28 % → 25 % | 18.75 % (fixed) | 9.8 → **8.8 m²** | same |
+| 390 × 844 | `3.92` | `3.50` | 28 % → 25 % | 18.75 % (fixed) | 9.8 → **8.8 m²** | same |
+
+A refused length changed nothing at any viewport: the room's rectangle was byte-identical before
+and after, and the figure snapped back to the true value (`3.50`) rather than keeping `99`.
+
+**Chrome on the live host.** Top bar 48 px at every viewport; the contextual band 58 px at every
+viewport — the same as before the change. The drawing measured 581.61 px (1440), 347.61 px
+(1024) and 371.41 px (390, with the band showing because a room is selected — the pre-existing
+52 px cost recorded in §7.8).
+
+**The cost of the page did not change.** 337 kB transferred on a cold load, **20 requests, 0
+third-party**, one host. Nothing about this feature put a network call on the critical path.
+
+**Console.** Zero page errors and zero console errors across all three viewports.
