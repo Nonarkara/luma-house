@@ -3,23 +3,30 @@ import { useThree } from '@react-three/fiber'
 import { OrthographicCamera, PerspectiveCamera, Vector3 } from 'three'
 import type { OrbitControls } from 'three-stdlib'
 import type { PlanState } from '../types'
-import { drawingCamera, modelBounds, physicalGeometryKey } from './geometry'
+import { drawingCamera, modelBounds } from './geometry'
 import type { DrawingPreset, ReadyStudyCapture, StudyCamera, StudyCapture, StudyTime } from './types'
 
-export function CameraRig({ plan, preset, walking, touring, request, controlsRef, captureRef, time }: {
+export function CameraRig({ plan, preset, walking, touring, request, controlsRef, captureRef, time, fitVersion = 0 }: {
   plan: PlanState; preset: DrawingPreset; walking: boolean; touring: boolean
   request: { id: number; camera: StudyCamera } | null
   controlsRef: RefObject<OrbitControls>
   captureRef?: MutableRefObject<ReadyStudyCapture | null>
   time?: StudyTime
+  fitVersion?: number
 }) {
   const { size, get, set, invalidate } = useThree()
-  const perspective = useMemo(() => new PerspectiveCamera(45, 1, 0.01, 10000), [])
-  const parallel = useMemo(() => new OrthographicCamera(-1, 1, 1, -1, 0.01, 10000), [])
+  // R3F must not replace a physical orthographic frustum with viewport pixels
+  // during resize; this rig owns projection updates for both cameras.
+  const perspective = useMemo(() => Object.assign(new PerspectiveCamera(45, 1, 0.01, 10000), { manual: true }), [])
+  const parallel = useMemo(() => Object.assign(new OrthographicCamera(-1, 1, 1, -1, 0.01, 10000), { manual: true }), [])
   const aspect = Math.max(0.1, size.width / Math.max(1, size.height))
+  const aspectRef = useRef(aspect)
+  aspectRef.current = aspect
   const projection = walking || touring ? 'perspective' : request?.camera.projection ?? (preset === 'orbit' ? 'perspective' : 'orthographic')
   const active = projection === 'orthographic' ? parallel : perspective
-  const geometryKey = physicalGeometryKey(plan)
+  // Furniture and opening edits invalidate shadows, not the user's camera.
+  const bounds = modelBounds(plan)
+  const framingKey = JSON.stringify([bounds.min.toArray(), bounds.max.toArray()])
   const planRef = useRef(plan)
   planRef.current = plan
 
@@ -31,6 +38,7 @@ export function CameraRig({ plan, preset, walking, touring, request, controlsRef
 
   useLayoutEffect(() => {
     const model = planRef.current
+    const aspect = aspectRef.current
     let target: [number, number, number]
     if (request && !walking && !touring) {
       const c = request.camera
@@ -55,7 +63,14 @@ export function CameraRig({ plan, preset, walking, touring, request, controlsRef
     active.lookAt(new Vector3(...target)); active.updateProjectionMatrix(); active.updateMatrixWorld()
     if (controlsRef.current) { controlsRef.current.target.fromArray(target); controlsRef.current.update() }
     invalidate()
-  }, [active, aspect, preset, geometryKey, request, walking, touring, controlsRef, invalidate])
+  }, [active, preset, framingKey, request, walking, touring, fitVersion, controlsRef, invalidate])
+
+  useLayoutEffect(() => {
+    // A selection row or window resize changes projection, not viewpoint.
+    if (active instanceof PerspectiveCamera) active.aspect = aspect
+    else { active.left = -active.top * aspect; active.right = active.top * aspect }
+    active.updateProjectionMatrix(); invalidate()
+  }, [active, aspect, invalidate])
 
   useLayoutEffect(() => {
     if (!captureRef || !time) return // Read-only comparisons need a camera, not saved-view capture.

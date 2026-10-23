@@ -7,7 +7,7 @@ import { furnitureAssetById } from '../catalog/furnitureAssets'
 interface FurnitureCatalogDrawerProps {
   open: boolean
   onClose: () => void
-  onAddFurniture: (kind: FurnitureKind, label: string, size?: { wM: number; dM: number }, assetId?: string) => void
+  onAddFurniture: (kind: FurnitureKind, label: string, size?: { wM: number; dM: number }, assetId?: string) => boolean
 }
 
 interface CatalogItem {
@@ -70,6 +70,7 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState<string>('')
+  const [placementError, setPlacementError] = useState(false)
 
   if (!open) return null
 
@@ -137,6 +138,7 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
         ))}
       </nav>
 
+      {placementError && <p className="catalog-empty" role="alert">Could not find clear space at real size. Try a smaller piece, or close the catalogue and choose another room.</p>}
       <div className="catalog-grid">
         {filteredItems.length === 0 ? (
           <p className="catalog-empty">No pieces match that filter.</p>
@@ -149,7 +151,7 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
               <button
                 key={`${item.kind}-${idx}`}
                 type="button"
-                onClick={() => onAddFurniture(item.kind, item.label, item.size, item.assetId)}
+                onClick={() => setPlacementError(!onAddFurniture(item.kind, item.label, item.size, item.assetId))}
                 className="catalog-card"
                 aria-label={`Add ${item.label}, ${dimensions}`}
               >

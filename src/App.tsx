@@ -22,6 +22,7 @@ import { applyNapkinStroke } from './canvas/napkinStroke'
 import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { clearInvalidStatements, parseLengthMetres, recalibratePlan, setRoomSizeM, sizeRefusalMessage, type SizeAxis } from './canvas/roomSize'
+import { findFurniturePlacement, moveFurnitureTo, rotateFurnitureAtCentre } from './canvas/furniturePlacement'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
 import { calibrateSiteFromRoom, defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureLabelFor, furnitureRectFor, furnitureSpecFor, roomAreaFor, roomOverlaps, siteOf, sunPatches } from './plan'
@@ -40,7 +41,7 @@ import {
 import { buildShareUrl, decodePlanFromHash, sanitizePlan, MAX_PROJECT_BYTES } from './sharePlan'
 import { analyze, analyzeAirQuality, daylightPotential, egressRoutes, heatFlowSnapshot, simulateEnergy, windFlowPotential } from './analysis'
 import type { AnalysisResult, Suggestion } from './analysis'
-import type { CanvasView, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
+import type { CanvasView, Furniture, FurnitureKind, PlanState, PlanTool, Room, WorkspaceMode } from './types'
 import { TopBar } from './components/TopBar'
 import { AssistantBar } from './components/AssistantBar'
 import { Inspector } from './components/Inspector'
@@ -866,19 +867,22 @@ function App() {
     }))
   }, [commit])
 
-  const addFurniture = useCallback((kind: FurnitureKind) => {
-    const spec = furnitureCatalog[kind]
-    const w = (spec.w / site.w) * 100
-    const h = (spec.d / site.h) * 100
-    const id = `f-${Date.now()}`
-    commit((current) => ({
-      ...current,
-      furniture: [...current.furniture, { id, kind, x: 50 - w / 2, y: 50 - h / 2, rotated: false }],
-    }))
-    setSelectedFurniture(id)
+  const addFurniture = useCallback((kind: FurnitureKind, label?: string, size?: { wM: number; dM: number }, assetId?: string) => {
+    const item: Furniture = { id: `f-${crypto.randomUUID()}`, kind, label, ...size, ...(assetId ? { assetId } : {}), x: 0, y: 0, rotated: false }
+    const placed = findFurniturePlacement(plan, item, selectedRoom)
+    if (!placed) {
+      setToast(plan.rooms.length ? 'Could not find clear space at real size. Choose a larger room or move existing furniture.' : 'Draw a room before adding furniture.')
+      return false
+    }
+    commit(current => ({ ...current, furniture: [...current.furniture, placed.item] }), 'Place furniture')
+    setSelectedRoom(null)
+    setSelectedOpening(null)
+    setSelectedFurniture(item.id)
     setFurnitureTrayOpen(false)
-    setToast(`${spec.label} placed at real size — drag it into a room`)
-  }, [commit, site.h, site.w])
+    setIsCatalogOpen(false)
+    setToast(`${label ?? furnitureCatalog[kind].label} placed at real size in ${placed.room.name}`)
+    return true
+  }, [commit, plan, selectedRoom])
 
   const rotateFurniture = useCallback(() => {
     if (!selectedFurniture) return
@@ -886,14 +890,29 @@ function App() {
       ...current,
       furniture: current.furniture.map((item) => {
         if (item.id !== selectedFurniture) return item
-        const spec = furnitureSpecFor(item)
-        const rotated = !item.rotated
-        const w = ((rotated ? spec.d : spec.w) / site.w) * 100
-        const h = ((rotated ? spec.w : spec.d) / site.h) * 100
-        return { ...item, rotated, x: Math.min(item.x, 100 - w), y: Math.min(item.y, 100 - h) }
+        return rotateFurnitureAtCentre(item, site) ?? item
       }),
     }))
-  }, [commit, selectedFurniture, site.h, site.w])
+  }, [commit, selectedFurniture, site])
+
+  const moveSpatialFurniture = useCallback((id: string, x: number, y: number) => {
+    const item = plan.furniture.find(piece => piece.id === id)
+    if (!item) return
+    const moved = moveFurnitureTo(item, x, y, site)
+    if (!moved || (moved.x === item.x && moved.y === item.y)) return
+    commit(current => ({ ...current, furniture: current.furniture.map(piece => piece.id === id ? moved : piece) }), 'Move furniture in 3D')
+  }, [commit, plan.furniture, site])
+
+  const duplicateFurniture = useCallback(() => {
+    if (!furnitureItem) return
+    const rect = furnitureRectFor(furnitureItem, site)
+    const owningRoom = plan.rooms.find(room => rect.x + rect.w / 2 >= room.x && rect.x + rect.w / 2 <= room.x + room.w && rect.y + rect.h / 2 >= room.y && rect.y + rect.h / 2 <= room.y + room.h)
+    const placed = findFurniturePlacement(plan, { ...furnitureItem, id: `f-${crypto.randomUUID()}` }, owningRoom?.id)
+    if (!placed) { setToast('Could not find clear space for a copy at real size. Move existing furniture first.'); return }
+    commit(current => ({ ...current, furniture: [...current.furniture, placed.item] }), 'Duplicate furniture')
+    setSelectedFurniture(placed.item.id)
+    setToast(`${furnitureLabelFor(placed.item)} copied into ${placed.room.name}`)
+  }, [commit, furnitureItem, plan, site])
 
   const deleteFurniture = useCallback(() => {
     if (!selectedFurniture) return
@@ -1357,6 +1376,13 @@ function App() {
         sunAltitude={sun.altitude}
         selectedRoom={selectedRoom}
         onSelectRoom={setSelectedRoom}
+        selectedFurniture={selectedFurniture}
+        onSelectFurniture={id => { setSelectedFurniture(id); setSelectedRoom(null); setSelectedOpening(null) }}
+        onMoveFurniture={moveSpatialFurniture}
+        onRotateFurniture={rotateFurniture}
+        onDuplicateFurniture={duplicateFurniture}
+        onDeleteFurniture={deleteFurniture}
+        onOpenFurnitureCatalog={() => setIsCatalogOpen(true)}
         onSetWallHeight={setWallHeight}
         hour={hour}
         day={day}
@@ -1730,32 +1756,7 @@ function App() {
             <FurnitureCatalogDrawer
               open={isCatalogOpen}
               onClose={() => setIsCatalogOpen(false)}
-              onAddFurniture={(kind, label, size, assetId) => {
-                const id = `furn-${Date.now()}`
-                commit({
-                  ...plan,
-                  furniture: [
-                    ...plan.furniture,
-                    {
-                      id,
-                      kind,
-                      label,
-                      ...(assetId ? { assetId } : {}),
-                      x: 50,
-                      y: 50,
-                      rotated: false,
-                      // The catalog card's real footprint — the piece on the
-                      // plan must match the dimensions it advertised.
-                      ...(size ?? {}),
-                    },
-                  ],
-                })
-                setSelectedFurniture(id)
-                setToast(size
-                  ? `${label} placed at ${size.wM.toFixed(1)} × ${size.dM.toFixed(1)} m — drag into a room`
-                  : `${furnitureCatalog[kind].label} placed — drag into a room`)
-                setIsCatalogOpen(false)
-              }}
+              onAddFurniture={addFurniture}
             />
 
             {view === 'plan' && (

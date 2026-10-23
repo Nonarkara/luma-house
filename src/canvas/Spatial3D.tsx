@@ -14,7 +14,7 @@ import * as THREE from 'three'
 const WIREFILL_OPACITY = 0.18
 const WIREEDGE_COLOR = '#0e1014' // Axiom ink
 const WIREFILL_COLOR = '#faf7f1' // Axiom paper
-import { MODEL_WALL_THICKNESS_M, roomHeight, siteOf, sunVector, TERRACE_SLAB_M } from '../plan'
+import { furnitureLabelFor, furnitureRectFor, furnitureSpecFor, MODEL_WALL_THICKNESS_M, roomHeight, siteOf, sunVector, TERRACE_SLAB_M } from '../plan'
 import type { Furniture, FurnitureKind, Opening, PlanState, Room, SiteSpec } from '../types'
 import { windFlowPotential } from '../analysis'
 import type { Compass } from '../analysis'
@@ -32,6 +32,10 @@ import type { DisplayStyle, ReadyStudyCapture, StudyCamera, StudyScene, StudySet
 import { captureWhenReady } from '../study/capture'
 import type { ProjectLocation } from '../types'
 import FurniturePieceView from './FurnitureMesh'
+import { SpatialFurniture } from './SpatialFurniture'
+import { furnitureHeight } from './furnitureGeometry'
+import { furnitureAssetFor } from '../catalog/furnitureAssets'
+import { furniturePlacementIssues } from './furniturePlacement'
 
 const HEIGHT_MIN = 2.2
 const HEIGHT_MAX = 4.5
@@ -595,6 +599,7 @@ export default function Spatial3D({
   windFrom = 180,
   windSpeed = 3,
   projectTitle, location, year, onScenesChange, onRecallScene, onStudyTimeChange,
+  selectedFurniture, onSelectFurniture, onMoveFurniture, onRotateFurniture, onDuplicateFurniture, onDeleteFurniture, onOpenFurnitureCatalog,
 
 }: {
   projectTitle: string
@@ -603,6 +608,13 @@ export default function Spatial3D({
   onScenesChange: (scenes: StudyScene[]) => void
   onRecallScene: (scene: StudyScene) => void
   onStudyTimeChange: (day: number, hour: number, year: number) => void
+  selectedFurniture: string | null
+  onSelectFurniture: (id: string | null) => void
+  onMoveFurniture: (id: string, x: number, y: number) => void
+  onRotateFurniture: () => void
+  onDuplicateFurniture: () => void
+  onDeleteFurniture: () => void
+  onOpenFurnitureCatalog: () => void
   theme: StudioTheme
   plan: PlanState
   sunAzimuth: number
@@ -660,7 +672,12 @@ export default function Spatial3D({
   const controlsRef = useRef<OrbitControl>(null)
   const captureRef = useRef<ReadyStudyCapture | null>(null)
   const [cameraRequest, setCameraRequest] = useState<{ id: number; camera: StudyCamera } | null>(null)
-  const geometryKey = physicalGeometryKey(plan, roofStyle)
+  const [fitVersion, setFitVersion] = useState(0)
+  const [furniturePreview, setFurniturePreview] = useState<Furniture | null>(null)
+  const geometryKey = physicalGeometryKey(plan, roofStyle) + JSON.stringify(furniturePreview)
+  const furnitureItem = furniturePreview ?? plan.furniture.find(item => item.id === selectedFurniture)
+  const furnitureIssues = furnitureItem ? furniturePlacementIssues(plan, furnitureItem) : []
+  const editable = !ghost && !walkMode && !tourWaypoint
   const { rooms: frameRooms, site: frameSite } = plan
   const target = useMemo(() => cameraRequest?.camera.target ?? modelBounds({ rooms: frameRooms, site: frameSite }).getCenter(new THREE.Vector3()).toArray() as [number, number, number], [cameraRequest, frameRooms, frameSite])
   const settings: StudySettings = { preset, style: displayStyle, sectionHeight, roofStyle, showRoof, shadows: showShadows, sunRays: showSunRays, airPaths: showAirPaths }
@@ -679,8 +696,9 @@ export default function Spatial3D({
     (event: ThreeEvent<MouseEvent>) => {
       event.stopPropagation()
       onSelectRoom(null)
+      onSelectFurniture(null)
     },
-    [onSelectRoom],
+    [onSelectRoom, onSelectFurniture],
   )
 
   return (
@@ -694,6 +712,7 @@ export default function Spatial3D({
           >
             3D Orbit
           </button>
+          <button type="button" className="spatial-tb-btn" aria-label="Fit building" onClick={() => { setCameraRequest(null); setFitVersion(value => value + 1) }} disabled={walkMode || !!tourWaypoint}>Fit</button>
           <button
             type="button"
             className={`spatial-tb-btn ${preset === 'axonometric' ? 'active' : ''}`}
@@ -710,14 +729,16 @@ export default function Spatial3D({
           </button>
           <button
             type="button"
+            aria-label="Walk at 1.6 m"
             className={`spatial-tb-btn ${walkMode ? 'active' : ''}`}
             onClick={onToggleWalkMode}
           >
-            Walk at 1.6 m
+            Walk
           </button>
         </div>
 
         <div className="vector-group">
+          <button type="button" className="spatial-tb-btn" onClick={onOpenFurnitureCatalog} disabled={ghost}>Add furniture</button>
           <button type="button" className={`spatial-tb-btn ${architectural ? 'active-layer' : ''}`} aria-pressed={architectural} onClick={() => setDisplayStyle('architectural')}>Architectural</button>
           <button type="button" className={`spatial-tb-btn ${displayStyle === 'solid' ? 'active-layer' : ''}`} aria-pressed={displayStyle === 'solid'} onClick={() => setDisplayStyle('solid')}>Solid</button>
           <button type="button" className={`spatial-tb-btn ${wireframe ? 'active-layer' : ''}`} aria-pressed={wireframe} onClick={() => setDisplayStyle('wireframe')}>Wireframe</button>
@@ -780,17 +801,18 @@ export default function Spatial3D({
         </div>
       </div>
 
+      <div className="spatial-model">
       <Canvas
         shadows={{ type: THREE.PCFShadowMap }}
         gl={{ antialias: true, preserveDrawingBuffer: true }}
         dpr={1}
         frameloop="demand"
         camera={{ position: [12, 9, 12], fov: 45 }}
-        onPointerMissed={() => onSelectRoom(null)}
+        onPointerMissed={() => { onSelectRoom(null); onSelectFurniture(null) }}
       >
         <color attach="background" args={[colors['--studio-support']]} />
         <SunLight azimuth={sunAzimuth} altitude={sunAltitude} site={site} shadows={showShadows} geometryKey={geometryKey} />
-        <CameraRig plan={plan} preset={preset} walking={walkMode} touring={!!tourWaypoint} request={cameraRequest} controlsRef={controlsRef} captureRef={captureRef} time={{ day, hour, year }} />
+        <CameraRig plan={plan} preset={preset} walking={walkMode} touring={!!tourWaypoint} request={cameraRequest} fitVersion={fitVersion} controlsRef={controlsRef} captureRef={captureRef} time={{ day, hour, year }} />
         <CameraController
           walking={walkMode}
           preset={preset}
@@ -859,7 +881,7 @@ export default function Spatial3D({
                 plan={plan}
                 site={site}
                 isSelected={room.id === selectedRoom}
-                onSelectRoom={onSelectRoom}
+                onSelectRoom={id => { onSelectFurniture(null); onSelectRoom(id) }}
                 sectionHeight={visibleCut}
                 architectural={architectural}
                 wireframe={wireframe}
@@ -869,17 +891,15 @@ export default function Spatial3D({
         {!ghost && plan.openings.map((opening) => (
           <OpeningPanel key={opening.id} opening={opening} site={site} wireframe={wireframe} edgeColor={edgeColor} architectural={architectural} sectionHeight={visibleCut} />
         ))}
-        {!ghost && plan.furniture.map((item) => (
-          <FurniturePiece
-            key={item.id}
-            item={item}
-            site={site}
-            wireframe={wireframe}
-            edgeColor={edgeColor}
-            architectural={architectural}
-            sectionHeight={visibleCut}
-          />
-        ))}
+        {!ghost && plan.furniture.map(item => {
+          const spec = furnitureSpecFor(item)
+          const asset = furnitureAssetFor(item.kind, spec.w, spec.d, 0, item.assetId)
+          const height = Math.max(.05, Math.min(visibleCut - FLOOR_THICKNESS, furnitureHeight(asset, spec.w, spec.d, FURNITURE_HEIGHTS[item.kind])))
+          return <SpatialFurniture key={item.id} item={item} site={site} height={height} color={colors['--studio-sienna']} selected={item.id === selectedFurniture}
+            enabled={editable} controls={controlsRef} select={onSelectFurniture} preview={setFurniturePreview} commit={onMoveFurniture}>
+            {pose => <FurniturePiece item={pose} site={site} wireframe={wireframe} edgeColor={edgeColor} architectural={architectural} sectionHeight={visibleCut} />}
+          </SpatialFurniture>
+        })}
 
         {!ghost && showSunRays && (
           <SunRayVectors plan={plan} azimuth={sunAzimuth} altitude={sunAltitude} />
@@ -895,9 +915,25 @@ export default function Spatial3D({
           <span className="spatial-north-label">N</span>
         </Html>
       </Canvas>
+      </div>
 
+      {!ghost && plan.furniture.length > 0 && <div className="spatial-furniture-tools" aria-label="Furniture editing">
+        <select aria-label="Furniture in 3D" value={selectedFurniture ?? ''} disabled={!editable} onChange={event => onSelectFurniture(event.target.value || null)}>
+          <option value="">Select furniture</option>
+          {plan.furniture.map(item => <option key={item.id} value={item.id}>{furnitureLabelFor(item)}</option>)}
+        </select>
+        {furnitureItem && <>
+          <span>{(() => { const rect = furnitureRectFor(furnitureItem, site); return `${(rect.w * site.w / 100).toFixed(2)} × ${(rect.h * site.h / 100).toFixed(2)} m` })()}</span>
+          <button type="button" disabled={!editable} onClick={onRotateFurniture}>Rotate furniture</button>
+          <button type="button" disabled={!editable} onClick={onDuplicateFurniture}>Duplicate furniture</button>
+          <button type="button" disabled={!editable} onClick={onDeleteFurniture}>Remove furniture</button>
+          <span role="status">{furnitureIssues.length ? furnitureIssues.join(' · ') : 'Drag to move · arrows nudge'}</span>
+        </>}
+      </div>}
+
+      <div className="spatial-study-info">
       <StudyPanel plan={plan} title={projectTitle} location={location} day={day} hour={hour} year={year} settings={settings}
-        capture={captureView} restore={applyScene} onScenesChange={onScenesChange} onTimeChange={onStudyTimeChange} disabled={ghost || walkMode || !!tourWaypoint} />
+        capture={captureView} restore={applyScene} onScenesChange={onScenesChange} onTimeChange={onStudyTimeChange} disabled={ghost || walkMode || !!tourWaypoint || !!furniturePreview} />
       <div className="spatial-sun-hud" aria-live="polite">
         <span className="sun-orb" style={{ opacity: sunAltitude > 0 ? 1 : 0.25 }} />
         <div>
@@ -912,6 +948,7 @@ export default function Spatial3D({
           ? 'Eye-level walk · click model to look · WASD moves · Esc exits · concept view has no wall collision'
           : `${preset === 'topdown' ? 'North-up parallel view' : 'Drag to orbit'} · ${architectural ? 'cut faces filled · ' : ''}${showShadows ? 'full building in shadow model' : 'shadows off'}`}
         {displayStyle === 'solid' && <span> · measured boxes while furniture models load, are unavailable or meet the section cut</span>}
+      </div>
       </div>
     </div>
   )

@@ -1,3 +1,27 @@
+## Furnishing mechanics — 2026-10-24
+
+IKEA-inspired draw/furnish/inspect work is documented in
+`docs/IKEA-MECHANICS-2026-10-23.md`. Both furniture entry points use one bounded
+placement search: selected room first, exact physical dimensions, no occupied
+footprints or existing door buffers. Refusals leave the drawing untouched and
+remain visible inside the catalogue. Manual editing remains permissive with
+explicit footprint warnings.
+
+`SpatialFurniture` owns only a transient floor-plane drag. Release commits one
+history entry; pointer cancellation, Escape, blur and unmount discard the draft.
+Plan and Spatial share furniture identity, position, dimensions and rotation.
+Selection, centre-preserving rotation, safe duplication and deletion are exposed
+in Spatial; measured meshes remain in Solid, with existing schematic fallbacks.
+
+Camera framing follows building bounds/preset/explicit Fit, not furniture or
+opening edits. Resize adjusts projection only. Owned Three cameras MUST carry
+`manual: true` before installation: R3F otherwise replaces the physical parallel
+frustum with viewport pixels. Position-only camera checks miss this; the browser
+gate measures actual painted pixels after viewport/theme changes. Shadow-cache
+invalidation still follows complete physical geometry, including drag previews.
+Keep controls outside the model and the complete model section above its solar
+summary, even when phone content earns scrolling.
+
 ## Dense properties correction — 2026-10-23
 
 The owner rejected the previous “compact” preview: stacked labels, full-width
