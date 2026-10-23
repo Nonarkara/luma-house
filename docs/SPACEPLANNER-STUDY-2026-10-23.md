@@ -193,7 +193,8 @@ could not be argued with, only scaled.
 
 **The mechanic**, adapted to designon's own law:
 
-- Select a room; the band above the drawing carries its real size: `W 3.92 × D 2.50 m`.
+- Select a room; the band above the drawing carries its real size: `W 3.92 × D 2.50 m` (where
+  the band can carry it — see §5.2).
 - Type over a figure and press **Enter**. The room becomes that long: **the wall keeps its
   direction, the edge it was drawn from stays put, and the far edge moves.**
 - The length is read **the way a person writes one**: `4.90`, `490cm`, `12in`, `4' 6"`.
@@ -256,10 +257,10 @@ gate that owns it.
 | a stated small room is not inflated by a later drag | `src/canvas/geometry.test.ts` | restore the old floor | killed |
 | the phone band does not grow for the size | `e2e/room-size.spec.ts` | show the size on the phone | killed |
 
-The browser suite is `e2e/room-size.spec.ts` — 13 cases on the desktop and on the phone, of
-which the two phone-only cases and the one band-only case skip where they do not apply. The
-desktop project runs at 1280 × 800 and the phone project at 390 × 844, so the same gesture is
-driven on both.
+The browser suite is `e2e/room-size.spec.ts` — 13 cases, run on the desktop project and on the
+phone project. The two phone-only cases skip on the desktop, and the one band-only case skips on
+the phone. The desktop project runs at 1280 × 800 and the phone project at 390 × 844, so the same
+gesture is driven on both.
 
 ---
 
