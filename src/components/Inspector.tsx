@@ -323,8 +323,8 @@ export const Inspector = React.memo(function Inspector({
               <label>Width <span><input aria-label="Drawing field width in meters" type="number" min="1" max="200" step="0.1" value={site.w} onChange={(event) => calibrateField('w', Number(event.target.value))} /> m</span></label>
               <label>Depth <span><input aria-label="Drawing field depth in meters" type="number" min="1" max="200" step="0.1" value={site.h} onChange={(event) => calibrateField('h', Number(event.target.value))} /> m</span></label>
             </div>
+            {calibrationError && <p role="alert">{calibrationError}</p>}
           </section>
-          {calibrationError && <p role="alert">{calibrationError}</p>}
           <section className="upload-card">
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleSketch} hidden />
             {sketchUrl ? (

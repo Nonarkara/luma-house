@@ -22,7 +22,7 @@ test('stated metres survive scale, reload and Undo; impossible scale changes not
   const before = await page.locator('button.room').first().getAttribute('style')
   await field.fill('2'); await field.press('Tab')
   await expect(field).toHaveValue('20')
-  await expect(page.getByRole('alert').filter({ hasText: 'Scale unchanged' })).toBeVisible()
+  await expect(page.getByRole('alert').filter({ hasText: 'Scale unchanged' })).toBeInViewport()
   expect(await page.locator('button.room').first().getAttribute('style')).toBe(before)
   await page.screenshot({ path: info.outputPath('properties-refused.png') })
   // Merely focusing and blurring a rounded display must not restate it.
