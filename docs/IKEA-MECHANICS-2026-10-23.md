@@ -84,3 +84,9 @@ products, arbitrary-angle furniture rotation and photogrammetry are separate wor
 CI is the final release authority for lint, strict types, app/Worker security and
 the complete browser suite. Production must additionally pass live workflow and
 asset verification; a local build or Git push is not a deployment.
+
+The saved-camera regression deliberately captures while orbit inertia is still
+pending: Save settles that movement before recording. Waiting for idle first
+avoids exercising this guarantee and can stall on a slower software GPU. The
+direct capture/edit/capture journey passes on the live custom domain at both
+desktop and phone widths, with saved positions matching to three decimal places.

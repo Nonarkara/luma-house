@@ -19,6 +19,9 @@ opening edits. Resize adjusts projection only. Owned Three cameras MUST carry
 frustum with viewport pixels. Position-only camera checks miss this; the browser
 gate measures actual painted pixels after viewport/theme changes. Shadow-cache
 invalidation still follows complete physical geometry, including drag previews.
+Saved-view capture flushes residual OrbitControls damping before recording its
+completed frame. Test it while inertia is pending; do not make idle rendering a
+prerequisite for testing the capture guarantee.
 Keep controls outside the model and the complete model section above its solar
 summary, even when phone content earns scrolling.
 

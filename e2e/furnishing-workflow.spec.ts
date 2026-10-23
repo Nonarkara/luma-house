@@ -122,22 +122,13 @@ test.describe('draw, furnish and inspect the same model', () => {
   })
 
   test('furniture edits and selection-row resizing keep a manually chosen camera angle', async ({ page }) => {
-    await page.addInitScript(() => {
-      const target = window as Window & { furnishingFrames?: number }
-      const draw = WebGL2RenderingContext.prototype.drawElements
-      WebGL2RenderingContext.prototype.drawElements = function (...args) { target.furnishingFrames = (target.furnishingFrames ?? 0) + 1; return draw.apply(this, args) }
-    })
     await addSofa(page); await spatial(page)
     await page.getByRole('button', { name: '3D Orbit', exact: true }).click()
     const canvas = page.locator('.spatial-model canvas'), box = (await canvas.boundingBox())!
     await page.mouse.move(box.x + box.width * .15, box.y + box.height * .2)
     await page.mouse.down(); await page.mouse.move(box.x + box.width * .15 + 65, box.y + box.height * .2 + 15, { steps: 8 }); await page.mouse.up()
-    // Observe idle rendering rather than assuming a frame rate on software GPUs.
-    await expect.poll(async () => {
-      const read = () => page.evaluate(() => (window as Window & { furnishingFrames?: number }).furnishingFrames ?? 0)
-      const before = await read(); await page.waitForTimeout(500)
-      return before > 0 && await read() === before
-    }, { timeout: 30_000 }).toBe(true)
+    // Save must settle pending orbit inertia itself, including on slow GPUs.
+    // Waiting for idle first would avoid exercising that capture guarantee.
     const before = await captureCamera(page, 'Before furnishing edit')
     await page.getByRole('button', { name: 'Rotate furniture', exact: true }).click()
     await page.getByLabel('Furniture in 3D', { exact: true }).selectOption('')
