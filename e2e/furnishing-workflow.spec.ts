@@ -114,6 +114,7 @@ test.describe('draw, furnish and inspect the same model', () => {
     const tiny = { ...fixture, rooms: [{ ...fixture.rooms[0], w: 5, h: 5 }] }
     await page.goto('/#plan=' + encodePlanToHash(tiny))
     await page.getByRole('button', { name: /^Select Drawn room/ }).click()
+    await expect.poll(async () => (await saved(page)).rooms?.[0]?.id).toBe('drawn')
     const before = await saved(page)
     await clickAction(page, 'Furniture Catalog')
     await page.getByRole('button', { name: /Add Velvet sofa/ }).click()
