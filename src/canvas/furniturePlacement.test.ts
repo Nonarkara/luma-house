@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { furnitureDoorConflicts, furnitureRectFor } from '../plan'
 import type { Furniture, PlanState } from '../types'
-import { findFurniturePlacement, furniturePlacementIssues, moveFurnitureTo, rotateFurnitureAtCentre } from './furniturePlacement'
+import { findFurniturePlacement, furnitureBounds, furniturePlacementIssues, moveFurnitureTo, rotateFurnitureAtCentre } from './furniturePlacement'
 
 const item: Furniture = { id: 'sofa', kind: 'sofa', assetId: 'glam-velvet-sofa', label: 'Velvet sofa', wM: 2.19, dM: 1.02, x: 30, y: 30, rotated: false }
 const site = { w: 10, h: 8, unit: 1 }
@@ -63,4 +63,30 @@ describe('furnishing a drawn room', () => {
     const bad = { ...item, x: 15, y: 19 }
     expect(furniturePlacementIssues({ ...plan, furniture: [{ ...bad, id: 'other' }], openings: [{ id: 'door', type: 'door', rotation: 0, x: 20, y: 20 }] }, bad)).toEqual(['outside room bounds', 'overlaps furniture', 'blocks a door swing'])
   })
+
+  // Invariant: a piece that starts inside a room never leaves that room's clear floor,
+  // whatever the drag target. Found live: a 50 px 3D drag left a sofa 0.62 m through a wall.
+  it('keeps every drag and quarter-turn of an in-room piece inside its walls', () => {
+    const start = findFurniturePlacement(plan, item, 'room')!.item, room = plan.rooms[0]
+    const targets = [-50, 0, 15, 45, 80, 150]
+    for (const x of targets) for (const y of targets) {
+      const moved = moveFurnitureTo(start, x, y, site, furnitureBounds(plan, start))!
+      expect(furniturePlacementIssues({ ...plan, furniture: [moved] }, moved)).toEqual([])
+      const r = furnitureRectFor(moved, site)
+      expect(r.x).toBeGreaterThanOrEqual(room.x); expect(r.x + r.w).toBeLessThanOrEqual(room.x + room.w)
+    }
+    const turned = rotateFurnitureAtCentre(moveFurnitureTo(start, 99, 99, site, furnitureBounds(plan, start))!, site, furnitureBounds(plan, start))!
+    expect(turned).toMatchObject({ rotated: true, wM: item.wM, dM: item.dM })
+    expect(furniturePlacementIssues({ ...plan, furniture: [turned] }, turned)).toEqual([])
+  })
+
+  it('refuses a turn the room cannot hold, and leaves a piece outside every room on the site', () => {
+    const corridor = { ...plan, rooms: [{ ...plan.rooms[0], w: 50, h: 15 }] } // 5.0 x 1.2 m clear-ish
+    const inside = findFurniturePlacement(corridor, item, 'room')!.item
+    expect(rotateFurnitureAtCentre(inside, site, furnitureBounds(corridor, inside))).toBeNull()
+    const outside = { ...item, x: 80, y: 5 }
+    expect(furnitureBounds(plan, outside)).toBeNull()
+    expect(moveFurnitureTo(outside, 120, 120, site, furnitureBounds(plan, outside))).toMatchObject({ x: 100 - furnitureRectFor(outside, site).w })
+  })
 })
+

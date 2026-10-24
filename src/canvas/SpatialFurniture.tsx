@@ -4,12 +4,12 @@ import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { Plane, Raycaster, Vector2, Vector3 } from 'three'
 import type { OrbitControls } from 'three-stdlib'
 import { furnitureRectFor } from '../plan'
-import type { Furniture, SiteSpec } from '../types'
-import { moveFurnitureTo } from './furniturePlacement'
+import type { Furniture, PlanState, SiteSpec } from '../types'
+import { furnitureBounds, moveFurnitureTo } from './furniturePlacement'
 
 /** Floor-plane interaction is independent of camera angle and model complexity. */
-export function SpatialFurniture({ item, site, selected, enabled, height, color, controls, select, preview, commit, children }: {
-  item: Furniture; site: SiteSpec; selected: boolean; enabled: boolean; height: number; color: string
+export function SpatialFurniture({ item, plan, site, selected, enabled, height, color, controls, select, preview, commit, children }: {
+  item: Furniture; plan: PlanState; site: SiteSpec; selected: boolean; enabled: boolean; height: number; color: string
   controls: React.RefObject<OrbitControls>
   select: (id: string) => void
   preview: (item: Furniture | null) => void
@@ -39,12 +39,13 @@ export function SpatialFurniture({ item, site, selected, enabled, height, color,
     const orbit = controls.current, wasEnabled = orbit?.enabled ?? false
     if (orbit) orbit.enabled = false
     let latest = item, moved = false
+    const bounds = furnitureBounds(plan, item)
     const move = (next: PointerEvent) => {
       if (next.pointerId !== event.pointerId) return
       if (!moved && Math.hypot(next.clientX - event.clientX, next.clientY - event.clientY) < 3) return
       const p = project(next.clientX, next.clientY)
       if (!p) return
-      const candidate = moveFurnitureTo(item, item.x + (p.x - origin.x) / site.w * 100, item.y + (p.z - origin.z) / site.h * 100, site)
+      const candidate = moveFurnitureTo(item, item.x + (p.x - origin.x) / site.w * 100, item.y + (p.z - origin.z) / site.h * 100, site, bounds)
       if (!candidate) return
       moved = true; latest = candidate
       setDraft(candidate); preview(candidate)

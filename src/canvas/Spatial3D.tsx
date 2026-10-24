@@ -895,7 +895,7 @@ export default function Spatial3D({
           const spec = furnitureSpecFor(item)
           const asset = furnitureAssetFor(item.kind, spec.w, spec.d, 0, item.assetId)
           const height = Math.max(.05, Math.min(visibleCut - FLOOR_THICKNESS, furnitureHeight(asset, spec.w, spec.d, FURNITURE_HEIGHTS[item.kind])))
-          return <SpatialFurniture key={item.id} item={item} site={site} height={height} color={colors['--studio-sienna']} selected={item.id === selectedFurniture}
+          return <SpatialFurniture key={item.id} item={item} plan={plan} site={site} height={height} color={colors['--studio-sienna']} selected={item.id === selectedFurniture}
             enabled={editable} controls={controlsRef} select={onSelectFurniture} preview={setFurniturePreview} commit={onMoveFurniture}>
             {pose => <FurniturePiece item={pose} site={site} wireframe={wireframe} edgeColor={edgeColor} architectural={architectural} sectionHeight={visibleCut} />}
           </SpatialFurniture>

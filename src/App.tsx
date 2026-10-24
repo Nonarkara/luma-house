@@ -22,7 +22,7 @@ import { applyNapkinStroke } from './canvas/napkinStroke'
 import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { clearInvalidStatements, parseLengthMetres, recalibratePlan, setRoomSizeM, sizeRefusalMessage, type SizeAxis } from './canvas/roomSize'
-import { findFurniturePlacement, moveFurnitureTo, rotateFurnitureAtCentre } from './canvas/furniturePlacement'
+import { findFurniturePlacement, furnitureBounds, moveFurnitureTo, rotateFurnitureAtCentre } from './canvas/furniturePlacement'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
 import { calibrateSiteFromRoom, defaultSite, furnitureCatalog, furnitureDoorConflicts, furnitureLabelFor, furnitureRectFor, furnitureSpecFor, roomAreaFor, roomOverlaps, siteOf, sunPatches } from './plan'
@@ -885,23 +885,28 @@ function App() {
   }, [commit, plan, selectedRoom])
 
   const rotateFurniture = useCallback(() => {
-    if (!selectedFurniture) return
+    const target = plan.furniture.find(item => item.id === selectedFurniture)
+    if (!target) return
+    if (!rotateFurnitureAtCentre(target, site, furnitureBounds(plan, target))) {
+      setToast(`${furnitureLabelFor(target)} cannot turn here without passing through a wall.`)
+      return
+    }
     commit((current) => ({
       ...current,
       furniture: current.furniture.map((item) => {
         if (item.id !== selectedFurniture) return item
-        return rotateFurnitureAtCentre(item, site) ?? item
+        return rotateFurnitureAtCentre(item, site, furnitureBounds(current, item)) ?? item
       }),
     }))
-  }, [commit, selectedFurniture, site])
+  }, [commit, plan, selectedFurniture, site])
 
   const moveSpatialFurniture = useCallback((id: string, x: number, y: number) => {
     const item = plan.furniture.find(piece => piece.id === id)
     if (!item) return
-    const moved = moveFurnitureTo(item, x, y, site)
+    const moved = moveFurnitureTo(item, x, y, site, furnitureBounds(plan, item))
     if (!moved || (moved.x === item.x && moved.y === item.y)) return
     commit(current => ({ ...current, furniture: current.furniture.map(piece => piece.id === id ? moved : piece) }), 'Move furniture in 3D')
-  }, [commit, plan.furniture, site])
+  }, [commit, plan, site])
 
   const duplicateFurniture = useCallback(() => {
     if (!furnitureItem) return

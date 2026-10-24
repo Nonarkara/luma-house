@@ -6,17 +6,31 @@ type Rect = { x: number; y: number; w: number; h: number }
 const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w - EPS && a.x + a.w > b.x + EPS && a.y < b.y + b.h - EPS && a.y + a.h > b.y + EPS
 const contains = (a: Rect, b: Rect) => b.x >= a.x - EPS && b.y >= a.y - EPS && b.x + b.w <= a.x + a.w + EPS && b.y + b.h <= a.y + a.h + EPS
 
-/** Move the footprint, never its physical dimensions. Invalid poses are refused. */
-export function moveFurnitureTo(item: Furniture, x: number, y: number, site: SiteSpec): Furniture | null {
-  const r = furnitureRectFor(item, site)
-  if (![x, y, r.w, r.h].every(Number.isFinite) || r.w <= 0 || r.h <= 0 || r.w > 100 || r.h > 100) return null
-  return { ...item, x: Math.max(0, Math.min(100 - r.w, x)), y: Math.max(0, Math.min(100 - r.h, y)) }
+/** The clear floor of the room holding the piece's centre, inside half a wall. A piece that
+ * sits in no room (a terrace sketch, a legacy plan) keeps the whole site. */
+export function furnitureBounds(plan: PlanState, item: Furniture): Rect | null {
+  const site = siteOf(plan), r = furnitureRectFor(item, site), cx = r.x + r.w / 2, cy = r.y + r.h / 2
+  const room = plan.rooms.find(room => cx >= room.x && cx <= room.x + room.w && cy >= room.y && cy <= room.y + room.h)
+  if (!room) return null
+  const ix = MODEL_WALL_THICKNESS_M / 2 / site.w * 100, iy = MODEL_WALL_THICKNESS_M / 2 / site.h * 100
+  return { x: room.x + ix, y: room.y + iy, w: room.w - 2 * ix, h: room.h - 2 * iy }
 }
 
-export function rotateFurnitureAtCentre(item: Furniture, site: SiteSpec): Furniture | null {
+/** Move the footprint, never its physical dimensions. Invalid poses are refused. Within
+ * `bounds` a drag slides along the wall instead of passing through it. */
+export function moveFurnitureTo(item: Furniture, x: number, y: number, site: SiteSpec, bounds: Rect | null = null): Furniture | null {
+  const r = furnitureRectFor(item, site)
+  if (![x, y, r.w, r.h].every(Number.isFinite) || r.w <= 0 || r.h <= 0 || r.w > 100 || r.h > 100) return null
+  const b = bounds && r.w <= bounds.w + EPS && r.h <= bounds.h + EPS ? bounds : { x: 0, y: 0, w: 100, h: 100 }
+  return { ...item, x: Math.max(b.x, Math.min(b.x + b.w - r.w, x)), y: Math.max(b.y, Math.min(b.y + b.h - r.h, y)) }
+}
+
+/** A quarter-turn that cannot fit inside its room is refused rather than pushed through a wall. */
+export function rotateFurnitureAtCentre(item: Furniture, site: SiteSpec, bounds: Rect | null = null): Furniture | null {
   const before = furnitureRectFor(item, site), rotated = { ...item, rotated: !item.rotated }
   const after = furnitureRectFor(rotated, site)
-  return moveFurnitureTo(rotated, item.x + (before.w - after.w) / 2, item.y + (before.h - after.h) / 2, site)
+  if (bounds && (after.w > bounds.w + EPS || after.h > bounds.h + EPS)) return null
+  return moveFurnitureTo(rotated, item.x + (before.w - after.w) / 2, item.y + (before.h - after.h) / 2, site, bounds)
 }
 
 /** Conservative footprint warnings, not a circulation or accessibility verdict. */
