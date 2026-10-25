@@ -1080,24 +1080,20 @@ function App() {
           }))
         } else if (selectedFurniture) {
           event.preventDefault()
+          const item = plan.furniture.find(piece => piece.id === selectedFurniture)
+          if (!item) return
+          const moved = moveFurnitureTo(item, item.x + dx, item.y + dy, site, furnitureBounds(plan, item))
+          if (!moved || (moved.x === item.x && moved.y === item.y)) return
           commit((current) => ({
             ...current,
-            furniture: current.furniture.map((item) => {
-              if (item.id !== selectedFurniture) return item
-              const rect = furnitureRectFor(item, site)
-              return {
-                ...item,
-                x: Math.max(0, Math.min(100 - rect.w, item.x + dx)),
-                y: Math.max(0, Math.min(100 - rect.h, item.y + dy)),
-              }
-            }),
-          }))
+            furniture: current.furniture.map(piece => piece.id === selectedFurniture ? moved : piece),
+          }), 'Nudge furniture')
         }
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [commit, deleteFurniture, deleteOpening, deleteRoom, plan.rooms.length, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo, walkMode])
+  }, [commit, deleteFurniture, deleteOpening, deleteRoom, plan, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo, walkMode])
 
   const handleSketch = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
