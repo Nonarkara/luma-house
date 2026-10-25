@@ -76,6 +76,20 @@ describe('journey stages', () => {
     expect(complete.stages.find((s) => s.def.id === 'sun')?.complete).toBe(true)
   })
 
+  it('does not count an assemblies object as a selected system', () => {
+    const withAssemblies: PlanState = {
+      ...sketched,
+      systems: {
+        ...sketched.systems,
+        assemblies: { wallU: 0.35, wallInsulationThicknessMm: 100, roofU: 0.25, glazingU: 1.1, airtightnessAch50: 1.5 },
+      },
+    }
+    const result = evaluateJourney(ctx({ plan: withAssemblies, visited: new Set(['systems']) }))
+    const systems = result.stages.find(stage => stage.def.id === 'systems')!
+    expect(systems.metric).toBe('None selected')
+    expect(systems.complete).toBe(false)
+  })
+
   it('never marks any stage complete over an empty plan, even when all are visited', () => {
     // The single progress-truth invariant: rail checkmarks can never claim
     // progress the canvas has not earned. Visit every stage AND fake a concept —

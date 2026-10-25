@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test'
 
+const previewPort = Number(process.env.PLAYWRIGHT_PORT ?? 4186)
+const previewUrl = `http://localhost:${previewPort}`
+
 /**
  * Shipability smoke test — runs against `npm run preview` (vite preview on
  * port 4186). The spec uses `webServer` to start + tear down the server
@@ -19,7 +22,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:4186',
+    baseURL: previewUrl,
     trace: 'retain-on-failure',
     // The theme suite runs ~10 contrast checks against many selectors each
     // pass, so the per-action budget is generous. Smoke + PWA specs stay
@@ -36,8 +39,8 @@ export default defineConfig({
     // server was being killed underneath the run — every test after that
     // point failed with ERR_CONNECTION_REFUSED, which reads like a broken
     // suite and is really a dead server.
-    command: 'node_modules/.bin/vite preview --port 4186 --strictPort',
-    url: 'http://localhost:4186',
+    command: `node_modules/.bin/vite preview --port ${previewPort} --strictPort`,
+    url: previewUrl,
     reuseExistingServer: false,
     // A loaded machine can take a while to bind the port and answer the
     // first request. Sixty seconds was not enough under load; the suite

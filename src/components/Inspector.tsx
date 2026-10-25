@@ -66,6 +66,7 @@ import { ARCHITECTURAL_STYLE_PRESETS } from '../concept/buildRenderPrompt'
 
 export interface InspectorProps {
   mode: WorkspaceMode
+  isAuthoredSample: boolean
   settingsOpen: boolean
   setSettingsOpen: (open: boolean) => void
   inspectorOpen: boolean
@@ -137,6 +138,7 @@ export interface InspectorProps {
 
 export const Inspector = React.memo(function Inspector({
   mode,
+  isAuthoredSample,
   settingsOpen,
   setSettingsOpen,
   inspectorOpen,
@@ -224,6 +226,9 @@ export const Inspector = React.memo(function Inspector({
   const brief = buildDesignBrief(plan, climateResult, styleKeywords)
   const lat = projectLocation.latitude
   const locationLabel = projectLocation.label
+  const windows = plan.openings.filter(opening => opening.type === 'window').length
+  const doors = plan.openings.length - windows
+  const selectedSystems = (['solar', 'insulation', 'climate', 'lighting'] as const).filter(key => plan.systems[key]).length
 
   const calibrateField = (axis: 'w' | 'h', value: number) => {
     if (!Number.isFinite(value) || value <= 0) return
@@ -258,7 +263,7 @@ export const Inspector = React.memo(function Inspector({
               : mode === 'plan'
                 ? 'Plan properties'
                 : mode === 'light'
-                  ? 'Shanghai sun study'
+                  ? `${projectLocation.name} sun study`
                   : mode === 'wellbeing'
                     ? 'Living logic'
                     : mode === 'climate'
@@ -640,7 +645,7 @@ export const Inspector = React.memo(function Inspector({
               <input type="range" min="1" max="365" value={day} onChange={(event) => setDay(Number(event.target.value))} />
             </label>
           </section>
-          <section className="panel-section lighting-schedule">
+          {isAuthoredSample ? <section className="panel-section lighting-schedule">
             <div className="section-title">
               <div><p className="eyebrow">Control schedule</p><h3>Six lighting channels</h3></div>
               <span className="badge">{lightingChannels.reduce((sum, channel) => sum + channel.loadWatts, 0)} W</span>
@@ -674,7 +679,15 @@ export const Inspector = React.memo(function Inspector({
                 </label>
               ))}
             </div>
-          </section>
+          </section> : (
+            <section className="panel-section">
+              <div className="section-title">
+                <div><p className="eyebrow">Electrical brief</p><h3>Lighting circuits not specified</h3></div>
+                <span className="badge">Not modeled</span>
+              </div>
+              <p className="section-intro">The sun study uses the windows you drew. Add a verified fixture and circuit schedule before claiming electric-light loads, scenes, or controls.</p>
+            </section>
+          )}
           <section className="insight-card">
             <CloudSun />
             <div>
@@ -691,7 +704,7 @@ export const Inspector = React.memo(function Inspector({
               )}
             </div>
           </section>
-          <p className="legal-note">Shanghai’s due-south planning reference window is 09:00–15:00. This interactive model is a design study; a formal sunlight report requires approved analysis software and local professional sign-off.</p>
+          <p className="legal-note">Solar position uses {locationLabel} and local civil time. This interactive model is a design study; a formal sunlight report requires approved analysis software, surrounding obstructions, and local professional sign-off.</p>
           <section className="panel-section">
             <div className="section-title">
               <h3>Openings</h3>
@@ -706,14 +719,15 @@ export const Inspector = React.memo(function Inspector({
 
       {!settingsOpen && mode === 'wellbeing' && (
         <div className="inspector-content">
-          <section className="wellbeing-hero">
+          {isAuthoredSample ? <>
+            <section className="wellbeing-hero">
             <span><Compass /></span>
             <div>
               <p className="eyebrow">Resident preference overlay</p>
               <h3>South-facing, calm and legible</h3>
               <p>Feng Shui is treated here as a cultural and personal design brief—not as medical or building-science evidence.</p>
             </div>
-          </section>
+            </section>
 
           <section className="panel-section check-schedule">
             <div className="section-title"><div><p className="eyebrow">Feng Shui brief</p><h3>Five preference checks</h3></div><span className="badge">5 / 5</span></div>
@@ -744,6 +758,36 @@ export const Inspector = React.memo(function Inspector({
               </article>
             ))}
           </section>
+
+          </> : <>
+            <section className="wellbeing-hero">
+              <span><Compass /></span>
+              <div>
+                <p className="eyebrow">Evidence from this drawing</p>
+                <h3>{plan.rooms.length} room{plan.rooms.length === 1 ? '' : 's'} · {plan.openings.length} opening{plan.openings.length === 1 ? '' : 's'}</h3>
+                <p>This panel reports what is modeled. It does not infer a resident’s culture, preferences, routines, or installed equipment.</p>
+              </div>
+            </section>
+            <section className="panel-section check-schedule">
+              <div className="section-title"><div><p className="eyebrow">Current evidence</p><h3>Living brief inputs</h3></div><span className="badge">Measured</span></div>
+              <article className="check-row">
+                <Check />
+                <div><strong>Plan geometry</strong><p>{plan.rooms.length} measured room{plan.rooms.length === 1 ? '' : 's'} on a {site.w.toFixed(1)} × {site.h.toFixed(1)} m site field.</p><small>{plan.rooms.length > 0 ? 'MODELED' : 'NOT DRAWN'}</small></div>
+              </article>
+              <article className="check-row">
+                <Check />
+                <div><strong>Openings</strong><p>{windows} {windows === 1 ? 'window' : 'windows'} and {doors} {doors === 1 ? 'door' : 'doors'} are placed. Performance depends on dimensions, operability, and context.</p><small>{plan.openings.length > 0 ? 'MODELED' : 'NOT DRAWN'}</small></div>
+              </article>
+              <article className="check-row">
+                <Check />
+                <div><strong>Furniture and use</strong><p>{plan.furniture.length} {plan.furniture.length === 1 ? 'furniture item' : 'furniture items'} placed. Room names and furniture are evidence for circulation checks—not proof of daily routines.</p><small>{plan.furniture.length > 0 ? 'MODELED' : 'NOT SPECIFIED'}</small></div>
+              </article>
+              <article className="check-row">
+                <Check />
+                <div><strong>Resident preferences</strong><p>No resident interview or preference brief is attached to this drawing.</p><small>NOT RECORDED</small></div>
+              </article>
+            </section>
+          </>}
 
           <p className="legal-note">Cultural checks require discussion with the resident. Hygiene, ventilation, electrical and fire requirements require local professional verification.</p>
         </div>
@@ -1012,19 +1056,24 @@ export const Inspector = React.memo(function Inspector({
         <div className="inspector-content">
           <section className="energy-hero">
             <div>
-              <p className="eyebrow">Predicted reduction</p>
-              <strong>−{(plan.systems.solar ? 8 : 0) + (plan.systems.insulation ? 12 : 0) + (plan.systems.climate ? 13 : 0) + (plan.systems.lighting ? 7 : 0)}%</strong>
-              <span>annual energy use</span>
+              <p className="eyebrow">{isAuthoredSample ? 'Authored design allowance' : 'Selected assumptions'}</p>
+              <strong>{isAuthoredSample ? '4 / 4' : `${selectedSystems} / 4`}</strong>
+              <span>{isAuthoredSample ? 'sample systems coordinated' : 'concept options active'}</span>
             </div>
             <div className="energy-bars"><i /><i /><i /><i /><i /></div>
           </section>
-          <p className="section-intro">Apartment-scale systems: clean air, low glare, local control and upgrades that do not assume ownership of the roof.</p>
-          {([
+          <p className="section-intro">{isAuthoredSample ? 'Apartment-scale systems: clean air, low glare, local control and upgrades that do not assume ownership of the roof.' : 'These switches are scenario assumptions. They do not establish equipment capacity, annual savings, price, or code compliance.'}</p>
+          {(isAuthoredSample ? ([
             ['solar', Sun, 'Conditional solar share', '2.2 kWp common roof, subject to approval', '−8%'],
             ['insulation', Layers3, 'Glazing + air sealing', 'Secondary low-e panel + thermal curtains', '−12%'],
             ['climate', Wind, 'Clean-air climate', 'ERV filtration + two heat-pump zones', '−13%'],
             ['lighting', Lightbulb, 'Six-channel lighting', 'Presence, daylight and warm-dim scenes', '−7%'],
-          ] as const).map(([key, Icon, title, note, saving]) => (
+          ] as const) : ([
+            ['solar', Sun, 'Solar option', 'Capacity, usable roof area and approvals not specified', 'TBD'],
+            ['insulation', Layers3, 'Envelope upgrade', 'Uses the wall, roof, floor and glazing assumptions in Advice & climate', 'TBD'],
+            ['climate', Wind, 'Ventilation + HVAC option', 'Outdoor-air rate and equipment capacity not specified', 'TBD'],
+            ['lighting', Lightbulb, 'Lighting controls option', 'Fixture loads, circuits and control protocol not specified', 'TBD'],
+          ] as const)).map(([key, Icon, title, note, saving]) => (
             <section className="system-row" key={key}>
               <span className="system-icon"><Icon /></span>
               <div><strong>{title}</strong><small>{note}</small></div>
@@ -1044,11 +1093,12 @@ export const Inspector = React.memo(function Inspector({
           <section className="insight-card green">
             <Check />
             <div>
-              <strong>Passive before powered</strong>
-              <p>South solar access is managed with movable interior shading; filtration, air sealing and efficient equipment follow.</p>
+              <strong>{isAuthoredSample ? 'Passive before powered' : 'Model before claiming savings'}</strong>
+              <p>{isAuthoredSample ? 'South solar access is managed with movable interior shading; filtration, air sealing and efficient equipment follow.' : 'Use a pinned baseline, local weather data, actual assemblies, equipment schedules and tariffs before making a financial or energy claim.'}</p>
             </div>
           </section>
-          <section className="panel-section system-summary">
+          {isAuthoredSample && <>
+            <section className="panel-section system-summary">
             <div className="section-title"><h3>Installed capacity</h3><span className="badge">Coordinated</span></div>
             <div className="system-metrics">
               <span><strong>2.2 kWp</strong><small>conditional roof share</small></span>
@@ -1056,13 +1106,13 @@ export const Inspector = React.memo(function Inspector({
               <span><strong>2 zones</strong><small>heat-pump</small></span>
               <span><strong>6</strong><small>DALI channels</small></span>
             </div>
-          </section>
+            </section>
           <section className="panel-section apartment-system-list">
             <div className="section-title"><h3>Coordination schedule</h3><span className="badge">5 systems</span></div>
             {apartmentSystems.map((item) => (
               <div key={item.code}><span>{item.code}</span><p><strong>{item.title}</strong><small>{item.detail}</small></p></div>
             ))}
-          </section>
+            </section>
           <section className="panel-section automation-list">
             <div className="section-title"><h3>Automation rules</h3><span className="badge">4 active</span></div>
             {automationRules.map((rule, index) => (
@@ -1072,7 +1122,9 @@ export const Inspector = React.memo(function Inspector({
                 <i />
               </div>
             ))}
-          </section>
+            </section>
+          </>}
+          {!isAuthoredSample && <p className="legal-note">No installed capacity, equipment schedule or automation sequence is attached to this drawing. Scenario toggles remain editable assumptions until a professional brief replaces them.</p>}
         </div>
       )}
 
@@ -1203,7 +1255,9 @@ export const Inspector = React.memo(function Inspector({
               />
             </label>
             <p className="legal-note" style={{ marginTop: 6, fontSize: '10.5px', lineHeight: '1.4' }}>
-              Design language feeds concept images. The detailed BOQ remains fixed to the authored Shanghai specification so visual adjectives cannot silently alter quantities.
+              {isAuthoredSample
+                ? 'Design language feeds concept images. The detailed BOQ remains fixed to the authored Shanghai specification so visual adjectives cannot silently alter quantities.'
+                : 'Design language feeds concept images only. Quantities come from current geometry; regional rates are concept allowances and must be replaced by measured scope and supplier quotes.'}
             </p>
           </section>
 

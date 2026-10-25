@@ -128,7 +128,7 @@ export const STAGES: StageDef[] = [
       if (windows === 0) {
         return {
           title: 'Light needs an opening',
-          body: 'Place one south-facing window. Without it, sun studies stay abstract — and abstract advice is easy to ignore.',
+          body: 'Place one window on an exterior wall. Without it, sun studies stay abstract — and abstract advice is easy to ignore.',
           cta: 'Place a window',
           why: 'Construal · make light tangible',
           nav: { mode: 'plan', view: 'plan', tool: 'window', inspector: true },
@@ -149,13 +149,13 @@ export const STAGES: StageDef[] = [
     label: 'Living',
     principle: 'checklist',
     nav: { mode: 'wellbeing', view: 'plan', inspector: true },
-    metric: () => '10 checks',
+    metric: (ctx) => `${ctx.plan.rooms.length} room${ctx.plan.rooms.length === 1 ? '' : 's'} · ${ctx.plan.openings.length} opening${ctx.plan.openings.length === 1 ? '' : 's'}`,
     // A visit only "locks" the stage when there is a real plan to check —
     // otherwise the rail claims progress while the canvas is still empty.
     isComplete: (ctx) => ctx.visited.has('living') && ctx.plan.rooms.length >= 1,
     coach: () => ({
-      title: 'Finish the living checklist',
-      body: 'Tick what already works. Incomplete checks are not guilt — they are the next cheap move before you buy systems.',
+      title: 'Review what is actually modeled',
+      body: 'Check the room, opening and furniture evidence, then record what only a resident conversation can establish.',
       cta: 'Open systems',
       why: 'Zeigarnik · open loops pull attention',
       nav: { mode: 'systems', view: 'plan', inspector: true },
@@ -168,13 +168,13 @@ export const STAGES: StageDef[] = [
     principle: 'loss-aversion',
     nav: { mode: 'systems', view: 'plan', inspector: true },
     metric: (ctx) => {
-      const on = Object.values(ctx.plan.systems).filter(Boolean).length
+      const on = (['solar', 'insulation', 'climate', 'lighting'] as const).filter(key => ctx.plan.systems[key]).length
       return on === 0 ? 'None selected' : `${on} of 4 on`
     },
     isComplete: (ctx) =>
-      ctx.visited.has('systems') && Object.values(ctx.plan.systems).some(Boolean),
+      ctx.visited.has('systems') && (['solar', 'insulation', 'climate', 'lighting'] as const).some(key => ctx.plan.systems[key]),
     coach: (ctx) => {
-      const on = Object.values(ctx.plan.systems).filter(Boolean).length
+      const on = (['solar', 'insulation', 'climate', 'lighting'] as const).filter(key => ctx.plan.systems[key]).length
       if (on === 0) {
         return {
           title: 'Buy fewer machines later',

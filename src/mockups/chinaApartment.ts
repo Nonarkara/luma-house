@@ -47,6 +47,34 @@ export const chinaApartmentPlan: PlanState = {
   systems: { solar: true, insulation: true, climate: true, lighting: true },
 }
 
+/**
+ * Sample-only schedules are evidence for this exact authored apartment, not a
+ * template for every drawing. Room names may change in the supplied variants,
+ * but geometry, openings, furniture and selected systems must still match.
+ */
+export function isAuthoredChinaApartment(plan: PlanState): boolean {
+  const sameItems = <T extends { id: string }>(
+    actual: T[],
+    authored: T[],
+    fields: Array<keyof T>,
+  ) => actual.length === authored.length && actual.every((item, index) => {
+    const reference = authored[index]
+    return reference !== undefined && fields.every(field => item[field] === reference[field])
+  })
+
+  const roomsMatch = sameItems(plan.rooms, chinaApartmentPlan.rooms, ['id', 'kind', 'x', 'y', 'w', 'h', 'wallHeight'])
+  const openingsMatch = sameItems(plan.openings, chinaApartmentPlan.openings, [
+    'id', 'type', 'x', 'y', 'rotation', 'widthM', 'heightM', 'sillHeightM', 'headHeightM', 'shgc', 'vlt', 'operableFraction',
+  ])
+  const furnitureMatch = sameItems(plan.furniture, chinaApartmentPlan.furniture, [
+    'id', 'kind', 'x', 'y', 'rotated', 'wM', 'dM', 'assetId',
+  ])
+  const systemsMatch = (['solar', 'insulation', 'climate', 'lighting'] as const)
+    .every(key => plan.systems[key] === chinaApartmentPlan.systems[key])
+
+  return roomsMatch && openingsMatch && furnitureMatch && systemsMatch
+}
+
 export const chinaApartmentVariants = [
   {
     name: 'South-light calm',

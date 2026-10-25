@@ -36,6 +36,7 @@ import {
   chinaApartmentPlan,
   chinaApartmentVariants,
   chinaLightingChannels,
+  isAuthoredChinaApartment,
   estimateApartmentCarbon,
 } from './mockups/chinaApartment'
 import { buildShareUrl, decodePlanFromHash, sanitizePlan, MAX_PROJECT_BYTES } from './sharePlan'
@@ -140,14 +141,6 @@ function blankPlan(): PlanState {
   }
 }
 
-function isStockDemo(plan: PlanState): boolean {
-  if (plan.rooms.length !== chinaApartmentPlan.rooms.length) return false
-  return plan.rooms.every((room, index) => {
-    const sample = chinaApartmentPlan.rooms[index]
-    return sample !== undefined && room.id === sample.id && room.x === sample.x && room.y === sample.y && room.w === sample.w && room.h === sample.h
-  })
-}
-
 function readSavedPlan(): PlanState {
   // Priority: share link in the URL hash, then the user's draft, then a blank napkin.
   if (typeof window !== 'undefined') {
@@ -158,7 +151,7 @@ function readSavedPlan(): PlanState {
     const saved = localStorage.getItem(CHINA_PROJECT_KEY)
     if (!saved) return blankPlan()
     const next = sanitizePlan(JSON.parse(saved)) ?? blankPlan()
-    if (isStockDemo(next) && !next.location && !next.studyScenes?.length && !next.comparison) return blankPlan()
+    if (isAuthoredChinaApartment(next) && !next.location && !next.studyScenes?.length && !next.comparison) return blankPlan()
     return { ...next, location: next.location ?? starterLocations[0] }
   } catch {
     return blankPlan()
@@ -353,7 +346,7 @@ function App() {
   const toolHint = rulerArmed || isMeasuring ? MEASURE_HINT : furnitureTrayOpen ? FURNITURE_HINT : TOOL_HINTS[activeTool]
   const isEmpty = plan.rooms.length === 0
   const hasNapkinWalls = (plan.walls?.length ?? 0) > 0
-  const isAuthoredSample = plan.rooms.length > 0 && plan.rooms.every((room) => chinaApartmentPlan.rooms.some((sampleRoom) => sampleRoom.id === room.id))
+  const isAuthoredSample = isAuthoredChinaApartment(plan)
   const projectTitle = isAuthoredSample ? CHINA_PROJECT_NAME : 'Untitled sketch'
 
   const commit = useCallback((next: PlanState | ((current: PlanState) => PlanState), label = 'Edit') => {
@@ -1342,7 +1335,16 @@ function App() {
   }, [addRoom, assistantText, commit, plan.rooms, runConceptRender, selectedRoom, site])
 
   const exportPlan = useCallback(() => {
-    const blob = new Blob([JSON.stringify({ project: projectTitle, location: projectLocation, orientation: 'North up', exportedAt: new Date().toISOString(), plan, budget, carbon, lightingChannels: chinaLightingChannels }, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify({
+      project: projectTitle,
+      location: projectLocation,
+      orientation: 'North up',
+      exportedAt: new Date().toISOString(),
+      plan,
+      budget,
+      carbon,
+      lightingChannels: isAuthoredSample ? chinaLightingChannels : [],
+    }, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
@@ -1788,6 +1790,7 @@ function App() {
 
         <Inspector
           mode={mode}
+          isAuthoredSample={isAuthoredSample}
           settingsOpen={settingsOpen}
           setSettingsOpen={setSettingsOpen}
           inspectorOpen={inspectorOpen}
