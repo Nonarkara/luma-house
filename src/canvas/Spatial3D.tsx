@@ -599,6 +599,7 @@ export default function Spatial3D({
   windFrom = 180,
   windSpeed = 3,
   projectTitle, location, year, onScenesChange, onRecallScene, onStudyTimeChange,
+  previewingFurniture = false, onReplaceFurniture, trialControls,
   selectedFurniture, onSelectFurniture, onMoveFurniture, onRotateFurniture, onDuplicateFurniture, onDeleteFurniture, onOpenFurnitureCatalog,
 
 }: {
@@ -608,6 +609,9 @@ export default function Spatial3D({
   onScenesChange: (scenes: StudyScene[]) => void
   onRecallScene: (scene: StudyScene) => void
   onStudyTimeChange: (day: number, hour: number, year: number) => void
+  trialControls?: import('react').ReactNode
+  previewingFurniture?: boolean
+  onReplaceFurniture: () => void
   selectedFurniture: string | null
   onSelectFurniture: (id: string | null) => void
   onMoveFurniture: (id: string, x: number, y: number) => void
@@ -643,7 +647,7 @@ export default function Spatial3D({
     [ghost, plan.rooms, selectedRoom],
   )
 
-  const [displayStyle, setDisplayStyle] = useState<DisplayStyle>('architectural')
+  const [displayStyle, setDisplayStyle] = useState<DisplayStyle>(previewingFurniture ? 'solid' : 'architectural')
   const wireframe = displayStyle === 'wireframe'
   const architectural = displayStyle === 'architectural'
   const [showShadows, setShowShadows] = useState(true)
@@ -677,7 +681,7 @@ export default function Spatial3D({
   const geometryKey = physicalGeometryKey(plan, roofStyle) + JSON.stringify(furniturePreview)
   const furnitureItem = furniturePreview ?? plan.furniture.find(item => item.id === selectedFurniture)
   const furnitureIssues = furnitureItem ? furniturePlacementIssues(plan, furnitureItem) : []
-  const editable = !ghost && !walkMode && !tourWaypoint
+  const editable = !ghost && !walkMode && !tourWaypoint && !previewingFurniture
   const { rooms: frameRooms, site: frameSite } = plan
   const target = useMemo(() => cameraRequest?.camera.target ?? modelBounds({ rooms: frameRooms, site: frameSite }).getCenter(new THREE.Vector3()).toArray() as [number, number, number], [cameraRequest, frameRooms, frameSite])
   const settings: StudySettings = { preset, style: displayStyle, sectionHeight, roofStyle, showRoof, shadows: showShadows, sunRays: showSunRays, airPaths: showAirPaths }
@@ -738,7 +742,7 @@ export default function Spatial3D({
         </div>
 
         <div className="vector-group">
-          <button type="button" className="spatial-tb-btn" onClick={onOpenFurnitureCatalog} disabled={ghost}>Add furniture</button>
+          <button type="button" className="spatial-tb-btn" onClick={onOpenFurnitureCatalog} disabled={ghost || previewingFurniture}>Add furniture</button>
           <button type="button" className={`spatial-tb-btn ${architectural ? 'active-layer' : ''}`} aria-pressed={architectural} onClick={() => setDisplayStyle('architectural')}>Architectural</button>
           <button type="button" className={`spatial-tb-btn ${displayStyle === 'solid' ? 'active-layer' : ''}`} aria-pressed={displayStyle === 'solid'} onClick={() => setDisplayStyle('solid')}>Solid</button>
           <button type="button" className={`spatial-tb-btn ${wireframe ? 'active-layer' : ''}`} aria-pressed={wireframe} onClick={() => setDisplayStyle('wireframe')}>Wireframe</button>
@@ -770,7 +774,7 @@ export default function Spatial3D({
             3D Roof
           </button>
           <button type="button" className={`spatial-tb-btn toggle ${showShadows ? 'active-layer' : ''}`} aria-pressed={showShadows} onClick={() => setShowShadows(value => !value)}>Shadows</button>
-          <button type="button" className="spatial-tb-btn" onClick={downloadView} disabled={ghost}>Save view PNG</button>
+          <button type="button" className="spatial-tb-btn" onClick={downloadView} disabled={ghost || previewingFurniture}>Save view PNG</button>
           {showRoof && (
             <button
               type="button"
@@ -917,13 +921,15 @@ export default function Spatial3D({
       </Canvas>
       </div>
 
-      {!ghost && plan.furniture.length > 0 && <div className="spatial-furniture-tools" aria-label="Furniture editing">
+      {trialControls}
+      {!ghost && !previewingFurniture && plan.furniture.length > 0 && <div className="spatial-furniture-tools" aria-label="Furniture editing">
         <select aria-label="Furniture in 3D" value={selectedFurniture ?? ''} disabled={!editable} onChange={event => onSelectFurniture(event.target.value || null)}>
           <option value="">Select furniture</option>
           {plan.furniture.map(item => <option key={item.id} value={item.id}>{furnitureLabelFor(item)}</option>)}
         </select>
         {furnitureItem && <>
           <span>{(() => { const rect = furnitureRectFor(furnitureItem, site); return `${(rect.w * site.w / 100).toFixed(2)} × ${(rect.h * site.h / 100).toFixed(2)} m` })()}</span>
+          <button type="button" disabled={!editable} onClick={() => { setDisplayStyle('solid'); onReplaceFurniture() }}>Replace furniture</button>
           <button type="button" disabled={!editable} onClick={onRotateFurniture}>Rotate furniture</button>
           <button type="button" disabled={!editable} onClick={onDuplicateFurniture}>Duplicate furniture</button>
           <button type="button" disabled={!editable} onClick={onDeleteFurniture}>Remove furniture</button>
@@ -931,9 +937,10 @@ export default function Spatial3D({
         </>}
       </div>}
 
+      {previewingFurniture && <p className="spatial-trial-notice" role="status">Replacement preview only. Apply updates the drawing and technical checks.</p>}
       <div className="spatial-study-info">
       <StudyPanel plan={plan} title={projectTitle} location={location} day={day} hour={hour} year={year} settings={settings}
-        capture={captureView} restore={applyScene} onScenesChange={onScenesChange} onTimeChange={onStudyTimeChange} disabled={ghost || walkMode || !!tourWaypoint || !!furniturePreview} />
+        capture={captureView} restore={applyScene} onScenesChange={onScenesChange} onTimeChange={onStudyTimeChange} disabled={ghost || walkMode || !!tourWaypoint || !!furniturePreview || previewingFurniture} />
       <div className="spatial-sun-hud" aria-live="polite">
         <span className="sun-orb" style={{ opacity: sunAltitude > 0 ? 1 : 0.25 }} />
         <div>

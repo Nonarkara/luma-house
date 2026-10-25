@@ -1173,3 +1173,38 @@ body { overflow-y: auto; }
 .spatial-study-info .spatial-sun-hud > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; max-width: 65ch; }
 .spatial-study-info .sun-orb { flex: none; width: 12px; height: 12px; border-radius: 50% !important; }
 .spatial-furniture-handle { min-width: 44px; min-height: 44px; padding: 4px; border: 1px solid var(--studio-sienna); background: var(--studio-sheet); color: var(--studio-ink); font-size: var(--font-note); touch-action: none; cursor: move; }
+
+/* Product trials: a decision beside the model, with an inspection strip that
+   gives the model back its full width. Accepted analyses never use this draft. */
+.furniture-catalog-drawer { inset: 4px 4px auto auto; width: min(296px, calc(100% - 8px)); max-height: calc(100% - 8px); min-height: 0; }
+.furniture-catalog-drawer .catalog-header { padding: 4px 8px; flex: none; }
+.furniture-catalog-drawer .catalog-search { padding: 4px 8px; }
+.furniture-catalog-drawer .catalog-search input { min-height: 32px; padding: 4px 6px; }
+.catalog-target { display: grid; gap: 4px; padding: 4px 8px; }
+.catalog-target p, .catalog-trial p { margin: 0; max-width: 65ch; }
+.catalog-target > label:not(.catalog-fit) { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px; }
+.catalog-target select, .catalog-trial-actions button { min-height: 32px; padding: 4px 6px; border: 1px solid var(--border); background: var(--studio-sheet); color: var(--studio-ink); font: inherit; }
+.catalog-fit { display: flex; align-items: center; gap: 6px; min-height: 32px; }
+.catalog-fit input { width: 16px; height: 16px; accent-color: var(--studio-sienna); }
+.furniture-catalog-drawer .catalog-tabs { padding: 4px 8px; gap: 4px; flex-wrap: wrap; overflow: visible; }
+.furniture-catalog-drawer .catalog-tab { min-height: 32px; padding: 4px 6px; }
+.furniture-catalog-drawer .catalog-grid { min-height: 0; }
+.furniture-catalog-drawer .catalog-card { padding: 6px 8px; gap: 4px; }
+.catalog-card[aria-pressed="true"] { outline: 2px solid var(--studio-sienna); outline-offset: -2px; background: var(--studio-selection); }
+.catalog-fit-result { font-size: var(--font-note); color: var(--text-secondary); }
+.catalog-trial { display: grid; gap: 4px; padding: 4px 8px; border-block: 1px solid var(--border); flex: 0 1 auto; min-height: 0; overflow: auto; }
+.catalog-trial > span { font-family: var(--type-mono); }
+.catalog-trial-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.catalog-trial-actions button:disabled { opacity: .55; cursor: not-allowed; }
+.catalog-trial-plan { display: block; width: 100%; height: 72px; overflow: hidden; }
+.catalog-trial-plan rect { vector-effect: non-scaling-stroke; }
+.catalog-room-outline { fill: var(--studio-sheet); stroke: var(--studio-ink); stroke-width: 3px; }
+.catalog-other-piece { fill: var(--studio-support); stroke: var(--studio-quiet); stroke-width: 1px; }
+.catalog-new-piece { fill: var(--studio-selection); stroke: var(--studio-sienna); stroke-width: 2px; }
+.furniture-catalog-drawer.is-inspecting { display: none; }
+.furniture-catalog-drawer.is-inspecting .catalog-browse, .furniture-catalog-drawer.is-inspecting .catalog-trial-plan, .furniture-catalog-drawer.is-inspecting .catalog-trial p { display: none; }
+.spatial-trial-notice { margin: 0; padding: 4px 8px; max-width: 65ch; font-size: var(--font-note); color: var(--studio-sienna); }
+
+.spatial-trial-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px; font-size: var(--font-note); }
+.spatial-trial-controls strong { overflow-wrap: anywhere; }
+.spatial-trial-controls button { min-height: 32px; padding: 4px 6px; border: 1px solid var(--border); color: var(--studio-ink); background: var(--studio-sheet); font: inherit; }

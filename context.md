@@ -1,3 +1,29 @@
+## IKEA product trial loop — 2026-10-25
+
+Design Read: compare a real-sized replacement in the measured room before
+accepting it. Reference: IKEA Kreativ's observed Item options / Swap with similar
+workflow; documented in docs/IKEA-PRODUCT-LOOP-2026-10-25.md. Keep the model
+dominant, existing four palettes and type, compact32px actions with4px gaps.
+
+Catalogue room selection and bounded fit filtering share the existing placement
+search. Replacement preserves identity, physical centre and orientation, uses
+the chosen product's own dimensions/asset, and refuses wall crossings, other
+footprints or door swings. A trial exists only in App UI state: the local3D
+model/shadow preview sees it, accepted PlanState/analysis/history/share do not.
+Apply validates again and replaces exactly one object in one history edit.
+
+An explicit3D Replace action opens Solid; a first valid trial fromPlan mounts
+Solid. Orbit, presets and sun controls remain usable. Geometry edits, PNG/study
+capture and global drawing shortcuts are blocked during a valid preview or
+open catalogue as appropriate. Leaving via Plan/Renders or journey navigation
+cancels the catalogue. During inspection, actions are normal-flow model footer
+content; never float them over the technical/sun dock. Regenerated selection
+controls need focus restoration by their new element after Cancel. Keyboard
+focus moves between catalogue search and inspection actions with the user.
+
+No schema, dependency, provider, licensing or existing room-geometry change.
+Rectangular rooms, quarter turns and the small credited catalogue remain limits.
+
 ## Furnishing mechanics — 2026-10-24
 
 IKEA-inspired draw/furnish/inspect work is documented in

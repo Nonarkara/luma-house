@@ -12,7 +12,7 @@ import { LayoutPresetDialog } from './components/LayoutPresetDialog'
 import { TraceReview, type PendingTrace } from './components/TraceReview'
 import { updateOpeningDimensions } from './openingGeometry'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { AppWindow, Check, DoorOpen, ImagePlus, MapPin, MousePointer2, Pencil, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
+import { AppWindow, Armchair, Check, DoorOpen, ImagePlus, MapPin, MousePointer2, Pencil, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
 import { FloorPlan } from './canvas/FloorPlan'
 import { RenderGallery } from './canvas/RenderGallery'
 import { contentBox, useCanvasViewport } from './canvas/useCanvasViewport'
@@ -22,6 +22,7 @@ import { applyNapkinStroke } from './canvas/napkinStroke'
 import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { clearInvalidStatements, parseLengthMetres, recalibratePlan, setRoomSizeM, sizeRefusalMessage, type SizeAxis } from './canvas/roomSize'
+import { prepareFurnitureReplacement, type FurnitureChoice } from './canvas/furnitureReplacement'
 import { findFurniturePlacement, furnitureBounds, moveFurnitureTo, rotateFurnitureAtCentre } from './canvas/furniturePlacement'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
@@ -339,6 +340,25 @@ function App() {
   const [isTracing, setIsTracing] = useState(false)
   const [traceNote, setTraceNote] = useState<string | null>(null)
   const [isCatalogOpen, setIsCatalogOpen] = useState(false)
+  const [catalogInspect, setCatalogInspect] = useState(false)
+  const [catalogRoom, setCatalogRoom] = useState<string | null>(null)
+  const [replacementId, setReplacementId] = useState<string | null>(null)
+  const [replacementChoice, setReplacementChoice] = useState<FurnitureChoice | null>(null)
+  const replacementResult = useMemo(() => replacementId && replacementChoice ? prepareFurnitureReplacement(plan, replacementId, replacementChoice) : null, [plan, replacementId, replacementChoice])
+  const catalogPreviewPlan = useMemo(() => isCatalogOpen && replacementResult?.item ? { ...plan, furniture: plan.furniture.map(item => item.id === replacementId ? replacementResult.item : item) } : plan, [isCatalogOpen, plan, replacementId, replacementResult])
+  const closeCatalog = useCallback(() => {
+    setIsCatalogOpen(false); setCatalogInspect(false); setReplacementId(null); setReplacementChoice(null)
+  }, [])
+  const openCatalog = useCallback((replace = false) => {
+    setCatalogInspect(false)
+    setReplacementId(replace ? selectedFurniture : null)
+    setReplacementChoice(null)
+    const item = plan.furniture.find(piece => piece.id === selectedFurniture)
+    const rect = item ? furnitureRectFor(item, siteOf(plan)) : null
+    const owner = rect ? plan.rooms.find(room => rect.x + rect.w / 2 >= room.x && rect.x + rect.w / 2 <= room.x + room.w && rect.y + rect.h / 2 >= room.y && rect.y + rect.h / 2 <= room.y + room.h) : null
+    setCatalogRoom(selectedRoom ?? owner?.id ?? null)
+    setIsCatalogOpen(true)
+  }, [plan, selectedFurniture, selectedRoom])
   const [isMeasuring, setIsMeasuring] = useState(false)
   // The line that explains the canvas follows the canvas, not the last tool
   // that was pressed: armed with the tape measure it used to go on saying
@@ -492,12 +512,13 @@ function App() {
   }, [journey.doneCount, journey.stages])
 
   const goToStage = useCallback((nav: StageNav) => {
+    closeCatalog()
     if (nav.inspector !== undefined) setInspectorOpen(nav.inspector)
     setSettingsOpen(false)
     if (nav.mode) setMode(nav.mode)
     if (nav.view) setView(nav.view)
     if (nav.tool) setActiveTool(nav.tool)
-  }, [])
+  }, [closeCatalog])
 
   const commitSnapshot = useCallback((snapshot: PlanState, label = 'Auto-save') => {
     setPast((items) => [...items.slice(-29), { state: snapshot, label, sketchUrl }])
@@ -862,7 +883,7 @@ function App() {
 
   const addFurniture = useCallback((kind: FurnitureKind, label?: string, size?: { wM: number; dM: number }, assetId?: string) => {
     const item: Furniture = { id: `f-${crypto.randomUUID()}`, kind, label, ...size, ...(assetId ? { assetId } : {}), x: 0, y: 0, rotated: false }
-    const placed = findFurniturePlacement(plan, item, selectedRoom)
+    const placed = findFurniturePlacement(plan, item, isCatalogOpen ? catalogRoom : selectedRoom)
     if (!placed) {
       setToast(plan.rooms.length ? 'Could not find clear space at real size. Choose a larger room or move existing furniture.' : 'Draw a room before adding furniture.')
       return false
@@ -872,10 +893,20 @@ function App() {
     setSelectedOpening(null)
     setSelectedFurniture(item.id)
     setFurnitureTrayOpen(false)
-    setIsCatalogOpen(false)
+    closeCatalog()
     setToast(`${label ?? furnitureCatalog[kind].label} placed at real size in ${placed.room.name}`)
     return true
-  }, [commit, plan, selectedRoom])
+  }, [catalogRoom, closeCatalog, commit, isCatalogOpen, plan, selectedRoom])
+
+  const applyReplacement = useCallback(() => {
+    if (!replacementId || !replacementChoice) return
+    const result = prepareFurnitureReplacement(plan, replacementId, replacementChoice)
+    if (!result.item) { setToast(result.error); return }
+    commit(current => ({ ...current, furniture: current.furniture.map(item => item.id === replacementId ? result.item : item) }), 'Replace furniture')
+    setSelectedFurniture(replacementId); setSelectedRoom(null); setSelectedOpening(null)
+    closeCatalog()
+    setToast(`${result.item.label} applied at real size — Undo restores the previous piece`)
+  }, [closeCatalog, commit, plan, replacementChoice, replacementId])
 
   const rotateFurniture = useCallback(() => {
     const target = plan.furniture.find(item => item.id === selectedFurniture)
@@ -976,6 +1007,7 @@ function App() {
   // arrows nudge. Inputs keep their native behavior.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isCatalogOpen) return // Catalogue keys must not edit the accepted drawing underneath a trial.
       const target = event.target as HTMLElement | null
       if (target?.closest('dialog')) return
       if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
@@ -1093,7 +1125,7 @@ function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [commit, deleteFurniture, deleteOpening, deleteRoom, plan, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo, walkMode])
+  }, [commit, deleteFurniture, deleteOpening, deleteRoom, isCatalogOpen, plan, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo, walkMode])
 
   const handleSketch = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -1374,18 +1406,26 @@ function App() {
     <Suspense fallback={<div className="spatial-note">Loading 3D…</div>}>
       <Spatial3D
         theme={theme}
-        plan={plan}
+        plan={catalogPreviewPlan}
+        previewingFurniture={catalogPreviewPlan !== plan}
+        trialControls={catalogInspect && replacementResult?.item && <div className="spatial-trial-controls" aria-label="Replacement preview actions">
+          <strong>{replacementChoice?.label}</strong><span>{replacementChoice?.wM.toFixed(2)} × {replacementChoice?.dM.toFixed(2)} m</span>
+          <button type="button" onClick={() => setCatalogInspect(false)}>Back to choices</button>
+          <button type="button" onClick={applyReplacement}>Apply replacement</button>
+          <button type="button" onClick={closeCatalog}>Cancel</button>
+        </div>}
         sunAzimuth={sun.azimuth}
         sunAltitude={sun.altitude}
         selectedRoom={selectedRoom}
-        onSelectRoom={setSelectedRoom}
+        onSelectRoom={id => { if (catalogPreviewPlan === plan) setSelectedRoom(id) }}
         selectedFurniture={selectedFurniture}
-        onSelectFurniture={id => { setSelectedFurniture(id); setSelectedRoom(null); setSelectedOpening(null) }}
+        onSelectFurniture={id => { if (catalogPreviewPlan !== plan) return; setSelectedFurniture(id); setSelectedRoom(null); setSelectedOpening(null) }}
         onMoveFurniture={moveSpatialFurniture}
         onRotateFurniture={rotateFurniture}
         onDuplicateFurniture={duplicateFurniture}
         onDeleteFurniture={deleteFurniture}
-        onOpenFurnitureCatalog={() => setIsCatalogOpen(true)}
+        onOpenFurnitureCatalog={() => openCatalog()}
+        onReplaceFurniture={() => openCatalog(true)}
         onSetWallHeight={setWallHeight}
         hour={hour}
         day={day}
@@ -1447,11 +1487,11 @@ function App() {
         onNewSketch={newSketch}
         onOpenGuide={() => { setEntryRoute('guide'); setWelcomeOpen(true) }}
         onOpenShortcuts={() => setShortcutsOpen((prev) => !prev)}
-        onToggleCatalog={() => setIsCatalogOpen((prev) => !prev)}
+        onToggleCatalog={() => isCatalogOpen ? closeCatalog() : openCatalog()}
         center={<div className="view-switch" role="group" aria-label="View mode">
-          <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}>Plan</button>
+          <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => { closeCatalog(); setView('plan') }}>Plan</button>
           <button type="button" className={view === 'spatial' ? 'active' : ''} onClick={() => setView('spatial')}>Spatial</button>
-          <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { setInspectorOpen(false); setView('renders') }}>Renders</button>
+          <button type="button" className={view === 'renders' ? 'active' : ''} onClick={() => { closeCatalog(); setInspectorOpen(false); setView('renders') }}>Renders</button>
         </div>}
         actions={<div className="tool-group history-tools">
           <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
@@ -1738,6 +1778,7 @@ function App() {
                     {furnitureConflicts.has(furnitureItem.id) ? ' · blocks a door swing' : ''}
                   </small>
                 </span>
+                <IconButton label="Replace furniture" onClick={() => openCatalog(true)}><Armchair /></IconButton>
                 <IconButton label="Rotate furniture" onClick={rotateFurniture}><RotateCw /></IconButton>
                 <IconButton label="Remove furniture" onClick={deleteFurniture}><Trash2 /></IconButton>
               </div>
@@ -1756,10 +1797,14 @@ function App() {
                 Rooms overlap — floor area is double-counted and climate analysis is unreliable
               </div>
             )}
-            <FurnitureCatalogDrawer
+            <FurnitureCatalogDrawer key={replacementId ?? 'add'}
               open={isCatalogOpen}
-              onClose={() => setIsCatalogOpen(false)}
+              onClose={closeCatalog}
               onAddFurniture={addFurniture}
+              plan={plan} roomId={catalogRoom} onRoomChange={setCatalogRoom}
+              replacementId={replacementId} replacementChoice={replacementChoice}
+              onPreviewReplacement={choice => { setReplacementChoice(choice); if (choice && replacementId && prepareFurnitureReplacement(plan, replacementId, choice).item) setView('spatial') }} onApplyReplacement={applyReplacement}
+              inspecting={catalogInspect} onInspectReplacement={() => { setCatalogInspect(true); setView('spatial') }}
             />
 
             {view === 'plan' && (

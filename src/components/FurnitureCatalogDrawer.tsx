@@ -1,10 +1,21 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { X, Bed, Armchair, Monitor, Utensils, Flower2, Tv, LayoutGrid, Layers, Bath, Lamp } from 'lucide-react'
-import { furnitureCatalog } from '../plan'
-import type { FurnitureKind } from '../types'
+import { furnitureCatalog, furnitureLabelFor, furnitureRectFor, siteOf } from '../plan'
+import type { FurnitureKind, PlanState } from '../types'
 import { furnitureAssetById } from '../catalog/furnitureAssets'
+import { findFurniturePlacement } from '../canvas/furniturePlacement'
+import { prepareFurnitureReplacement, type FurnitureChoice } from '../canvas/furnitureReplacement'
 
 interface FurnitureCatalogDrawerProps {
+  plan: PlanState
+  roomId: string | null
+  onRoomChange: (id: string | null) => void
+  replacementId: string | null
+  replacementChoice: FurnitureChoice | null
+  onPreviewReplacement: (choice: FurnitureChoice | null) => void
+  onApplyReplacement: () => void
+  onInspectReplacement: () => void
+  inspecting: boolean
   open: boolean
   onClose: () => void
   onAddFurniture: (kind: FurnitureKind, label: string, size?: { wM: number; dM: number }, assetId?: string) => boolean
@@ -66,11 +77,43 @@ const CATALOG_ITEMS: CatalogItem[] = [
 export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
   open,
   onClose,
-  onAddFurniture,
+  onAddFurniture, plan, roomId, onRoomChange, replacementId, replacementChoice, onPreviewReplacement, onApplyReplacement, onInspectReplacement, inspecting,
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [placementError, setPlacementError] = useState(false)
+
+  const [fitOnly, setFitOnly] = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const replacing = plan.furniture.find(item => item.id === replacementId)
+  const choiceFor = (item: CatalogItem): FurnitureChoice => ({ kind: item.kind, label: item.label, wM: item.size?.wM ?? furnitureCatalog[item.kind].w, dM: item.size?.dM ?? furnitureCatalog[item.kind].d, ...(item.assetId ? { assetId: item.assetId } : {}) })
+  const availability = useMemo(() => {
+    if (!open) return []
+    return CATALOG_ITEMS.map(item => {
+      const choice = choiceFor(item)
+      if (replacementId) return prepareFurnitureReplacement(plan, replacementId, choice).error ?? null
+      return findFurniturePlacement(plan, { ...choice, id: '__catalogue_trial__', x: 0, y: 0, rotated: false }, roomId) ? null : 'Could not find clear space at real size.'
+    })
+  }, [open, plan, replacementId, roomId])
+  const trial = replacementId && replacementChoice ? prepareFurnitureReplacement(plan, replacementId, replacementChoice) : null
+  const trialRect = trial?.item ? furnitureRectFor(trial.item, siteOf(plan)) : null
+  const trialRoom = trialRect ? plan.rooms.find(room => trialRect.x >= room.x && trialRect.y >= room.y && trialRect.x + trialRect.w <= room.x + room.w && trialRect.y + trialRect.h <= room.y + room.h) : null
+  useEffect(() => {
+    if (!open) return
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault(); event.stopImmediatePropagation(); onClose()
+    }
+    window.addEventListener('keydown', dismiss, true)
+    return () => { window.removeEventListener('keydown', dismiss, true); if (previous?.isConnected) previous.focus(); else (document.querySelector<HTMLElement>('.spatial-furniture-tools button') ?? document.querySelector<HTMLElement>('.spatial-furniture-tools select'))?.focus() }
+  }, [open, onClose])
+
+  useEffect(() => {
+    if (!open) return
+    if (inspecting) document.querySelector<HTMLElement>('.spatial-trial-controls button')?.focus()
+    else searchRef.current?.focus()
+  }, [open, inspecting])
 
   if (!open) return null
 
@@ -86,22 +129,22 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
 
   const needle = searchQuery.trim().toLowerCase()
   const dimension = (value: number) => value < 1 ? value.toFixed(2) : value.toFixed(1)
-  const filteredItems = CATALOG_ITEMS.filter((item) => {
+  const filteredItems = CATALOG_ITEMS.map((item, index) => ({ item, error: availability[index] })).filter(({ item, error }) => {
     const matchesCategory = activeCategory === 'all' || item.category === activeCategory
     const matchesSearch =
       needle === '' ||
       item.label.toLowerCase().includes(needle) ||
       item.kind.toLowerCase().includes(needle) ||
       item.category.toLowerCase().includes(needle)
-    return matchesCategory && matchesSearch
+    return matchesCategory && matchesSearch && (!fitOnly || !error)
   })
 
   return (
-    <aside className="furniture-catalog-drawer" aria-label="Furniture catalog">
+    <aside className={`furniture-catalog-drawer ${inspecting && trial?.item ? 'is-inspecting' : ''}`} aria-label="Furniture catalog">
       <header className="catalog-header">
         <div className="catalog-title">
           <Layers className="catalog-title-icon" aria-hidden="true" />
-          <h4>Furniture Catalog</h4>
+          <h4>{replacementId ? 'Replace furniture' : 'Furniture Catalog'}</h4>
         </div>
         <button
           type="button"
@@ -114,8 +157,9 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
         </button>
       </header>
 
-      <div className="catalog-search">
+      <div className="catalog-search catalog-browse">
         <input
+          ref={searchRef}
           type="search"
           placeholder="Filter by name or kind"
           value={searchQuery}
@@ -124,7 +168,36 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
         />
       </div>
 
-      <nav className="catalog-tabs" aria-label="Categories">
+      <div className="catalog-target catalog-browse">
+        {replacementId ? <p>Replace <strong>{replacing ? furnitureLabelFor(replacing) : 'removed piece'}</strong>. Position and orientation stay fixed.</p> : <label>Place in room
+          <select aria-label="Place in room" value={roomId ?? ''} onChange={event => { onRoomChange(event.target.value || null); setPlacementError(false) }}>
+            <option value="">Any room with space</option>
+            {plan.rooms.map(room => <option key={room.id} value={room.id}>{room.name}</option>)}
+          </select>
+        </label>}
+        <label className="catalog-fit"><input type="checkbox" checked={fitOnly} onChange={event => setFitOnly(event.target.checked)} />{replacementId ? 'Fits here only' : 'Fits room only'}</label>
+      </div>
+      {replacementId && <section className="catalog-trial" aria-label="Replacement preview">
+        {replacementChoice ? <>
+          <strong>{replacementChoice.label}</strong>
+          <span>{replacementChoice.wM.toFixed(2)} × {replacementChoice.dM.toFixed(2)} m · {replacementChoice.assetId ? 'measured 3D' : 'schematic'}</span>
+          {trial?.error ? <p role="alert">{trial.error}</p> : <>
+            <p>Preview only — orbit the model or change the view. The saved drawing and checks stay unchanged until Apply.</p>
+            {trialRoom && trialRect && <svg className="catalog-trial-plan" viewBox={`0 0 ${trialRoom.w * siteOf(plan).w} ${trialRoom.h * siteOf(plan).h}`} role="img" aria-label="Replacement footprint in its room">
+              <rect x="0" y="0" width={trialRoom.w * siteOf(plan).w} height={trialRoom.h * siteOf(plan).h} className="catalog-room-outline" />
+              {plan.furniture.filter(item => item.id !== replacementId).map(item => { const r = furnitureRectFor(item, siteOf(plan)); return <rect key={item.id} x={(r.x - trialRoom.x) * siteOf(plan).w} y={(r.y - trialRoom.y) * siteOf(plan).h} width={r.w * siteOf(plan).w} height={r.h * siteOf(plan).h} className="catalog-other-piece" /> })}
+              <rect x={(trialRect.x - trialRoom.x) * siteOf(plan).w} y={(trialRect.y - trialRoom.y) * siteOf(plan).h} width={trialRect.w * siteOf(plan).w} height={trialRect.h * siteOf(plan).h} className="catalog-new-piece" />
+            </svg>}
+          </>}
+        </> : <p>Choose a piece below to try it at the same centre, at its real size.</p>}
+        <div className="catalog-trial-actions">
+          {trial?.item && <button type="button" onClick={onInspectReplacement}>{inspecting ? 'Back to choices' : 'Inspect in 3D'}</button>}
+          <button type="button" onClick={onApplyReplacement} disabled={!trial?.item}>Apply replacement</button>
+          <button type="button" onClick={onClose}>Cancel</button>
+          {replacementChoice && <button type="button" onClick={() => onPreviewReplacement(null)}>Clear preview</button>}
+        </div>
+      </section>}
+      <nav className="catalog-tabs catalog-browse" aria-label="Categories">
         {categories.map((c) => (
           <button
             key={c.id}
@@ -139,11 +212,11 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
       </nav>
 
       {placementError && <p className="catalog-empty" role="alert">Could not find clear space at real size. Try a smaller piece, or close the catalogue and choose another room.</p>}
-      <div className="catalog-grid">
+      <div className="catalog-grid catalog-browse">
         {filteredItems.length === 0 ? (
           <p className="catalog-empty">No pieces match that filter.</p>
         ) : (
-          filteredItems.map((item, idx) => {
+          filteredItems.map(({ item, error }, idx) => {
             const Icon = item.icon
             const size = item.size ?? { wM: furnitureCatalog[item.kind].w, dM: furnitureCatalog[item.kind].d }
             const dimensions = `${dimension(size.wM)} × ${dimension(size.dM)} m`
@@ -151,21 +224,23 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
               <button
                 key={`${item.kind}-${idx}`}
                 type="button"
-                onClick={() => setPlacementError(!onAddFurniture(item.kind, item.label, item.size, item.assetId))}
+                onClick={() => replacementId ? onPreviewReplacement(choiceFor(item)) : setPlacementError(!onAddFurniture(item.kind, item.label, item.size, item.assetId))}
                 className="catalog-card"
-                aria-label={`Add ${item.label}, ${dimensions}`}
+                aria-label={`${replacementId ? 'Try' : 'Add'} ${item.label}, ${dimensions}`}
+                aria-pressed={replacementId ? replacementChoice?.label === item.label : undefined}
               >
                 <span className="catalog-card-icon" aria-hidden="true">
                   <Icon className="catalog-card-icon-svg" />
                 </span>
                 <strong className="catalog-card-name">{item.label}</strong>
-                <span className="catalog-card-dim">{dimensions}{item.assetId ? ' · measured 3D' : ''}</span>
+                <span className="catalog-card-dim">{dimensions}{item.assetId ? ' · measured 3D' : ' · schematic'}</span>
+                <span className="catalog-fit-result">{error ? (replacementId ? 'Does not fit here' : 'No clear space found') : (replacementId ? 'Fits here' : 'Clear space found')}</span>
               </button>
             )
           })
         )}
       </div>
-      <p className="catalog-credit">
+      <p className="catalog-credit catalog-browse">
         Measured 3D assets · CC0 / CC BY 4.0 ·{' '}
         <a href={`${import.meta.env.BASE_URL}licenses/furniture.txt`} target="_blank" rel="noreferrer">credits</a>
       </p>
