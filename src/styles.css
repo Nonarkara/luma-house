@@ -4296,47 +4296,81 @@ summary:focus-visible {
 }
 
 .science-dock-summary {
-  min-height: 58px;
-  display: grid;
-  grid-template-columns: 1.25fr repeat(3, 1fr) 1.2fr;
+  min-height: 52px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 22px;
+  padding: 6px 12px;
   border-bottom: 1px solid var(--border);
 }
 
-.science-kicker,
 .science-metric,
 .science-net {
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 10px 12px;
-  border-right: 1px solid var(--border);
 }
 
 .science-kicker {
-  display: grid;
-  grid-template-columns: 7px 1fr;
-  align-content: center;
+  display: flex;
+  align-items: baseline;
   gap: 2px 8px;
-  color: var(--text-primary);
+  margin: 0 0 0 auto;
+  color: var(--text-tertiary);
   font-size: 9px;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
 
 .science-kicker small {
-  grid-column: 2;
   color: var(--text-tertiary);
   font: 400 8px/1.2 'Source Sans 3', sans-serif;
   letter-spacing: .03em;
+  text-transform: none;
 }
 
 .science-live {
-  grid-row: 1 / span 2;
+  flex: none;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--accent-primary);
+}
+
+/* The breakdown is the net figure's working out, not another headline: it is
+   set at the note role and kept quiet so the two primary figures lead. */
+.science-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 18px;
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.science-breakdown span {
+  display: grid;
+  gap: 2px;
+}
+
+.science-breakdown small {
+  color: var(--text-tertiary);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.science-breakdown strong {
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.science-breakdown em {
+  color: var(--text-tertiary);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 400;
 }
 
 .science-metric svg,
@@ -4369,7 +4403,8 @@ summary:focus-visible {
   white-space: nowrap;
 }
 
-.science-metric em {
+.science-metric em,
+.science-net em {
   color: var(--text-tertiary);
   font-size: 9px;
   font-style: normal;
@@ -4377,26 +4412,30 @@ summary:focus-visible {
 }
 
 .science-net {
-  border-right: 0;
   background: rgba(var(--studio-action-rgb, 138, 76, 22), 0.08);
+  padding: 4px 10px;
+  border-radius: 2px;
 }
 
 .science-net.is-heat-out {
   background: rgba(var(--studio-ink-rgb, 38, 56, 63), 0.035);
 }
 
+/* The time controls are inputs, not a strip of the sheet. The slider is sized
+   to the range it controls — a 24-hour scrubber does not need 800px — and the
+   row is packed to the left so the space it gives up goes back to the model. */
 .science-controls {
   min-height: 44px;
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto auto auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  padding: 7px 8px 7px 12px;
+  gap: 8px 14px;
+  padding: 6px 12px;
 }
 
 .sun-scrubber {
   display: grid;
-  grid-template-columns: 58px minmax(100px, 1fr) 92px;
+  grid-template-columns: auto minmax(120px, 220px) auto;
   align-items: center;
   gap: 9px;
 }
@@ -4563,16 +4602,28 @@ summary:focus-visible {
   .science-dock-summary {
     grid-column: 1;
     grid-row: 1;
-    grid-template-columns: repeat(2, 1fr);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    padding: 4px 8px;
     border-bottom: 0;
   }
 
+  /* The phone shows the two figures that answer the question. This used to be
+     `nth-of-type(2)`, which meant "the second div in this row" — it hid the
+     sunlit floor the moment the row's markup changed. It names the figure now. */
   .science-metric {
     display: none;
   }
 
-  .science-metric:nth-of-type(2) {
+  .science-metric.is-primary {
     display: flex;
+  }
+
+  /* The breakdown is the working-out of the net figure; on a phone the net
+     figure is the point, so the working-out is not carried. */
+  .science-breakdown {
+    display: none;
   }
 
   .science-net {
@@ -7186,7 +7237,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 }
 
 .spatial3d-shell { isolation: isolate; }
-.canvas-frame:has(> .spatial-wrap) { display: grid; grid-template-rows: minmax(320px, 1fr) auto; overflow: auto; }
+.canvas-frame:has(> .spatial-wrap) { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(320px, 1fr) auto; overflow: auto; }
 .canvas-frame > .spatial-wrap { position: relative; inset: auto; min-height: 320px; }
 .canvas-frame:has(> .spatial-wrap) > .science-dock { position: relative; inset: auto; width: 100%; margin: 0; }
 .render-disclaimer { position: static; padding: 8px 12px; font-size: 10px; line-height: 1.4; text-shadow: none; }

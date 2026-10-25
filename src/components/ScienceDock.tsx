@@ -1,6 +1,6 @@
 import { clockLabel } from '../location/solar'
 import React from 'react'
-import { ArrowDownRight, ArrowUpRight, CircleHelp, CloudSun, Snowflake, Sun, Thermometer } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CircleHelp, Sun } from 'lucide-react'
 import type { HeatFlowSnapshot } from '../analysis'
 
 function watts(value: number): string {
@@ -52,27 +52,23 @@ export const ScienceDock = React.memo(function ScienceDock({
         {mobileExpanded ? 'Done' : 'Adjust'}
       </button>
       <div className="science-dock-summary">
-        <div className="science-kicker">
-          <span className="science-live" />
-          Live envelope snapshot
-          <small>clear-sky concept model</small>
-        </div>
-        <div className="science-metric">
+        <div className="science-metric is-primary">
           <Sun />
           <span><small>Sunlit floor now</small><strong>{directSunM2.toFixed(1)} m² <em>{sunPercent}%</em></strong></span>
         </div>
-        <div className="science-metric">
-          <CloudSun />
-          <span><small>Through glass</small><strong>{watts(heat.solarW)} <em>solar</em></strong></span>
-        </div>
-        <div className="science-metric">
-          {entering ? <Thermometer /> : <Snowflake />}
-          <span><small>Walls + openings</small><strong>{watts(heat.wallW + heat.openingW)} <em>{heat.wallW + heat.openingW >= 0 ? 'in' : 'out'}</em></strong></span>
-        </div>
         <div className={`science-net is-${heat.mode}`}>
           <HeatIcon />
-          <span><small>Net right now</small><strong>{watts(heat.netW)} {heat.mode === 'balanced' ? 'balanced' : heat.mode === 'heat-in' ? 'entering' : 'leaving'}</strong></span>
+          <span><small>Net right now</small><strong>{watts(heat.netW)} <em>{heat.mode === 'balanced' ? 'balanced' : heat.mode === 'heat-in' ? 'entering' : 'leaving'}</em></strong></span>
         </div>
+        <p className="science-breakdown">
+          <span><small>Through glass</small><strong>{watts(heat.solarW)} <em>solar</em></strong></span>
+          <span><small>Walls + openings</small><strong>{watts(heat.wallW + heat.openingW)} <em>{heat.wallW + heat.openingW >= 0 ? 'in' : 'out'}</em></strong></span>
+        </p>
+        <p className="science-kicker">
+          <span className="science-live" />
+          Live envelope snapshot
+          <small>clear-sky concept model</small>
+        </p>
       </div>
 
       <div className="science-controls">

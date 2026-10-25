@@ -215,6 +215,18 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .canvas-toolbar > .contextual-action-bar { flex-basis: 100%; width: fit-content; max-width: 100%; min-height: 40px; }
 .science-dock { backdrop-filter: none; }
 .science-dock strong, .science-metric strong, .science-net strong { color: var(--studio-ink); }
+/*
+  Hierarchy inside the snapshot. The two figures that answer "how is the sun
+  doing right now?" carry the body role; the breakdown that produced them and
+  the qualifier that describes the model are kept at the note role, so the eye
+  lands on the answer before the working-out.
+*/
+.science-metric.is-primary strong, .science-net strong { font-size: var(--font-body); line-height: 1.15; }
+.science-metric em, .science-net em, .science-breakdown em { font-size: var(--font-note); }
+.science-breakdown small, .science-breakdown strong { font-size: var(--font-note); }
+.science-breakdown { color: var(--text-secondary); }
+.science-kicker { font-size: var(--font-note); letter-spacing: 0; text-transform: none; color: var(--text-secondary); }
+.science-kicker small { color: var(--text-tertiary); }
 @media (max-width: 1100px) { .canvas-toolbar > .contextual-action-bar { grid-column: 1 / -1; } }
 @media (max-width: 700px) {
   .floating-island-toolbar { scrollbar-width: thin; scrollbar-color: var(--studio-sienna) var(--bg-secondary); }
@@ -1154,25 +1166,112 @@ body { overflow-y: auto; }
 
 /* Furnishing controls occupy their own rows; the model keeps its whole viewport. */
 .spatial3d-shell { position: relative; inset: auto; display: flex; flex-direction: column; height: auto; min-height: 0; }
-.app-shell .canvas-frame:has(> .spatial-wrap) { grid-template-rows: minmax(max-content, 1fr) auto; overflow: auto; align-content: start; }
-.app-shell .canvas-frame > .spatial-wrap { display: flex; flex-direction: column; min-height: min-content; }
-.spatial-wrap > .spatial3d-shell { flex: 1; }
-.spatial-model { position: relative; flex: 1 0 auto; height: clamp(240px, 32dvh, 480px); min-height: 240px; }
+/* The 3D frame is a grid with one implicit column. An `auto` column takes the
+   max-content width of what it holds, so a toolbar row that is wider than the
+   screen pushed the canvas out to 1199px inside a 390px viewport and the model
+   was drawn off the page. The column is told to fit, and the toolbar scrolls
+   inside it. */
+.app-shell .canvas-frame:has(> .spatial-wrap) { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(max-content, 1fr) auto; overflow: auto; align-content: start; }
+.app-shell .canvas-frame > .spatial-wrap { display: flex; flex-direction: column; min-height: min-content; min-width: 0; }
+.spatial-wrap > .spatial3d-shell { flex: 1; min-width: 0; }
+.spatial-model { position: relative; flex: 1 1 auto; height: clamp(200px, 32dvh, 480px); min-height: 200px; }
 .spatial-model > div { position: absolute !important; inset: 0; }
 .spatial3d-shell .spatial-toolbar { position: static; flex-wrap: wrap; gap: 4px; padding: 4px; overflow: visible; }
 .spatial3d-shell .spatial-toolbar > div { flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; border: 0; max-width: 100%; min-width: 0; }
 .spatial3d-shell .spatial-tb-btn { min-height: 32px; padding: 4px 6px; font-family: var(--type-body); }
-.spatial-furniture-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 4px; font-size: var(--font-note); }
+.spatial-furniture-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 4px 0; font-size: var(--font-note); }
 .spatial-furniture-tools :is(button, select), .spatial3d-shell .study-launchers button { min-height: 32px; padding: 4px 6px; border: 1px solid var(--studio-border); background: var(--studio-sheet); color: var(--studio-ink); font-size: var(--font-note); }
-.spatial-furniture-tools select { width: 20ch; max-width: 100%; }
+.spatial-furniture-tools select { width: 18ch; max-width: 100%; }
 .spatial-furniture-tools > span { max-width: 65ch; }
-.spatial3d-shell .study-launchers { position: static; padding: 4px; flex-wrap: wrap; }
-.spatial3d-shell .spatial-sun-hud, .spatial3d-shell .spatial-orbit-note { position: static; margin: 0; padding: 4px 8px; max-width: 100%; border: 0; }
-.spatial3d-shell .spatial-sun-hud { gap: 6px; }
-.spatial-study-info { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.spatial-study-info .spatial-sun-hud > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; max-width: 65ch; }
-.spatial-study-info .sun-orb { flex: none; width: 12px; height: 12px; border-radius: 50% !important; }
+.spatial3d-shell .study-launchers { position: static; padding: 4px 0; flex-wrap: wrap; }
+
+/*
+  The bottom of the 3D view is ONE surface.
+  It used to be five bands, each with its own rule: the furniture bar, the
+  study row, the five numbers, the time row and the assistant. The model sat
+  in a 255px gutter under the user's eye, and the numbers read as a row of
+  equal cards because each one had been given a cell of its own.
+
+  Now the selection, the state of the study, the live snapshot and the time
+  controls are groups inside one bordered band. The groups are separated by
+  space, not by rules, and the two figures that answer the question lead.
+*/
+.spatial-bottom { flex: none; display: grid; grid-template-rows: auto auto; align-content: start; border-top: 1px solid var(--studio-border); background: var(--studio-sheet); }
+/* In the Renders gallery the 3D preview sits inside a stage row that is sized
+   to fill. The shell left a 112px void under the model; it fills the stage now. */
+.render-stage > .spatial3d-shell { height: 100%; }
+/* Phone: the gallery's page control landed on the study's own sentence. The
+   thumbnail row underneath already pages the views, so the duplicate goes. */
+@media (max-width: 720px) {
+  .render-stage .render-nav { display: none; }
+}
+.spatial-bottom-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 22px; padding: 5px 10px; }
+.spatial-state { min-width: 0; flex: 1 1 340px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px; }
+.spatial3d-shell .spatial-sun-hud, .spatial3d-shell .spatial-orbit-note { position: static; margin: 0; padding: 0; max-width: 100%; border: 0; background: transparent; }
+.spatial3d-shell .spatial-sun-hud { gap: 7px; align-items: center; }
+.spatial3d-shell .spatial-sun-hud > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; }
+.spatial3d-shell .sun-orb { flex: none; width: 10px; height: 10px; border-radius: 50% !important; }
+.spatial3d-shell .spatial-orbit-note { font-size: var(--font-note); color: var(--text-secondary); }
+.spatial-bottom > .science-dock { position: static; inset: auto; border: 0; border-top: 1px solid var(--studio-border); background: transparent; }
+.spatial-bottom > .science-dock .science-dock-summary { border-bottom: 0; }
+.spatial-bottom > .science-dock .science-controls { border-top: 1px solid var(--studio-border); }
 .spatial-furniture-handle { min-width: 44px; min-height: 44px; padding: 4px; border: 1px solid var(--studio-sienna); background: var(--studio-sheet); color: var(--studio-ink); font-size: var(--font-note); touch-action: none; cursor: move; }
+
+/*
+  Phone: the 3D toolbar was a desktop row allowed to wrap, so it became five
+  rows of buttons — 148px of chrome standing between the reader and a 270px
+  model. It is one row now, and it says that it scrolls: the row is cut at the
+  edge and the scrollbar carries the accent, the same way the room key does.
+*/
+@media (max-width: 720px) {
+  .spatial3d-shell .spatial-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    scrollbar-color: var(--studio-sienna) var(--bg-secondary);
+  }
+  .spatial3d-shell .spatial-toolbar > div { flex: none; flex-wrap: nowrap; }
+  .spatial3d-shell .spatial-tb-btn { scroll-snap-align: start; }
+  .spatial3d-shell .spatial-section { flex: none; }
+}
+
+/*
+  Phone: the 3D and Renders views have no plan toolbar, so their tool dock was
+  a 390px band holding 89px of undo and redo and 300px of nothing. The dock is
+  now only as wide as what it carries.
+*/
+@media (max-width: 720px) {
+  .app-shell .canvas-tools:not(:has(.floating-island-toolbar)) {
+    grid-template-columns: auto;
+    justify-self: end;
+    justify-content: end;
+    border-left: 0;
+    min-height: 44px;
+  }
+  .app-shell .canvas-tools:not(:has(.floating-island-toolbar)) .dock-history .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  .spatial-bottom-bar { gap: 4px 10px; padding: 4px 8px; }
+}
+
+/*
+  Phone: the 3D footer carried six groups in six stacked rows — the selection,
+  the state, the hint, the two actions, the numbers and the coach. It is three
+  rows now: what is selected and what can be done, what the study is showing,
+  and the numbers that answer the question.
+*/
+@media (max-width: 720px) {
+  .spatial-bottom-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; padding: 6px 8px; }
+  .spatial-bottom-bar > .spatial-furniture-tools { grid-column: 1; grid-row: 1; }
+  .spatial-bottom-bar > .study-launchers { grid-column: 2; grid-row: 1; justify-self: end; }
+  .spatial-bottom-bar > .spatial-state { grid-column: 1 / -1; grid-row: 2; }
+  .spatial-bottom-bar > .spatial-trial-controls { grid-column: 1 / -1; grid-row: 3; }
+  .spatial-bottom-bar > .spatial-trial-notice { grid-column: 1 / -1; grid-row: 2; }
+  .spatial-bottom > .science-dock .science-dock-summary { padding: 4px 8px; }
+}
 
 /* Product trials: a decision beside the model, with an inspection strip that
    gives the model back its full width. Accepted analyses never use this draft. */

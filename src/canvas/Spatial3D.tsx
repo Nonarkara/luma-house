@@ -599,7 +599,7 @@ export default function Spatial3D({
   windFrom = 180,
   windSpeed = 3,
   projectTitle, location, year, onScenesChange, onRecallScene, onStudyTimeChange,
-  previewingFurniture = false, onReplaceFurniture, trialControls,
+  previewingFurniture = false, onReplaceFurniture, trialControls, footer,
   selectedFurniture, onSelectFurniture, onMoveFurniture, onRotateFurniture, onDuplicateFurniture, onDeleteFurniture, onOpenFurnitureCatalog,
 
 }: {
@@ -610,6 +610,8 @@ export default function Spatial3D({
   onRecallScene: (scene: StudyScene) => void
   onStudyTimeChange: (day: number, hour: number, year: number) => void
   trialControls?: import('react').ReactNode
+  /** The live sun + heat snapshot, carried on the same surface as the state. */
+  footer?: import('react').ReactNode
   previewingFurniture?: boolean
   onReplaceFurniture: () => void
   selectedFurniture: string | null
@@ -921,41 +923,55 @@ export default function Spatial3D({
       </Canvas>
       </div>
 
-      {trialControls}
-      {!ghost && !previewingFurniture && plan.furniture.length > 0 && <div className="spatial-furniture-tools" aria-label="Furniture editing">
-        <select aria-label="Furniture in 3D" value={selectedFurniture ?? ''} disabled={!editable} onChange={event => onSelectFurniture(event.target.value || null)}>
-          <option value="">Select furniture</option>
-          {plan.furniture.map(item => <option key={item.id} value={item.id}>{furnitureLabelFor(item)}</option>)}
-        </select>
-        {furnitureItem && <>
-          <span>{(() => { const rect = furnitureRectFor(furnitureItem, site); return `${(rect.w * site.w / 100).toFixed(2)} × ${(rect.h * site.h / 100).toFixed(2)} m` })()}</span>
-          <button type="button" disabled={!editable} onClick={() => { setDisplayStyle('solid'); onReplaceFurniture() }}>Replace furniture</button>
-          <button type="button" disabled={!editable} onClick={onRotateFurniture}>Rotate furniture</button>
-          <button type="button" disabled={!editable} onClick={onDuplicateFurniture}>Duplicate furniture</button>
-          <button type="button" disabled={!editable} onClick={onDeleteFurniture}>Remove furniture</button>
-          <span role="status">{furnitureIssues.length ? furnitureIssues.join(' · ') : 'Drag to move · arrows nudge'}</span>
-        </>}
-      </div>}
+      {/*
+        One surface. The bottom of the 3D view used to be five stacked bands —
+        the furniture bar, the study row, the numbers, the time row and the
+        assistant — each with its own rule, so the model was pushed into a
+        255px gutter under the user's eye. The selection, the state of the
+        study and the live numbers are three answers to one question ("what
+        am I looking at?"), so they are one band now, grouped by what they
+        are rather than by when they were written.
+      */}
+      <div className="spatial-bottom">
+        <div className="spatial-bottom-bar">
+          {trialControls}
+          {!ghost && !previewingFurniture && plan.furniture.length > 0 && <div className="spatial-furniture-tools" aria-label="Furniture editing">
+            <select aria-label="Furniture in 3D" value={selectedFurniture ?? ''} disabled={!editable} onChange={event => onSelectFurniture(event.target.value || null)}>
+              <option value="">Select furniture</option>
+              {plan.furniture.map(item => <option key={item.id} value={item.id}>{furnitureLabelFor(item)}</option>)}
+            </select>
+            {furnitureItem && <>
+              <span>{(() => { const rect = furnitureRectFor(furnitureItem, site); return `${(rect.w * site.w / 100).toFixed(2)} × ${(rect.h * site.h / 100).toFixed(2)} m` })()}</span>
+              <button type="button" disabled={!editable} onClick={() => { setDisplayStyle('solid'); onReplaceFurniture() }}>Replace furniture</button>
+              <button type="button" disabled={!editable} onClick={onRotateFurniture}>Rotate furniture</button>
+              <button type="button" disabled={!editable} onClick={onDuplicateFurniture}>Duplicate furniture</button>
+              <button type="button" disabled={!editable} onClick={onDeleteFurniture}>Remove furniture</button>
+              <span role="status">{furnitureIssues.length ? furnitureIssues.join(' · ') : 'Drag to move · arrows nudge'}</span>
+            </>}
+          </div>}
+          {previewingFurniture && !trialControls && <p className="spatial-trial-notice" role="status">Replacement preview only. Apply updates the drawing and technical checks.</p>}
 
-      {previewingFurniture && <p className="spatial-trial-notice" role="status">Replacement preview only. Apply updates the drawing and technical checks.</p>}
-      <div className="spatial-study-info">
-      <StudyPanel plan={plan} title={projectTitle} location={location} day={day} hour={hour} year={year} settings={settings}
-        capture={captureView} restore={applyScene} onScenesChange={onScenesChange} onTimeChange={onStudyTimeChange} disabled={ghost || walkMode || !!tourWaypoint || !!furniturePreview || previewingFurniture} />
-      <div className="spatial-sun-hud" aria-live="polite">
-        <span className="sun-orb" style={{ opacity: sunAltitude > 0 ? 1 : 0.25 }} />
-        <div>
-          <small>{displayStyle} · {year} · day {day} · local geometry</small>
-          <strong>{clockLabel(hour)} · {sunAltitude.toFixed(1)}° altitude</strong>
-          <em>{sunAzimuth.toFixed(1)}° azimuth · {locationLabel}</em>
+          <div className="spatial-state">
+            <div className="spatial-sun-hud" aria-live="polite">
+              <span className="sun-orb" style={{ opacity: sunAltitude > 0 ? 1 : 0.25 }} />
+              <div>
+                <strong>{clockLabel(hour)} · {sunAltitude.toFixed(1)}° altitude</strong>
+                <small>{displayStyle} · {year} · day {day} · {sunAzimuth.toFixed(1)}° azimuth · {locationLabel}</small>
+              </div>
+            </div>
+            {exportError && <p role="alert" className="spatial-orbit-note">{exportError}</p>}
+            <div className="spatial-orbit-note">
+              {walkMode
+                ? 'Eye-level walk · click model to look · WASD moves · Esc exits · concept view has no wall collision'
+                : `${preset === 'topdown' ? 'North-up parallel view' : 'Drag to orbit'} · ${architectural ? 'cut faces filled · ' : ''}${showShadows ? 'full building in shadow model' : 'shadows off'}`}
+              {displayStyle === 'solid' && <span> · measured boxes while furniture models load, are unavailable or meet the section cut</span>}
+            </div>
+          </div>
+
+          <StudyPanel plan={plan} title={projectTitle} location={location} day={day} hour={hour} year={year} settings={settings}
+            capture={captureView} restore={applyScene} onScenesChange={onScenesChange} onTimeChange={onStudyTimeChange} disabled={ghost || walkMode || !!tourWaypoint || !!furniturePreview || previewingFurniture} />
         </div>
-      </div>
-      {exportError && <p role="alert" className="spatial-orbit-note">{exportError}</p>}
-      <div className="spatial-orbit-note">
-        {walkMode
-          ? 'Eye-level walk · click model to look · WASD moves · Esc exits · concept view has no wall collision'
-          : `${preset === 'topdown' ? 'North-up parallel view' : 'Drag to orbit'} · ${architectural ? 'cut faces filled · ' : ''}${showShadows ? 'full building in shadow model' : 'shadows off'}`}
-        {displayStyle === 'solid' && <span> · measured boxes while furniture models load, are unavailable or meet the section cut</span>}
-      </div>
+        {footer}
       </div>
     </div>
   )

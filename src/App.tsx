@@ -11,7 +11,7 @@ import { traceSiteFromImage } from './concept/reviewTrace'
 import { LayoutPresetDialog } from './components/LayoutPresetDialog'
 import { TraceReview, type PendingTrace } from './components/TraceReview'
 import { updateOpeningDimensions } from './openingGeometry'
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { AppWindow, Armchair, Check, DoorOpen, ImagePlus, MapPin, MousePointer2, Pencil, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
 import { FloorPlan } from './canvas/FloorPlan'
 import { RenderGallery } from './canvas/RenderGallery'
@@ -1402,17 +1402,19 @@ function App() {
     />
   )
 
-  const localSpatialView = (
+  const localSpatialView = (footer?: ReactNode) => (
     <Suspense fallback={<div className="spatial-note">Loading 3D…</div>}>
       <Spatial3D
         theme={theme}
         plan={catalogPreviewPlan}
         previewingFurniture={catalogPreviewPlan !== plan}
+        footer={footer}
         trialControls={catalogInspect && replacementResult?.item && <div className="spatial-trial-controls" aria-label="Replacement preview actions">
           <strong>{replacementChoice?.label}</strong><span>{replacementChoice?.wM.toFixed(2)} × {replacementChoice?.dM.toFixed(2)} m</span>
           <button type="button" onClick={() => setCatalogInspect(false)}>Back to choices</button>
           <button type="button" onClick={applyReplacement}>Apply replacement</button>
           <button type="button" onClick={closeCatalog}>Cancel</button>
+          <small role="status">Replacement preview only. Apply updates the drawing and technical checks.</small>
         </div>}
         sunAzimuth={sun.azimuth}
         sunAltitude={sun.altitude}
@@ -1607,7 +1609,7 @@ function App() {
               />
             ) : view === 'spatial' ? (
               <div className="spatial-wrap">
-                {localSpatialView}
+                {localSpatialView(localLightControls)}
                 {isEmpty && (
                   <div className="spatial-ghost-note" role="status">
                     <p>Draw a room in Plan to see it in 3D</p>
@@ -1637,7 +1639,7 @@ function App() {
                 plan={plan}
                 sun={sun}
                 conceptImages={conceptImages}
-                localView={localSpatialView}
+                localView={localSpatialView()}
                 localControls={!isEmpty && localLightControls}
                 onRequestConcept={() => void runConceptRender()}
                 isRendering={isRendering}
@@ -1645,7 +1647,9 @@ function App() {
               />
             )}
             {view !== 'renders' && !isEmpty && (
-              view === 'spatial' || (mode === 'light' && valueLens === 'off') ? localLightControls : valueLens === 'off' ? (
+              // The 3D view carries the snapshot on its own surface, so it does
+              // not also stand it up as a separate row of the stage.
+              view === 'spatial' ? null : (mode === 'light' && valueLens === 'off') ? localLightControls : valueLens === 'off' ? (
                 <button className="science-preview" type="button" onClick={() => setMode('light')}>
                   <span className="science-live" />
                   <span><small>Live sun + heat</small><strong>{Math.abs(heatFlow.netW) >= 1000 ? `${(Math.abs(heatFlow.netW) / 1000).toFixed(1)} kW` : `${Math.round(Math.abs(heatFlow.netW))} W`} {heatFlow.mode === 'heat-out' ? 'leaving' : 'entering'}</strong></span>
