@@ -1,0 +1,41 @@
+name: Verify production workflows
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_build:
+        description: Complete commit currently deployed to the primary domain
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DESIGNON_EXPECTED_BUILD: ${{ inputs.expected_build }}
+      DESIGNON_LIVE_URL: https://designon.nonarkara.org/
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Exercise the deployed model and preserve rendered evidence
+        run: >-
+          npx playwright test --config=playwright.live.config.ts
+          e2e/msh-chrome.spec.ts e2e/openings.spec.ts
+          e2e/furnishing-workflow.spec.ts e2e/furniture-replacement.spec.ts
+          e2e/cities.spec.ts
+          --grep 'phone and tablet|empty-room|nothing floats|wall hosting|furnishing controls stay outside|preview is inert|worldwide city updates'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: production-browser-evidence
+          path: test-results/
+          retention-days: 7
