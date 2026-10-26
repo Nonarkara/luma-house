@@ -67,6 +67,15 @@ then verify primary and mirror build bytes plus live changed interactions.
 
 ## Remaining scope
 
+Actual production screenshots exposed a selected-phone state missed by the
+unselected review: the bottom bar reached261px and left only295px for the model,
+because the study actions reserved a column beside four furniture actions.
+Use the full width for selected furniture, keep movement/issues beside studies,
+and keep technical state below. Action verbs retain their full accessible names.
+Add a200px selected-bar budget and350px minimum model at390x844; restoring the
+old grid fails both. Also return the empty64px desktop palette track to the
+model in Spatial/Renders; Plan's palette and header history remain.
+
 Packaging audit: a Python extraction option unsupported by the host failed,
 but a subsequent shell command still uploaded the older localdist. The live
 stamp check detected it. Reinstall the exact validated CIartifact with a

@@ -159,6 +159,19 @@ test.describe('the chrome of the 3D view', () => {
     expect(dock.width, 'the dock is only as wide as what it carries').toBeLessThanOrEqual(dock.inner + 8)
   })
 
+  test('non-plan views return the unused desktop palette track to the model', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 900 })
+    await openStudio(page)
+    for (const view of ['Spatial', 'Renders']) {
+      await page.getByRole('button', { name: view, exact: true }).click()
+      const rail = (await page.locator('.journey-rail-wrap').boundingBox())!
+      const frame = (await page.locator('.canvas-frame').boundingBox())!
+      expect(frame.x, 'there is no empty palette column between the journey and drawing').toBeLessThanOrEqual(rail.x + rail.width + 1)
+      await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Redo', exact: true })).toBeVisible()
+    }
+  })
+
   test('the snapshot leads with the two figures that answer the question', async ({ page }) => {
     await openStudio(page)
     await openSpatial(page)

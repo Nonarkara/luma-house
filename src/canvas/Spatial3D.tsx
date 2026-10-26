@@ -942,13 +942,13 @@ export default function Spatial3D({
             </select>
             {furnitureItem && <>
               <span>{(() => { const rect = furnitureRectFor(furnitureItem, site); return `${(rect.w * site.w / 100).toFixed(2)} × ${(rect.h * site.h / 100).toFixed(2)} m` })()}</span>
-              <button type="button" disabled={!editable} onClick={() => { setDisplayStyle('solid'); onReplaceFurniture() }}>Replace furniture</button>
-              <button type="button" disabled={!editable} onClick={onRotateFurniture}>Rotate furniture</button>
-              <button type="button" disabled={!editable} onClick={onDuplicateFurniture}>Duplicate furniture</button>
-              <button type="button" disabled={!editable} onClick={onDeleteFurniture}>Remove furniture</button>
-              <span role="status">{furnitureIssues.length ? furnitureIssues.join(' · ') : 'Drag to move · arrows nudge'}</span>
+              <button type="button" aria-label="Replace furniture" disabled={!editable} onClick={() => { setDisplayStyle('solid'); onReplaceFurniture() }}>Replace</button>
+              <button type="button" aria-label="Rotate furniture" disabled={!editable} onClick={onRotateFurniture}>Rotate</button>
+              <button type="button" aria-label="Duplicate furniture" disabled={!editable} onClick={onDuplicateFurniture}>Duplicate</button>
+              <button type="button" aria-label="Remove furniture" disabled={!editable} onClick={onDeleteFurniture}>Remove</button>
             </>}
           </div>}
+          {!ghost && !previewingFurniture && furnitureItem && <span className="spatial-furniture-hint" role="status">{furnitureIssues.length ? furnitureIssues.join(' · ') : 'Drag to move · arrows nudge'}</span>}
           {previewingFurniture && !trialControls && <p className="spatial-trial-notice" role="status">Replacement preview only. Apply updates the drawing and technical checks.</p>}
 
           <div className="spatial-state">

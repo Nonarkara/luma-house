@@ -678,6 +678,13 @@ body { overflow-y: auto; }
     "rail tools coach";
 }
 
+/* Spatial/Renders have no plan palette; their desktop history actions are
+   already in the header. Return the unused64px track to the work surface. */
+@media (min-width: 721px) {
+  .app-shell .design-stage:not(:has(.floating-island-toolbar)) { grid-template-columns: 64px 0 minmax(0, 1fr); }
+  .app-shell .canvas-tools:not(:has(.floating-island-toolbar)) { display: none; }
+}
+
 /* Journey: a slim numbered rail. Labels stay; metrics move to the tooltip. */
 .app-shell .journey-rail-wrap {
   grid-area: rail;
@@ -1186,6 +1193,7 @@ body { overflow-y: auto; }
 .spatial-furniture-tools :is(button, select), .spatial3d-shell .study-launchers button { min-height: 32px; padding: 4px 6px; border: 1px solid var(--studio-border); background: var(--studio-sheet); color: var(--studio-ink); font-size: var(--font-note); }
 .spatial-furniture-tools select { width: 18ch; max-width: 100%; }
 .spatial-furniture-tools > span { max-width: 65ch; }
+.spatial-furniture-hint { max-width: 65ch; font-size: var(--font-note); }
 .spatial3d-shell .study-launchers { position: static; padding: 4px 0; flex-wrap: wrap; }
 
 /*
@@ -1274,6 +1282,11 @@ body { overflow-y: auto; }
   .spatial-bottom-bar > .spatial-state { grid-column: 1 / -1; grid-row: 2; }
   .spatial-bottom-bar > .spatial-trial-controls { grid-column: 1 / -1; grid-row: 3; }
   .spatial-bottom-bar > .spatial-trial-notice { grid-column: 1 / -1; grid-row: 2; }
+  .spatial-bottom-bar:has(.spatial-furniture-tools button) { gap: 4px 10px; padding: 4px 8px; }
+  .spatial-bottom-bar:has(.spatial-furniture-tools button) > .spatial-furniture-tools { grid-column: 1 / -1; grid-row: 1; }
+  .spatial-bottom-bar > .spatial-furniture-hint { grid-column: 1; grid-row: 2; }
+  .spatial-bottom-bar:has(.spatial-furniture-tools button) > .study-launchers { grid-column: 2; grid-row: 2; }
+  .spatial-bottom-bar:has(.spatial-furniture-tools button) > .spatial-state { grid-column: 1 / -1; grid-row: 3; }
   .spatial-bottom > .science-dock .science-dock-summary { padding: 4px 8px; }
 }
 

@@ -151,6 +151,12 @@ test.describe('draw, furnish and inspect the same model', () => {
         const tools = (await page.getByLabel('Furniture editing', { exact: true }).boundingBox())!
         expect(tools.y).toBeGreaterThanOrEqual(canvas.y + canvas.height - 1)
         expect(canvas.height).toBeGreaterThanOrEqual(239)
+        if (width === 390) {
+          const bar = (await page.locator('.spatial-bottom-bar').boundingBox())!
+          expect(tools.width, 'selected furniture uses the full row instead of a narrow column beside the study actions').toBeGreaterThanOrEqual(bar.width - 20)
+          expect(bar.height, 'selected controls, hint, studies and state fit their content').toBeLessThanOrEqual(200)
+          expect(canvas.height, 'the selected room keeps useful drawing space').toBeGreaterThanOrEqual(350)
+        }
         // R3F can leave a perfectly sized canvas with a pixel-sized orthographic
         // frustum: then every solid shrinks to a speck. Measure painted content.
         await expect.poll(() => page.locator('.spatial-model canvas').evaluate(canvas => {

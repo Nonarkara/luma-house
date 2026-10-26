@@ -180,10 +180,11 @@ old grid's claim, and they crushed the identity while the actions ran over
 the mode switch below 1115px — the Spatial tab could not be clicked at 768px.
 The three parts must never overlap at any width.
 
-Two things that look like bugs and are not: the phone room key is a
-deliberate scroller (`overflow-x: auto` + `scroll-snap`), and the two left
-columns deliberately share one 56px rule grid. A deliberate scroller tells
-the reader it scrolls; an accidental one hides a control.
+The phone room key is a deliberate scroller (`overflow-x: auto` +
+`scroll-snap`). Plan keeps its two left control columns; Spatial/Renders return
+the unused palette track to the model, with history still in the header.
+A deliberate scroller tells the reader it scrolls; an accidental one hides a
+control.
 
 ## Conventions
 

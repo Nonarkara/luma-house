@@ -1,5 +1,12 @@
 ## Release reconciliation — 2026-10-26
 
+Selected furniture is a separate density state: its controls use the full phone
+row, with movement/issue feedback beside study actions and state below. Keep
+readable action verbs with complete accessible names; no noun repetition just
+to inflate buttons. The selected footer has a200px content budget and model
+minimum350px at390x844. Spatial/Renders reclaim the unused64px desktop palette
+track while Plan retains it and history remains in the header.
+
 Design Read: a measured room is the working surface; navigation and sun controls
 must remain outside it and fit their content. Reference: IKEA Kreativ's public
 room/product configuration workflow, adapted to the existing CAD property-sheet
