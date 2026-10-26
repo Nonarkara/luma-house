@@ -109,8 +109,9 @@ test.describe('the chrome of the 3D view', () => {
     expect(chrome.widest, 'no element may be wider than the window it is drawn in').toBeLessThanOrEqual(chrome.viewW + 1)
   })
 
-  test('the phone keeps the 3D controls in one row', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 })
+  test('phone and tablet keep the 3D controls in one row', async ({ page }) => {
+    for (const width of [390, 1024]) {
+    await page.setViewportSize({ width, height: 844 })
     await openStudio(page)
     await openSpatial(page)
     const rows = await page.evaluate(() => {
@@ -124,6 +125,24 @@ test.describe('the chrome of the 3D view', () => {
       return rows.size
     })
     expect(rows, 'the 3D toolbar is one row on a phone, and it says that it scrolls').toBe(1)
+    }
+  })
+
+  test('empty-room guidance is operable below the model in both views', async ({ page }) => {
+    const empty = { ...chinaApartmentPlan, rooms: [], furniture: [], openings: [] }
+    await page.goto('/#plan=' + encodePlanToHash(empty))
+    for (const view of ['Spatial', 'Renders']) {
+      await page.getByRole('button', { name: view, exact: true }).click()
+      const note = page.locator('.spatial-bottom > .spatial-ghost-note')
+      await expect(note).toContainText('Draw a room in Plan')
+      const model = (await page.locator('.spatial-model').boundingBox())!
+      expect((await note.boundingBox())!.y).toBeGreaterThanOrEqual(model.y + model.height - 1)
+      const action = page.getByRole('button', { name: 'Go to Plan', exact: true })
+      await action.scrollIntoViewIfNeeded()
+      expect(await action.evaluate(el => { const r = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)) })).toBe(true)
+    }
+    await page.getByRole('button', { name: 'Go to Plan', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Plan', exact: true })).toHaveClass(/active/)
   })
 
   test('the phone does not keep an empty tool dock', async ({ page }) => {
@@ -224,6 +243,15 @@ test.describe('the chrome of the 3D view', () => {
       expect(covered.length, `the study launchers are present in ${view}`).toBeGreaterThan(0)
       for (const button of covered) {
         expect(button.covered, `the "${button.label}" launcher is not covered in ${view}`).toBe(false)
+      }
+      if (view === 'Renders') {
+        const stage = (await page.locator('.render-stage').boundingBox())!
+        const nav = (await page.locator('.render-navigation').boundingBox())!
+        expect(nav.y, 'gallery navigation stays below the preview').toBeGreaterThanOrEqual(stage.y + stage.height - 1)
+        await page.getByRole('button', { name: 'Next view', exact: true }).click()
+        await expect(page.locator('.render-meta')).toContainText('Live 3D massing')
+        await page.getByRole('button', { name: 'Previous view', exact: true }).click()
+        await expect(page.locator('.spatial3d-shell')).toBeVisible()
       }
     }
   })

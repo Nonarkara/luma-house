@@ -1411,7 +1411,13 @@ function App() {
         theme={theme}
         plan={catalogPreviewPlan}
         previewingFurniture={catalogPreviewPlan !== plan}
-        footer={footer}
+        footer={<>
+          {isEmpty && <div className="spatial-ghost-note" role="status">
+            <p>Draw a room in Plan to see it in 3D</p>
+            <button className="button primary small" type="button" onClick={() => goToStage({ mode: 'plan', view: 'plan', tool: 'draw' })}>Go to Plan</button>
+          </div>}
+          {footer}
+        </>}
         trialControls={catalogInspect && replacementResult?.item && <div className="spatial-trial-controls" aria-label="Replacement preview actions">
           <strong>{replacementChoice?.label}</strong><span>{replacementChoice?.wM.toFixed(2)} × {replacementChoice?.dM.toFixed(2)} m</span>
           <button type="button" onClick={() => setCatalogInspect(false)}>Back to choices</button>
@@ -1613,18 +1619,6 @@ function App() {
             ) : view === 'spatial' ? (
               <div className="spatial-wrap">
                 {localSpatialView(localLightControls)}
-                {isEmpty && (
-                  <div className="spatial-ghost-note" role="status">
-                    <p>Draw a room in Plan to see it in 3D</p>
-                    <button
-                      className="button primary small"
-                      type="button"
-                      onClick={() => goToStage({ mode: 'plan', view: 'plan', tool: 'draw' })}
-                    >
-                      Go to Plan
-                    </button>
-                  </div>
-                )}
                 {(conceptImages.length > 0 || isRendering) && (
                   <div className="concept-strip" aria-live="polite">
                     {isRendering && <div className="concept-loading"><RotateCcw className="spin" /> Rendering concept…</div>}

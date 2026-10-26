@@ -48,6 +48,12 @@ Three.js, SunCalc and catalogue licensing remain intact; no dependency added.
 
 ## Gates
 
+Independent pixel review found two further defects:1024px Spatial/Renders
+toolbar wrapped to112px (including a row for section cut alone), and the empty
+room callout overlaid the footer. Extend deliberate toolbar scrolling through
+1100px, reclaiming72px, and put the preserved empty-state action in normal flow
+under the model in both views. New browser gates assert both repairs.
+
 Opening unit fixtures cover corners, real dimensions, pixel reach after resize,
 off-wall/undersized-wall refusal and input immutability. Real browser cases
 check corner placement, off-wall refusal and Undo/Redo. Existing whole-suite
