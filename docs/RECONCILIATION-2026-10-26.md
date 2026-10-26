@@ -67,6 +67,15 @@ then verify primary and mirror build bytes plus live changed interactions.
 
 ## Remaining scope
 
+Packaging audit: a Python extraction option unsupported by the host failed,
+but a subsequent shell command still uploaded the older localdist. The live
+stamp check detected it. Reinstall the exact validated CIartifact with a
+fail-stop script; corrected primary upload911cc2b8 serves2ebb9b8. Harden
+releaseDecision to reject missing, shortened or stale dist stamps before any
+upload, even when git is clean, pushed and green. Five new cases preserve this
+incident as a gate; the old function admitted allfive, the corrected gate
+accepts only the exact full HEAD stamp.
+
 The first complete CI run40262098235 passed289 browser cases but caught one
 additional failure: after selecting furniture, the footer grew40px before
 R3F's ResizeObserver updated the canvas's inline pixel height. Its DOM surface

@@ -27,6 +27,7 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const WORKFLOW = 'deploy.yml'
@@ -37,13 +38,13 @@ const VERIFY_TIMEOUT_MS = Number(process.env.DESIGNON_VERIFY_TIMEOUT_MS ?? 120_0
 /**
  * Whether a release may go ahead.
  *
- * @param {{ dirty: boolean, pushed: boolean, ciStatus: string | null }} state
+ * @param {{ dirty: boolean, pushed: boolean, ciStatus: string | null, sha: string, builtSha: string | null }} state
  *   `dirty` — the working tree has changes that are not committed.
  *   `pushed` — HEAD is on the remote branch.
  *   `ciStatus` — the CI run for HEAD: 'success', 'failure', 'queued',
  *   'in_progress', 'cancelled', or null when there is no run for it.
  */
-export function releaseDecision({ dirty, pushed, ciStatus }) {
+export function releaseDecision({ dirty, pushed, ciStatus, sha, builtSha }) {
   const blockers = []
   if (dirty) blockers.push('the working tree has uncommitted changes')
   if (!pushed) blockers.push('HEAD is not on the remote, so the commit that passed CI is not this one')
@@ -51,6 +52,9 @@ export function releaseDecision({ dirty, pushed, ciStatus }) {
   else if (ciStatus === 'failure') blockers.push('the CI run for HEAD failed')
   else if (ciStatus === 'cancelled') blockers.push('the CI run for HEAD was cancelled')
   else if (ciStatus !== 'success') blockers.push(`the CI run for HEAD is ${ciStatus}, not finished`)
+  if (!sha || !/^[0-9a-f]{40}$/.test(sha) || builtSha !== sha) {
+    blockers.push('dist/index.html does not carry the full HEAD commit — build it or install the exact CI artifact before uploading')
+  }
   return { ok: blockers.length === 0, blockers }
 }
 
@@ -117,6 +121,9 @@ async function main() {
   const sha = git('rev-parse', 'HEAD')
   const dirty = git('status', '--porcelain').length > 0
   const pushed = gitSucceeds('merge-base', '--is-ancestor', 'HEAD', 'origin/main')
+  let builtSha = null
+  try { builtSha = stampFromHtml(readFileSync(resolve(ROOT, 'dist/index.html'), 'utf8')) }
+  catch (error) { console.error(`  could not read the built page: ${error.code ?? 'unknown error'}`) }
   const ciStatus = skipCi ? 'skipped' : ciStatusFor(sha)
 
   console.log('release gate')
@@ -124,8 +131,9 @@ async function main() {
   console.log(`  tree    ${dirty ? 'dirty' : 'clean'}`)
   console.log(`  remote  ${pushed ? 'HEAD is on origin/main' : 'HEAD is NOT on origin/main'}`)
   console.log(`  ci      ${skipCi ? 'SKIPPED by --skip-ci' : (ciStatus ?? 'unknown')}`)
+  console.log(`  build   ${builtSha ?? 'missing stamp'}`)
 
-  const decision = releaseDecision({ dirty, pushed, ciStatus: skipCi ? 'success' : ciStatus })
+  const decision = releaseDecision({ dirty, pushed, ciStatus: skipCi ? 'success' : ciStatus, sha, builtSha })
   if (!decision.ok) {
     console.error('\nrefusing to deploy:')
     for (const blocker of decision.blockers) console.error(`  - ${blocker}`)
