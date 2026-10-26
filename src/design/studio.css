@@ -1283,9 +1283,9 @@ body { overflow-y: auto; }
   .spatial-bottom-bar > .spatial-trial-controls { grid-column: 1 / -1; grid-row: 3; }
   .spatial-bottom-bar > .spatial-trial-notice { grid-column: 1 / -1; grid-row: 2; }
   .spatial-bottom-bar:has(.spatial-furniture-tools button) { gap: 4px 10px; padding: 4px 8px; }
-  .spatial-bottom-bar:has(.spatial-furniture-tools button) > .spatial-furniture-tools { grid-column: 1 / -1; grid-row: 1; }
+  .spatial-bottom-bar:has(.spatial-furniture-tools button) > .spatial-furniture-tools { grid-column: 1 / -1; grid-row: 1; padding: 0; }
   .spatial-bottom-bar > .spatial-furniture-hint { grid-column: 1; grid-row: 2; }
-  .spatial-bottom-bar:has(.spatial-furniture-tools button) > .study-launchers { grid-column: 2; grid-row: 2; }
+  .spatial-bottom-bar:has(.spatial-furniture-tools button) > .study-launchers { grid-column: 2; grid-row: 2; padding: 0; }
   .spatial-bottom-bar:has(.spatial-furniture-tools button) > .spatial-state { grid-column: 1 / -1; grid-row: 3; }
   .spatial-bottom > .science-dock .science-dock-summary { padding: 4px 8px; }
 }
