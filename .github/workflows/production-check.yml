@@ -32,7 +32,7 @@ jobs:
           e2e/msh-chrome.spec.ts e2e/openings.spec.ts
           e2e/furnishing-workflow.spec.ts e2e/furniture-replacement.spec.ts
           e2e/cities.spec.ts
-          --grep 'phone and tablet|empty-room|nothing floats|wall hosting|furnishing controls stay outside|preview is inert|worldwide city updates'
+          --grep 'phone and tablet|empty-room|nothing floats|non-plan views|wall hosting|furnishing controls stay outside|preview is inert|worldwide city updates'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
