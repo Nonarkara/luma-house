@@ -1176,6 +1176,9 @@ body { overflow-y: auto; }
 .spatial-wrap > .spatial3d-shell { flex: 1; min-width: 0; }
 .spatial-model { position: relative; flex: 1 1 auto; height: clamp(200px, 32dvh, 480px); min-height: 200px; }
 .spatial-model > div { position: absolute !important; inset: 0; }
+/* R3F updates its pixel size after ResizeObserver runs. Keep the DOM surface
+   inside the model immediately when selection controls change the footer. */
+.spatial-model canvas { width: 100% !important; height: 100% !important; }
 .spatial3d-shell .spatial-toolbar { position: static; flex-wrap: wrap; gap: 4px; padding: 4px; overflow: visible; }
 .spatial3d-shell .spatial-toolbar > div { flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; border: 0; max-width: 100%; min-width: 0; }
 .spatial3d-shell .spatial-tb-btn { min-height: 32px; padding: 4px 6px; font-family: var(--type-body); }

@@ -67,6 +67,13 @@ then verify primary and mirror build bytes plus live changed interactions.
 
 ## Remaining scope
 
+The first complete CI run40262098235 passed289 browser cases but caught one
+additional failure: after selecting furniture, the footer grew40px before
+R3F's ResizeObserver updated the canvas's inline pixel height. Its DOM surface
+temporarily extended into the control row. Keep the canvas's CSS display size
+at100% of the model immediately; retain the original strict containment and
+painted-geometry assertions, with no sleeps or relaxed tolerances.
+
 Rectangular rooms, quarter-turn furniture and the small licensed catalogue
 remain deliberate implementation limits; no scan/photo reconstruction parity
 with IKEA is claimed. Existing Plan room-key/coach footprint and tablet toolbar
