@@ -91,7 +91,9 @@ test('worldwide city updates its chart and actual shadows, persists through relo
 test('fixed interior images are labeled references and never the default render', async ({ page }) => {
   await page.goto('/#plan=' + encodePlanToHash(initialPlan))
   await page.getByRole('button', { name: 'Renders', exact: true }).click()
-  await expect(page.getByLabel('Local 3D light study')).toBeVisible()
+  // The 3D view is a lazily loaded chunk: wait for it to exist before asking
+  // whether it is visible.
+  await expect(page.getByLabel('Local 3D light study')).toBeVisible({ timeout: 30_000 })
   await expect(page.locator('.render-stage img')).toHaveCount(0)
   await page.getByText('Concept references · photographs do not represent your drawing', { exact: true }).click()
   await expect(page.getByText('Reference image only.', { exact: true })).toBeVisible()

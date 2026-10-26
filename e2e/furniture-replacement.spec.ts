@@ -15,6 +15,9 @@ async function load(page: Page, plan = fixture) {
 }
 async function replace(page: Page) {
   await page.getByRole('button', { name: 'Spatial', exact: true }).click()
+  // The 3D view is a lazily loaded chunk: wait for it to exist before asking
+  // for a control inside it.
+  await expect(page.locator('.spatial3d-shell')).toBeVisible({ timeout: 30_000 })
   await page.getByLabel('Furniture in 3D', { exact: true }).selectOption('original')
   await page.getByRole('button', { name: 'Replace furniture', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Solid', exact: true })).toHaveAttribute('aria-pressed', 'true')
@@ -23,6 +26,9 @@ async function replace(page: Page) {
 
 test.describe('try another real-sized product', () => {
   test.describe.configure({ timeout: 180_000 })
+  // Swapping a product rebuilds the 3D scene, which can block the page past
+  // the default action budget on a loaded machine, so the click waits longer.
+  test.use({ actionTimeout: 30_000 })
   test('preview is inert, cancel restores, Apply is one shared undoable edit', async ({ page }) => {
     const errors: string[] = [], ai: string[] = []
     page.on('pageerror', error => errors.push(error.message))
@@ -38,7 +44,7 @@ test.describe('try another real-sized product', () => {
     await page.getByRole('button', { name: 'Inspect in 3D', exact: true }).click()
     await expect(page.locator('.furniture-catalog-drawer')).toHaveClass(/is-inspecting/)
     await page.getByRole('button', { name: 'Top-Down', exact: true }).click()
-    await expect(page.locator('.spatial3d-shell')).toHaveAttribute('data-projection', 'orthographic')
+    await expect(page.locator('.spatial3d-shell')).toHaveAttribute('data-projection', 'orthographic', { timeout: 30_000 })
     await page.getByRole('button', { name: 'Top-Down', exact: true }).press('ArrowRight')
     await page.getByRole('button', { name: 'Top-Down', exact: true }).press('Delete')
     await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled()

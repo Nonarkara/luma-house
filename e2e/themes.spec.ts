@@ -6,7 +6,17 @@ import { initialPlan } from '../src/plan'
 import { encodePlanToHash } from '../src/sharePlan'
 const hash = encodePlanToHash(initialPlan)
 
-for (const theme of themes) for (const width of [375, 768, 1280]) {
+test.describe('the appearance themes', () => {
+  // Each case walks the whole workspace: the plan, then the 3D view, then three
+  // dialogs and a study sheet. The 3D view is a lazily loaded chunk that has to
+  // compile its shaders first, and on a machine that is doing something else
+  // that takes tens of seconds - measured between 0.5 s and 46 s on the same
+  // build. The budget belongs to the route, not to the default.
+  test.describe.configure({ timeout: 180_000 })
+  // A click that rebuilds the 3D scene can block the page past the default
+  // action budget on a loaded machine, so the click waits longer here.
+  test.use({ actionTimeout: 30_000 })
+  for (const theme of themes) for (const width of [375, 768, 1280]) {
   test(`${theme.name}: persisted appearance and intact workspace at ${width}px`, async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem('luma-journey:welcome:shanghai-50', '1'))
     await page.setViewportSize({ width, height: 844 })
@@ -100,7 +110,8 @@ for (const theme of themes) for (const width of [375, 768, 1280]) {
     for (const button of await page.locator('.room-options-dialog button').all()) expect(await button.evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
     await page.getByRole('button', { name: 'Close room options', exact: true }).click()
     await page.getByRole('button', { name: 'Spatial', exact: true }).click()
-    await expect(page.getByRole('button', { name: '3D Orbit', exact: true })).toBeVisible()
+    await expect(page.locator('.spatial3d-shell')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByRole('button', { name: '3D Orbit', exact: true })).toBeVisible({ timeout: 30_000 })
     await check(['.spatial-tb-btn.active', '.spatial-sun-hud strong', '.science-seasons button.active'])
     await page.getByRole('button', { name: 'Saved views', exact: true }).click()
     await expect(page.getByRole('dialog', { name: 'Saved study views' })).toBeVisible()
@@ -116,4 +127,5 @@ for (const theme of themes) for (const width of [375, 768, 1280]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
     expect(await page.locator('.canvas-frame').evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(300)
   })
-}
+  }
+})
