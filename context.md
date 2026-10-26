@@ -1,3 +1,18 @@
+## Release reconciliation — 2026-10-26
+
+Design Read: a measured room is the working surface; navigation and sun controls
+must remain outside it and fit their content. Reference: IKEA Kreativ's public
+room/product configuration workflow, adapted to the existing CAD property-sheet
+register and four authored palettes. Preserve all Plan/Spatial/Renders tools.
+
+Audit MiniMax's984e3df and unfinished gallery repair. Gallery Previous/Next
+remain compact normal-flow actions beside thumbnails rather than overlays.
+Cursor PR6 contributes the screen-pixel wall-hosting idea: full-width openings
+must fit a nearby wall. Empty floor and undersized walls refuse without history
+changes. Keep the wall-point convention and existing one-shot opening tools.
+Do not merge the conflicting108-file draft wholesale; decisions and deferred
+items are recorded in docs/RECONCILIATION-2026-10-26.md.
+
 ## IKEA product trial loop — 2026-10-25
 
 Design Read: compare a real-sized replacement in the measured room before

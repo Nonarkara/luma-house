@@ -816,7 +816,10 @@ function App() {
       return
     }
     const opening = placeOpeningAt(event.clientX, event.clientY)
-    if (!opening) return
+    if (!opening) {
+      if (activeTool === 'window' || activeTool === 'door') setToast('Choose a nearby wall long enough for the full opening')
+      return
+    }
     commit((current) => ({ ...current, openings: [...current.openings, opening] }), `Place ${opening.type}`)
     setActiveTool('select')
     setToast(`${opening.type === 'window' ? 'Window' : 'Door'} placed`)

@@ -1200,11 +1200,10 @@ body { overflow-y: auto; }
 /* In the Renders gallery the 3D preview sits inside a stage row that is sized
    to fill. The shell left a 112px void under the model; it fills the stage now. */
 .render-stage > .spatial3d-shell { height: 100%; }
-/* Phone: the gallery's page control landed on the study's own sentence. The
-   thumbnail row underneath already pages the views, so the duplicate goes. */
-@media (max-width: 720px) {
-  .render-stage .render-nav { display: none; }
-}
+.render-navigation { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.render-navigation > .render-thumbs { flex: 1; min-width: 0; }
+.render-step { flex: none; width: 32px; height: 32px; padding: 4px; border: 1px solid var(--border); background: var(--studio-sheet); color: var(--studio-ink); cursor: pointer; }
+.render-step svg { width: 20px; height: 20px; }
 .spatial-bottom-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 22px; padding: 5px 10px; }
 .spatial-state { min-width: 0; flex: 1 1 340px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px; }
 .spatial3d-shell .spatial-sun-hud, .spatial3d-shell .spatial-orbit-note { position: static; margin: 0; padding: 0; max-width: 100%; border: 0; background: transparent; }

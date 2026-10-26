@@ -167,4 +167,64 @@ test.describe('the chrome of the 3D view', () => {
     await expect(page.locator('.science-metric.is-primary')).toBeVisible()
     await expect(page.locator('.science-metric.is-primary')).toContainText('Sunlit floor now')
   })
+
+  test('the sun controls sit under the model, not over it', async ({ page }) => {
+    // The studio's own rule: controls live outside the drawing viewport. The
+    // sun controls were a sibling of the 3D content; they are part of the
+    // bottom surface now, and they still must not touch the model.
+    await openStudio(page)
+    await openSpatial(page)
+    const boxes = await page.evaluate(() => {
+      const model = document.querySelector('.spatial-model')!.getBoundingClientRect()
+      const dock = document.querySelector('.spatial-bottom > .science-dock')!.getBoundingClientRect()
+      return { modelBottom: model.bottom, dockTop: dock.top }
+    })
+    expect(boxes.dockTop, 'the sun controls sit below the model').toBeGreaterThanOrEqual(boxes.modelBottom - 1)
+  })
+
+  test('the study launchers sit under the model, not over it', async ({ page }) => {
+    await openStudio(page)
+    await openSpatial(page)
+    const boxes = await page.evaluate(() => {
+      const model = document.querySelector('.spatial-model')!.getBoundingClientRect()
+      const launchers = document.querySelector('.study-launchers')!.getBoundingClientRect()
+      return { modelBottom: model.bottom, launchersTop: launchers.top }
+    })
+    expect(boxes.launchersTop, 'the study launchers sit below the model').toBeGreaterThanOrEqual(boxes.modelBottom - 1)
+  })
+
+  test('nothing floats over the study launchers', async ({ page }) => {
+    // The gallery's floating page control landed on the launchers: the
+    // buttons were drawn and could not be clicked. A control that overlaps
+    // another control is a defect, so the topmost element at the button has
+    // to be the button.
+    for (const view of ['Spatial', 'Renders']) {
+      await openStudio(page)
+      if (view === 'Spatial') {
+        await openSpatial(page)
+      } else {
+        await page.getByRole('button', { name: 'Renders', exact: true }).click({ noWaitAfter: true })
+        await expect(page.locator('.spatial3d-shell')).toBeVisible({ timeout: 60_000 })
+        await page.waitForTimeout(2500)
+      }
+      const covered = await page.evaluate(() => {
+        const out: Array<{ label: string; covered: boolean }> = []
+        for (const button of Array.from(document.querySelectorAll('.study-launchers button'))) {
+          button.scrollIntoView({ block: 'nearest' })
+          const rect = button.getBoundingClientRect()
+          if (rect.width < 1 || rect.height < 1) continue
+          const top = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+          out.push({
+            label: (button.textContent ?? '').trim(),
+            covered: !(top === button || button.contains(top)),
+          })
+        }
+        return out
+      })
+      expect(covered.length, `the study launchers are present in ${view}`).toBeGreaterThan(0)
+      for (const button of covered) {
+        expect(button.covered, `the "${button.label}" launcher is not covered in ${view}`).toBe(false)
+      }
+    }
+  })
 })

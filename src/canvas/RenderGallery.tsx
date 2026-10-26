@@ -121,10 +121,7 @@ export const RenderGallery = React.memo(function RenderGallery({
   const [activeIndex, setActiveIndex] = useState(0)
   const active = views[activeIndex]
   const ActiveIcon = active.icon
-
-  const move = (direction: number) => {
-    setActiveIndex((index) => (index + direction + views.length) % views.length)
-  }
+  const move = (direction: number) => setActiveIndex(index => (index + direction + views.length) % views.length)
 
   return (
     <div className="render-gallery" aria-label="Plan-driven render gallery">
@@ -140,13 +137,10 @@ export const RenderGallery = React.memo(function RenderGallery({
             <em>{active.note}</em>
           </div>
         </div>}
-        <div className="render-nav">
-          <button type="button" onClick={() => move(-1)} aria-label="Previous view"><ChevronLeft /></button>
-          <span>{activeIndex + 1} / {views.length}</span>
-          <button type="button" onClick={() => move(1)} aria-label="Next view"><ChevronRight /></button>
-        </div>
       </div>
       {active.id === 'wireframe' && <div className="render-local-controls">{localControls}</div>}
+      <div className="render-navigation">
+      <button className="render-step" type="button" onClick={() => move(-1)} aria-label="Previous view"><ChevronLeft /></button>
       <div className="render-thumbs">
         {views.map((item, index) => {
           const Icon = item.icon
@@ -156,6 +150,8 @@ export const RenderGallery = React.memo(function RenderGallery({
             </button>
           )
         })}
+      </div>
+      <button className="render-step" type="button" onClick={() => move(1)} aria-label="Next view"><ChevronRight /></button>
       </div>
       <details className="render-references">
         <summary>Concept references · photographs do not represent your drawing</summary>

@@ -1618,43 +1618,6 @@ button:active {
   font-style: normal;
 }
 
-.render-nav {
-  position: absolute;
-  right: 14px;
-  top: 14px;
-  display: flex;
-  align-items: center;
-  border: 1px solid rgba(var(--studio-ink-rgb, 38, 56, 63), .18);
-  background: var(--bg-elevated);
-  backdrop-filter: blur(14px);
-  border-radius: 9px;
-  overflow: hidden;
-}
-
-.render-nav button {
-  width: 33px;
-  height: 33px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.render-nav button:hover {
-  background: rgba(var(--studio-ink-rgb, 38, 56, 63), .1);
-}
-
-.render-nav svg {
-  width: 15px;
-}
-
-.render-nav span {
-  padding: 0 8px;
-  color: var(--text-primary);
-  font-size: 8px;
-}
-
 .render-thumbs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -3658,11 +3621,6 @@ select {
 
   .render-meta {
     left: 8px;
-    top: 8px;
-  }
-
-  .render-nav {
-    right: 8px;
     top: 8px;
   }
 
@@ -7170,8 +7128,6 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 /* Local light study: controls retain their labels and stay clear of the model. */
 .spatial-tb-btn { flex: 0 0 auto; white-space: nowrap; }
 .spatial-tb-btn.toggle { width: auto; height: auto; overflow: visible; }
-.render-stage.is-local-study .render-nav { top: auto; bottom: 128px; z-index: 11; }
-.render-stage.is-local-study .spatial-orbit-note { bottom: 128px; left: 12px; right: auto; max-width: calc(100% - 155px); }
 .render-gallery { grid-template-rows: minmax(0, 1fr) auto auto; }
 .render-gallery:has(.is-local-study) .render-thumbs { display: flex; overflow-x: auto; }
 .render-gallery:has(.is-local-study) .render-thumbs button { min-width: 160px; flex: 0 0 auto; }
@@ -7180,15 +7136,6 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   .spatial-orbit-note { font-size: 9px; max-width: calc(100% - 28px); }
   .spatial-sun-hud { padding: 7px 9px; }
 }
-
-@media (max-width: 720px) {
-  .render-stage.is-local-study .render-nav,
-  .render-stage.is-local-study .spatial-orbit-note { bottom: 84px; }
-  .is-local-study:has(.science-dock.is-mobile-expanded) .render-nav,
-  .is-local-study:has(.science-dock.is-mobile-expanded) .spatial-orbit-note { visibility: hidden; }
-}
-
-.render-stage.is-local-study .render-nav { border-radius: 0; }
 
 /* Worldwide location stays available from every workspace view. */
 .location-toggle { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); padding: 8px 10px; white-space: normal; text-align: left; cursor: pointer; max-width: 300px; }
@@ -7230,11 +7177,6 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 .render-gallery { grid-template-rows: minmax(320px, 1fr) auto auto auto auto; }
 .render-gallery:has(.render-references[open]) { grid-template-rows: minmax(320px, 1fr) auto auto minmax(300px, auto) auto; }
 .render-local-controls .science-dock { position: relative; inset: auto; margin: 0; width: 100%; }
-.render-stage.is-local-study .render-nav { bottom: 14px; }
-.render-stage.is-local-study .spatial-orbit-note { bottom: 14px; }
-@media (max-width: 720px) {
-  .render-stage.is-local-study .render-nav, .render-stage.is-local-study .spatial-orbit-note { bottom: 14px; }
-}
 
 .spatial3d-shell { isolation: isolate; }
 .canvas-frame:has(> .spatial-wrap) { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(320px, 1fr) auto; overflow: auto; }

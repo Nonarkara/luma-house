@@ -166,9 +166,12 @@ test.describe('draw, furnish and inspect the same model', () => {
           for (let n = 0; n < pixels.length; n += 16) { total++; if (Math.max(Math.abs(pixels[n] - background[0]), Math.abs(pixels[n + 1] - background[1]), Math.abs(pixels[n + 2] - background[2])) > 12) ink++ }
           return ink / total
         }), { timeout: 30_000 }).toBeGreaterThan(.01)
-        const wrap = (await page.locator('.spatial-wrap').boundingBox())!
-        const dock = (await page.locator('.canvas-frame > .science-dock').boundingBox())!
-        expect(dock.y, 'sun controls follow the full 3D content without covering its actions or notes').toBeGreaterThanOrEqual(wrap.y + wrap.height - 1)
+        // The sun controls are part of the bottom surface now, so they are
+        // measured against the model they must not cover, not against the
+        // frame that used to hold them.
+        const model = (await page.locator('.spatial-model').boundingBox())!
+        const dock = (await page.locator('.spatial-bottom > .science-dock').boundingBox())!
+        expect(dock.y, 'sun controls follow the full 3D content without covering its actions or notes').toBeGreaterThanOrEqual(model.y + model.height - 1)
         for (const label of ['Rotate furniture', 'Duplicate furniture', 'Remove furniture']) {
           const button = page.getByRole('button', { name: label, exact: true })
           const b = (await button.boundingBox())!

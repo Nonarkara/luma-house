@@ -125,7 +125,7 @@ test.describe('try another real-sized product', () => {
         expect(r.height).toBeGreaterThanOrEqual(32); expect(r.x + r.width).toBeLessThanOrEqual(width + 1)
         expect(await button.evaluate(el => { const r = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)) })).toBe(true)
       }
-      const dock = (await page.locator('.canvas-frame > .science-dock').boundingBox())!
+      const dock = (await page.locator('.spatial-bottom > .science-dock').boundingBox())!
       const actions = (await page.locator('.spatial-trial-controls').boundingBox())!
       expect(actions.y + actions.height).toBeLessThanOrEqual(dock.y + 1)
       await page.getByRole('button', { name: 'Cancel', exact: true }).click()

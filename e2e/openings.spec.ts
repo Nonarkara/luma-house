@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { chinaApartmentPlan } from '../src/mockups/chinaApartment'
 import { encodePlanToHash } from '../src/sharePlan'
+import { CHINA_PROJECT_KEY } from '../src/mockups/chinaApartment'
 
 /**
  * The Window and Door tools.
@@ -38,6 +39,28 @@ async function roomRect(page: Page, index: number) {
 }
 
 test.describe('the opening tools', () => {
+  test('wall hosting keeps the full aperture inside the wall and refuses empty floor', async ({ page }) => {
+    const plan = { ...chinaApartmentPlan, site: { w: 10, h: 10, unit: 1 }, rooms: [{ id: 'host', name: 'Host room', kind: 'living' as const, x: 20, y: 20, w: 40, h: 40 }], openings: [], furniture: [] }
+    await page.goto('/#plan=' + encodePlanToHash(plan))
+    const read = () => page.evaluate(key => JSON.parse(localStorage.getItem(key) ?? '{}'), CHINA_PROJECT_KEY)
+    await expect.poll(async () => (await read()).rooms?.[0]?.id).toBe('host')
+    const stage = (await page.locator('.plan-canvas').boundingBox())!
+    const clickAt = (x: number, y: number) => page.mouse.click(stage.x + stage.width * x / 100, stage.y + stage.height * y / 100)
+    await page.getByRole('button', { name: 'Window', exact: true }).click()
+    await clickAt(20.2, 20)
+    await expect.poll(async () => (await read()).openings?.length).toBe(1)
+    const placed = (await read()).openings[0]
+    expect(placed).toMatchObject({ x: 28, y: 20, rotation: 0 })
+    await page.getByRole('button', { name: 'Window', exact: true }).click()
+    await clickAt(40, 40)
+    await expect(page.locator('.toast')).toContainText('nearby wall long enough')
+    expect((await read()).openings).toHaveLength(1)
+    await page.getByRole('button', { name: 'Undo', exact: true }).click()
+    await expect.poll(async () => (await read()).openings?.length).toBe(0)
+    await page.getByRole('button', { name: 'Redo', exact: true }).click()
+    await expect.poll(async () => (await read()).openings?.[0]?.x).toBe(28)
+  })
+
   test('a window is placed on the wall you click', async ({ page }) => {
     await openStudio(page, 1440)
     const before = await page.locator('.opening-window').count()

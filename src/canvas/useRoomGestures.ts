@@ -9,7 +9,6 @@ import {
   resizeRoom,
   scaleRoomFromCenter,
   snap,
-  snapOpeningToWall,
   alignEdges,
   alignMovedRect,
   alignTolerance,
@@ -19,6 +18,7 @@ import {
   type ResizeHandle,
 } from './geometry'
 import { openingDimensions } from '../openingGeometry'
+import { placeOpeningOnWall } from './openingPlacement'
 
 type GestureKind = 'move-room' | 'resize-room' | 'pinch-room' | 'move-opening' | 'resize-opening' | 'move-furniture'
 
@@ -303,17 +303,18 @@ export function useRoomGestures({
       const point = clientToPercent(clientX, clientY, bounds)
       if (!point) return null
       const { x, y } = point
-      const rotation: 0 | 90 = Math.min(y, 100 - y) < Math.min(x, 100 - x) ? 0 : 90
-      return snapOpeningToWall(
+      return placeOpeningOnWall(
         {
           id: `${activeTool}-${Date.now()}`,
           type: activeTool,
           x,
           y,
-          rotation,
+          rotation: 0,
         },
         planRef.current.rooms,
-      ) satisfies Opening
+        siteOf(planRef.current),
+        bounds,
+      )
     },
     [activeTool, stageBounds],
   )
