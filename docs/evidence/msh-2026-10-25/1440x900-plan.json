@@ -1,0 +1,14 @@
+{
+ "vw": 1440,
+ "vh": 900,
+ "modelH": null,
+ "topChrome": null,
+ "bottomChrome": null,
+ "bandH": null,
+ "bandCount": 0,
+ "surfaces": 0,
+ "overlap": 0,
+ "widest": 0,
+ "overflowX": false,
+ "launchers": []
+}

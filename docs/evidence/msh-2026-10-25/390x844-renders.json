@@ -1,0 +1,23 @@
+{
+ "vw": 390,
+ "vh": 844,
+ "modelH": 295,
+ "topChrome": 133,
+ "bottomChrome": 416,
+ "bandH": 131,
+ "bandCount": 1,
+ "surfaces": 1,
+ "overlap": 0,
+ "widest": 390,
+ "overflowX": false,
+ "launchers": [
+  {
+   "label": "Saved views",
+   "covered": false
+  },
+  {
+   "label": "Study sheet",
+   "covered": false
+  }
+ ]
+}
