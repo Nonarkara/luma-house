@@ -1,0 +1,72 @@
+{
+  "viewport": "390x844",
+  "drawing": {
+    "h": 423.41,
+    "w": 390,
+    "top": 153,
+    "bottom": 576.41
+  },
+  "chromeBelow": {
+    "h": 267.59,
+    "pct": 31.71
+  },
+  "key": {
+    "h": 56.59,
+    "w": 390,
+    "display": "flex",
+    "rows": 1,
+    "cells": 6,
+    "scrolls": true,
+    "content": [
+      {
+        "room": "Quiet bedroom",
+        "cellWidth": 114.86,
+        "nameToOwnFigure": -77.86,
+        "figureToNextName": 37
+      },
+      {
+        "room": "Tea + study niche",
+        "cellWidth": 125.03,
+        "nameToOwnFigure": -88.03,
+        "figureToNextName": 37
+      },
+      {
+        "room": "Dry / wet bath",
+        "cellWidth": 109.28,
+        "nameToOwnFigure": -72.28,
+        "figureToNextName": 37
+      },
+      {
+        "room": "South living room",
+        "cellWidth": 128.72,
+        "nameToOwnFigure": -91.72,
+        "figureToNextName": 37
+      },
+      {
+        "room": "Kitchen + dining",
+        "cellWidth": 120.19,
+        "nameToOwnFigure": -83.19,
+        "figureToNextName": 37
+      },
+      {
+        "room": "Entry + laundry",
+        "cellWidth": 116.3,
+        "nameToOwnFigure": -79.3,
+        "figureToNextName": null
+      }
+    ]
+  },
+  "building": {
+    "x": 23.17,
+    "y": 252.78,
+    "w": 343.59,
+    "h": 223.85
+  },
+  "assistant": {
+    "field": 205.64,
+    "promptNeeds": 260.48,
+    "promptHas": 188,
+    "overflow": "ellipsis"
+  },
+  "horizontalScroll": 0
+}

@@ -394,7 +394,7 @@ body { overflow-y: auto; }
   .contextual-size { display: none; }
 }
 .room-number { position: absolute; top: var(--space-1); left: var(--space-1); z-index: 8; display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 var(--space-1); background: var(--studio-sheet); color: var(--studio-ink); font: 600 var(--font-note)/1 var(--type-mono); pointer-events: none; }
-.plan-room-key { grid-column: 1 / -1; grid-row: 11; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: var(--rule-structure) solid var(--studio-ink); }
+.plan-room-key { grid-column: 1 / -1; grid-row: 11; display: grid; grid-template-columns: minmax(0, 1fr); border-top: var(--rule-structure) solid var(--studio-ink); }
 .plan-room-key button { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: var(--space-2); min-width: 0; min-height: 44px; padding: var(--space-2); text-align: left; align-items: baseline; background: var(--studio-sheet); color: var(--studio-ink); border: 0; border-bottom: var(--rule-control) solid var(--studio-border); cursor: pointer; }
 .plan-room-key button:hover { background: var(--studio-support); }
 .plan-room-key button[aria-pressed="true"] { background: var(--studio-selection); box-shadow: inset 3px 0 var(--studio-sienna) !important; }
@@ -496,7 +496,6 @@ body { overflow-y: auto; }
   .theme-picker { grid-column: 4; grid-row: 1; }
 }
 @media (max-width: 1100px) {
-  .plan-room-key { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .canvas-toolbar .floating-island-toolbar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .toolbar-pill-btn { min-width: 0; border-bottom: var(--rule-control) solid var(--studio-border); }
   .toolbar-pill-btn:nth-child(4n) { border-right: 0; }
@@ -522,8 +521,6 @@ body { overflow-y: auto; }
   .toolbar-pill-icon { width: 14px; height: 14px; flex-shrink: 0; }
   .toolbar-pill-btn:nth-child(4n) { border-right: 0; }
   .toolbar-pill-btn:last-child { grid-column: span 1; }
-  .plan-room-key button { grid-template-columns: 16px minmax(0, 1fr); gap: var(--space-1); }
-  .plan-room-key .room-area { grid-column: 2; }
   .scale-chip > span { display: none; }
   .is-plan > .science-preview { grid-template-columns: 1fr; margin-right: 0; }
   .science-preview > .science-live, .science-preview > svg { display: none; }
@@ -964,26 +961,39 @@ body { overflow-y: auto; }
   }
 }
 
-/* Phone: compact the rows inside the plan frame so the drawing keeps the height.
-   Room key becomes one swipeable row; numbers stay, so it still keys the plan. */
-@media (max-width: 720px) {
-  .app-shell .is-plan > .scale-chip { padding-top: 2px; padding-bottom: 2px; min-height: 44px; }
-  .app-shell .is-plan > .science-preview, .app-shell .is-plan > .sun-status { margin: 2px 4px; padding: 4px 8px; }
-  .app-shell .is-plan > .zoom-control { margin: 2px 4px; }
-  .app-shell .is-plan > .draw-hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 4px 8px; }
+/* The room key under the drawing: one row of numbered cells, each as wide as
+   its own room. The key used to be a stretched grid across the sheet, which
+   put a room's area figure hundreds of pixels from its own name — nearer to
+   the next room's name than to the one it belongs to. A cell that hugs its
+   content keeps the figure with the name; the row scrolls when the rooms do
+   not fit, and it says so with a scrollbar. The numbers stay, so it still
+   keys the plan. */
+@media (max-width: 1099px) {
   .app-shell .is-plan > .plan-room-key {
     display: flex;
     overflow-x: auto;
     scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    scrollbar-color: var(--studio-sienna) var(--bg-secondary);
   }
   .app-shell .is-plan > .plan-room-key button {
-    flex: none;
+    flex: 1 0 auto;
     width: auto;
     max-width: 62vw;
     scroll-snap-align: start;
     border-bottom: 0;
     border-right: var(--rule-control) solid var(--studio-border);
   }
+  .plan-room-key button { grid-template-columns: 16px minmax(0, 1fr); gap: var(--space-1); }
+  .plan-room-key .room-area { grid-column: 2; }
+}
+
+/* Phone: compact the rows inside the plan frame so the drawing keeps the height. */
+@media (max-width: 720px) {
+  .app-shell .is-plan > .scale-chip { padding-top: 2px; padding-bottom: 2px; min-height: 44px; }
+  .app-shell .is-plan > .science-preview, .app-shell .is-plan > .sun-status { margin: 2px 4px; padding: 4px 8px; }
+  .app-shell .is-plan > .zoom-control { margin: 2px 4px; }
+  .app-shell .is-plan > .draw-hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 4px 8px; }
 }
 
 /* Export dialog: project file, 3D model, 3D print. */

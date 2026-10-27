@@ -2231,6 +2231,9 @@ button:active {
   padding: 0 8px;
   font-size: 13px;
   color: var(--text-primary);
+  /* The field is narrower than its own prompt on a phone. A cut that says so
+     is allowed; a cut that says nothing is a fragment. */
+  text-overflow: ellipsis;
 }
 
 .assistant-bar input:focus {

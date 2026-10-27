@@ -298,3 +298,103 @@ test.describe('the chrome of the 3D view', () => {
     }
   })
 })
+
+/**
+ * The chrome of the plan view, measured.
+ *
+ * The Plan view used to hang a room key under the drawing as a grid of cells
+ * stretched across the sheet. Each room's area figure was pushed to the far
+ * edge of its cell, so the figure sat hundreds of pixels from the name it
+ * belonged to and nearer to the next room's name than to its own. The band
+ * was 134px tall at 1024, which took the drawing from 486px to 408px and
+ * left a third of the screen below it.
+ *
+ * The key is now one row of cells, each as wide as its own room, so the
+ * figure stays with the name. These gates own that, and the chrome around
+ * the drawing, so a later change cannot quietly take the space back.
+ */
+test.describe('the chrome of the plan view', () => {
+  test('the plan drawing outweighs the chrome below it', async ({ page }) => {
+    for (const [width, height] of [[1440, 900], [1024, 800], [390, 844]] as const) {
+      await page.setViewportSize({ width, height })
+      await openStudio(page)
+      const chrome = await page.evaluate(() => {
+        const round = (n: number) => Math.round(n * 100) / 100
+        const viewH = window.innerHeight
+        const drawing = document.querySelector('.plan-viewport')!.getBoundingClientRect()
+        return { viewH, drawing: round(drawing.height), below: round(viewH - drawing.bottom) }
+      })
+      // The drawing is the work. Before the repair the 1024 sheet had 283px of
+      // chrome under it and the phone had 267px.
+      expect(chrome.drawing, `the drawing must outweigh the chrome below it at ${width}px`).toBeGreaterThan(chrome.below)
+      expect(chrome.below / chrome.viewH, `the chrome below the drawing stays under a third at ${width}px`).toBeLessThan(0.35)
+    }
+  })
+
+  test('the room key is one row, and every figure belongs to its own room', async ({ page }) => {
+    for (const [width, height] of [[1440, 900], [1024, 800], [390, 844]] as const) {
+      await page.setViewportSize({ width, height })
+      await openStudio(page)
+      const key = await page.evaluate(() => {
+        const cells = Array.from(document.querySelectorAll('.plan-room-key button'))
+        const textBox = (el: Element) => {
+          const range = document.createRange()
+          range.selectNodeContents(el)
+          return range.getBoundingClientRect()
+        }
+        const rows = new Set<number>()
+        const findings = cells.map(cell => {
+          const rect = cell.getBoundingClientRect()
+          rows.add(Math.round(rect.top))
+          const name = textBox(cell.querySelector('.room-name')!)
+          const area = cell.querySelector('.room-area')!.getBoundingClientRect()
+          // The next room in the same row, to the right of this one.
+          const next = cells.find(other => {
+            if (other === cell) return false
+            const r = other.getBoundingClientRect()
+            return Math.abs(r.top - rect.top) < 2 && r.left > rect.left
+          })
+          const nextName = next ? textBox(next.querySelector('.room-name')!) : null
+          return {
+            room: (cell.querySelector('.room-name')?.textContent ?? '').trim(),
+            own: Math.round(area.left - name.right),
+            next: nextName ? Math.round(nextName.left - area.right) : Number.POSITIVE_INFINITY,
+          }
+        })
+        return { rows: rows.size, findings, count: cells.length }
+      })
+      expect(key.count, `the key lists the rooms at ${width}px`).toBeGreaterThan(0)
+      if (width < 1100) {
+        // Under the drawing the key is one row of cells. A grid of stretched
+        // rows is the defect again, and it is three rows tall at 1024.
+        expect(key.rows, `the room key is one row under the drawing at ${width}px`).toBe(1)
+      }
+      for (const finding of key.findings) {
+        // A room's figure belongs to its own name: it may not sit nearer to
+        // the next room's name than to its own.
+        expect(finding.own, `"${finding.room}" keeps its own figure at ${width}px`).toBeLessThanOrEqual(finding.next)
+      }
+    }
+  })
+
+  test('the assistant prompt is never cut without saying so', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await openStudio(page)
+    const field = await page.evaluate(async () => {
+      await document.fonts.ready
+      const input = document.querySelector('.assistant-bar input') as HTMLInputElement
+      const style = getComputedStyle(input)
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')!
+      context.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+      const needed = context.measureText(input.placeholder).width
+      const available = input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+      return { needed: Math.round(needed), available: Math.round(available), overflow: style.textOverflow }
+    })
+    // The phone's field is narrower than its own prompt. The prompt used to
+    // be sliced mid-word ("Quick action: brighter, budg") with nothing to say
+    // that it was cut.
+    expect(field.needed, 'the phone does cut the prompt').toBeGreaterThan(field.available)
+    expect(field.overflow, 'a cut prompt says so').toBe('ellipsis')
+  })
+})
