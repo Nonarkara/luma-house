@@ -37,6 +37,7 @@ interface Chrome {
   bottomChrome: number
   bandCount: number
   surfaces: number
+  overlapModel: number
   widest: number
   viewW: number
 }
@@ -55,14 +56,20 @@ async function measure(page: Page): Promise<Chrome> {
     const bands = bottom ? Array.from(bottom.children).filter(el => el.getBoundingClientRect().height > 0) : []
     const bottomChrome = viewH - modelBox.bottom
 
-    // The surfaces themselves: everything the 3D view draws below the model.
-    // A surface that is split becomes two of these, and the bottom is a stack
-    // of bands again.
+    // The surfaces themselves: everything the 3D view draws that is neither
+    // the toolbar nor the model. A surface that is split becomes two of
+    // these, and the bottom is a stack of bands again. The count is by
+    // identity, not by position, because a split surface does not stay
+    // politely below the model - it floats up over it.
     const shell = document.querySelector('.spatial3d-shell')!
-    const surfaces = Array.from(shell.children).filter(el => {
+    const modelEl = document.querySelector('.spatial-model')!
+    const toolbarEl = document.querySelector('.spatial-toolbar')
+    const surfaces = Array.from(shell.children).filter(el =>
+      el !== modelEl && el !== toolbarEl && el.getBoundingClientRect().height > 0)
+    const overlapModel = surfaces.filter(el => {
       const rect = el.getBoundingClientRect()
-      return rect.height > 0 && rect.top >= modelBox.bottom - 1
-    })
+      return rect.top < modelBox.bottom - 1 && rect.bottom > modelBox.top + 1
+    }).length
 
     // The widest element that should not be: nothing in the app may be wider
     // than the window it is drawn in.
@@ -80,6 +87,7 @@ async function measure(page: Page): Promise<Chrome> {
       bottomChrome: round(bottomChrome),
       bandCount: bands.length,
       surfaces: surfaces.length,
+      overlapModel,
       widest: round(widest),
     }
   })
@@ -102,6 +110,8 @@ test.describe('the chrome of the 3D view', () => {
     // The surface carries the selection, the state, the numbers and the
     // time: two rows at most, never four.
     expect(chrome.bandCount, 'the 3D footer is one surface with rows inside it').toBeLessThanOrEqual(2)
+    // And nothing in that chrome is allowed to float up over the model.
+    expect(chrome.overlapModel, 'the chrome below the model does not cover it').toBe(0)
   })
 
   test('the model keeps the room, and the chrome under it stays a third', async ({ page }) => {
