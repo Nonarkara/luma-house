@@ -36,6 +36,7 @@ interface Chrome {
   topChrome: number
   bottomChrome: number
   bandCount: number
+  surfaces: number
   widest: number
   viewW: number
 }
@@ -49,11 +50,19 @@ async function measure(page: Page): Promise<Chrome> {
     const model = document.querySelector('.spatial-model')
     const modelBox = model!.getBoundingClientRect()
 
-    // The bands that make up the bottom: the direct children of the surface
-    // that holds the 3D view's chrome.
+    // The rows inside the surface that holds the 3D view's chrome.
     const bottom = document.querySelector('.spatial-bottom')
     const bands = bottom ? Array.from(bottom.children).filter(el => el.getBoundingClientRect().height > 0) : []
     const bottomChrome = viewH - modelBox.bottom
+
+    // The surfaces themselves: everything the 3D view draws below the model.
+    // A surface that is split becomes two of these, and the bottom is a stack
+    // of bands again.
+    const shell = document.querySelector('.spatial3d-shell')!
+    const surfaces = Array.from(shell.children).filter(el => {
+      const rect = el.getBoundingClientRect()
+      return rect.height > 0 && rect.top >= modelBox.bottom - 1
+    })
 
     // The widest element that should not be: nothing in the app may be wider
     // than the window it is drawn in.
@@ -70,17 +79,27 @@ async function measure(page: Page): Promise<Chrome> {
       topChrome: round(modelBox.top),
       bottomChrome: round(bottomChrome),
       bandCount: bands.length,
+      surfaces: surfaces.length,
       widest: round(widest),
     }
   })
 }
 
 test.describe('the chrome of the 3D view', () => {
+  // Switching views builds a 3D scene, which can block the page past the
+  // default action budget on a loaded machine: the click itself succeeds and
+  // then the wait for the page to settle runs out of time.
+  test.use({ actionTimeout: 30_000 })
+
   test('the bottom of the model is one surface, not a stack of bands', async ({ page }) => {
     await openStudio(page)
     await openSpatial(page)
     const chrome = await measure(page)
-    // One surface carrying the selection, the state, the numbers and the
+    // One surface under the model. This is the shape the defect had: the
+    // bottom used to be five separate bands, each with its own rule, and a
+    // surface that is split is that defect again.
+    expect(chrome.surfaces, 'the 3D view draws one surface under the model').toBeLessThanOrEqual(1)
+    // The surface carries the selection, the state, the numbers and the
     // time: two rows at most, never four.
     expect(chrome.bandCount, 'the 3D footer is one surface with rows inside it').toBeLessThanOrEqual(2)
   })
