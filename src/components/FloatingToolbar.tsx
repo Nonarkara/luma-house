@@ -1,5 +1,6 @@
 import React from 'react'
-import { MousePointer2, Pencil, AppWindow, DoorOpen, Ruler, Sparkles, Plus, Armchair } from 'lucide-react'
+import { MousePointer2, Pencil, AppWindow, DoorOpen, Ruler, Sparkles, Plus, Armchair, Eraser, Scissors } from 'lucide-react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { PlanTool } from '../types'
 
 interface FloatingToolbarProps {
@@ -11,6 +12,12 @@ interface FloatingToolbarProps {
   onAddRoom?: () => void
   onFurniture?: () => void
   furnitureOpen?: boolean
+  /**
+   * Carry a window or a door to a wall. The press still arms the tool, so a
+   * tap on the button is still how you ask for a window; the drag is the extra
+   * way in, and it works with a finger.
+   */
+  onOpeningDrag?: (type: 'window' | 'door', event: ReactPointerEvent) => void
 }
 
 /**
@@ -27,12 +34,15 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   onAddRoom,
   onFurniture,
   furnitureOpen = false,
+  onOpeningDrag,
 }) => {
   const tools: Array<{ id: PlanTool; label: string; shortcut: string; icon: typeof MousePointer2 }> = [
     { id: 'select', label: 'Select', shortcut: 'V', icon: MousePointer2 },
     { id: 'draw', label: 'Pencil', shortcut: 'W', icon: Pencil },
     { id: 'window', label: 'Window', shortcut: 'O', icon: AppWindow },
     { id: 'door', label: 'Door', shortcut: 'D', icon: DoorOpen },
+    { id: 'erase', label: 'Erase', shortcut: 'E', icon: Eraser },
+    { id: 'trim', label: 'Trim', shortcut: 'C', icon: Scissors },
   ]
 
   return (
@@ -40,13 +50,17 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       {tools.map((t) => {
         const Icon = t.icon
         const isActive = activeTool === t.id && !isMeasuring
+        const carryable = t.id === 'window' || t.id === 'door'
         return (
           <button
             key={t.id}
             type="button"
-            className={`toolbar-pill-btn ${isActive ? 'is-active' : ''}`}
+            className={`toolbar-pill-btn ${isActive ? 'is-active' : ''}${carryable ? ' is-carryable' : ''}`}
             onClick={() => setActiveTool(t.id)}
-            title={`${t.label} (${t.shortcut})`}
+            onPointerDown={(event) => {
+              if (carryable) onOpeningDrag?.(t.id as 'window' | 'door', event)
+            }}
+            title={carryable ? `${t.label} (${t.shortcut}) — drag onto a wall to place it` : `${t.label} (${t.shortcut})`}
             aria-label={t.label}
             aria-pressed={isActive}
           >
@@ -83,7 +97,13 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           aria-label="Layout presets"
         >
           <Sparkles className="toolbar-pill-icon" aria-hidden="true" />
-          <span className="toolbar-pill-label">Layout preset</span>
+          {/* The long form is the desktop's, where the column is wide enough
+              for it; the phone says "Presets", which is the dialog's own word
+              and fits on one line. */}
+          <span className="toolbar-pill-label">
+            <span className="is-wide">Layout preset</span>
+            <span className="is-narrow">Presets</span>
+          </span>
         </button>
       )}
     </div>

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Camera, ChevronLeft, ChevronRight, LampDesk, Layers3, Moon, PanelsTopLeft, Sun } from 'lucide-react'
+import { ChevronLeft, ChevronRight, LampDesk, Layers3, Moon, PanelsTopLeft, Sun } from 'lucide-react'
 import { siteOf } from '../plan'
 import type { PlanState, RoomKind } from '../types'
 import {
@@ -95,13 +95,11 @@ export const RenderGallery = React.memo(function RenderGallery({
   sun,
   conceptImages,
   localView,
-  localControls,
 }: {
   plan: PlanState
   sun: { altitude: number; azimuth: number }
   conceptImages: string[]
   localView: React.ReactNode
-  localControls: React.ReactNode
   onRequestConcept: () => void
   isRendering: boolean
   quotaLeft: number
@@ -138,7 +136,8 @@ export const RenderGallery = React.memo(function RenderGallery({
           </div>
         </div>}
       </div>
-      {active.id === 'wireframe' && <div className="render-local-controls">{localControls}</div>}
+      {/* The picture's index belongs with the pictures. It used to sit
+          under the figures, two bands away from the thing it chooses. */}
       <div className="render-navigation">
       <button className="render-step" type="button" onClick={() => move(-1)} aria-label="Previous view"><ChevronLeft /></button>
       <div className="render-thumbs">
@@ -154,8 +153,8 @@ export const RenderGallery = React.memo(function RenderGallery({
       <button className="render-step" type="button" onClick={() => move(1)} aria-label="Next view"><ChevronRight /></button>
       </div>
       <details className="render-references">
-        <summary>Concept references · photographs do not represent your drawing</summary>
-        <p><strong>Reference image only.</strong> This authored interior does not change with your rooms, city or sun. Study your actual shadows in “Your space + light” above.</p>
+        <summary>Concept references · photos, not your drawing</summary>
+        <p><strong>Reference image only.</strong> An authored interior, not a prediction of your plan: it does not change with your rooms, city or sun. Study your actual shadows in “Your space + light” above.</p>
         <div className="render-thumbs">
           {references.map((item, index) => {
             const Icon = item.icon
@@ -166,9 +165,6 @@ export const RenderGallery = React.memo(function RenderGallery({
         </div>
         <img className={`concept-hero authored-interior ${reference.id}`} src={conceptImages[0] ?? './assets/shanghai-apartment-concept.png'} alt={`${reference.title} — authored reference, unrelated to the current drawing`} />
       </details>
-      <div className="render-disclaimer">
-        <Camera /> Local 3D uses your drawing and clear-sky sun angles · Interior references are optional concepts, not a prediction of your plan
-      </div>
     </div>
   )
 })

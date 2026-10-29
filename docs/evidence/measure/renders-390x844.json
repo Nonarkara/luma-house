@@ -1,0 +1,68 @@
+{
+  "viewW": 390,
+  "viewH": 844,
+  "work": {
+    "h": 443,
+    "w": 390,
+    "top": 133,
+    "bottom": 576
+  },
+  "topChrome": 133,
+  "bottomChrome": 268,
+  "top": [
+    {
+      "side": "top",
+      "tag": "div",
+      "cls": "spatial-toolbar is-picture",
+      "h": 40,
+      "w": 390,
+      "top": 93,
+      "bottom": 133,
+      "text": "3D OrbitFitAxonometricTop-DownWalkArchitecturalSolidWireframeSun…",
+      "children": 2
+    }
+  ],
+  "bottom": [
+    {
+      "side": "bottom",
+      "tag": "div",
+      "cls": "spatial-bottom",
+      "h": 73,
+      "w": 390,
+      "top": 576,
+      "bottom": 649,
+      "text": "10:00 · 29.1° altitudeLocal 3D from your drawing · clear-sky sun…",
+      "children": 1
+    }
+  ],
+  "topLeaves": [
+    {
+      "side": "top",
+      "tag": "div",
+      "cls": "preset-group",
+      "h": 32,
+      "w": 274.03,
+      "text": "3D OrbitFitAxonometricTop-DownWalk"
+    },
+    {
+      "side": "top",
+      "tag": "div",
+      "cls": "vector-group",
+      "h": 32,
+      "w": 382,
+      "text": "ArchitecturalSolidWireframeSun RaysShadowsSave view PNG"
+    }
+  ],
+  "bottomLeaves": [
+    {
+      "side": "bottom",
+      "tag": "div",
+      "cls": "spatial-bottom-bar",
+      "h": 72,
+      "w": 390,
+      "text": "10:00 · 29.1° altitudeLocal 3D from your drawing · clear-sky sun…"
+    }
+  ],
+  "scrollY": 0,
+  "docH": 844
+}

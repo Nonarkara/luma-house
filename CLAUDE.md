@@ -13,7 +13,7 @@ are all still `luma-house` for deployment inertia. Do not "fix" the mismatch.
 
 - `npm install`
 - `npm run dev` — Vite dev server on :5173
-- `npm test` — vitest, 383 cases across 54 files
+- `npm test` — vitest, 663 cases across 78 files
 - `npm run lint` — ESLint
 - `npm run build` — `tsc -b` then the production bundle
 - `npm run preview` — serve the built bundle

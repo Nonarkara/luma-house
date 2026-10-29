@@ -9,6 +9,8 @@ import { exteriorWalls } from '../analysis'
 import type { ValueLensMode } from '../components/ValueLens'
 import type { Compass } from '../analysis'
 import type { ResizeHandle, StrokePoint } from './geometry'
+import type { TrimCut } from './editing'
+import { compassWord } from './editing'
 import type { NapkinCalibrationLine } from './napkinScale'
 
 const roomColors: Record<RoomKind, string> = {
@@ -56,6 +58,9 @@ export const FloorPlan = React.memo(function FloorPlan({
   alignGuides,
   measureStart,
   measureEnd,
+  trimPreview,
+  openingPreview,
+  furniturePreview,
   onRoomPointerDown,
   onRoomSelect,
   onOpeningPointerDown,
@@ -95,6 +100,12 @@ export const FloorPlan = React.memo(function FloorPlan({
   alignGuides?: { x: number[]; y: number[] } | null
   measureStart?: { x: number; y: number } | null
   measureEnd?: { x: number; y: number } | null
+  /** The band the trim would take away, shown before the click that takes it. */
+  trimPreview?: TrimCut | null
+  /** The opening a carried window or door would cut, shown before it is cut. */
+  openingPreview?: Opening | null
+  /** The piece of furniture a carried catalogue item would land as. */
+  furniturePreview?: Furniture | null
   onRoomPointerDown: (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => void
   onRoomSelect: (room: Room) => void
   onOpeningPointerDown: (event: ReactPointerEvent, opening: Opening, end?: 'start' | 'end') => void
@@ -379,6 +390,75 @@ export const FloorPlan = React.memo(function FloorPlan({
                 />
               ))}
             </svg>
+          )}
+          {furniturePreview && (() => {
+            const rect = furnitureRectFor(furniturePreview, site)
+            const spec = furnitureCatalog[furniturePreview.kind]
+            return (
+              <span
+                className="furniture is-preview"
+                style={{ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%` }}
+                aria-hidden="true"
+              >
+                <span>{furniturePreview.kind === 'wc' ? 'WC' : furnitureLabelFor(furniturePreview)}</span>
+                <em className="furniture-preview-note">{spec.label}</em>
+              </span>
+            )
+          })()}
+          {openingPreview && (() => {
+            const w = openingDimensions(openingPreview).width
+            const spanPct = (w / site.w) * 100
+            return (
+              <span
+                className={`opening opening-${openingPreview.type} rotate-${openingPreview.rotation} is-preview`}
+                style={{ left: `${openingPreview.x}%`, top: `${openingPreview.y}%`, width: `${spanPct}%` }}
+                aria-hidden="true"
+              >
+                {openingPreview.type === 'door' && <i />}
+              </span>
+            )
+          })()}
+          {trimPreview && (
+            <svg className="draw-overlay trim-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <pattern id="trim-hatch" width="1.6" height="1.6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                  <line x1="0" y1="0" x2="0" y2="1.6" stroke="var(--studio-sienna)" strokeWidth="0.5" opacity="0.45" />
+                </pattern>
+              </defs>
+              <rect
+                x={trimPreview.removed.x}
+                y={trimPreview.removed.y}
+                width={trimPreview.removed.w}
+                height={trimPreview.removed.h}
+                fill="url(#trim-hatch)"
+                stroke="var(--studio-sienna)"
+                strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
+              />
+              {trimPreview.outcome === 'cut' && (
+                <rect
+                  x={trimPreview.next.x}
+                  y={trimPreview.next.y}
+                  width={trimPreview.next.w}
+                  height={trimPreview.next.h}
+                  fill="none"
+                  stroke="var(--studio-sienna)"
+                  strokeWidth="1.4"
+                  strokeDasharray="4 3"
+                  vectorEffect="non-scaling-stroke"
+                />
+              )}
+            </svg>
+          )}
+          {trimPreview && trimPreview.outcome === 'cut' && (
+            <div
+              className="live-dim trim-dim"
+              style={{ left: `${Math.min(92, trimPreview.removed.x)}%`, top: `${Math.max(1, trimPreview.removed.y - 4)}%` }}
+              aria-live="polite"
+            >
+              <strong>−{trimPreview.removedM2.toFixed(1)} m²</strong>
+              <small>cut back to the {trimPreview.againstRoomName}&apos;s {compassWord(trimPreview.againstCompass)} wall</small>
+            </div>
           )}
           {draftStroke && draftStroke.length > 1 && (
             <svg className="draw-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">

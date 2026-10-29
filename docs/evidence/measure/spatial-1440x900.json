@@ -1,0 +1,76 @@
+{
+  "viewW": 1440,
+  "viewH": 900,
+  "work": {
+    "h": 599.61,
+    "w": 1376,
+    "top": 88,
+    "bottom": 687.61
+  },
+  "topChrome": 88,
+  "bottomChrome": 212.39,
+  "top": [
+    {
+      "side": "top",
+      "tag": "div",
+      "cls": "spatial-toolbar",
+      "h": 40,
+      "w": 1376,
+      "top": 48,
+      "bottom": 88,
+      "text": "3D OrbitFitAxonometricTop-DownWalkAdd furnitureArchitecturalSoli…",
+      "children": 2
+    }
+  ],
+  "bottom": [
+    {
+      "side": "bottom",
+      "tag": "div",
+      "cls": "spatial-bottom",
+      "h": 164.39,
+      "w": 1376,
+      "top": 687.61,
+      "bottom": 852,
+      "text": "Select furnitureBedWardrobeDeskSofaDining table10:00 · 29.1° alt…",
+      "children": 2
+    }
+  ],
+  "topLeaves": [
+    {
+      "side": "top",
+      "tag": "div",
+      "cls": "preset-group",
+      "h": 32,
+      "w": 274.03,
+      "text": "3D OrbitFitAxonometricTop-DownWalk"
+    },
+    {
+      "side": "top",
+      "tag": "div",
+      "cls": "vector-group",
+      "h": 32,
+      "w": 934.44,
+      "text": "Add furnitureArchitecturalSolidWireframeTourConditionsSun RaysAi…"
+    }
+  ],
+  "bottomLeaves": [
+    {
+      "side": "bottom",
+      "tag": "div",
+      "cls": "spatial-bottom-bar",
+      "h": 60,
+      "w": 1376,
+      "text": "Select furnitureBedWardrobeDeskSofaDining table10:00 · 29.1° alt…"
+    },
+    {
+      "side": "bottom",
+      "tag": "section",
+      "cls": "science-dock ",
+      "h": 103.39,
+      "w": 1376,
+      "text": "AdjustSunlit floor now21.4 m² 43%Net right now1.2 kW enteringThr…"
+    }
+  ],
+  "scrollY": 0,
+  "docH": 900
+}

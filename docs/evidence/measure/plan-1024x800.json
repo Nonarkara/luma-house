@@ -1,0 +1,248 @@
+{
+  "viewW": 1024,
+  "viewH": 800,
+  "work": {
+    "h": 486.02,
+    "w": 896,
+    "top": 108,
+    "bottom": 594.02
+  },
+  "topChrome": 108,
+  "bottomChrome": 205.98,
+  "top": [
+    {
+      "side": "top",
+      "tag": "button",
+      "cls": "value-lens-launch",
+      "h": 44,
+      "w": 44,
+      "top": 56,
+      "bottom": 100,
+      "text": "Compare decisionsOpen value lens",
+      "children": 2
+    },
+    {
+      "side": "top",
+      "tag": "div",
+      "cls": "scale-chip",
+      "h": 60,
+      "w": 896,
+      "top": 48,
+      "bottom": 108,
+      "text": "m / cell·14.0 × 10.0 m siteCalibrate",
+      "children": 6
+    }
+  ],
+  "bottom": [
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "science-preview",
+      "h": 50.39,
+      "w": 169.02,
+      "top": 602.02,
+      "bottom": 652.41,
+      "text": "Live sun + heat1.2 kW entering",
+      "children": 3
+    },
+    {
+      "side": "bottom",
+      "tag": "div",
+      "cls": "draw-hint",
+      "h": 35,
+      "w": 896,
+      "top": 660.41,
+      "bottom": 695.41,
+      "text": "Click a room, door or window to select it",
+      "children": 1
+    },
+    {
+      "side": "bottom",
+      "tag": "div",
+      "cls": "zoom-control",
+      "h": 46,
+      "w": 140,
+      "top": 604.2,
+      "bottom": 650.2,
+      "text": "−180%+",
+      "children": 3
+    },
+    {
+      "side": "bottom",
+      "tag": "nav",
+      "cls": "plan-room-key",
+      "h": 56.59,
+      "w": 896,
+      "top": 695.41,
+      "bottom": 752,
+      "text": "1Quiet bedroom9.8 m²2Tea + study niche5.3 m²3Dry / wet bath6.8 m…",
+      "children": 6
+    }
+  ],
+  "topLeaves": [
+    {
+      "side": "top",
+      "tag": "svg",
+      "cls": "[object SVGAnimatedString]",
+      "h": 24,
+      "w": 18,
+      "text": ""
+    },
+    {
+      "side": "top",
+      "tag": "svg",
+      "cls": "[object SVGAnimatedString]",
+      "h": 24,
+      "w": 13,
+      "text": ""
+    },
+    {
+      "side": "top",
+      "tag": "input",
+      "cls": "",
+      "h": 44,
+      "w": 52,
+      "text": ""
+    },
+    {
+      "side": "top",
+      "tag": "small",
+      "cls": "",
+      "h": 18,
+      "w": 36.89,
+      "text": "m / cell"
+    },
+    {
+      "side": "top",
+      "tag": "span",
+      "cls": "",
+      "h": 18,
+      "w": 3.31,
+      "text": "·"
+    },
+    {
+      "side": "top",
+      "tag": "small",
+      "cls": "site-dim",
+      "h": 18,
+      "w": 88,
+      "text": "14.0 × 10.0 m site"
+    },
+    {
+      "side": "top",
+      "tag": "button",
+      "cls": "ruler-arm ",
+      "h": 44,
+      "w": 72,
+      "text": "Calibrate"
+    }
+  ],
+  "bottomLeaves": [
+    {
+      "side": "bottom",
+      "tag": "span",
+      "cls": "science-live",
+      "h": 7,
+      "w": 7,
+      "text": ""
+    },
+    {
+      "side": "bottom",
+      "tag": "span",
+      "cls": "",
+      "h": 32.39,
+      "w": 108.02,
+      "text": "Live sun + heat1.2 kW entering"
+    },
+    {
+      "side": "bottom",
+      "tag": "svg",
+      "cls": "[object SVGAnimatedString]",
+      "h": 24,
+      "w": 16,
+      "text": ""
+    },
+    {
+      "side": "bottom",
+      "tag": "svg",
+      "cls": "[object SVGAnimatedString]",
+      "h": 14,
+      "w": 14,
+      "text": ""
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 44,
+      "w": 44,
+      "text": "−"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "zoom-label",
+      "h": 44,
+      "w": 50,
+      "text": "180%"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 44,
+      "w": 44,
+      "text": "+"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 54.59,
+      "w": 145.13,
+      "text": "1Quiet bedroom9.8 m²"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 54.59,
+      "w": 155.31,
+      "text": "2Tea + study niche5.3 m²"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 54.59,
+      "w": 139.55,
+      "text": "3Dry / wet bath6.8 m²"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 54.59,
+      "w": 159,
+      "text": "4South living room12.6 m²"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 54.59,
+      "w": 150.45,
+      "text": "5Kitchen + dining9.4 m²"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 54.59,
+      "w": 146.56,
+      "text": "6Entry + laundry6.1 m²"
+    }
+  ],
+  "scrollY": 0,
+  "docH": 800
+}

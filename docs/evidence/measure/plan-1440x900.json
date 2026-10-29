@@ -1,0 +1,189 @@
+{
+  "viewW": 1440,
+  "viewH": 900,
+  "work": {
+    "h": 642.61,
+    "w": 1072,
+    "top": 108,
+    "bottom": 750.61
+  },
+  "topChrome": 108,
+  "bottomChrome": 149.39,
+  "top": [
+    {
+      "side": "top",
+      "tag": "button",
+      "cls": "value-lens-launch",
+      "h": 44,
+      "w": 44,
+      "top": 56,
+      "bottom": 100,
+      "text": "Compare decisionsOpen value lens",
+      "children": 2
+    },
+    {
+      "side": "top",
+      "tag": "div",
+      "cls": "scale-chip",
+      "h": 60,
+      "w": 1312,
+      "top": 48,
+      "bottom": 108,
+      "text": "m / cell·14.0 × 10.0 m siteCalibrate",
+      "children": 6
+    }
+  ],
+  "bottom": [
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "science-preview",
+      "h": 50.39,
+      "w": 169.02,
+      "top": 758.61,
+      "bottom": 809,
+      "text": "Live sun + heat1.2 kW entering",
+      "children": 3
+    },
+    {
+      "side": "bottom",
+      "tag": "div",
+      "cls": "draw-hint",
+      "h": 35,
+      "w": 1072,
+      "top": 817,
+      "bottom": 852,
+      "text": "Click a room, door or window to select it",
+      "children": 1
+    },
+    {
+      "side": "bottom",
+      "tag": "div",
+      "cls": "zoom-control",
+      "h": 46,
+      "w": 140,
+      "top": 760.8,
+      "bottom": 806.8,
+      "text": "−173%+",
+      "children": 3
+    }
+  ],
+  "topLeaves": [
+    {
+      "side": "top",
+      "tag": "svg",
+      "cls": "[object SVGAnimatedString]",
+      "h": 24,
+      "w": 18,
+      "text": ""
+    },
+    {
+      "side": "top",
+      "tag": "svg",
+      "cls": "[object SVGAnimatedString]",
+      "h": 24,
+      "w": 13,
+      "text": ""
+    },
+    {
+      "side": "top",
+      "tag": "input",
+      "cls": "",
+      "h": 44,
+      "w": 52,
+      "text": ""
+    },
+    {
+      "side": "top",
+      "tag": "small",
+      "cls": "",
+      "h": 18,
+      "w": 36.89,
+      "text": "m / cell"
+    },
+    {
+      "side": "top",
+      "tag": "span",
+      "cls": "",
+      "h": 18,
+      "w": 3.31,
+      "text": "·"
+    },
+    {
+      "side": "top",
+      "tag": "small",
+      "cls": "site-dim",
+      "h": 18,
+      "w": 88,
+      "text": "14.0 × 10.0 m site"
+    },
+    {
+      "side": "top",
+      "tag": "button",
+      "cls": "ruler-arm ",
+      "h": 44,
+      "w": 72,
+      "text": "Calibrate"
+    }
+  ],
+  "bottomLeaves": [
+    {
+      "side": "bottom",
+      "tag": "span",
+      "cls": "science-live",
+      "h": 7,
+      "w": 7,
+      "text": ""
+    },
+    {
+      "side": "bottom",
+      "tag": "span",
+      "cls": "",
+      "h": 32.39,
+      "w": 108.02,
+      "text": "Live sun + heat1.2 kW entering"
+    },
+    {
+      "side": "bottom",
+      "tag": "svg",
+      "cls": "[object SVGAnimatedString]",
+      "h": 24,
+      "w": 16,
+      "text": ""
+    },
+    {
+      "side": "bottom",
+      "tag": "svg",
+      "cls": "[object SVGAnimatedString]",
+      "h": 14,
+      "w": 14,
+      "text": ""
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 44,
+      "w": 44,
+      "text": "−"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "zoom-label",
+      "h": 44,
+      "w": 50,
+      "text": "173%"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 44,
+      "w": 44,
+      "text": "+"
+    }
+  ],
+  "scrollY": 0,
+  "docH": 900
+}

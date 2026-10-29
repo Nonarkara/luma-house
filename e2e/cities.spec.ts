@@ -95,7 +95,7 @@ test('fixed interior images are labeled references and never the default render'
   // whether it is visible.
   await expect(page.getByLabel('Local 3D light study')).toBeVisible({ timeout: 30_000 })
   await expect(page.locator('.render-stage img')).toHaveCount(0)
-  await page.getByText('Concept references · photographs do not represent your drawing', { exact: true }).click()
+  await page.getByText('Concept references · photos, not your drawing', { exact: true }).click()
   await expect(page.getByText('Reference image only.', { exact: true })).toBeVisible()
   await expect(page.locator('.render-references img')).toBeVisible()
 })

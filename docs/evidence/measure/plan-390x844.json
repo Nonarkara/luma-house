@@ -1,0 +1,216 @@
+{
+  "viewW": 390,
+  "viewH": 844,
+  "work": {
+    "h": 417.03,
+    "w": 390,
+    "top": 153,
+    "bottom": 570.03
+  },
+  "topChrome": 153,
+  "bottomChrome": 273.97,
+  "top": [
+    {
+      "side": "top",
+      "tag": "button",
+      "cls": "value-lens-launch",
+      "h": 44,
+      "w": 44,
+      "top": 101,
+      "bottom": 145,
+      "text": "Compare decisionsOpen value lens",
+      "children": 2
+    },
+    {
+      "side": "top",
+      "tag": "div",
+      "cls": "scale-chip",
+      "h": 60,
+      "w": 390,
+      "top": 93,
+      "bottom": 153,
+      "text": "m / cell·14.0 × 10.0 m siteCalibrate",
+      "children": 6
+    }
+  ],
+  "bottom": [
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "science-preview",
+      "h": 44,
+      "w": 126.02,
+      "top": 573.03,
+      "bottom": 617.03,
+      "text": "Live sun + heat1.2 kW entering",
+      "children": 3
+    },
+    {
+      "side": "bottom",
+      "tag": "div",
+      "cls": "draw-hint",
+      "h": 27,
+      "w": 390,
+      "top": 620.03,
+      "bottom": 647.03,
+      "text": "Click a room, door or window to select it",
+      "children": 1
+    },
+    {
+      "side": "bottom",
+      "tag": "div",
+      "cls": "zoom-control",
+      "h": 46,
+      "w": 140,
+      "top": 572.03,
+      "bottom": 618.03,
+      "text": "−165%+",
+      "children": 3
+    },
+    {
+      "side": "bottom",
+      "tag": "nav",
+      "cls": "plan-room-key",
+      "h": 56.59,
+      "w": 390,
+      "top": 647.03,
+      "bottom": 703.63,
+      "text": "1Quiet bedroom9.8 m²2Tea + study niche5.3 m²3Dry / wet bath6.8 m…",
+      "children": 6
+    }
+  ],
+  "topLeaves": [
+    {
+      "side": "top",
+      "tag": "svg",
+      "cls": "[object SVGAnimatedString]",
+      "h": 24,
+      "w": 18,
+      "text": ""
+    },
+    {
+      "side": "top",
+      "tag": "svg",
+      "cls": "[object SVGAnimatedString]",
+      "h": 24,
+      "w": 13,
+      "text": ""
+    },
+    {
+      "side": "top",
+      "tag": "input",
+      "cls": "",
+      "h": 44,
+      "w": 52,
+      "text": ""
+    },
+    {
+      "side": "top",
+      "tag": "small",
+      "cls": "",
+      "h": 18,
+      "w": 36.89,
+      "text": "m / cell"
+    },
+    {
+      "side": "top",
+      "tag": "button",
+      "cls": "ruler-arm ",
+      "h": 44,
+      "w": 64,
+      "text": "Calibrate"
+    }
+  ],
+  "bottomLeaves": [
+    {
+      "side": "bottom",
+      "tag": "span",
+      "cls": "",
+      "h": 32.39,
+      "w": 108.02,
+      "text": "Live sun + heat1.2 kW entering"
+    },
+    {
+      "side": "bottom",
+      "tag": "svg",
+      "cls": "[object SVGAnimatedString]",
+      "h": 14,
+      "w": 14,
+      "text": ""
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 44,
+      "w": 44,
+      "text": "−"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "zoom-label",
+      "h": 44,
+      "w": 50,
+      "text": "165%"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 44,
+      "w": 44,
+      "text": "+"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 54.59,
+      "w": 114.86,
+      "text": "1Quiet bedroom9.8 m²"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 54.59,
+      "w": 125.03,
+      "text": "2Tea + study niche5.3 m²"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 54.59,
+      "w": 109.28,
+      "text": "3Dry / wet bath6.8 m²"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 54.59,
+      "w": 128.72,
+      "text": "4South living room12.6 m²"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 54.59,
+      "w": 120.19,
+      "text": "5Kitchen + dining9.4 m²"
+    },
+    {
+      "side": "bottom",
+      "tag": "button",
+      "cls": "",
+      "h": 54.59,
+      "w": 116.3,
+      "text": "6Entry + laundry6.1 m²"
+    }
+  ],
+  "scrollY": 0,
+  "docH": 844
+}

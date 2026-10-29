@@ -9,6 +9,8 @@ export function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
         { key: 'W', description: 'Pencil — a line is a wall, a tick is a door or window, a box is a room or furniture' },
         { key: 'O', description: 'Place a window' },
         { key: 'D', description: 'Place a door' },
+        { key: 'E', description: 'Erase — remove a piece, an opening, a pencil wall or a room' },
+        { key: 'C', description: 'Trim — cut a room back to the wall it crosses' },
         { key: 'M', description: 'Tape measure' },
         { key: 'S', description: 'Synthesize a courtyard layout' },
       ],

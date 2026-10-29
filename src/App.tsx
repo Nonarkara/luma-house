@@ -12,7 +12,7 @@ import { LayoutPresetDialog } from './components/LayoutPresetDialog'
 import { TraceReview, type PendingTrace } from './components/TraceReview'
 import { updateOpeningDimensions } from './openingGeometry'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { AppWindow, Armchair, Check, DoorOpen, ImagePlus, MapPin, MousePointer2, Pencil, Redo2, RotateCcw, RotateCw, Ruler, Sun, Trash2, Undo2 } from 'lucide-react'
+import { AppWindow, Armchair, Check, Columns2, DoorOpen, Eraser, ImagePlus, MapPin, MousePointer2, Pencil, Redo2, RotateCcw, RotateCw, Ruler, Scissors, Sun, Trash2, Undo2 } from 'lucide-react'
 import { FloorPlan } from './canvas/FloorPlan'
 import { RenderGallery } from './canvas/RenderGallery'
 import { contentBox, useCanvasViewport } from './canvas/useCanvasViewport'
@@ -23,6 +23,9 @@ import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { clearInvalidStatements, parseLengthMetres, recalibratePlan, setRoomSizeM, sizeRefusalMessage, type SizeAxis } from './canvas/roomSize'
 import { prepareFurnitureReplacement, type FurnitureChoice } from './canvas/furnitureReplacement'
+import { eraseAt, trimAt, trimPreviewAt, type TrimCut } from './canvas/editing'
+import { useCarry } from './canvas/useCarry'
+import { useMediaQuery } from './useMediaQuery'
 import { findFurniturePlacement, furnitureBounds, moveFurnitureTo, rotateFurnitureAtCentre } from './canvas/furniturePlacement'
 import { generateConceptPhoto } from './concept/generateConcept'
 import { getQuotaRemaining, getSavedConceptImages } from './concept/renderQuota'
@@ -99,8 +102,10 @@ const DRAW_HINT = 'Line = wall · tick on a wall = door or window · box = room 
 const TOOL_HINTS: Record<PlanTool, { Icon: typeof Pencil; text: string }> = {
   select: { Icon: MousePointer2, text: 'Click a room, door or window to select it' },
   draw: { Icon: Pencil, text: DRAW_HINT },
-  window: { Icon: AppWindow, text: 'Click a wall to place a window' },
-  door: { Icon: DoorOpen, text: 'Click a wall to place a door' },
+  window: { Icon: AppWindow, text: 'Click a wall to place a window, or drag one onto it' },
+  door: { Icon: DoorOpen, text: 'Click a wall to place a door, or drag one onto it' },
+  erase: { Icon: Eraser, text: 'Click to remove a piece, an opening, a pencil wall or a room' },
+  trim: { Icon: Scissors, text: 'Click a room that crosses another to cut it back to the wall' },
 }
 
 /** The tape measure and the furniture tray are modes too, and the line that
@@ -113,6 +118,20 @@ const MEASURE_HINT: { Icon: typeof Pencil; text: string } = {
 const FURNITURE_HINT: { Icon: typeof Pencil; text: string } = {
   Icon: Pencil,
   text: 'Pick a piece to place it in the plan at its real size',
+}
+
+/** Two trim previews are the same preview when they would cut the same band. */
+function sameTrimPreview(a: TrimCut | null, b: TrimCut | null): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  return (
+    a.roomId === b.roomId &&
+    a.outcome === b.outcome &&
+    a.removed.x === b.removed.x &&
+    a.removed.y === b.removed.y &&
+    a.removed.w === b.removed.w &&
+    a.removed.h === b.removed.h
+  )
 }
 
 /** Explicit entry state survives reload; shared drawings open directly. */
@@ -170,6 +189,13 @@ function App() {
   const [selectedOpening, setSelectedOpening] = useState<string | null>(null)
   const [selectedFurniture, setSelectedFurniture] = useState<string | null>(null)
   const [activeTool, setActiveTool] = useState<PlanTool>(() => (readSavedPlan().rooms.length === 0 ? 'draw' : 'select'))
+  /** The band the trim would take away, shown under the cursor before the click. */
+  const [trimPreview, setTrimPreview] = useState<TrimCut | null>(null)
+  /** Show the 3D beside the plan, so a placement can be judged in both. */
+  const [splitWith3D, setSplitWith3D] = useState(false)
+  /** Two views need room. Below this width the plan keeps the whole sheet. */
+  const wideEnoughForSplit = useMediaQuery('(min-width: 1100px)')
+  const splitOn = splitWith3D && wideEnoughForSplit && view === 'plan'
   const [furnitureTrayOpen, setFurnitureTrayOpen] = useState(false)
   const [draftStroke, setDraftStroke] = useState<StrokePoint[] | null>(null)
   const [rulerArmed, setRulerArmed] = useState(false)
@@ -547,6 +573,20 @@ function App() {
     onGuides: setAlignGuides,
   })
 
+  /** Carrying a window, a door or a piece of furniture into the drawing. */
+  const carry = useCarry({
+    plan,
+    stageRef,
+    placeOpeningAt,
+    commit,
+    onToast: setToast,
+  })
+
+  useEffect(() => {
+    // The trim's preview belongs to the trim. Another tool has no band to show.
+    if (activeTool !== 'trim') setTrimPreview(null)
+  }, [activeTool])
+
   useEffect(() => {
     setLastSaved('Saving…')
     // A share link is an import, not a permanent override of later local edits.
@@ -714,6 +754,18 @@ function App() {
   }, [activeTool, onViewportPointerDown, rulerArmed])
 
   const handleCanvasPointerMove = useCallback((event: ReactPointerEvent) => {
+    // The trim shows the band it would take away, under the cursor, before the
+    // click. A cut you cannot see first is a cut you undo.
+    if (activeTool === 'trim') {
+      const bounds = stageRef.current?.getBoundingClientRect()
+      if (bounds) {
+        const point = clientToPercent(event.clientX, event.clientY, bounds)
+        if (point) {
+          const preview = trimPreviewAt(plan, point)
+          setTrimPreview((current) => (sameTrimPreview(current, preview) ? current : preview))
+        }
+      }
+    }
     // Live room rect for the dimension readout in the canvas
     if (isGesturing() && selectedRoom) {
       const live = plan.rooms.find((r) => r.id === selectedRoom)
@@ -756,7 +808,7 @@ function App() {
     if (event.buttons !== 0 && Math.abs(event.movementX) + Math.abs(event.movementY) > 2) {
       panMovedRef.current = true
     }
-  }, [isGesturing, isMeasuring, measureStart, onViewportPointerMove, plan.rooms, selectedRoom])
+  }, [activeTool, isGesturing, isMeasuring, measureStart, onViewportPointerMove, plan, selectedRoom])
 
   const handleCanvasPointerUp = useCallback((event: ReactPointerEvent) => {
     setLiveDragRect(null)
@@ -781,6 +833,19 @@ function App() {
     }
     onViewportPointerUp(event)
   }, [finalizeDrawnRoom, finalizeRulerLine, onViewportPointerUp])
+
+  /**
+   * Carrying a window or a door from the palette to a wall.
+   *
+   * The press arms the tool — a tap on the button is still how you ask for a
+   * window. A drag carries the opening across the sheet, and letting go on a
+   * wall cuts an opening in it. Pointer events, not HTML drag-and-drop: this
+   * has to work with a finger.
+   */
+  const startOpeningDrag = useCallback((type: 'window' | 'door', event: ReactPointerEvent) => {
+    setActiveTool(type)
+    carry.begin({ kind: 'opening', type }, event.clientX, event.clientY)
+  }, [carry])
 
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (panMovedRef.current || isGesturing()) return
@@ -807,6 +872,31 @@ function App() {
     }
 
     if (activeTool === 'draw') return
+    if (activeTool === 'erase' || activeTool === 'trim') {
+      const bounds = stageRef.current?.getBoundingClientRect()
+      if (!bounds) return
+      const point = clientToPercent(event.clientX, event.clientY, bounds)
+      if (!point) return
+      if (activeTool === 'erase') {
+        const outcome = eraseAt(plan, point)
+        if (!outcome.target) {
+          setToast(outcome.toast)
+          return
+        }
+        commit(() => outcome.plan, 'Erase')
+        setSelectedRoom(null)
+        setSelectedOpening(null)
+        setSelectedFurniture(null)
+        setToast(outcome.toast)
+        return
+      }
+      const outcome = trimAt(plan, point)
+      setToast(outcome.toast)
+      if (outcome.unchanged) return
+      commit(() => outcome.plan, 'Trim')
+      setTrimPreview(null)
+      return
+    }
     if (activeTool === 'select') {
       if (event.target === event.currentTarget || (event.target as HTMLElement).classList.contains('plan-canvas')) {
         setSelectedRoom(null)
@@ -823,7 +913,7 @@ function App() {
     commit((current) => ({ ...current, openings: [...current.openings, opening] }), `Place ${opening.type}`)
     setActiveTool('select')
     setToast(`${opening.type === 'window' ? 'Window' : 'Door'} placed`)
-  }, [activeTool, commit, isGesturing, isMeasuring, measureStart, placeOpeningAt, site.h, site.w])
+  }, [activeTool, commit, isGesturing, isMeasuring, measureStart, placeOpeningAt, plan, site.h, site.w])
 
   const addRoom = useCallback(() => {
     const index = plan.rooms.length + 1
@@ -1029,7 +1119,7 @@ function App() {
       }
       if (meta) return
 
-      // Tool shortcuts — V/W/O/D/M/S, advertised by the FloatingToolbar.
+      // Tool shortcuts — V/W/O/D/E/C/M/S, advertised by the FloatingToolbar.
       // Walk mode owns WASD; skip plan-tool bindings so W does not switch to Draw.
       if (!walkMode) {
         const toolKey = event.key.toLowerCase()
@@ -1037,6 +1127,8 @@ function App() {
         if (toolKey === 'w') { event.preventDefault(); setActiveTool('draw'); return }
         if (toolKey === 'o') { event.preventDefault(); setActiveTool('window'); return }
         if (toolKey === 'd') { event.preventDefault(); setActiveTool('door'); return }
+        if (toolKey === 'e') { event.preventDefault(); setActiveTool('erase'); return }
+        if (toolKey === 'c') { event.preventDefault(); setActiveTool('trim'); return }
         if (toolKey === 'm') { event.preventDefault(); setIsMeasuring((prev) => !prev); return }
         if (toolKey === 's') {
           event.preventDefault()
@@ -1405,9 +1497,10 @@ function App() {
     />
   )
 
-  const localSpatialView = (footer?: ReactNode) => (
+  const localSpatialView = (footer?: ReactNode, chrome: 'studio' | 'picture' = 'studio') => (
     <Suspense fallback={<div className="spatial-note">Loading 3D…</div>}>
       <Spatial3D
+        chrome={chrome}
         theme={theme}
         plan={catalogPreviewPlan}
         previewingFurniture={catalogPreviewPlan !== plan}
@@ -1550,9 +1643,21 @@ function App() {
                 onAddRoom={addRoom}
                 onFurniture={() => setFurnitureTrayOpen((open) => !open)}
                 furnitureOpen={furnitureTrayOpen}
+                onOpeningDrag={startOpeningDrag}
               />
             )}
             {view === 'plan' && <button type="button" className="room-options-launch" disabled={isEmpty} onClick={() => setRoomOptionsOpen(true)}>Room options</button>}
+            {view === 'plan' && (
+              <button
+                type="button"
+                className={`split-launch ${splitOn ? 'is-active' : ''}`}
+                onClick={() => setSplitWith3D((open) => !open)}
+                aria-pressed={splitOn}
+                title={splitOn ? 'Hide the 3D beside the plan' : 'Show the 3D beside the plan'}
+              >
+                <Columns2 /> Plan + 3D
+              </button>
+            )}
             <div className="dock-history" aria-label="History">
               <IconButton label="Undo" onClick={undo} disabled={!past.length}><Undo2 /></IconButton>
               <IconButton label="Redo" onClick={redo} disabled={!future.length}><Redo2 /></IconButton>
@@ -1574,8 +1679,9 @@ function App() {
             </div>
           )}
 
-          <section className={`canvas-frame${view === 'plan' ? ' is-plan' : ''}`} ref={frameRef} aria-label="House design canvas" onWheel={onWheel}>
+          <section className={`canvas-frame${view === 'plan' ? ' is-plan' : ''}${splitOn ? ' is-split' : ''}`} ref={frameRef} aria-label="House design canvas" onWheel={onWheel}>
             {view === 'plan' ? (
+              <>
               <FloorPlan
                 plan={plan}
                 selectedRoom={selectedRoom}
@@ -1603,6 +1709,9 @@ function App() {
                 alignGuides={alignGuides}
                 measureStart={measureStart}
                 measureEnd={measureEnd}
+                trimPreview={trimPreview}
+                openingPreview={carry.preview?.kind === 'opening' ? carry.preview.opening ?? null : null}
+                furniturePreview={carry.preview?.kind === 'furniture' ? carry.preview.item ?? null : null}
                 onRoomPointerDown={onRoomPointerDown}
                 onRoomSelect={room => { setSelectedRoom(room.id); setSelectedOpening(null); setSelectedFurniture(null) }}
                 onOpeningPointerDown={onOpeningPointerDown}
@@ -1616,6 +1725,12 @@ function App() {
                 onCanvasClick={handleCanvasClick}
                 stageRef={stageRef}
               />
+              {splitOn && (
+                <div className="plan-split-3d" aria-label="3D beside the plan">
+                  {localSpatialView(undefined, 'picture')}
+                </div>
+              )}
+              </>
             ) : view === 'spatial' ? (
               <div className="spatial-wrap">
                 {localSpatialView(localLightControls)}
@@ -1636,8 +1751,7 @@ function App() {
                 plan={plan}
                 sun={sun}
                 conceptImages={conceptImages}
-                localView={localSpatialView()}
-                localControls={!isEmpty && localLightControls}
+                localView={localSpatialView(undefined, 'picture')}
                 onRequestConcept={() => void runConceptRender()}
                 isRendering={isRendering}
                 quotaLeft={quotaLeft}
@@ -1802,6 +1916,9 @@ function App() {
               open={isCatalogOpen}
               onClose={closeCatalog}
               onAddFurniture={addFurniture}
+              onCarryFurniture={(choice, label, event) => {
+                carry.begin({ kind: 'furniture', choice, label }, event.clientX, event.clientY)
+              }}
               plan={plan} roomId={catalogRoom} onRoomChange={setCatalogRoom}
               replacementId={replacementId} replacementChoice={replacementChoice}
               onPreviewReplacement={choice => { setReplacementChoice(choice); if (choice && replacementId && prepareFurnitureReplacement(plan, replacementId, choice).item) setView('spatial') }} onApplyReplacement={applyReplacement}
@@ -1818,6 +1935,15 @@ function App() {
             {view === 'plan' && <PlanRoomKey rooms={plan.rooms} site={site} selectedRoom={selectedRoom}
               onSelect={room => { setSelectedRoom(room.id); setSelectedOpening(null); setSelectedFurniture(null) }} />}
             {toast && <div className="toast" role="status"><Check /> {toast}</div>}
+            {carry.point && (
+              <div
+                className={`drop-ghost ${carry.preview ? 'will-place' : ''}`}
+                style={{ left: `${carry.point.x}px`, top: `${carry.point.y}px` }}
+                aria-hidden="true"
+              >
+                {carry.payload?.kind === 'furniture' ? <Armchair /> : carry.payload?.type === 'door' ? <DoorOpen /> : <AppWindow />}
+              </div>
+            )}
           </section>
 
           <AssistantBar

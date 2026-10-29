@@ -95,6 +95,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .canvas-toolbar { grid-column: 2; height: auto; min-height: 44px; gap: 8px; flex-wrap: wrap; align-items: center; }
 .floating-island-toolbar { position: static; transform: none; display: flex; flex: 1; min-width: 0; background: var(--studio-sheet); border: 1px solid var(--border); overflow: visible; }
 .toolbar-pill-btn { flex: 0 0 auto; min-height: 44px; padding: 6px 9px; gap: 5px; color: var(--studio-ink); border-right-color: var(--border); font-size: var(--font-body); }
+.toolbar-pill-label .is-narrow { display: none; }
 .toolbar-pill-icon { width: 16px; height: 16px; }
 .toolbar-pill-kbd { display: none; }
 .toolbar-pill-btn.is-active, .toolbar-pill-btn.is-active .toolbar-pill-icon { color: var(--studio-sheet); background: var(--studio-sienna); }
@@ -184,7 +185,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   .journey-rail button strong { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .journey-rail button.is-current { border-bottom-color: var(--studio-sienna); }
   .canvas-toolbar { display: grid; grid-template-columns: 1fr auto; gap: 4px; }
-  .floating-island-toolbar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-column: 1 / -1; grid-row: 2; width: 100%; }
+  /* Five columns, because the palette now carries six drawing tools and the
+     four that come with them: at four columns it spilled to a third row and
+     took 38px of the drawing that the eraser and the trim had just earned
+     back. A label that no longer fits wraps to two lines — it is never cut. */
+  .floating-island-toolbar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-column: 1 / -1; grid-row: 2; width: 100%; }
   .toolbar-pill-btn { flex-direction: row; min-width: 0; min-height: 44px; padding: var(--space-1); gap: var(--space-1); font-size: var(--font-note); border-bottom: var(--rule-control) solid var(--studio-border); }
   .view-switch button { min-height: 36px; padding: 6px 10px; font-size: var(--font-body); }
   .history-tools .icon-button { width: 36px; height: 36px; }
@@ -1031,7 +1036,13 @@ body { overflow-y: auto; }
   .app-shell .journey-step { min-height: 44px; }
   .app-shell .journey-step span { font-size: var(--font-note); }
   .app-shell .canvas-tools { display: grid; grid-template-columns: minmax(0, 1fr) 88px; overflow: visible; }
-  .app-shell .canvas-tools .floating-island-toolbar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
+  /* Five columns, because the palette now carries six drawing tools and the
+     four that come with them: at four columns it spilled to a third row and
+     took 38px of the drawing that the eraser and the trim had just earned
+     back. A label that no longer fits wraps to two lines — it is never cut. */
+  .app-shell .canvas-tools .floating-island-toolbar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; }
+  .app-shell .canvas-tools .toolbar-pill-label .is-wide { display: none; }
+  .app-shell .canvas-tools .toolbar-pill-label .is-narrow { display: inline; }
   .app-shell .canvas-tools .toolbar-pill-btn { min-width: 44px; width: 100%; min-height: 44px; }
   .app-shell .canvas-tools .toolbar-pill-btn .toolbar-pill-label { display: block; }
   .app-shell .canvas-tools .toolbar-divider { display: none; }
@@ -1238,6 +1249,18 @@ body { overflow-y: auto; }
 .spatial-furniture-handle { min-width: 44px; min-height: 44px; padding: 4px; border: 1px solid var(--studio-sienna); background: var(--studio-sheet); color: var(--studio-ink); font-size: var(--font-note); touch-action: none; cursor: move; }
 
 /*
+  The gallery's live scene is a picture, not a console. Its caption says when
+  the picture was taken and its actions say what you can do with it — one row,
+  because a caption and the actions beside it are one group. The Spatial view
+  keeps its own layout: there the state block carries the whole working state
+  and needs the width.
+*/
+.spatial3d-shell.is-picture .spatial-state { flex: 0 1 auto; min-width: 0; }
+.spatial3d-shell.is-picture .spatial-sun-hud > div { min-width: 0; }
+.spatial3d-shell.is-picture .spatial-bottom-bar { gap: 4px 16px; }
+.spatial-picture-note { font-size: var(--font-note); color: var(--text-secondary); }
+
+/*
   Narrow screens: the 3D toolbar was a desktop row allowed to wrap, so it became five
   rows of buttons — 148px of chrome standing between the reader and a 270px
   model. It is one row now, and it says that it scrolls: the row is cut at the
@@ -1290,6 +1313,11 @@ body { overflow-y: auto; }
   .spatial-bottom-bar > .spatial-furniture-tools { grid-column: 1; grid-row: 1; }
   .spatial-bottom-bar > .study-launchers { grid-column: 2; grid-row: 1; justify-self: end; }
   .spatial-bottom-bar > .spatial-state { grid-column: 1 / -1; grid-row: 2; }
+  /* The gallery's caption and its actions are one group: the caption says
+     when the picture was taken, the actions say what can be done with it, and
+     they belong on one row. The Spatial view keeps its own layout, where the
+     state carries the whole working state and needs the width of the sheet. */
+  .spatial3d-shell.is-picture .spatial-bottom-bar > .spatial-state { grid-column: 1; grid-row: 1; }
   .spatial-bottom-bar > .spatial-trial-controls { grid-column: 1 / -1; grid-row: 3; }
   .spatial-bottom-bar > .spatial-trial-notice { grid-column: 1 / -1; grid-row: 2; }
   .spatial-bottom-bar:has(.spatial-furniture-tools button) { gap: 4px 10px; padding: 4px 8px; }
@@ -1334,3 +1362,23 @@ body { overflow-y: auto; }
 .spatial-trial-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px; font-size: var(--font-note); }
 .spatial-trial-controls strong { overflow-wrap: anywhere; }
 .spatial-trial-controls button { min-height: 32px; padding: 4px 6px; border: 1px solid var(--border); color: var(--studio-ink); background: var(--studio-sheet); font: inherit; }
+
+/* A window or door can be carried to a wall by a finger. The browser must not
+   take that touch for a scroll, or the drag is cancelled before it starts. */
+.toolbar-pill-btn.is-carryable { touch-action: none; }
+
+/* Plan + 3D. The 3D stands beside the drawing, in the drawing's own row; the
+   room key keeps the last column. studio.css loads after styles.css, so the
+   split has to be stated here, at the frame's own specificity, or the plan
+   frame's grid puts the 3D underneath and crushes the drawing to a strip. */
+@media (min-width: 1100px) {
+  .app-shell .canvas-frame.is-plan.is-split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 240px; }
+  .app-shell .is-split > .plan-viewport { grid-column: 1; grid-row: 2; }
+  .app-shell .is-split > .plan-split-3d { grid-column: 2; grid-row: 2; }
+  .app-shell .is-split > .draw-hint,
+  .app-shell .is-split > .science-dock,
+  .app-shell .is-split > .value-lens,
+  .app-shell .is-split > .furniture-tray,
+  .app-shell .is-split > .zoom-control { grid-column: 1 / span 2; }
+  .app-shell .is-split > .plan-room-key { grid-column: 3; }
+}

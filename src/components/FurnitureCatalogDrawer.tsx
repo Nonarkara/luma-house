@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import { X, Bed, Armchair, Monitor, Utensils, Flower2, Tv, LayoutGrid, Layers, Bath, Lamp } from 'lucide-react'
 import { furnitureCatalog, furnitureLabelFor, furnitureRectFor, siteOf } from '../plan'
 import type { FurnitureKind, PlanState } from '../types'
@@ -19,6 +20,9 @@ interface FurnitureCatalogDrawerProps {
   open: boolean
   onClose: () => void
   onAddFurniture: (kind: FurnitureKind, label: string, size?: { wM: number; dM: number }, assetId?: string) => boolean
+  /** Carry a piece into the plan. The press still adds it, so a tap is still
+   *  the quick way in; the drag puts it where the finger is. */
+  onCarryFurniture?: (choice: FurnitureChoice, label: string, event: ReactPointerEvent) => void
 }
 
 interface CatalogItem {
@@ -78,6 +82,7 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
   open,
   onClose,
   onAddFurniture, plan, roomId, onRoomChange, replacementId, replacementChoice, onPreviewReplacement, onApplyReplacement, onInspectReplacement, inspecting,
+  onCarryFurniture,
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState<string>('')
@@ -85,6 +90,8 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
 
   const [fitOnly, setFitOnly] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
+  /** Where a catalogue card was pressed, so a drag is told from a tap. */
+  const pressRef = useRef<{ x: number; y: number } | null>(null)
   const replacing = plan.furniture.find(item => item.id === replacementId)
   const choiceFor = (item: CatalogItem): FurnitureChoice => ({ kind: item.kind, label: item.label, wM: item.size?.wM ?? furnitureCatalog[item.kind].w, dM: item.size?.dM ?? furnitureCatalog[item.kind].d, ...(item.assetId ? { assetId: item.assetId } : {}) })
   const availability = useMemo(() => {
@@ -224,7 +231,20 @@ export const FurnitureCatalogDrawer: React.FC<FurnitureCatalogDrawerProps> = ({
               <button
                 key={`${item.kind}-${idx}`}
                 type="button"
-                onClick={() => replacementId ? onPreviewReplacement(choiceFor(item)) : setPlacementError(!onAddFurniture(item.kind, item.label, item.size, item.assetId))}
+                onClick={(event) => {
+                  const press = pressRef.current
+                  pressRef.current = null
+                  // A drag carried this piece onto the plan; the click that
+                  // follows a drag must not add a second one somewhere else.
+                  if (press && (Math.abs(event.clientX - press.x) > 4 || Math.abs(event.clientY - press.y) > 4)) return
+                  if (replacementId) onPreviewReplacement(choiceFor(item))
+                  else setPlacementError(!onAddFurniture(item.kind, item.label, item.size, item.assetId))
+                }}
+                onPointerDown={(event) => {
+                  pressRef.current = { x: event.clientX, y: event.clientY }
+                  if (replacementId || !onCarryFurniture) return
+                  onCarryFurniture(choiceFor(item), item.label, event)
+                }}
                 className="catalog-card"
                 aria-label={`${replacementId ? 'Try' : 'Add'} ${item.label}, ${dimensions}`}
                 aria-pressed={replacementId ? replacementChoice?.label === item.label : undefined}

@@ -697,6 +697,59 @@ button:active {
   cursor: grab;
 }
 
+/*
+  The plan and the 3D, side by side. A placement can only be judged against
+  both views at once, so on a wide sheet the 3D stands beside the plan and the
+  two share one selection. Below 1100px the plan keeps the whole sheet and
+  the 3D is not built at all.
+*/
+.canvas-frame.is-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.canvas-frame.is-split > .plan-viewport {
+  position: relative;
+  inset: auto;
+}
+
+.plan-split-3d {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--studio-border, var(--border));
+  background: var(--bg-primary);
+}
+
+.plan-split-3d .spatial3d-shell {
+  height: 100%;
+}
+
+.split-launch {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--studio-border, var(--border));
+  background: var(--studio-sheet, var(--bg-elevated));
+  color: var(--studio-ink, var(--text));
+  font-size: var(--font-note);
+}
+
+.split-launch.is-active {
+  background: var(--studio-sienna);
+  color: var(--studio-sheet, #fff);
+}
+
+@media (min-width: 1100px) {
+  .split-launch {
+    display: inline-flex;
+  }
+}
+
 .plan-viewport:active {
   cursor: grabbing;
 }
@@ -1211,6 +1264,54 @@ button:active {
   background: transparent;
 }
 
+/*
+  A window or a door carried from the palette. The ghost follows the pointer
+  and the marker on the wall says where it would land, so the drop is a
+  decision and not a guess.
+*/
+.drop-ghost {
+  position: fixed;
+  z-index: 220;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 1px dashed var(--text-tertiary);
+  background: var(--bg-elevated);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.drop-ghost.will-place {
+  border-style: solid;
+  border-color: var(--studio-sienna, var(--accent-primary));
+  color: var(--studio-sienna, var(--accent-primary));
+}
+
+.opening.is-preview {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.furniture.is-preview {
+  pointer-events: none;
+  opacity: 0.6;
+  outline: 1px dashed var(--studio-sienna, var(--accent-primary));
+  outline-offset: -1px;
+}
+
+.furniture-preview-note {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  transform: translateX(-50%);
+  font: 500 9px/1.2 var(--type-mono, monospace);
+  font-style: normal;
+  color: var(--studio-sienna, var(--accent-primary));
+  white-space: nowrap;
+}
+
 .opening-window::before {
   content: '';
   position: absolute;
@@ -1531,7 +1632,11 @@ button:active {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  /* The picture is the work and it owns the free space. Every other band is
+     sized by what it holds, so the composition does not depend on how many
+     bands there are or which order they arrive in. */
+  grid-template-rows: minmax(320px, 1fr);
+  grid-auto-rows: auto;
   background: var(--bg-elevated);
   overflow: hidden;
 }
@@ -6228,6 +6333,24 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   margin-top: 1px;
 }
 
+/*
+  The trim, before the click. The band that would be taken away is hatched and
+  the room that would be left is outlined, so the cut is seen before it is
+  made. The badge says how much floor goes and which wall it follows.
+*/
+.trim-overlay {
+  z-index: 10;
+}
+
+.trim-dim {
+  border-style: dashed;
+}
+
+.trim-dim small {
+  max-width: 190px;
+  white-space: normal;
+}
+
 /* Snap lines while dragging a room */
 .snap-overlay {
   position: absolute;
@@ -7131,7 +7254,6 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 /* Local light study: controls retain their labels and stay clear of the model. */
 .spatial-tb-btn { flex: 0 0 auto; white-space: nowrap; }
 .spatial-tb-btn.toggle { width: auto; height: auto; overflow: visible; }
-.render-gallery { grid-template-rows: minmax(0, 1fr) auto auto; }
 .render-gallery:has(.is-local-study) .render-thumbs { display: flex; overflow-x: auto; }
 .render-gallery:has(.is-local-study) .render-thumbs button { min-width: 160px; flex: 0 0 auto; }
 .spatial-sun-hud { max-width: calc(100% - 28px); }
@@ -7177,8 +7299,8 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 .sun-chart-beam { stroke: var(--studio-sienna); }
 
 /* Keep climate controls below the perspective, so they never cover its floor shadows. */
-.render-gallery { grid-template-rows: minmax(320px, 1fr) auto auto auto auto; }
-.render-gallery:has(.render-references[open]) { grid-template-rows: minmax(320px, 1fr) auto auto minmax(300px, auto) auto; }
+.render-gallery { grid-template-rows: minmax(320px, 1fr); }
+.render-gallery:has(.render-references[open]) { align-content: start; }
 .render-local-controls .science-dock { position: relative; inset: auto; margin: 0; width: 100%; }
 
 .spatial3d-shell { isolation: isolate; }
@@ -7256,7 +7378,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
   .study-paper header { flex-wrap: wrap; }
   .study-paper header > img { width: 90px; }
   .study-launchers { bottom: 80px; right: 8px; }
-  .render-gallery:has(.is-local-study) { grid-template-rows: minmax(440px, 1fr) auto auto auto auto; }
+  .render-gallery:has(.is-local-study) { grid-template-rows: minmax(440px, 1fr); }
   .canvas-frame:has(> .spatial-wrap) { grid-template-rows: minmax(440px, 1fr) auto; }
 }
 @page study { size: A4 landscape; margin: 8mm; }

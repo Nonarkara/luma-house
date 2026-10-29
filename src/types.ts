@@ -161,6 +161,13 @@ export interface PlanAssemblies {
   climateResponseId: 'tropical-humid' | 'hot-arid' | 'cold-temperate' | 'high-altitude' | 'temperate-mixed' | null
 }
 
-export type PlanTool = 'select' | 'draw' | 'window' | 'door'
+/**
+ * The plan tools.
+ *
+ * `erase` removes what is under the cursor — furniture, an opening, a pencil
+ * wall, a room. `trim` cuts a room back along the wall it crosses, which is
+ * how a wall is taken out of a plan without taking the room with it.
+ */
+export type PlanTool = 'select' | 'draw' | 'window' | 'door' | 'erase' | 'trim'
 export type WorkspaceMode = 'plan' | 'light' | 'wellbeing' | 'climate' | 'systems' | 'budget'
 export type CanvasView = 'plan' | 'spatial' | 'renders'

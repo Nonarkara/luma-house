@@ -1,0 +1,139 @@
+import { expect, test, type Page } from '@playwright/test'
+import { chinaApartmentPlan } from '../src/mockups/chinaApartment'
+import { encodePlanToHash } from '../src/sharePlan'
+
+/**
+ * The chrome of the Renders gallery, measured.
+ *
+ * The gallery is the one surface that never had a pass: the Plan view was
+ * measured on 2026-10-27 and the Spatial view on 2026-10-25, but the gallery
+ * carried the whole Spatial console *plus* its own bands and was never
+ * counted. It was the worst surface in the product — at 390×844 the picture
+ * was 295px against 549px of chrome, and the chrome outweighed the work by
+ * nearly two to one.
+ *
+ * These gates own the numbers that came out of the pass, so a later change
+ * cannot quietly take the space back. They measure the rendered page; they do
+ * not read the stylesheet.
+ */
+
+const namedHash = encodePlanToHash(chinaApartmentPlan)
+
+async function openStudio(page: Page) {
+  await page.addInitScript(() => window.localStorage.setItem('luma-journey:welcome:shanghai-50', '1'))
+  await page.goto(`/#plan=${namedHash}`)
+  await expect(page.locator('.app-shell')).toBeVisible()
+}
+
+async function openGallery(page: Page) {
+  await page.getByRole('button', { name: 'Renders', exact: true }).click({ noWaitAfter: true })
+  await expect(page.locator('.render-gallery')).toBeVisible({ timeout: 60_000 })
+  await expect(page.locator('.spatial-model')).toBeVisible({ timeout: 60_000 })
+  await page.waitForTimeout(2500)
+}
+
+interface Gallery {
+  viewH: number
+  viewW: number
+  pictureH: number
+  topChrome: number
+  bottomChrome: number
+  /** The bands under the picture, in order. */
+  bands: string[]
+  /** The band directly under the picture. */
+  firstBand: string | null
+  widest: number
+  /** The authoring console the gallery must not carry. */
+  furniturePicker: number
+  sectionCut: number
+}
+
+async function measure(page: Page): Promise<Gallery> {
+  return page.evaluate(() => {
+    const round = (n: number) => Math.round(n * 100) / 100
+    const viewH = window.innerHeight
+    const viewW = window.innerWidth
+    const model = document.querySelector('.render-stage .spatial-model')!
+    const modelBox = model.getBoundingClientRect()
+    const gallery = document.querySelector('.render-gallery')!
+
+    // The bands under the picture, in the order they are drawn.
+    const bands = Array.from(gallery.children)
+      .filter(el => el !== document.querySelector('.render-stage') && el.getBoundingClientRect().height > 0)
+      .map(el => el.className?.toString().split(' ')[0] ?? el.tagName.toLowerCase())
+
+    let widest = 0
+    for (const el of Array.from(gallery.querySelectorAll('*'))) {
+      const rect = el.getBoundingClientRect()
+      if (rect.width > 0) widest = Math.max(widest, rect.width)
+    }
+
+    return {
+      viewH,
+      viewW,
+      pictureH: round(modelBox.height),
+      topChrome: round(modelBox.top),
+      bottomChrome: round(viewH - modelBox.bottom),
+      bands,
+      firstBand: bands[0] ?? null,
+      widest: round(widest),
+      furniturePicker: document.querySelectorAll('.render-gallery .spatial-furniture-tools').length,
+      sectionCut: document.querySelectorAll('.render-gallery .spatial-section').length,
+    }
+  })
+}
+
+test.describe('the chrome of the gallery', () => {
+  test.use({ actionTimeout: 30_000 })
+
+  test('the picture outweighs the chrome around it', async ({ page }) => {
+    for (const [width, height] of [[1440, 900], [1024, 800], [390, 844]] as const) {
+      await page.setViewportSize({ width, height })
+      await openStudio(page)
+      await openGallery(page)
+      const gallery = await measure(page)
+      const frame = gallery.topChrome + gallery.bottomChrome
+      // The picture is the work, and the work outweighs its frame. Before the
+      // pass the gallery failed this at every width: 295px of picture against
+      // 549px of chrome on a phone.
+      expect(gallery.pictureH, `the picture must outweigh the chrome around it at ${width}px`).toBeGreaterThan(frame)
+      expect(gallery.bottomChrome / gallery.viewH, `the chrome below the picture stays under a third at ${width}px`).toBeLessThan(0.35)
+    }
+  })
+
+  test('the picture’s index sits directly under the picture', async ({ page }) => {
+    await openStudio(page)
+    await openGallery(page)
+    const gallery = await measure(page)
+    // The reader's first question in a gallery is "which picture is this, and
+    // what else is there". The index answers it, so it is the first band under
+    // the picture and not two bands away under the figures.
+    expect(gallery.firstBand, 'the index is the first band under the picture').toBe('render-navigation')
+  })
+
+  test('the gallery carries no authoring console', async ({ page }) => {
+    await openStudio(page)
+    await openGallery(page)
+    const gallery = await measure(page)
+    // The furniture picker and the section cut belong to the Spatial view,
+    // where the task they serve is done. A gallery shows pictures.
+    expect(gallery.furniturePicker, 'the gallery has no furniture picker').toBe(0)
+    expect(gallery.sectionCut, 'the gallery has no section cut').toBe(0)
+  })
+
+  test('the picture says what it is', async ({ page }) => {
+    await openStudio(page)
+    await openGallery(page)
+    // The honesty the disclaimer used to carry in its own band now sits with
+    // the picture it describes.
+    await expect(page.locator('.spatial-picture-note')).toContainText('your drawing')
+  })
+
+  test('nothing in the gallery is wider than the window', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await openStudio(page)
+    await openGallery(page)
+    const gallery = await measure(page)
+    expect(gallery.widest, 'no element may be wider than the window it is drawn in').toBeLessThanOrEqual(gallery.viewW + 1)
+  })
+})

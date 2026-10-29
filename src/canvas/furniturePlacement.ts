@@ -42,6 +42,71 @@ export function furniturePlacementIssues(plan: PlanState, item: Furniture): stri
   return issues
 }
 
+/**
+ * Place a piece where it was dropped.
+ *
+ * The pointer is the centre of the piece. The piece keeps its real size and
+ * never crosses a wall: if the exact spot is taken it slides to the nearest
+ * clear floor in the same room, and the caller is told which of the two
+ * happened. Nothing is ever shrunk to make it fit.
+ */
+export function findFurniturePlacementAt(
+  plan: PlanState,
+  item: Furniture,
+  point: { x: number; y: number },
+): { item: Furniture; room: Room; exact: boolean } | null {
+  const site = siteOf(plan)
+  const insetX = (MODEL_WALL_THICKNESS_M / 2 + .01) / site.w * 100
+  const insetY = (MODEL_WALL_THICKNESS_M / 2 + .01) / site.h * 100
+  const occupied = plan.furniture.filter(other => other.id !== item.id).map(other => furnitureRectFor(other, site))
+
+  const room = plan.rooms.find(candidate =>
+    point.x >= candidate.x && point.x <= candidate.x + candidate.w &&
+    point.y >= candidate.y && point.y <= candidate.y + candidate.h)
+  if (!room) return null
+
+  const blockers = occupied.filter(other => overlaps(room, other))
+
+  for (const rotated of [item.rotated, !item.rotated]) {
+    const candidate = { ...item, rotated }
+    const rect = furnitureRectFor(candidate, site)
+    const left = room.x + insetX
+    const top = room.y + insetY
+    const right = room.x + room.w - insetX - rect.w
+    const bottom = room.y + room.h - insetY - rect.h
+    if (right < left || bottom < top) continue
+
+    const wanted = {
+      x: Math.max(left, Math.min(right, point.x - rect.w / 2)),
+      y: Math.max(top, Math.min(bottom, point.y - rect.h / 2)),
+    }
+    // The drop point first, then a ring around it, so a piece dropped beside
+    // something else lands beside it rather than in the middle of the room.
+    const attempts: Array<{ x: number; y: number }> = [wanted]
+    for (let ring = 1; ring <= 4; ring += 1) {
+      const stepX = (rect.w + insetX) * ring / 2
+      const stepY = (rect.h + insetY) * ring / 2
+      for (const dx of [-stepX, 0, stepX]) {
+        for (const dy of [-stepY, 0, stepY]) {
+          if (dx === 0 && dy === 0) continue
+          attempts.push({ x: wanted.x + dx, y: wanted.y + dy })
+        }
+      }
+    }
+
+    for (const attempt of attempts) {
+      const x = Math.max(left, Math.min(right, attempt.x))
+      const y = Math.max(top, Math.min(bottom, attempt.y))
+      const pose = { ...candidate, x, y }
+      const placed = furnitureRectFor(pose, site)
+      if (blockers.some(other => overlaps(placed, other))) continue
+      if (furnitureDoorConflicts([pose], plan.openings, site).has(pose.id)) continue
+      return { item: pose, room, exact: x === wanted.x && y === wanted.y }
+    }
+  }
+  return null
+}
+
 /** Bounded local search; a failed search never silently shrinks or stacks a piece. */
 export function findFurniturePlacement(plan: PlanState, item: Furniture, selectedRoom?: string | null): { item: Furniture; room: Room } | null {
   const site = siteOf(plan)

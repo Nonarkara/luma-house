@@ -601,6 +601,7 @@ export default function Spatial3D({
   projectTitle, location, year, onScenesChange, onRecallScene, onStudyTimeChange,
   previewingFurniture = false, onReplaceFurniture, trialControls, footer,
   selectedFurniture, onSelectFurniture, onMoveFurniture, onRotateFurniture, onDuplicateFurniture, onDeleteFurniture, onOpenFurnitureCatalog,
+  chrome = 'studio',
 
 }: {
   projectTitle: string
@@ -633,6 +634,14 @@ export default function Spatial3D({
   locationLabel: string
   /** Render the plan as a translucent demo massing — no selection, no editing. */
   ghost?: boolean
+  /**
+   * `studio` is the working 3D view: everything you can change is here.
+   * `picture` is the gallery's live scene: the same model, but presented —
+   * the camera you look through and the way the picture is drawn, with the
+   * authoring console (furniture, tour, conditions, section cut) left in the
+   * Spatial view, where the task it belongs to is done.
+   */
+  chrome?: 'studio' | 'picture'
   tourWaypoint?: CameraWaypoint | null
   walkMode?: boolean
   onToggleWalkMode?: () => void
@@ -642,6 +651,7 @@ export default function Spatial3D({
   windSpeed?: number
 }) {
   const colors = themeTokens(theme)
+  const picture = chrome === 'picture'
   const site = useMemo(() => siteOf(plan), [plan])
   const edgeColor = colors['--studio-ink'] ?? WIREEDGE_COLOR
   const selected = useMemo(
@@ -708,8 +718,8 @@ export default function Spatial3D({
   )
 
   return (
-    <div className="spatial3d-shell" ref={shellRef} aria-label="Local 3D light study" data-style={displayStyle} data-projection={walkMode || tourWaypoint ? 'perspective' : cameraRequest?.camera.projection ?? (preset === 'orbit' ? 'perspective' : 'orthographic')}>
-      <div className="spatial-toolbar">
+    <div className={`spatial3d-shell${picture ? ' is-picture' : ''}`} ref={shellRef} aria-label="Local 3D light study" data-style={displayStyle} data-projection={walkMode || tourWaypoint ? 'perspective' : cameraRequest?.camera.projection ?? (preset === 'orbit' ? 'perspective' : 'orthographic')}>
+      <div className={`spatial-toolbar${picture ? ' is-picture' : ''}`}>
         <div className="preset-group">
           <button
             type="button"
@@ -744,16 +754,16 @@ export default function Spatial3D({
         </div>
 
         <div className="vector-group">
-          <button type="button" className="spatial-tb-btn" onClick={onOpenFurnitureCatalog} disabled={ghost || previewingFurniture}>Add furniture</button>
+          {!picture && <button type="button" className="spatial-tb-btn" onClick={onOpenFurnitureCatalog} disabled={ghost || previewingFurniture}>Add furniture</button>}
           <button type="button" className={`spatial-tb-btn ${architectural ? 'active-layer' : ''}`} aria-pressed={architectural} onClick={() => setDisplayStyle('architectural')}>Architectural</button>
           <button type="button" className={`spatial-tb-btn ${displayStyle === 'solid' ? 'active-layer' : ''}`} aria-pressed={displayStyle === 'solid'} onClick={() => setDisplayStyle('solid')}>Solid</button>
           <button type="button" className={`spatial-tb-btn ${wireframe ? 'active-layer' : ''}`} aria-pressed={wireframe} onClick={() => setDisplayStyle('wireframe')}>Wireframe</button>
-          <button type="button" className="spatial-tb-btn" onClick={onStartTour} disabled={ghost}>
+          {!picture && <button type="button" className="spatial-tb-btn" onClick={onStartTour} disabled={ghost}>
             Tour
-          </button>
-          <button type="button" className="spatial-tb-btn" onClick={onOpenScenarios} disabled={ghost}>
+          </button>}
+          {!picture && <button type="button" className="spatial-tb-btn" onClick={onOpenScenarios} disabled={ghost}>
             Conditions
-          </button>
+          </button>}
           <button
             type="button"
             className={`spatial-tb-btn toggle ${showSunRays ? 'active-layer' : ''}`}
@@ -761,20 +771,20 @@ export default function Spatial3D({
           >
             Sun Rays
           </button>
-          <button
+          {!picture && <button
             type="button"
             className={`spatial-tb-btn toggle ${showAirPaths ? 'active-layer' : ''}`}
             onClick={() => setShowAirPaths(!showAirPaths)}
           >
             Air Paths
-          </button>
-          <button
+          </button>}
+          {!picture && <button
             type="button"
             className={`spatial-tb-btn toggle ${showRoof ? 'active-layer' : ''}`}
             onClick={() => { setShowRoof(!showRoof); if (!showRoof) setSectionHeight(4.5) }}
           >
             3D Roof
-          </button>
+          </button>}
           <button type="button" className={`spatial-tb-btn toggle ${showShadows ? 'active-layer' : ''}`} aria-pressed={showShadows} onClick={() => setShowShadows(value => !value)}>Shadows</button>
           <button type="button" className="spatial-tb-btn" onClick={downloadView} disabled={ghost || previewingFurniture}>Save view PNG</button>
           {showRoof && (
@@ -788,22 +798,24 @@ export default function Spatial3D({
             </button>
           )}
 
-          <div className="spatial-section">
-            <span className="spatial-section-label">Section Cut</span>
-            <input
-              type="range"
-              className="spatial-section-range"
-              min="0.5"
-              max="4.5"
-              step="0.1"
-              value={sectionHeight}
-              disabled={walkMode || !!tourWaypoint}
-              onChange={(event) => setSectionHeight(Number(event.target.value))}
-              title={`3D section cut at ${sectionHeight.toFixed(1)} m — anything above is clipped`}
-              aria-label="3D section cut height"
-            />
-            <span className="spatial-section-value">{sectionHeight.toFixed(1)} m</span>
-          </div>
+          {!picture && (
+            <div className="spatial-section">
+              <span className="spatial-section-label">Section Cut</span>
+              <input
+                type="range"
+                className="spatial-section-range"
+                min="0.5"
+                max="4.5"
+                step="0.1"
+                value={sectionHeight}
+                disabled={walkMode || !!tourWaypoint}
+                onChange={(event) => setSectionHeight(Number(event.target.value))}
+                title={`3D section cut at ${sectionHeight.toFixed(1)} m — anything above is clipped`}
+                aria-label="3D section cut height"
+              />
+              <span className="spatial-section-value">{sectionHeight.toFixed(1)} m</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -935,7 +947,7 @@ export default function Spatial3D({
       <div className="spatial-bottom">
         <div className="spatial-bottom-bar">
           {trialControls}
-          {!ghost && !previewingFurniture && plan.furniture.length > 0 && <div className="spatial-furniture-tools" aria-label="Furniture editing">
+          {!picture && !ghost && !previewingFurniture && plan.furniture.length > 0 && <div className="spatial-furniture-tools" aria-label="Furniture editing">
             <select aria-label="Furniture in 3D" value={selectedFurniture ?? ''} disabled={!editable} onChange={event => onSelectFurniture(event.target.value || null)}>
               <option value="">Select furniture</option>
               {plan.furniture.map(item => <option key={item.id} value={item.id}>{furnitureLabelFor(item)}</option>)}
@@ -948,7 +960,7 @@ export default function Spatial3D({
               <button type="button" aria-label="Remove furniture" disabled={!editable} onClick={onDeleteFurniture}>Remove</button>
             </>}
           </div>}
-          {!ghost && !previewingFurniture && furnitureItem && <span className="spatial-furniture-hint" role="status">{furnitureIssues.length ? furnitureIssues.join(' · ') : 'Drag to move · arrows nudge'}</span>}
+          {!picture && !ghost && !previewingFurniture && furnitureItem && <span className="spatial-furniture-hint" role="status">{furnitureIssues.length ? furnitureIssues.join(' · ') : 'Drag to move · arrows nudge'}</span>}
           {previewingFurniture && !trialControls && <p className="spatial-trial-notice" role="status">Replacement preview only. Apply updates the drawing and technical checks.</p>}
 
           <div className="spatial-state">
@@ -956,16 +968,23 @@ export default function Spatial3D({
               <span className="sun-orb" style={{ opacity: sunAltitude > 0 ? 1 : 0.25 }} />
               <div>
                 <strong>{clockLabel(hour)} · {sunAltitude.toFixed(1)}° altitude</strong>
-                <small>{displayStyle} · {year} · day {day} · {sunAzimuth.toFixed(1)}° azimuth · {locationLabel}</small>
+                {/* The gallery's picture says when it was taken. The city, the
+                    day, the azimuth and the drawing style are the Spatial
+                    view's working state, and the toolbar already names the
+                    style that is on. */}
+                {!picture && <small>{displayStyle} · {year} · day {day} · {sunAzimuth.toFixed(1)}° azimuth · {locationLabel}</small>}
               </div>
             </div>
             {exportError && <p role="alert" className="spatial-orbit-note">{exportError}</p>}
-            <div className="spatial-orbit-note">
-              {walkMode
-                ? 'Eye-level walk · click model to look · WASD moves · Esc exits · concept view has no wall collision'
-                : `${preset === 'topdown' ? 'North-up parallel view' : 'Drag to orbit'} · ${architectural ? 'cut faces filled · ' : ''}${showShadows ? 'full building in shadow model' : 'shadows off'}`}
-              {displayStyle === 'solid' && <span> · measured boxes while furniture models load, are unavailable or meet the section cut</span>}
-            </div>
+            {picture && <span className="spatial-picture-note">Local 3D from your drawing · clear-sky sun</span>}
+            {!picture && (
+              <div className="spatial-orbit-note">
+                {walkMode
+                  ? 'Eye-level walk · click model to look · WASD moves · Esc exits · concept view has no wall collision'
+                  : `${preset === 'topdown' ? 'North-up parallel view' : 'Drag to orbit'} · ${architectural ? 'cut faces filled · ' : ''}${showShadows ? 'full building in shadow model' : 'shadows off'}`}
+                {displayStyle === 'solid' && <span> · measured boxes while furniture models load, are unavailable or meet the section cut</span>}
+              </div>
+            )}
           </div>
 
           <StudyPanel plan={plan} title={projectTitle} location={location} day={day} hour={hour} year={year} settings={settings}
