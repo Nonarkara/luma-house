@@ -95,11 +95,13 @@ export const RenderGallery = React.memo(function RenderGallery({
   sun,
   conceptImages,
   localView,
+  localControls,
 }: {
   plan: PlanState
   sun: { altitude: number; azimuth: number }
   conceptImages: string[]
   localView: React.ReactNode
+  localControls: React.ReactNode
   onRequestConcept: () => void
   isRendering: boolean
   quotaLeft: number
@@ -152,6 +154,7 @@ export const RenderGallery = React.memo(function RenderGallery({
       </div>
       <button className="render-step" type="button" onClick={() => move(1)} aria-label="Next view"><ChevronRight /></button>
       </div>
+      {active.id === 'wireframe' && <div className="render-local-controls">{localControls}</div>}
       <details className="render-references">
         <summary>Concept references · photos, not your drawing</summary>
         <p><strong>Reference image only.</strong> An authored interior, not a prediction of your plan: it does not change with your rooms, city or sun. Study your actual shadows in “Your space + light” above.</p>

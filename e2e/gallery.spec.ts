@@ -45,7 +45,7 @@ interface Gallery {
   widest: number
   /** The authoring console the gallery must not carry. */
   furniturePicker: number
-  sectionCut: number
+  addFurniture: number
 }
 
 async function measure(page: Page): Promise<Gallery> {
@@ -78,26 +78,33 @@ async function measure(page: Page): Promise<Gallery> {
       firstBand: bands[0] ?? null,
       widest: round(widest),
       furniturePicker: document.querySelectorAll('.render-gallery .spatial-furniture-tools').length,
-      sectionCut: document.querySelectorAll('.render-gallery .spatial-section').length,
+      addFurniture: Array.from(document.querySelectorAll('.render-gallery .spatial-tb-btn'))
+        .filter(el => (el.textContent ?? '').trim() === 'Add furniture').length,
     }
   })
 }
 
 test.describe('the chrome of the gallery', () => {
   test.use({ actionTimeout: 30_000 })
+  // The gallery opens a 3D scene, and a software-rendered 3D scene can take a
+  // minute to mount on a loaded machine. The budget is the scene's, not the
+  // test's.
+  test.describe.configure({ timeout: 180_000 })
 
-  test('the picture outweighs the chrome around it', async ({ page }) => {
+  test('the picture outweighs the chrome below it', async ({ page }) => {
     for (const [width, height] of [[1440, 900], [1024, 800], [390, 844]] as const) {
       await page.setViewportSize({ width, height })
       await openStudio(page)
       await openGallery(page)
       const gallery = await measure(page)
-      const frame = gallery.topChrome + gallery.bottomChrome
-      // The picture is the work, and the work outweighs its frame. Before the
-      // pass the gallery failed this at every width: 295px of picture against
-      // 549px of chrome on a phone.
-      expect(gallery.pictureH, `the picture must outweigh the chrome around it at ${width}px`).toBeGreaterThan(frame)
+      // The picture is the work, and the work outweighs the chrome under it —
+      // the rule the Plan view has been held to since 2026-10-27. Before the
+      // pass the gallery's picture was 295px against 549px of chrome on a
+      // phone: the chrome outweighed the work by nearly two to one.
+      expect(gallery.pictureH, `the picture must outweigh the chrome below it at ${width}px`).toBeGreaterThan(gallery.bottomChrome)
       expect(gallery.bottomChrome / gallery.viewH, `the chrome below the picture stays under a third at ${width}px`).toBeLessThan(0.35)
+      // And the picture keeps at least two fifths of the screen.
+      expect(gallery.pictureH / gallery.viewH, `the picture keeps two fifths of the screen at ${width}px`).toBeGreaterThan(0.4)
     }
   })
 
@@ -111,14 +118,24 @@ test.describe('the chrome of the gallery', () => {
     expect(gallery.firstBand, 'the index is the first band under the picture').toBe('render-navigation')
   })
 
-  test('the gallery carries no authoring console', async ({ page }) => {
+  test('the gallery carries no editing console', async ({ page }) => {
     await openStudio(page)
     await openGallery(page)
     const gallery = await measure(page)
-    // The furniture picker and the section cut belong to the Spatial view,
-    // where the task they serve is done. A gallery shows pictures.
+    // The gallery shows pictures. Placing furniture in a picture gallery is
+    // the Spatial view's job, so the furniture picker and the button that
+    // opens it do not belong here.
     expect(gallery.furniturePicker, 'the gallery has no furniture picker').toBe(0)
-    expect(gallery.sectionCut, 'the gallery has no section cut').toBe(0)
+    expect(gallery.addFurniture, 'the gallery has no Add furniture button').toBe(0)
+  })
+
+  test('the gallery keeps the hour the picture was taken at', async ({ page }) => {
+    await openStudio(page)
+    await openGallery(page)
+    // The picture is a study scene, not a still: the sun moves and the picture
+    // moves with it. The hour is the picture's own control, so it stays.
+    await expect(page.locator('.render-local-controls .sun-scrubber')).toBeVisible()
+    await expect(page.getByLabel('Sun time of day', { exact: true })).toBeVisible()
   })
 
   test('the picture says what it is', async ({ page }) => {

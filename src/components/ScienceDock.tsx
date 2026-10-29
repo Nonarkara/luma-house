@@ -25,6 +25,7 @@ export const ScienceDock = React.memo(function ScienceDock({
   setDay,
   outsideC,
   setOutsideC,
+  variant = 'full',
 }: {
   heat: HeatFlowSnapshot
   directSunM2: number
@@ -35,14 +36,23 @@ export const ScienceDock = React.memo(function ScienceDock({
   setDay: (day: number) => void
   outsideC: number
   setOutsideC: (temperature: number) => void
+  /**
+   * `full` is the study: the figures, the time and the method together.
+   * `time` is the picture's own control — the hour the picture was taken at —
+   * and nothing else, because the gallery's job is to show a picture and the
+   * figures belong to the view where the sun is studied.
+   */
+  variant?: 'full' | 'time'
 }) {
   const [mobileExpanded, setMobileExpanded] = React.useState(false)
   const entering = heat.mode !== 'heat-out'
   const HeatIcon = entering ? ArrowDownRight : ArrowUpRight
   const sunPercent = Math.round((directSunM2 / Math.max(1, floorAreaM2)) * 100)
+  const timeOnly = variant === 'time'
 
   return (
-    <section className={`science-dock ${mobileExpanded ? 'is-mobile-expanded' : ''}`} aria-label="Live sun and heat snapshot">
+    <section className={`science-dock ${mobileExpanded ? 'is-mobile-expanded' : ''} ${timeOnly ? 'is-time-only' : ''}`} aria-label={timeOnly ? 'The hour the picture was taken at' : 'Live sun and heat snapshot'}>
+      {!timeOnly && (
       <button
         className="science-mobile-toggle"
         type="button"
@@ -51,6 +61,8 @@ export const ScienceDock = React.memo(function ScienceDock({
       >
         {mobileExpanded ? 'Done' : 'Adjust'}
       </button>
+      )}
+      {!timeOnly && (
       <div className="science-dock-summary">
         <div className="science-metric is-primary">
           <Sun />
@@ -70,6 +82,7 @@ export const ScienceDock = React.memo(function ScienceDock({
           <small>clear-sky concept model</small>
         </p>
       </div>
+      )}
 
       <div className="science-controls">
         <label className="sun-scrubber">
@@ -82,11 +95,14 @@ export const ScienceDock = React.memo(function ScienceDock({
           <button type="button" className={day === 80 ? 'active' : ''} onClick={() => setDay(80)}>Mar</button>
           <button type="button" className={day === 172 ? 'active' : ''} onClick={() => setDay(172)}>Jun</button>
         </div>
+        {!timeOnly && (
         <label className="outside-temperature">
           Outside
           <input aria-label="Outside air temperature" type="number" min="-30" max="55" value={outsideC} onChange={(event) => setOutsideC(Number(event.target.value))} />
           <span>°C</span>
         </label>
+        )}
+        {!timeOnly && (
         <details className="science-method">
           <summary aria-label="How the heat snapshot is calculated"><CircleHelp /> Method</summary>
           <div>
@@ -101,6 +117,7 @@ export const ScienceDock = React.memo(function ScienceDock({
             </nav>
           </div>
         </details>
+        )}
       </div>
     </section>
   )

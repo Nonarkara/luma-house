@@ -758,9 +758,9 @@ export default function Spatial3D({
           <button type="button" className={`spatial-tb-btn ${architectural ? 'active-layer' : ''}`} aria-pressed={architectural} onClick={() => setDisplayStyle('architectural')}>Architectural</button>
           <button type="button" className={`spatial-tb-btn ${displayStyle === 'solid' ? 'active-layer' : ''}`} aria-pressed={displayStyle === 'solid'} onClick={() => setDisplayStyle('solid')}>Solid</button>
           <button type="button" className={`spatial-tb-btn ${wireframe ? 'active-layer' : ''}`} aria-pressed={wireframe} onClick={() => setDisplayStyle('wireframe')}>Wireframe</button>
-          {!picture && <button type="button" className="spatial-tb-btn" onClick={onStartTour} disabled={ghost}>
+          <button type="button" className="spatial-tb-btn" onClick={onStartTour} disabled={ghost}>
             Tour
-          </button>}
+          </button>
           {!picture && <button type="button" className="spatial-tb-btn" onClick={onOpenScenarios} disabled={ghost}>
             Conditions
           </button>}
@@ -798,24 +798,22 @@ export default function Spatial3D({
             </button>
           )}
 
-          {!picture && (
-            <div className="spatial-section">
-              <span className="spatial-section-label">Section Cut</span>
-              <input
-                type="range"
-                className="spatial-section-range"
-                min="0.5"
-                max="4.5"
-                step="0.1"
-                value={sectionHeight}
-                disabled={walkMode || !!tourWaypoint}
-                onChange={(event) => setSectionHeight(Number(event.target.value))}
-                title={`3D section cut at ${sectionHeight.toFixed(1)} m — anything above is clipped`}
-                aria-label="3D section cut height"
-              />
-              <span className="spatial-section-value">{sectionHeight.toFixed(1)} m</span>
-            </div>
-          )}
+          <div className="spatial-section">
+            <span className="spatial-section-label">Section Cut</span>
+            <input
+              type="range"
+              className="spatial-section-range"
+              min="0.5"
+              max="4.5"
+              step="0.1"
+              value={sectionHeight}
+              disabled={walkMode || !!tourWaypoint}
+              onChange={(event) => setSectionHeight(Number(event.target.value))}
+              title={`3D section cut at ${sectionHeight.toFixed(1)} m — anything above is clipped`}
+              aria-label="3D section cut height"
+            />
+            <span className="spatial-section-value">{sectionHeight.toFixed(1)} m</span>
+          </div>
         </div>
       </div>
 
@@ -976,7 +974,7 @@ export default function Spatial3D({
               </div>
             </div>
             {exportError && <p role="alert" className="spatial-orbit-note">{exportError}</p>}
-            {picture && <span className="spatial-picture-note">Local 3D from your drawing · clear-sky sun</span>}
+            {picture && <span className="spatial-picture-note">Local 3D · your drawing · clear-sky sun</span>}
             {!picture && (
               <div className="spatial-orbit-note">
                 {walkMode

@@ -372,7 +372,12 @@ body { overflow-y: auto; }
 .is-plan > .furniture-chip { position: static; grid-column: 1 / -1; grid-row: 7; margin: var(--space-2); width: fit-content; max-width: calc(100% - 16px); }
 .is-plan > .ruler-chip { position: static; grid-column: 1 / -1; grid-row: 8; width: 100%; max-width: none; transform: none; }
 .is-plan > .trace-note { position: static; grid-column: 1 / -1; grid-row: 9; margin: var(--space-2); }
-.is-plan > .overlap-warning { position: static; grid-column: 1 / -1; grid-row: 10; width: auto; max-width: none; margin: var(--space-2); transform: none; }
+.is-plan > .overlap-warning { position: static; grid-column: 1 / -1; grid-row: 10; width: auto; max-width: none; margin: var(--space-2); transform: none; display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+/* The warning carries the tool that fixes it, so it is a decision and not a
+   complaint. One accent, square surfaces, no new colour. */
+.overlap-trim { display: inline-flex; align-items: center; gap: 4px; flex: none; min-height: 28px; padding: 3px 8px; border: 1px solid var(--studio-ink); background: var(--studio-sheet); color: var(--studio-ink); font-size: var(--font-note); font-family: inherit; white-space: nowrap; }
+.overlap-trim svg { width: 14px; height: 14px; }
+.overlap-trim:hover { background: var(--studio-selection); }
 .room { padding: 0; }
 .north-mark { left: -24px; font-size: var(--font-note); letter-spacing: 0; }
 .north-mark svg { width: 18px; }
@@ -1246,6 +1251,14 @@ body { overflow-y: auto; }
 .spatial-bottom > .science-dock { position: static; inset: auto; border: 0; border-top: 1px solid var(--studio-border); background: transparent; }
 .spatial-bottom > .science-dock .science-dock-summary { border-bottom: 0; }
 .spatial-bottom > .science-dock .science-controls { border-top: 1px solid var(--studio-border); }
+/* The gallery's dock is the picture's own control — the hour the picture was
+   taken at — and nothing else. The figures live in the Spatial view, where
+   the sun is studied and they can be argued with. */
+.render-local-controls .science-dock.is-time-only .science-controls { border-top: 0; padding: 2px 8px; }
+@media (max-width: 720px) {
+  .science-dock.is-time-only .science-controls { display: grid; grid-row: 1; }
+  .science-dock.is-time-only .sun-scrubber { grid-column: 1 / -1; }
+}
 .spatial-furniture-handle { min-width: 44px; min-height: 44px; padding: 4px; border: 1px solid var(--studio-sienna); background: var(--studio-sheet); color: var(--studio-ink); font-size: var(--font-note); touch-action: none; cursor: move; }
 
 /*

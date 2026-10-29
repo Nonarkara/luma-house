@@ -466,6 +466,22 @@ export function trimAt(plan: PlanState, point: SheetPoint): TrimOutcomeResult {
   if (!room) {
     return { plan, toast: 'Click a room to trim it', cuts: [], unchanged: true }
   }
+  return trimRoom(plan, room.id)
+}
+
+/** Two rooms share floor when their rectangles cross by more than a hair. */
+export function roomsCross(a: Room, b: Room): boolean {
+  const overlapX = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
+  const overlapY = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
+  return overlapX > 0.1 && overlapY > 0.1
+}
+
+/** Cut one room back until it no longer crosses another. */
+export function trimRoom(plan: PlanState, roomId: string): TrimOutcomeResult {
+  const room = plan.rooms.find((item) => item.id === roomId)
+  if (!room) {
+    return { plan, toast: 'That room is not on the drawing', cuts: [], unchanged: true }
+  }
 
   let current = plan
   const cuts: TrimCut[] = []
@@ -518,6 +534,64 @@ export function trimAt(plan: PlanState, point: SheetPoint): TrimOutcomeResult {
     plan: current,
     toast: `${cut.roomName} trimmed ${total.toFixed(1)} m² back to the ${cut.againstRoomName}'s ${where}${more}${lost ? `; ${lost} on that floor removed` : ''}`,
     cuts,
+    unchanged: false,
+  }
+}
+
+export interface OverlapTrimResult {
+  plan: PlanState
+  /** How many rooms were cut back. */
+  trimmed: number
+  toast: string
+  unchanged: boolean
+}
+
+/**
+ * Trim every overlap in the drawing.
+ *
+ * The app already says when two rooms overlap — the floor is counted twice and
+ * the climate analysis cannot be trusted — and now it offers the tool that
+ * fixes it. The room drawn last is the one that was drawn over another, so it
+ * is the one that is cut back, exactly as the trim tool behaves when you click
+ * the top of an overlap.
+ */
+export function trimOverlaps(plan: PlanState): OverlapTrimResult {
+  let current = plan
+  const trimmed: string[] = []
+  const refused: string[] = []
+
+  for (let index = current.rooms.length - 1; index >= 0; index -= 1) {
+    const room = current.rooms[index]
+    if (!room) continue
+    const crosses = current.rooms.some((other) => other.id !== room.id && roomsCross(room, other))
+    if (!crosses) continue
+    const result = trimRoom(current, room.id)
+    if (result.unchanged) {
+      refused.push(room.name)
+      continue
+    }
+    current = result.plan
+    trimmed.push(room.name)
+  }
+
+  if (!trimmed.length) {
+    return {
+      plan,
+      trimmed: 0,
+      toast: refused.length
+        ? `${refused[0]} cannot be trimmed without leaving a room too small to use`
+        : 'Nothing to trim',
+      unchanged: true,
+    }
+  }
+
+  const names = trimmed.join(', ')
+  const more = trimmed.length > 1 ? ` (${trimmed.length} rooms)` : ''
+  const blocked = refused.length ? ` ${refused.join(', ')} could not be trimmed.` : ''
+  return {
+    plan: current,
+    trimmed: trimmed.length,
+    toast: `Trimmed ${names}${more} back to the wall it crossed.${blocked}`,
     unchanged: false,
   }
 }

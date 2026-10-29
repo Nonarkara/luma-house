@@ -125,6 +125,23 @@ test.describe('the trim', () => {
     await expect(page.locator('.toast')).toContainText('does not cross another')
     expect((await readPlan(page)).rooms).toHaveLength(1)
   })
+
+  test('the overlap warning offers the tool that fixes it', async ({ page }) => {
+    // The app says when two rooms overlap and the floor is counted twice.
+    // Now it says what to do about it, in the place where it says it.
+    const existing: Room = { id: 'old', name: 'Old room', kind: 'living', x: 10, y: 10, w: 40, h: 40 }
+    const crossing: Room = { id: 'new', name: 'New room', kind: 'studio', x: 30, y: 30, w: 70, h: 30 }
+    await openPlan(page, planWith([existing, crossing]))
+
+    const warning = page.locator('.overlap-warning')
+    await expect(warning).toBeVisible()
+    await expect(warning).toContainText('Rooms overlap')
+
+    await page.getByRole('button', { name: 'Trim the overlap' }).click()
+    await expect.poll(async () => (await readPlan(page)).rooms?.find(room => room.id === 'new')?.x).toBe(50)
+    // And with the overlap gone, the warning goes with it.
+    await expect(page.locator('.overlap-warning')).toHaveCount(0)
+  })
 })
 
 test.describe('carrying a piece in', () => {

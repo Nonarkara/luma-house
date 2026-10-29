@@ -7,6 +7,7 @@ import {
   topmostRoomAt,
   trimAt,
   trimCutAgainst,
+  trimOverlaps,
   trimPreviewAt,
 } from './editing'
 import type { Furniture, Opening, PlanState, Room } from '../types'
@@ -257,6 +258,39 @@ describe('trimPreviewAt', () => {
 describe('nextTrimCut', () => {
   it('finds no cut for a room that is alone', () => {
     expect(nextTrimCut(plan([living]), 'living')).toBeNull()
+  })
+})
+
+describe('trimOverlaps', () => {
+  it('cuts the room that was drawn over another', () => {
+    const crossing = room({ id: 'new', name: 'New room', x: 30, y: 30, w: 70, h: 30 })
+    const existing = room({ id: 'old', name: 'Old room', x: 10, y: 10, w: 40, h: 40 })
+    const outcome = trimOverlaps(plan([existing, crossing]))
+    expect(outcome.unchanged).toBe(false)
+    expect(outcome.trimmed).toBe(1)
+    // The room drawn last is the one cut, exactly as the trim tool behaves
+    // when you click the top of an overlap. The old room ends at x=50, so the
+    // new room is cut back to that wall and keeps the rest of its width.
+    expect(outcome.plan.rooms.find((item) => item.id === 'new')?.x).toBe(50)
+    expect(outcome.plan.rooms.find((item) => item.id === 'new')?.w).toBe(50)
+    expect(outcome.plan.rooms.find((item) => item.id === 'old')?.x).toBe(10)
+  })
+
+  it('says so when nothing overlaps', () => {
+    const outcome = trimOverlaps(plan([living, bedroom]))
+    expect(outcome.unchanged).toBe(true)
+    expect(outcome.trimmed).toBe(0)
+  })
+
+  it('leaves the plan alone when the cut would leave a sliver', () => {
+    // The old room ends at x=60 and the new room runs from x=30 to x=70, so
+    // the only cut leaves ten percent of a room — too small to use.
+    const host: Room = { id: 'host', name: 'Host room', kind: 'living', x: 20, y: 20, w: 40, h: 40 }
+    const crossing = room({ id: 'new', name: 'New room', x: 30, y: 30, w: 40, h: 30 })
+    const outcome = trimOverlaps(plan([host, crossing]))
+    expect(outcome.unchanged).toBe(true)
+    expect(outcome.toast).toContain('too small')
+    expect(outcome.plan.rooms).toHaveLength(2)
   })
 })
 

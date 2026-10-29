@@ -23,7 +23,7 @@ import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { clearInvalidStatements, parseLengthMetres, recalibratePlan, setRoomSizeM, sizeRefusalMessage, type SizeAxis } from './canvas/roomSize'
 import { prepareFurnitureReplacement, type FurnitureChoice } from './canvas/furnitureReplacement'
-import { eraseAt, trimAt, trimPreviewAt, type TrimCut } from './canvas/editing'
+import { eraseAt, trimAt, trimOverlaps, trimPreviewAt, type TrimCut } from './canvas/editing'
 import { useCarry } from './canvas/useCarry'
 import { useMediaQuery } from './useMediaQuery'
 import { findFurniturePlacement, furnitureBounds, moveFurnitureTo, rotateFurnitureAtCentre } from './canvas/furniturePlacement'
@@ -925,8 +925,18 @@ function App() {
     setSelectedRoom(id)
   }, [commit, plan.rooms.length])
 
-  const deleteRoom = useCallback(() => {
-    if (!selectedRoom) return
+  /** The warning that two rooms overlap now offers the tool that fixes it. */
+  const trimOverlapsNow = useCallback(() => {
+    const outcome = trimOverlaps(plan)
+    if (outcome.unchanged) {
+      setToast(outcome.toast)
+      return
+    }
+    commit(() => outcome.plan, 'Trim the overlap')
+    setToast(outcome.toast)
+  }, [commit, plan])
+
+  const deleteRoom = useCallback(() => {    if (!selectedRoom) return
     commit((current) => ({ ...current, rooms: current.rooms.filter((item) => item.id !== selectedRoom) }), 'Delete room')
     setSelectedRoom(null)
   }, [commit, selectedRoom])
@@ -1497,6 +1507,22 @@ function App() {
     />
   )
 
+  /** The gallery's dock: the hour the picture was taken at, and nothing else. */
+  const galleryLightControls = (
+    <ScienceDock
+      variant="time"
+      heat={heatFlow}
+      directSunM2={directSunM2}
+      floorAreaM2={budget.area}
+      hour={hour}
+      setHour={setHour}
+      day={day}
+      setDay={setDay}
+      outsideC={outsideC}
+      setOutsideC={setOutsideC}
+    />
+  )
+
   const localSpatialView = (footer?: ReactNode, chrome: 'studio' | 'picture' = 'studio') => (
     <Suspense fallback={<div className="spatial-note">Loading 3D…</div>}>
       <Spatial3D
@@ -1752,6 +1778,7 @@ function App() {
                 sun={sun}
                 conceptImages={conceptImages}
                 localView={localSpatialView(undefined, 'picture')}
+                localControls={!isEmpty && galleryLightControls}
                 onRequestConcept={() => void runConceptRender()}
                 isRendering={isRendering}
                 quotaLeft={quotaLeft}
@@ -1909,7 +1936,10 @@ function App() {
             )}
             {view === 'plan' && overlaps.size > 0 && (
               <div className="overlap-warning" role="alert">
-                Rooms overlap — floor area is double-counted and climate analysis is unreliable
+                <span>Rooms overlap — floor area is double-counted and climate analysis is unreliable</span>
+                <button type="button" className="overlap-trim" onClick={trimOverlapsNow}>
+                  <Scissors /> Trim the overlap
+                </button>
               </div>
             )}
             <FurnitureCatalogDrawer key={replacementId ?? 'add'}
