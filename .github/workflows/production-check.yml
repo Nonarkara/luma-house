@@ -33,6 +33,11 @@ jobs:
           e2e/furnishing-workflow.spec.ts e2e/furniture-replacement.spec.ts
           e2e/cities.spec.ts
           --grep 'phone and tablet|empty-room|nothing floats|non-plan views|wall hosting|furnishing controls stay outside|preview is inert|worldwide city updates'
+      - name: Verify released editing, gallery and study round trips
+        run: >-
+          npx playwright test --config=playwright.live.config.ts
+          e2e/cutting.spec.ts e2e/split.spec.ts e2e/gallery.spec.ts e2e/studies.spec.ts
+          --grep 'the eraser|the trim|carrying a piece in|overlap repair|the plan and the 3D together|the chrome of the gallery|parallel architectural views'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

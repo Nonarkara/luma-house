@@ -92,13 +92,13 @@ test.describe('the chrome of the gallery', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('the picture outweighs the chrome below it', async ({ page }, testInfo) => {
-    for (const [width, height] of [[1440, 900], [1024, 800], [390, 844]] as const) {
+    for (const [width, height] of [[1440, 900], [1024, 900], [1024, 800], [1280, 720], [390, 844]] as const) {
       await page.setViewportSize({ width, height })
       await openStudio(page)
       await openGallery(page)
       const gallery = await measure(page)
-      await page.screenshot({ path: testInfo.outputPath(`gallery-${width}.png`) })
-      await testInfo.attach(`geometry-${width}`, { body: JSON.stringify(gallery), contentType: 'application/json' })
+      await page.screenshot({ path: testInfo.outputPath(`gallery-${width}x${height}.png`) })
+      await testInfo.attach(`geometry-${width}x${height}`, { body: JSON.stringify(gallery), contentType: 'application/json' })
       // The picture is the work, and the work outweighs the chrome under it —
       // the rule the Plan view has been held to since 2026-10-27. Before the
       // pass the gallery's picture was 295px against 549px of chrome on a
@@ -154,5 +154,8 @@ test.describe('the chrome of the gallery', () => {
     await openGallery(page)
     const gallery = await measure(page)
     expect(gallery.widest, 'no element may be wider than the window it is drawn in').toBeLessThanOrEqual(gallery.viewW + 1)
+    for (const size of await page.locator('.render-navigation .render-thumbs strong, .render-navigation .render-thumbs small').evaluateAll(els => els.map(el => parseFloat(getComputedStyle(el).fontSize)))) {
+      expect(size, 'view choices keep the readable 12px note role').toBeGreaterThanOrEqual(12)
+    }
   })
 })

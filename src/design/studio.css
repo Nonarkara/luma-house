@@ -1403,3 +1403,8 @@ body { overflow-y: auto; }
 .spatial3d-shell.is-picture .study-launchers { padding: 0; }
 .render-navigation > .render-thumbs { padding: 4px; }
 .render-local-controls .science-dock.is-time-only .science-controls { min-height: 32px; }
+
+/* The gallery index inherited 9px/7px marketing captions. These are working
+   view choices: use the existing readable note role and scroll full labels. */
+.render-navigation .render-thumbs :is(strong, small) { font-size: var(--font-note); }
+.render-gallery:has(.is-local-study) .render-navigation .render-thumbs button { min-width: 220px; }
