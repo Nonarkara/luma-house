@@ -159,3 +159,25 @@ test.describe('the chrome of the gallery', () => {
     }
   })
 })
+
+
+test('gallery viewing keys preserve the plan selection without editing it', async ({ page }) => {
+  await openStudio(page)
+  const room = page.locator('.room').first()
+  const box = (await room.boundingBox())!
+  await room.click({ position: { x: box.width - 6, y: box.height - 6 } })
+  await expect(page.locator('.room.is-selected')).toHaveCount(1)
+  const geometry = () => page.locator('.room').evaluateAll(els => els.map(el => {
+    const { left, top, width, height } = (el as HTMLElement).style
+    return { left, top, width, height }
+  }))
+  const before = await geometry()
+  await openGallery(page)
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('Delete')
+  await page.keyboard.press('Backspace')
+  await page.getByRole('button', { name: 'Plan', exact: true }).click()
+  await expect(page.locator('.room')).toHaveCount(chinaApartmentPlan.rooms.length)
+  await expect(page.locator('.room.is-selected')).toHaveCount(1)
+  expect(await geometry()).toEqual(before)
+})

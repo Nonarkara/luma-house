@@ -195,3 +195,20 @@ test('overlap repair removes a newly unsupported footprint, and Undo/Redo preser
   await expect.poll(async () => (await readPlan(page)).furniture.length).toBe(0)
   await expect.poll(async () => (await readPlan(page)).rooms.find(room => room.id === 'new')?.x).toBe(50)
 })
+
+
+test('Delete room uses the same contents cleanup as the eraser, with Undo', async ({ page }) => {
+  const furniture = [{ id: 'sofa', kind: 'sofa' as const, x: 30, y: 30, rotated: false, wM: 1, dM: .6 }]
+  const openings = [{ id: 'window', type: 'window' as const, x: 40, y: 20, rotation: 0 as const }]
+  await openPlan(page, planWith([host], { furniture, openings }))
+  await clickAt(page, 57, 57)
+  await expect(page.locator('.room.is-selected')).toHaveCount(1)
+  await page.keyboard.press('Delete')
+  await expect(page.locator('.room')).toHaveCount(0)
+  await expect.poll(async () => (await readPlan(page)).furniture).toEqual([])
+  await expect.poll(async () => (await readPlan(page)).openings).toEqual([])
+  await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  await expect(page.locator('.room')).toHaveCount(1)
+  await expect.poll(async () => (await readPlan(page)).furniture).toEqual(furniture)
+  await expect.poll(async () => (await readPlan(page)).openings).toEqual(openings)
+})

@@ -23,7 +23,7 @@ import { calculateMeasureDistance } from './canvas/TapeMeasureTool'
 import { calibrateSiteFromNapkinLine, type NapkinCalibrationLine } from './canvas/napkinScale'
 import { clearInvalidStatements, parseLengthMetres, recalibratePlan, setRoomSizeM, sizeRefusalMessage, type SizeAxis } from './canvas/roomSize'
 import { prepareFurnitureReplacement, type FurnitureChoice } from './canvas/furnitureReplacement'
-import { eraseAt, trimAt, trimOverlaps, trimPreviewAt, type TrimCut } from './canvas/editing'
+import { removeRoomFromPlan, eraseAt, trimAt, trimOverlaps, trimPreviewAt, type TrimCut } from './canvas/editing'
 import { useCarry } from './canvas/useCarry'
 import { useMediaQuery } from './useMediaQuery'
 import { findFurniturePlacement, furnitureBounds, moveFurnitureTo, rotateFurnitureAtCentre } from './canvas/furniturePlacement'
@@ -936,8 +936,9 @@ function App() {
     setToast(outcome.toast)
   }, [commit, plan])
 
-  const deleteRoom = useCallback(() => {    if (!selectedRoom) return
-    commit((current) => ({ ...current, rooms: current.rooms.filter((item) => item.id !== selectedRoom) }), 'Delete room')
+  const deleteRoom = useCallback(() => {
+    if (!selectedRoom) return
+    commit((current) => removeRoomFromPlan(current, selectedRoom), 'Delete room')
     setSelectedRoom(null)
   }, [commit, selectedRoom])
 
@@ -1190,6 +1191,9 @@ function App() {
         setShortcutsOpen((prev) => !prev)
         return
       }
+      // The gallery presents the drawing. Native arrows may navigate its
+      // controls, but a leftover Plan selection must never edit the model.
+      if (view === 'renders' && (event.key.startsWith('Arrow') || event.key === 'Delete' || event.key === 'Backspace')) return
       if (event.key === 'Delete' || event.key === 'Backspace') {
         if (selectedFurniture) { event.preventDefault(); deleteFurniture(); return }
         if (selectedOpening) { event.preventDefault(); deleteOpening(); return }
@@ -1230,7 +1234,7 @@ function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [commit, deleteFurniture, deleteOpening, deleteRoom, isCatalogOpen, plan, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo, walkMode])
+  }, [commit, deleteFurniture, deleteOpening, deleteRoom, isCatalogOpen, plan, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo, view, walkMode])
 
   const handleSketch = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
