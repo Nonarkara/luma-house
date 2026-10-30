@@ -163,9 +163,9 @@ test.describe('the chrome of the gallery', () => {
 
 test('gallery viewing keys preserve the plan selection without editing it', async ({ page }) => {
   await openStudio(page)
-  const room = page.locator('.room').first()
-  const box = (await room.boundingBox())!
-  await room.click({ position: { x: box.width - 6, y: box.height - 6 } })
+  // Select through the same named room key on phones and wide drawings.
+  // A fixed corner offset hits the bedroom door on the smaller plan.
+  await page.getByRole('button', { name: /^Select Quiet bedroom,/ }).click()
   await expect(page.locator('.room.is-selected')).toHaveCount(1)
   const geometry = () => page.locator('.room').evaluateAll(els => els.map(el => {
     const { left, top, width, height } = (el as HTMLElement).style
