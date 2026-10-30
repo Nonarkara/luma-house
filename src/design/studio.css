@@ -1407,3 +1407,15 @@ body { overflow-y: auto; }
    view choices: use the existing readable note role and scroll full labels. */
 .render-navigation .render-thumbs :is(strong, small) { font-size: var(--font-note); }
 .render-gallery:has(.is-local-study) .render-navigation .render-thumbs button { min-width: 220px; }
+
+
+/* The normal-flow toolbar owns pointer/scroll access. The overlay-era rule
+   hid WebKit's scrollbar; a real rail replaces six pixels of vertical padding. */
+.spatial3d-shell .spatial-toolbar { padding-block: 1px; pointer-events: auto; }
+.spatial3d-shell .spatial-toolbar::-webkit-scrollbar { display: block; height: 6px; }
+.spatial3d-shell .spatial-toolbar::-webkit-scrollbar-thumb { background: var(--studio-sienna); }
+.spatial3d-shell .spatial-tb-btn:focus-visible { outline: 2px solid var(--studio-ink); outline-offset: -2px; }
+/* Section label, full-size slider and value are one dense decision group. */
+.spatial3d-shell .spatial-section { gap: 4px; padding-inline: 4px; font-size: var(--font-note); }
+.spatial3d-shell .spatial-section-label { font-size: var(--font-note); letter-spacing: 0; text-transform: none; }
+.spatial3d-shell .spatial-section-value { font-size: var(--font-note); }

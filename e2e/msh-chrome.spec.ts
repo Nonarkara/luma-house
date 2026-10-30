@@ -138,8 +138,8 @@ test.describe('the chrome of the 3D view', () => {
     expect(chrome.widest, 'no element may be wider than the window it is drawn in').toBeLessThanOrEqual(chrome.viewW + 1)
   })
 
-  test('phone and tablet keep the 3D controls in one row', async ({ page }) => {
-    for (const width of [390, 1024, 1280, 1440, 1441]) {
+  for (const width of [390, 1024, 1280, 1440, 1441]) {
+    test(`phone and tablet keep the 3D controls in one row at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })
     await openStudio(page)
     await openSpatial(page)
@@ -154,8 +154,18 @@ test.describe('the chrome of the 3D view', () => {
       return rows.size
     })
     expect(rows, 'the 3D toolbar is one row on a phone, and it says that it scrolls').toBe(1)
-    }
-  })
+    const cut = page.getByLabel('3D section cut height', { exact: true })
+    await cut.scrollIntoViewIfNeeded()
+    expect(await cut.evaluate(el => {
+      const r = el.getBoundingClientRect()
+      return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === el
+    }), `the last control is reachable through the row at ${width}px`).toBe(true)
+    const before = Number(await cut.inputValue())
+    const direction = before >= 4.5 ? -1 : 1
+    await cut.press(direction > 0 ? 'ArrowRight' : 'ArrowLeft')
+    await expect(cut).toHaveValue((before + direction * .1).toFixed(1))
+    })
+  }
 
   test('empty-room guidance is operable below the model in both views', async ({ page }) => {
     const empty = { ...chinaApartmentPlan, rooms: [], furniture: [], openings: [] }

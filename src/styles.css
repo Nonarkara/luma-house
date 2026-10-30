@@ -5298,9 +5298,9 @@ summary:focus-visible {
   pointer-events: auto;
 }
 
-/* The style row ran out of room and pushed its last controls past the edge
-   behind an invisible scrollbar, so "Save view PNG" and "Section cut" were
-   unreachable without knowing they were there. The group wraps instead. */
+/* Legacy overlay fallback. The normal-flow studio's continuous row and
+   visible scrollbar live in design/studio.css. Preserve that policy instead
+   of restoring wrapping to solve overflow in the studio. */
 .spatial-toolbar > .vector-group {
   flex: 0 1 auto;
   min-width: 0;
