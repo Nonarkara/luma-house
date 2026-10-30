@@ -94,6 +94,15 @@ export const WelcomeGate = React.memo(function WelcomeGate({
           </figure>
         </section>
 
+        <section className="guide-choices" aria-label="Enter the studio">
+          <div className="guide-entry">
+            {hasDrawing && <button type="button" className="guide-secondary" onClick={onContinue}>Continue your drawing <span aria-hidden="true">→</span></button>}
+            <button type="button" className={hasDrawing ? 'guide-secondary' : 'guide-primary'} onClick={onStart}>Start from a blank page <span aria-hidden="true">→</span></button>
+            <button type="button" className="guide-sample" onClick={onSkip}>Explore the 50 m² sample</button>
+          </div>
+          <p className="guide-storage">Drawings stay in this browser. Use Share to move one. 3D, sunlight and study sheets run locally; AI photo tracing is optional.</p>
+        </section>
+
         {/* Title block: the sample's own figures, computed from the plan. */}
         <dl className="guide-spec">
           <div className="guide-spec-row"><dt>Sample</dt><dd>South Light 50 · 向阳之家</dd></div>
@@ -112,12 +121,6 @@ export const WelcomeGate = React.memo(function WelcomeGate({
         </ol>
 
         <footer className="guide-footer">
-          <div className="guide-entry">
-            {hasDrawing && <button type="button" className="guide-secondary" onClick={onContinue}>Continue your drawing <span aria-hidden="true">→</span></button>}
-            <button type="button" className={hasDrawing ? 'guide-secondary' : 'guide-primary'} onClick={onStart}>Start from a blank page <span aria-hidden="true">→</span></button>
-            <button type="button" className="guide-sample" onClick={onSkip}>Explore the 50 m² sample</button>
-          </div>
-          <p className="guide-storage">Drawings stay in this browser. Use Share to move one. 3D, sunlight and study sheets run locally; AI photo tracing is optional.</p>
           <div className="guide-smallprint">
             <WebAppAccess />
             <details>

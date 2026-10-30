@@ -139,7 +139,7 @@ test.describe('the chrome of the 3D view', () => {
   })
 
   test('phone and tablet keep the 3D controls in one row', async ({ page }) => {
-    for (const width of [390, 1024]) {
+    for (const width of [390, 1024, 1280, 1440, 1441]) {
     await page.setViewportSize({ width, height: 844 })
     await openStudio(page)
     await openSpatial(page)

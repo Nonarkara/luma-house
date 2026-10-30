@@ -1274,24 +1274,23 @@ body { overflow-y: auto; }
 .spatial-picture-note { font-size: var(--font-note); color: var(--text-secondary); }
 
 /*
-  Narrow screens: the 3D toolbar was a desktop row allowed to wrap, so it became five
+  One continuous control row at every width. The toolbar previously became five
   rows of buttons — 148px of chrome standing between the reader and a 270px
   model. It is one row now, and it says that it scrolls: the row is cut at the
   edge and the scrollbar carries the accent, the same way the room key does.
 */
-@media (max-width: 1100px) {
-  .spatial3d-shell .spatial-toolbar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: x proximity;
-    scrollbar-width: thin;
-    scrollbar-color: var(--studio-sienna) var(--bg-secondary);
-  }
-  .spatial3d-shell .spatial-toolbar > div { flex: none; flex-wrap: nowrap; }
-  .spatial3d-shell .spatial-tb-btn { scroll-snap-align: start; }
-  .spatial3d-shell .spatial-section { flex: none; }
+.spatial3d-shell .spatial-toolbar {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--studio-sienna) var(--bg-secondary);
 }
+.spatial3d-shell .spatial-toolbar > div { flex: none; flex-wrap: nowrap; }
+.spatial3d-shell .spatial-tb-btn { scroll-snap-align: start; }
+.spatial3d-shell .spatial-section { flex: none; }
+
 .spatial-bottom > .spatial-ghost-note { position: static; transform: none; width: auto; max-width: 100%; display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px 8px; padding: 4px 8px; border: 0; border-top: 1px solid var(--studio-border); background: transparent; backdrop-filter: none; text-align: left; white-space: normal; }
 .spatial-bottom > .spatial-ghost-note .button { min-height: 32px; padding: 4px 8px; }
 

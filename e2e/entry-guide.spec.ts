@@ -151,3 +151,33 @@ test('guide replacement clears a photo-only underlay and Undo restores it', asyn
   await expect(underlay).toBeAttached()
   await expect(page.locator('button.room')).toHaveCount(0)
 })
+
+
+test('entry decisions stay in the first screen beside their drawing', async ({ page }, info) => {
+  for (const [width, height] of [[390, 844], [1024, 900], [1440, 900], [1280, 720]]) {
+    await page.setViewportSize({ width, height })
+    await page.goto('/')
+    const guide = page.getByRole('dialog', { name: title })
+    await expect(guide).toBeVisible()
+    await page.evaluate(() => document.fonts.ready)
+    await guide.evaluate(el => { el.scrollTop = 0 })
+    const start = guide.getByRole('button', { name: 'Start from a blank page', exact: true })
+    const sample = guide.getByRole('button', { name: 'Explore the 50 m² sample', exact: true })
+    await expect(start).toBeInViewport({ ratio: 1 })
+    await expect(sample).toBeInViewport({ ratio: 1 })
+    const geometry = await guide.evaluate(el => {
+      const title = el.querySelector('h1')!.getBoundingClientRect()
+      const lead = el.querySelector('.guide-lead')!.getBoundingClientRect()
+      const hero = el.querySelector('.guide-hero')!.getBoundingClientRect()
+      const actions = el.querySelector('.guide-entry')!.getBoundingClientRect()
+      const spec = el.querySelector('.guide-spec')!.getBoundingClientRect()
+      return { titleLeadGap: lead.top - title.bottom, drawingActionGap: actions.top - hero.bottom,
+        factsHeight: spec.height, actionBottom: actions.bottom, introHeight: hero.height }
+    })
+    expect(geometry.titleLeadGap, 'intro stays with its headline instead of stretching to the image').toBeLessThanOrEqual(24)
+    expect(geometry.drawingActionGap, 'entering the studio stays with the drawing, ahead of the long guide').toBeLessThanOrEqual(48)
+    if (width === 390) expect(geometry.factsHeight, 'sample facts are comparison rows, not four stacked cards').toBeLessThanOrEqual(120)
+    await page.screenshot({ path: info.outputPath(`entry-decision-${width}x${height}.png`) })
+    await info.attach(`entry-geometry-${width}`, { body: JSON.stringify(geometry), contentType: 'application/json' })
+  }
+})
