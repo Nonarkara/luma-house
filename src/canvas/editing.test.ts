@@ -320,3 +320,36 @@ describe('trimAt settles what stood on the cut floor', () => {
   })
 })
 
+
+
+describe('trim footprint conservation', () => {
+  it('removes furniture straddling a new wall even when its centre survives', () => {
+    const crossing = room({ id: 'new', x: 30, y: 30, w: 40, h: 30 })
+    const sofa: Furniture = { id: 'sofa', kind: 'sofa', x: 46, y: 52, rotated: false, wM: 2, dM: .6 }
+    const current = plan([living, crossing], { furniture: [sofa] })
+    const outcome = trimAt(current, { x: 60, y: 45 })
+    expect(outcome.plan.furniture).toEqual([])
+    expect(outcome.toast).toContain('1 piece of furniture')
+    expect(current.furniture).toEqual([sofa])
+    expect(trimOverlaps(current).toast).toContain('1 piece of furniture removed')
+  })
+
+  it('preserves furniture fully supported by a surviving surrounding room', () => {
+    const host = room({ id: 'host', x: 0, y: 0, w: 80, h: 80 })
+    const inner = room({ id: 'inner', x: 30, y: 30, w: 20, h: 20 })
+    const sofa: Furniture = { id: 'sofa', kind: 'sofa', x: 33, y: 33, rotated: false, wM: 2, dM: .6 }
+    const current = plan([host, inner], { furniture: [sofa] })
+    expect(removeRoomFromPlan(current, 'inner').furniture).toEqual([sofa])
+    const result = trimOverlaps(current)
+    expect(result.plan.furniture).toEqual([sofa])
+    expect(result.toast).toContain('Removed contained room: inner')
+  })
+
+  it('chooses a usable cut before refusing a smaller sliver', () => {
+    const crossing = room({ id: 'new', x: 30, y: 20, w: 20, h: 80 })
+    const old = room({ id: 'old', x: 41, y: 0, w: 40, h: 60 })
+    const cut = trimCutAgainst(crossing, old, site)
+    expect(cut?.outcome).toBe('cut')
+    expect(cut?.next).toMatchObject({ x: 30, y: 60, w: 20, h: 40 })
+  })
+})

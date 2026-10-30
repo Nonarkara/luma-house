@@ -1395,3 +1395,11 @@ body { overflow-y: auto; }
   .app-shell .is-split > .zoom-control { grid-column: 1 / span 2; }
   .app-shell .is-split > .plan-room-key { grid-column: 3; }
 }
+
+
+/* A picture caption is metadata. Keep its complete civil date, hour and sun
+   angle together; nested launchers and thumbnail padding need no extra band. */
+.spatial3d-shell.is-picture .spatial-sun-hud strong { font-size: var(--font-note); }
+.spatial3d-shell.is-picture .study-launchers { padding: 0; }
+.render-navigation > .render-thumbs { padding: 4px; }
+.render-local-controls .science-dock.is-time-only .science-controls { min-height: 32px; }

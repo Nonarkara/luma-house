@@ -638,7 +638,7 @@ export default function Spatial3D({
    * `studio` is the working 3D view: everything you can change is here.
    * `picture` is the gallery's live scene: the same model, but presented —
    * the camera you look through and the way the picture is drawn, with the
-   * authoring console (furniture, tour, conditions, section cut) left in the
+   * authoring controls (furniture and conditions) left in the
    * Spatial view, where the task it belongs to is done.
    */
   chrome?: 'studio' | 'picture'
@@ -693,7 +693,7 @@ export default function Spatial3D({
   const geometryKey = physicalGeometryKey(plan, roofStyle) + JSON.stringify(furniturePreview)
   const furnitureItem = furniturePreview ?? plan.furniture.find(item => item.id === selectedFurniture)
   const furnitureIssues = furnitureItem ? furniturePlacementIssues(plan, furnitureItem) : []
-  const editable = !ghost && !walkMode && !tourWaypoint && !previewingFurniture
+  const editable = !picture && !ghost && !walkMode && !tourWaypoint && !previewingFurniture
   const { rooms: frameRooms, site: frameSite } = plan
   const target = useMemo(() => cameraRequest?.camera.target ?? modelBounds({ rooms: frameRooms, site: frameSite }).getCenter(new THREE.Vector3()).toArray() as [number, number, number], [cameraRequest, frameRooms, frameSite])
   const settings: StudySettings = { preset, style: displayStyle, sectionHeight, roofStyle, showRoof, shadows: showShadows, sunRays: showSunRays, airPaths: showAirPaths }
@@ -925,7 +925,7 @@ export default function Spatial3D({
         )}
         <Roof3D plan={plan} site={site} visible={showRoof && visibleCut >= Math.max(0, ...plan.rooms.map(roomHeight)) + FLOOR_THICKNESS} style={roofStyle} />
 
-        {selected && <HeightHandle room={selected} site={site} onSetWallHeight={onSetWallHeight} />}
+        {editable && selected && <HeightHandle room={selected} site={site} onSetWallHeight={onSetWallHeight} />}
 
         <Html position={[0, 0.1, -6]} center>
           <span className="spatial-north-label">N</span>
@@ -965,7 +965,7 @@ export default function Spatial3D({
             <div className="spatial-sun-hud" aria-live="polite">
               <span className="sun-orb" style={{ opacity: sunAltitude > 0 ? 1 : 0.25 }} />
               <div>
-                <strong>{clockLabel(hour)} · {sunAltitude.toFixed(1)}° altitude</strong>
+                <strong>{picture && `${new Date(Date.UTC(year, 0, day)).toISOString().slice(0, 10)} · `}{clockLabel(hour)} · {sunAltitude.toFixed(1)}° altitude</strong>
                 {/* The gallery's picture says when it was taken. The city, the
                     day, the azimuth and the drawing style are the Spatial
                     view's working state, and the toolbar already names the

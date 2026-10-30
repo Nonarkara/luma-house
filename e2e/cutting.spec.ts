@@ -178,3 +178,20 @@ test.describe('carrying a piece in', () => {
     expect((await readPlan(page)).openings ?? []).toHaveLength(0)
   })
 })
+
+
+test('overlap repair removes a newly unsupported footprint, and Undo/Redo preserves the whole edit', async ({ page }) => {
+  const older: Room = { ...host, id: 'old', x: 10, y: 10, w: 40, h: 40 }
+  const crossing: Room = { ...host, id: 'new', x: 30, y: 30, w: 40, h: 30 }
+  const sofa = { id: 'sofa', kind: 'sofa' as const, x: 46, y: 52, rotated: false, wM: 2, dM: .6 }
+  await openPlan(page, planWith([older, crossing], { site: { w: 14, h: 10, unit: 1 }, furniture: [sofa] }))
+  await page.getByRole('button', { name: 'Trim the overlap', exact: true }).click()
+  await expect.poll(async () => (await readPlan(page)).furniture.length).toBe(0)
+  await expect(page.locator('.toast')).toContainText('1 piece of furniture removed')
+  await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  await expect.poll(async () => (await readPlan(page)).furniture).toEqual([sofa])
+  await expect.poll(async () => (await readPlan(page)).rooms.find(room => room.id === 'new')?.x).toBe(30)
+  await page.getByRole('button', { name: 'Redo', exact: true }).click()
+  await expect.poll(async () => (await readPlan(page)).furniture.length).toBe(0)
+  await expect.poll(async () => (await readPlan(page)).rooms.find(room => room.id === 'new')?.x).toBe(50)
+})

@@ -62,6 +62,12 @@ function contains(rect: Rect, point: SheetPoint, slackX = 0, slackY = 0): boolea
   )
 }
 
+/** Furniture needs support under its whole measured footprint, not its centre. */
+function supports(room: Rect, rect: Rect): boolean {
+  return rect.x >= room.x - EPS && rect.y >= room.y - EPS &&
+    rect.x + rect.w <= room.x + room.w + EPS && rect.y + rect.h <= room.y + room.h + EPS
+}
+
 // ---------------------------------------------------------------------------
 // The eraser
 // ---------------------------------------------------------------------------
@@ -150,13 +156,13 @@ export function removeRoomFromPlan(plan: PlanState, roomId: string): PlanState {
   if (!room) return plan
   const site = siteOf(plan)
 
+  const rooms = plan.rooms.filter((item) => item.id !== roomId)
   const furniture = plan.furniture.filter((item) => {
     const rect = furnitureRectFor(item, site)
     const centre = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 }
-    return !contains(room, centre)
+    return !contains(room, centre) || rooms.some(other => supports(other, rect))
   })
 
-  const rooms = plan.rooms.filter((item) => item.id !== roomId)
   const next: PlanState = { ...plan, rooms, furniture }
 
   const openings = plan.openings.filter((opening) => {
@@ -336,7 +342,12 @@ export function trimCutAgainst(room: Room, other: Room, site: { w: number; h: nu
     }
   }
 
-  const best = candidates.sort((a, b) => area(a.removed) - area(b.removed))[0]
+  const ranked = candidates.sort((a, b) => area(a.removed) - area(b.removed))
+  const best = ranked.find(candidate => {
+    const w = candidate.axis === 'x' ? room.w - candidate.removed.w : room.w
+    const h = candidate.axis === 'y' ? room.h - candidate.removed.h : room.h
+    return w >= MIN_ROOM && h >= MIN_ROOM
+  }) ?? ranked[0]
   const next: Room = { ...room }
   if (best.axis === 'x') {
     if (best.keep === 'before') next.w = best.at - room.x
@@ -433,9 +444,8 @@ function settleAfterCut(before: PlanState, after: PlanState): { plan: PlanState;
   const site = siteOf(after)
   const keptFurniture = after.furniture.filter((item) => {
     const rect = furnitureRectFor(item, site)
-    const centre = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 }
-    const wasIn = before.rooms.some((room) => contains(room, centre))
-    return !wasIn || after.rooms.some((room) => contains(room, centre))
+    const wasIn = before.rooms.some((room) => supports(room, rect))
+    return !wasIn || after.rooms.some((room) => supports(room, rect))
   })
   const keptOpenings = after.openings.filter((opening) =>
     roomsForOpening(before, opening).length === 0 || roomsForOpening(after, opening).length > 0)
@@ -585,13 +595,21 @@ export function trimOverlaps(plan: PlanState): OverlapTrimResult {
     }
   }
 
+  const removedRooms = plan.rooms.filter(room => !current.rooms.some(other => other.id === room.id))
+  const lostFurniture = plan.furniture.length - current.furniture.length
+  const lostOpenings = plan.openings.length - current.openings.length
+  const consequences = [
+    removedRooms.length ? `Removed contained room${removedRooms.length > 1 ? 's' : ''}: ${removedRooms.map(room => room.name).join(', ')}.` : '',
+    lostFurniture ? `${lostFurniture} piece${lostFurniture > 1 ? 's' : ''} of furniture removed.` : '',
+    lostOpenings ? `${lostOpenings} opening${lostOpenings > 1 ? 's' : ''} removed.` : '',
+  ].filter(Boolean).join(' ')
   const names = trimmed.join(', ')
   const more = trimmed.length > 1 ? ` (${trimmed.length} rooms)` : ''
   const blocked = refused.length ? ` ${refused.join(', ')} could not be trimmed.` : ''
   return {
     plan: current,
     trimmed: trimmed.length,
-    toast: `Trimmed ${names}${more} back to the wall it crossed.${blocked}`,
+    toast: `Trimmed ${names}${more} back to the wall it crossed.${consequences ? ` ${consequences}` : ''}${blocked}`,
     unchanged: false,
   }
 }

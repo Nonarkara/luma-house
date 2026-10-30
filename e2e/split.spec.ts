@@ -54,7 +54,13 @@ test.describe('the plan and the 3D together', () => {
     // And the 3D beside it carries no authoring console: it is there to look
     // at, and the plan is where the drawing is changed.
     await expect(page.locator('.plan-split-3d .spatial-furniture-tools')).toHaveCount(0)
-    await expect(page.locator('.plan-split-3d .spatial-section')).toHaveCount(0)
+    // Section cuts are a viewing tool, shared with the full gallery.
+    const section = page.getByLabel('3D section cut height', { exact: true })
+    await expect(section).toBeVisible()
+    await section.fill('1.5')
+    await expect(page.locator('.plan-split-3d .spatial-section-value')).toHaveText('1.5 m')
+    // The floating room-height editor belongs to the editable Plan inspector.
+    await expect(page.locator('.plan-split-3d .spatial-chip')).toHaveCount(0)
     expect(before).toBeGreaterThan(0)
   })
 
