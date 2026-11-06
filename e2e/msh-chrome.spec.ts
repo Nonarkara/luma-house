@@ -341,6 +341,54 @@ test.describe('the chrome of the plan view', () => {
     }
   })
 
+  test('the field dimensions sit on the paper, not outside it', async ({ page }) => {
+    // The field dimensions are the sheet's own annotations: they hang below
+    // the sheet's bottom edge and beside its right edge. At the building-fit
+    // zoom the sheet's edges are off-screen, so they are off-screen with them.
+    // When the whole sheet IS in view they must be inside the drawing area —
+    // not hanging in the frame's empty column beside it, which is what
+    // §10.1 of the shippability audit recorded.
+    for (const [width, height] of [[1440, 900], [1024, 800], [390, 844]] as const) {
+      await page.setViewportSize({ width, height })
+      await openStudio(page)
+      const zoomOut = page.getByRole('button', { name: 'Zoom out' })
+      for (let step = 0; step < 14 && !(await zoomOut.isDisabled()); step += 1) {
+        await zoomOut.click()
+        await page.waitForTimeout(220)
+      }
+      await page.waitForTimeout(400)
+      const boxes = await page.evaluate(() => {
+        const round = (n: number) => Math.round(n * 100) / 100
+        const viewport = document.querySelector('.plan-viewport')!.getBoundingClientRect()
+        const number = (selector: string) => {
+          const el = document.querySelector(`${selector} span`)
+          if (!el) return null
+          const rect = el.getBoundingClientRect()
+          return {
+            text: (el.textContent ?? '').trim(),
+            left: round(rect.left), right: round(rect.right), top: round(rect.top), bottom: round(rect.bottom),
+            inside: rect.left >= viewport.left - 0.5 && rect.right <= viewport.right + 0.5 && rect.top >= viewport.top - 0.5 && rect.bottom <= viewport.bottom + 0.5,
+          }
+        }
+        return {
+          viewport: { left: round(viewport.left), right: round(viewport.right), top: round(viewport.top), bottom: round(viewport.bottom) },
+          x: number('.dimension-x'),
+          y: number('.dimension-y'),
+          scaleChip: (document.querySelector('.scale-chip')?.textContent ?? '').replace(/\s+/g, ' ').trim(),
+          scaleLabels: document.querySelectorAll('.scale-label').length,
+        }
+      })
+      expect(boxes.x, `the width dimension is drawn at ${width}px`).not.toBeNull()
+      expect(boxes.y, `the depth dimension is drawn at ${width}px`).not.toBeNull()
+      expect(boxes.x!.inside, `the width dimension is inside the drawing at ${width}px`).toBe(true)
+      expect(boxes.y!.inside, `the depth dimension is inside the drawing at ${width}px`).toBe(true)
+      // The scale statement is on the sheet once, in the chip that is always
+      // on screen — the duplicate that hung below the drawing is gone.
+      expect(boxes.scaleChip, `the chip states the site scale at ${width}px`).toContain('m')
+      expect(boxes.scaleLabels, `no second scale label hangs off the sheet at ${width}px`).toBe(0)
+    }
+  })
+
   test('the room key is one row, and every figure belongs to its own room', async ({ page }) => {
     for (const [width, height] of [[1440, 900], [1024, 800], [390, 844]] as const) {
       await page.setViewportSize({ width, height })
