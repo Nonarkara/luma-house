@@ -10,7 +10,7 @@ import { readFile } from 'node:fs/promises'
 const base = process.argv[2] ?? 'http://localhost:4186'
 const width = Number(process.argv[3] ?? 390)
 const height = Number(process.argv[4] ?? 844)
-const HASH = (await readFile(process.env.SAMPLE_HASH_FILE ?? '/tmp/sample-hash.txt', 'utf8')).trim()
+const HASH = (await readFile(process.env.SAMPLE_HASH_FILE ?? 'docs/evidence/sample-hash.txt', 'utf8')).trim()
 
 const browser = await chromium.launch()
 const context = await browser.newContext({ viewport: { width, height } })

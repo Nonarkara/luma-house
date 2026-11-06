@@ -57,10 +57,14 @@ async function measure(page: Page): Promise<Gallery> {
     const modelBox = model.getBoundingClientRect()
     const gallery = document.querySelector('.render-gallery')!
 
-    // The bands under the picture, in the order they are drawn.
+    // The bands under the picture, in the order a reader sees them. The
+    // order is the *visual* one: a band moved by CSS is moved, and the gate
+    // has to see it.
     const bands = Array.from(gallery.children)
       .filter(el => el !== document.querySelector('.render-stage') && el.getBoundingClientRect().height > 0)
-      .map(el => el.className?.toString().split(' ')[0] ?? el.tagName.toLowerCase())
+      .map(el => ({ name: el.className?.toString().split(' ')[0] ?? el.tagName.toLowerCase(), top: el.getBoundingClientRect().top }))
+      .sort((a, b) => a.top - b.top)
+      .map(band => band.name)
 
     let widest = 0
     for (const el of Array.from(gallery.querySelectorAll('*'))) {

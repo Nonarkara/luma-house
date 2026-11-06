@@ -14,7 +14,7 @@ const base = process.argv[2] ?? 'http://localhost:4186'
 const view = process.argv[3] ?? 'Renders'
 const width = Number(process.argv[4] ?? 390)
 const height = Number(process.argv[5] ?? 844)
-const HASH = (await readFile(process.env.SAMPLE_HASH_FILE ?? '/tmp/sample-hash.txt', 'utf8')).trim()
+const HASH = (await readFile(process.env.SAMPLE_HASH_FILE ?? 'docs/evidence/sample-hash.txt', 'utf8')).trim()
 
 const browser = await chromium.launch({
   args: ['--use-gl=angle', '--use-angle=metal', '--enable-unsafe-swiftshader'],
