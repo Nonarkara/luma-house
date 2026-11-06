@@ -67,6 +67,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   onFurniturePointerDown,
   onGesturePointerMove,
   onGesturePointerUp,
+  onGesturePointerCancel,
   onCanvasPointerDown,
   onCanvasPointerMove,
   onCanvasPointerUp,
@@ -112,6 +113,7 @@ export const FloorPlan = React.memo(function FloorPlan({
   onFurniturePointerDown: (event: ReactPointerEvent, item: Furniture) => void
   onGesturePointerMove: (event: ReactPointerEvent) => void
   onGesturePointerUp: (event: ReactPointerEvent) => void
+  onGesturePointerCancel: (event: ReactPointerEvent) => void
   onCanvasPointerDown: (event: ReactPointerEvent) => void
   onCanvasPointerMove: (event: ReactPointerEvent) => void
   onCanvasPointerUp: (event: ReactPointerEvent) => void
@@ -137,7 +139,7 @@ export const FloorPlan = React.memo(function FloorPlan({
       }}
       onPointerCancel={(event) => {
         onCanvasPointerCancel(event)
-        onGesturePointerUp(event)
+        onGesturePointerCancel(event)
       }}
       onClick={onCanvasClick}
       data-testid="plan-canvas"

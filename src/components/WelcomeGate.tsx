@@ -105,7 +105,7 @@ export const WelcomeGate = React.memo(function WelcomeGate({
 
         {/* Title block: the sample's own figures, computed from the plan. */}
         <dl className="guide-spec">
-          <div className="guide-spec-row"><dt>Sample</dt><dd>South Light 50 · 向阳之家</dd></div>
+          <div className="guide-spec-row"><dt>Sample</dt><dd>South Light 50 · <span lang="zh-Hans">向阳之家</span></dd></div>
           <div className="guide-spec-row"><dt>Envelope</dt><dd>{facts.envelope}</dd></div>
           <div className="guide-spec-row"><dt>Net area</dt><dd>{facts.area}</dd></div>
           <div className="guide-spec-row"><dt>Programme</dt><dd>{facts.programme}</dd></div>

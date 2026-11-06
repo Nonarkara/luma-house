@@ -9,8 +9,8 @@ export default {
         citron: '#d7f357',
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        display: ['Manrope', 'sans-serif'],
+        sans: ['Source Sans 3', 'sans-serif'],
+        display: ['Source Sans 3', 'sans-serif'],
       },
     },
   },

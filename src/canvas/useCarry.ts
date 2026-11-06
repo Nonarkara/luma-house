@@ -47,10 +47,33 @@ export function useCarry({ plan, stageRef, placeOpeningAt, commit, onToast }: Us
   const [preview, setPreview] = useState<CarryPreview | null>(null)
   const startRef = useRef<CarryPoint | null>(null)
   const movedRef = useRef(false)
+  const pointerRef = useRef<number | null>(null)
+  const suppressClickRef = useRef(false)
+
+  useEffect(() => {
+    // A drag can return to its source and still generate a native click.
+    // Consume that gesture's click before React can add/place a second item.
+    // Fresh pointer presses clear stale suppression; keyboard clicks stay native.
+    const onDown = () => { suppressClickRef.current = false }
+    const onClick = (event: MouseEvent) => {
+      if (!suppressClickRef.current || event.detail === 0) return
+      suppressClickRef.current = false
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+    window.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('click', onClick, true)
+    return () => {
+      window.removeEventListener('pointerdown', onDown, true)
+      window.removeEventListener('click', onClick, true)
+    }
+  }, [])
 
   /** Begin carrying. A press that never moves is a tap, and the tap belongs to
    *  the button that was pressed — the caller keeps that behaviour. */
-  const begin = useCallback((next: CarryPayload, clientX: number, clientY: number) => {
+  const begin = useCallback((next: CarryPayload, clientX: number, clientY: number, pointerId: number) => {
+    if (pointerRef.current !== null) return
+    pointerRef.current = pointerId
     startRef.current = { x: clientX, y: clientY }
     movedRef.current = false
     setPoint({ x: clientX, y: clientY })
@@ -59,6 +82,8 @@ export function useCarry({ plan, stageRef, placeOpeningAt, commit, onToast }: Us
   }, [])
 
   const cancel = useCallback(() => {
+    if (pointerRef.current !== null) suppressClickRef.current = true
+    pointerRef.current = null
     startRef.current = null
     movedRef.current = false
     setPayload(null)
@@ -76,6 +101,7 @@ export function useCarry({ plan, stageRef, placeOpeningAt, commit, onToast }: Us
     }
 
     const onMove = (event: PointerEvent) => {
+      if (event.pointerId !== pointerRef.current) return
       const start = startRef.current
       if (start && (Math.abs(event.clientX - start.x) > DRAG_THRESHOLD_PX || Math.abs(event.clientY - start.y) > DRAG_THRESHOLD_PX)) {
         movedRef.current = true
@@ -103,12 +129,10 @@ export function useCarry({ plan, stageRef, placeOpeningAt, commit, onToast }: Us
     }
 
     const onUp = (event: PointerEvent) => {
+      if (event.pointerId !== pointerRef.current) return
       const moved = movedRef.current
-      startRef.current = null
-      movedRef.current = false
-      setPayload(null)
-      setPoint(null)
-      setPreview(null)
+      cancel()
+      if (!moved) suppressClickRef.current = false
       if (!moved) return
 
       if (payload.kind === 'opening') {
@@ -141,14 +165,24 @@ export function useCarry({ plan, stageRef, placeOpeningAt, commit, onToast }: Us
 
     // A cancelled pointer (the browser took the touch for a scroll, a call came
     // in) is not a drop: it carries no position and must place nothing.
-    const onCancel = () => cancel()
+    const onCancel = (event: PointerEvent) => {
+      if (event.pointerId === pointerRef.current) cancel()
+    }
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') cancel() }
+    const onVisibility = () => { if (document.hidden) cancel() }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onCancel)
+    window.addEventListener('keydown', onKeyDown, true)
+    window.addEventListener('blur', cancel)
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onCancel)
+      window.removeEventListener('keydown', onKeyDown, true)
+      window.removeEventListener('blur', cancel)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [payload, plan, stageRef, placeOpeningAt, commit, onToast, cancel])
 

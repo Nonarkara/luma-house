@@ -13,6 +13,7 @@
 import { execFile } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
+import { pathToFileURL } from 'node:url'
 
 const run = promisify(execFile)
 
@@ -82,50 +83,82 @@ async function build() {
   }
 }
 
+export function classifyMutationRun(stdout, stderr = '') {
+  try {
+    const report = JSON.parse(stdout)
+    const resultsIn = suite => [
+      ...(suite.specs ?? []).flatMap(spec => spec.tests.flatMap(test => test.results)),
+      ...(suite.suites ?? []).flatMap(resultsIn),
+    ]
+    const results = (report.suites ?? []).flatMap(resultsIn)
+    const errors = results.flatMap(result => result.errors ?? []).map(error => error.message ?? '').join('\n')
+    const infrastructure = report.errors?.length > 0 || results.length === 0 ||
+      /ECONNREFUSED|browserType\.launch|Timed out waiting for|ERR_CONNECTION|net::ERR_/i.test(`${errors}\n${stderr}`)
+    const failed = results.some(result => result.status === 'failed' || result.status === 'timedOut')
+    return { failed, infrastructure: infrastructure || (!failed && !results.some(result => result.status === 'passed')) }
+  } catch {
+    return { failed: false, infrastructure: true }
+  }
+}
+
 async function runSpec(spec) {
   try {
-    await run('npx', ['playwright', 'test', spec, '--reporter=line'], { cwd: process.cwd(), maxBuffer: 64 * 1024 * 1024 })
-    return { failed: false }
+    const { stdout, stderr } = await run('npx', ['playwright', 'test', spec, '--reporter=json'], { cwd: process.cwd(), maxBuffer: 64 * 1024 * 1024 })
+    return classifyMutationRun(stdout, stderr)
   } catch (error) {
-    // Playwright exits non-zero when a test fails. That is the expected
-    // outcome for a mutation that is caught.
-    const output = `${error.stdout ?? ''}${error.stderr ?? ''}`
-    const infrastructure = /ECONNREFUSED|browserType\.launch|Timed out waiting for|ERR_CONNECTION/i.test(output)
-    return { failed: true, infrastructure, output: output.slice(-1500) }
+    // A nonzero process exit alone is not a caught mutation: the browser,
+    // configuration or spec import may have failed before any gate ran.
+    return classifyMutationRun(error.stdout ?? '', error.stderr ?? '')
   }
 }
 
-const results = []
-
-for (const mutation of MUTATIONS) {
-  const original = await readFile(mutation.file, 'utf8')
-  if (!original.includes(mutation.from)) {
-    results.push({ ...mutation, verdict: 'NOT APPLIED — the anchor text is not in the file' })
-    console.log(`\n── ${mutation.name}\n   NOT APPLIED — the anchor text is not in ${mutation.file}`)
-    continue
-  }
-  await writeFile(mutation.file, original.replace(mutation.from, mutation.to))
-  const built = await build()
-  if (!built) {
-    await writeFile(mutation.file, original)
-    results.push({ ...mutation, verdict: 'the mutant did not build' })
-    console.log(`\n── ${mutation.name}\n   the mutant did not build`)
-    continue
-  }
-  const outcome = await runSpec(mutation.spec)
-  await writeFile(mutation.file, original)
-  const verdict = outcome.infrastructure
-    ? 'INFRASTRUCTURE — the run did not reach the gate'
-    : outcome.failed
-      ? 'KILLED — the gate caught it'
-      : 'SURVIVED — the rule is not owned'
-  results.push({ ...mutation, verdict })
-  console.log(`\n── ${mutation.name}\n   ${verdict}`)
+export function summarizeMutations(results, restored = true) {
+  const survivors = results.filter(row => row.verdict.startsWith('SURVIVED')).length
+  const killed = results.filter(row => row.verdict.startsWith('KILLED')).length
+  const invalid = results.length - killed - survivors
+  return { killed, survivors, invalid, ok: results.length > 0 && invalid === 0 && survivors === 0 && restored }
 }
 
-await build()
+async function main() {
+  const results = []
 
-const survivors = results.filter((row) => row.verdict.startsWith('SURVIVED'))
-console.log(`\n=== ${results.length} mutations, ${results.length - survivors.length} killed, ${survivors.length} survived ===`)
-for (const row of results) console.log(`  ${row.verdict.padEnd(46)} ${row.name}`)
-if (survivors.length > 0) process.exitCode = 1
+  for (const mutation of MUTATIONS) {
+    const original = await readFile(mutation.file, 'utf8')
+    if (!original.includes(mutation.from)) {
+      results.push({ ...mutation, verdict: 'NOT APPLIED — the anchor text is not in the file' })
+      console.log(`\n── ${mutation.name}\n   NOT APPLIED — the anchor text is not in ${mutation.file}`)
+      continue
+    }
+    await writeFile(mutation.file, original.replace(mutation.from, mutation.to))
+    try {
+      const built = await build()
+      if (!built) {
+        results.push({ ...mutation, verdict: 'the mutant did not build' })
+        console.log(`\n── ${mutation.name}\n   the mutant did not build`)
+        continue
+      }
+      const outcome = await runSpec(mutation.spec)
+      const verdict = outcome.infrastructure
+        ? 'INFRASTRUCTURE — the run did not reach the gate'
+        : outcome.failed
+          ? 'KILLED — the gate caught it'
+          : 'SURVIVED — the rule is not owned'
+      results.push({ ...mutation, verdict })
+      console.log(`\n── ${mutation.name}\n   ${verdict}`)
+    } finally {
+      await writeFile(mutation.file, original)
+    }
+  }
+
+  const restored = await build()
+
+  const summary = summarizeMutations(results, restored)
+  console.log(`\n=== ${results.length} mutations, ${summary.killed} killed, ${summary.survivors} survived, ${summary.invalid} invalid ===`)
+  for (const row of results) console.log(`  ${row.verdict.padEnd(46)} ${row.name}`)
+  if (!restored) console.error('The restored application did not build.')
+  if (!summary.ok) process.exitCode = 1
+}
+
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  main().catch(error => { console.error(error); process.exitCode = 1 })
+}

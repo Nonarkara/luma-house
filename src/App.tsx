@@ -558,6 +558,8 @@ function App() {
     onFurniturePointerDown,
     onGesturePointerMove,
     onGesturePointerUp,
+    onGesturePointerCancel,
+    cancelGesture,
     placeOpeningAt,
     isGesturing,
   } = useRoomGestures({
@@ -581,6 +583,10 @@ function App() {
     commit,
     onToast: setToast,
   })
+
+  const cancelCarry = carry.cancel
+  useEffect(() => { cancelCarry() }, [view, cancelCarry])
+  useEffect(() => { cancelGesture() }, [view, cancelGesture])
 
   useEffect(() => {
     // The trim's preview belongs to the trim. Another tool has no band to show.
@@ -700,6 +706,31 @@ function App() {
     if (result.selectRoom) setSettingsOpen(false)
     setToast(result.toast)
   }, [commit, plan, site])
+
+  const cancelSketchGesture = useCallback(() => {
+    drawPointerRef.current = null
+    strokePointsRef.current = []
+    setDraftStroke(null)
+    rulerPointerRef.current = null
+    rulerLineRef.current = null
+    setRulerLine(null)
+    setRulerArmed(false)
+  }, [])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') cancelSketchGesture() }
+    const onVisibility = () => { if (document.hidden) cancelSketchGesture() }
+    window.addEventListener('keydown', onKeyDown, true)
+    window.addEventListener('blur', cancelSketchGesture)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true)
+      window.removeEventListener('blur', cancelSketchGesture)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [cancelSketchGesture])
+
+  useEffect(() => { cancelSketchGesture() }, [view, cancelSketchGesture])
 
   const handleCanvasPointerDown = useCallback((event: ReactPointerEvent) => {
     // "The pointer moved" is a fact about one interaction, so it starts again
@@ -826,13 +857,13 @@ function App() {
   const handleCanvasPointerCancel = useCallback((event: ReactPointerEvent) => {
     setLiveDragRect(null)
     if (rulerPointerRef.current === event.pointerId) {
-      finalizeRulerLine()
+      cancelSketchGesture()
     }
     if (drawPointerRef.current === event.pointerId) {
-      finalizeDrawnRoom()
+      cancelSketchGesture()
     }
     onViewportPointerUp(event)
-  }, [finalizeDrawnRoom, finalizeRulerLine, onViewportPointerUp])
+  }, [cancelSketchGesture, onViewportPointerUp])
 
   /**
    * Carrying a window or a door from the palette to a wall.
@@ -843,8 +874,9 @@ function App() {
    * has to work with a finger.
    */
   const startOpeningDrag = useCallback((type: 'window' | 'door', event: ReactPointerEvent) => {
+    if (!event.isPrimary || event.button !== 0) return
     setActiveTool(type)
-    carry.begin({ kind: 'opening', type }, event.clientX, event.clientY)
+    carry.begin({ kind: 'opening', type }, event.clientX, event.clientY, event.pointerId)
   }, [carry])
 
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
@@ -1134,6 +1166,11 @@ function App() {
       // Walk mode owns WASD; skip plan-tool bindings so W does not switch to Draw.
       if (!walkMode) {
         const toolKey = event.key.toLowerCase()
+        if (/^[vwodecms]$/.test(toolKey)) {
+          cancelCarry()
+          cancelSketchGesture()
+          cancelGesture()
+        }
         if (toolKey === 'v') { event.preventDefault(); setActiveTool('select'); return }
         if (toolKey === 'w') { event.preventDefault(); setActiveTool('draw'); return }
         if (toolKey === 'o') { event.preventDefault(); setActiveTool('window'); return }
@@ -1234,7 +1271,7 @@ function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [commit, deleteFurniture, deleteOpening, deleteRoom, isCatalogOpen, plan, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo, view, walkMode])
+  }, [cancelCarry, cancelSketchGesture, cancelGesture, commit, deleteFurniture, deleteOpening, deleteRoom, isCatalogOpen, plan, redo, selectedFurniture, selectedOpening, selectedRoom, site, undo, view, walkMode])
 
   const handleSketch = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -1748,6 +1785,7 @@ function App() {
                 onFurniturePointerDown={onFurniturePointerDown}
                 onGesturePointerMove={onGesturePointerMove}
                 onGesturePointerUp={onGesturePointerUp}
+                onGesturePointerCancel={onGesturePointerCancel}
                 onCanvasPointerDown={handleCanvasPointerDown}
                 onCanvasPointerMove={handleCanvasPointerMove}
                 onCanvasPointerUp={handleCanvasPointerUp}
@@ -1951,7 +1989,8 @@ function App() {
               onClose={closeCatalog}
               onAddFurniture={addFurniture}
               onCarryFurniture={(choice, label, event) => {
-                carry.begin({ kind: 'furniture', choice, label }, event.clientX, event.clientY)
+                if (!event.isPrimary || event.button !== 0) return
+                carry.begin({ kind: 'furniture', choice, label }, event.clientX, event.clientY, event.pointerId)
               }}
               plan={plan} roomId={catalogRoom} onRoomChange={setCatalogRoom}
               replacementId={replacementId} replacementChoice={replacementChoice}

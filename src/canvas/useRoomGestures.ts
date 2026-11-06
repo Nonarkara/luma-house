@@ -78,6 +78,14 @@ export function useRoomGestures({
 
   const stageBounds = useCallback(() => stageRef.current?.getBoundingClientRect() ?? null, [stageRef])
 
+  const cancelGesture = useCallback(() => {
+    const gesture = gestureRef.current
+    if (!gesture) return
+    gestureRef.current = null
+    guidesRef.current?.(null)
+    setPlan(gesture.snapshot)
+  }, [setPlan])
+
   const applyPointer = useCallback(
     (pointerId: number, clientX: number, clientY: number) => {
       const gesture = gestureRef.current
@@ -165,7 +173,7 @@ export function useRoomGestures({
   const endPointer = useCallback(
     (pointerId: number) => {
       const gesture = gestureRef.current
-      if (!gesture) return
+      if (!gesture || !gesture.points.has(pointerId)) return
       gesture.points.delete(pointerId)
       gesture.pointerIds = gesture.pointerIds.filter((id) => id !== pointerId)
       if (gesture.pointerIds.length === 0) {
@@ -188,15 +196,26 @@ export function useRoomGestures({
   useEffect(() => {
     const onMove = (event: PointerEvent) => applyPointer(event.pointerId, event.clientX, event.clientY)
     const onUp = (event: PointerEvent) => endPointer(event.pointerId)
+    const onCancel = (event: PointerEvent) => {
+      if (gestureRef.current?.points.has(event.pointerId)) cancelGesture()
+    }
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') cancelGesture() }
+    const onVisibility = () => { if (document.hidden) cancelGesture() }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
-    window.addEventListener('pointercancel', onUp)
+    window.addEventListener('pointercancel', onCancel)
+    window.addEventListener('keydown', onKeyDown, true)
+    window.addEventListener('blur', cancelGesture)
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      window.removeEventListener('keydown', onKeyDown, true)
+      window.removeEventListener('blur', cancelGesture)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [applyPointer, endPointer])
+  }, [applyPointer, endPointer, cancelGesture])
 
   const onRoomPointerDown = useCallback(
     (event: ReactPointerEvent, room: Room, handle?: ResizeHandle) => {
@@ -211,6 +230,7 @@ export function useRoomGestures({
 
       const existing = gestureRef.current
       if (existing?.kind === 'move-room' && existing.roomId === room.id && !handle) {
+        if (existing.points.has(event.pointerId)) return
         existing.pointerIds.push(event.pointerId)
         existing.points.set(event.pointerId, { x: event.clientX, y: event.clientY })
         if (existing.pointerIds.length === 2) {
@@ -221,6 +241,8 @@ export function useRoomGestures({
         }
         return
       }
+
+      if (existing) return
 
       gestureRef.current = {
         kind: handle ? 'resize-room' : 'move-room',
@@ -241,6 +263,7 @@ export function useRoomGestures({
     (event: ReactPointerEvent, opening: Opening, end?: 'start' | 'end') => {
       // Doors and windows are grabbable with the pencil too: it is the default tool.
       if (activeTool !== 'select' && activeTool !== 'draw') return
+      if (gestureRef.current) return
       event.stopPropagation()
       setSelectedOpening(opening.id)
       setSelectedRoom(null)
@@ -264,6 +287,7 @@ export function useRoomGestures({
   const onFurniturePointerDown = useCallback(
     (event: ReactPointerEvent, item: Furniture) => {
       if (activeTool !== 'select') return
+      if (gestureRef.current) return
       event.stopPropagation()
       setSelectedFurniture(item.id)
       setSelectedRoom(null)
@@ -296,6 +320,10 @@ export function useRoomGestures({
     [endPointer],
   )
 
+  const onGesturePointerCancel = useCallback((event: ReactPointerEvent) => {
+    if (gestureRef.current?.points.has(event.pointerId)) cancelGesture()
+  }, [cancelGesture])
+
   const placeOpeningAt = useCallback(
     (clientX: number, clientY: number) => {
       const bounds = stageBounds()
@@ -325,6 +353,8 @@ export function useRoomGestures({
     onFurniturePointerDown,
     onGesturePointerMove,
     onGesturePointerUp,
+    onGesturePointerCancel,
+    cancelGesture,
     placeOpeningAt,
     isGesturing: () => gestureRef.current !== null,
   }

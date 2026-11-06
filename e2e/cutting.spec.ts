@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { CHINA_PROJECT_KEY } from '../src/mockups/chinaApartment'
 import { encodePlanToHash } from '../src/sharePlan'
 import type { PlanState, Room } from '../src/types'
+import { clickAction } from './workspace'
 
 /**
  * Cutting a drawing: the eraser, the trim, and carrying a piece in.
@@ -145,6 +146,81 @@ test.describe('the trim', () => {
 })
 
 test.describe('carrying a piece in', () => {
+  test('dragging furniture out and back to its card places one piece in one history edit', async ({ page }) => {
+    // On the phone the catalogue overlays the measured floor; on wide screens
+    // its source card can sit outside the floor, where a drop is rightly refused.
+    await page.setViewportSize({ width: 390, height: 844 })
+    await openPlan(page, planWith([{ ...host, x: 10, y: 10, w: 80, h: 80 }]))
+    await clickAction(page, 'Furniture Catalog')
+    const card = await page.getByRole('button', { name: /^Add Single Bed,/ }).boundingBox()
+    const x = card!.x + card!.width / 2, y = card!.y + card!.height / 2
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(40, y, { steps: 12 })
+    await page.mouse.move(x, y, { steps: 12 })
+    await page.mouse.up()
+    await expect.poll(async () => (await readPlan(page)).furniture.length).toBe(1)
+    // A generated click must not run catalogue Add a second time.
+    await page.waitForTimeout(500)
+    expect((await readPlan(page)).furniture).toHaveLength(1)
+    const close = page.getByRole('button', { name: 'Close catalog', exact: true })
+    if (await close.isVisible()) await close.click()
+    await page.getByRole('button', { name: 'Undo', exact: true }).click()
+    await expect.poll(async () => (await readPlan(page)).furniture.length).toBe(0)
+    await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled()
+    await page.getByRole('button', { name: 'Redo', exact: true }).click()
+    await expect.poll(async () => (await readPlan(page)).furniture.length).toBe(1)
+  })
+
+  for (const interruption of ['Escape', 'blur', 'pointercancel', 'unrelated pointer', 'tool change'] as const) {
+    test(`a carried window is not dropped by ${interruption}`, async ({ page }) => {
+      await openPlan(page, planWith([host]))
+      const stage = await stageBox(page)
+      const button = await page.getByRole('button', { name: 'Window', exact: true }).boundingBox()
+      await page.mouse.move(button!.x + button!.width / 2, button!.y + button!.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(stage.x + stage.width * .4, stage.y + stage.height * .2, { steps: 12 })
+      await expect(page.locator('.opening.is-preview')).toBeVisible()
+      if (interruption === 'Escape') await page.keyboard.press('Escape')
+      else if (interruption === 'tool change') await page.keyboard.press('d')
+      else if (interruption === 'blur') await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+      else await page.evaluate(kind => window.dispatchEvent(new PointerEvent(kind === 'pointercancel' ? 'pointercancel' : 'pointerup', {
+        pointerId: kind === 'pointercancel' ? 1 : 99, clientX: 0, clientY: 0,
+      })), interruption)
+      if (interruption === 'unrelated pointer') {
+        await expect(page.locator('.opening.is-preview')).toBeVisible()
+        await page.keyboard.press('Escape')
+      }
+      await expect(page.locator('.opening.is-preview')).toHaveCount(0)
+      await page.mouse.up()
+      await expect(page.locator('.opening:not(.is-preview)')).toHaveCount(0)
+      // Wait past the actual persistence debounce before asserting no mutation.
+      await page.waitForTimeout(500)
+      expect((await readPlan(page)).openings).toEqual([])
+      await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled()
+    })
+  }
+
+  test('a cancelled pencil stroke is discarded, and the next stroke still works', async ({ page }) => {
+    await openPlan(page, planWith([]))
+    await page.getByRole('button', { name: 'Pencil', exact: true }).click()
+    const stage = await stageBox(page)
+    const point = (x: number, y: number) => ({ x: stage.x + stage.width * x, y: stage.y + stage.height * y })
+    const a = point(.2, .2), b = point(.6, .6)
+    await page.mouse.move(a.x, a.y)
+    await page.mouse.down()
+    await page.mouse.move(b.x, b.y, { steps: 12 })
+    await page.locator('.plan-canvas').dispatchEvent('pointercancel', { pointerId: 1 })
+    await page.mouse.up()
+    await expect(page.locator('.room')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled()
+    await page.mouse.move(a.x, a.y)
+    await page.mouse.down()
+    await page.mouse.move(b.x, b.y, { steps: 12 })
+    await page.mouse.up()
+    await expect(page.locator('.room')).toHaveCount(1)
+  })
+
   test('a window dragged onto a wall cuts an opening in it', async ({ page }) => {
     await openPlan(page, planWith([host]))
     const stage = await stageBox(page)
@@ -178,6 +254,35 @@ test.describe('carrying a piece in', () => {
     expect((await readPlan(page)).openings ?? []).toHaveLength(0)
   })
 })
+
+for (const kind of ['room', 'furniture', 'opening'] as const) {
+  for (const interruption of ['pointercancel', 'Escape', 'blur'] as const) {
+    test(`cancel ${kind} drag with ${interruption} restores geometry without history`, async ({ page }) => {
+      await openPlan(page, planWith([host], {
+        furniture: [{ id: 'sofa', kind: 'sofa', x: 30, y: 30, wM: 1, dM: .6, rotated: false }],
+        openings: [{ id: 'win', type: 'window', x: 40, y: 20, rotation: 0, widthM: 1 }],
+      }))
+      await page.getByRole('button', { name: 'Select', exact: true }).click()
+      const before = await readPlan(page)
+      const item = page.locator(kind === 'room' ? '.room' : kind === 'furniture' ? '.furniture' : '.opening')
+      const geometry = await item.getAttribute('style')
+      const r = await item.boundingBox()
+      const x = r!.x + r!.width * .7, y = r!.y + r!.height * .7
+      await page.mouse.move(x, y)
+      await page.mouse.down()
+      await page.mouse.move(x + 30, y + 24, { steps: 12 })
+      await expect(item).not.toHaveAttribute('style', geometry!)
+      if (interruption === 'Escape') await page.keyboard.press('Escape')
+      else if (interruption === 'blur') await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+      else await page.locator('.plan-viewport').dispatchEvent('pointercancel', { pointerId: 1 })
+      await page.mouse.up()
+      await expect(item).toHaveAttribute('style', geometry!)
+      await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled()
+      await page.waitForTimeout(500)
+      expect(await readPlan(page)).toEqual(before)
+    })
+  }
+}
 
 
 test('overlap repair removes a newly unsupported footprint, and Undo/Redo preserves the whole edit', async ({ page }) => {

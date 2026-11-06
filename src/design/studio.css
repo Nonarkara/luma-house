@@ -1352,10 +1352,14 @@ body { overflow-y: auto; }
 .catalog-target select, .catalog-trial-actions button { min-height: 32px; padding: 4px 6px; border: 1px solid var(--border); background: var(--studio-sheet); color: var(--studio-ink); font: inherit; }
 .catalog-fit { display: flex; align-items: center; gap: 6px; min-height: 32px; }
 .catalog-fit input { width: 16px; height: 16px; accent-color: var(--studio-sienna); }
-.furniture-catalog-drawer .catalog-tabs { padding: 4px 8px; gap: 4px; flex-wrap: wrap; overflow: visible; }
-.furniture-catalog-drawer .catalog-tab { min-height: 32px; padding: 4px 6px; }
-.furniture-catalog-drawer .catalog-grid { min-height: 0; }
-.furniture-catalog-drawer .catalog-card { padding: 6px 8px; gap: 4px; }
+.furniture-catalog-drawer .catalog-tabs { padding: 4px 8px; gap: 4px; flex: none; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+.furniture-catalog-drawer .catalog-tabs::-webkit-scrollbar { display: block; height: 6px; }
+.furniture-catalog-drawer .catalog-tab { flex: none; min-height: 32px; padding: 4px 6px; font-size: var(--font-note); }
+.furniture-catalog-drawer .catalog-grid { min-height: 0; grid-template-columns: minmax(0, 1fr); align-content: start; }
+.furniture-catalog-drawer .catalog-card { display: grid; grid-template-columns: 18px minmax(0, 1fr); padding: 6px 8px; gap: 4px 6px; }
+.furniture-catalog-drawer .catalog-card-icon { width: 18px; height: 18px; grid-row: 1; }
+.furniture-catalog-drawer :is(.catalog-card-name, .catalog-card-dim, .catalog-fit-result) { grid-column: 2; font-size: var(--font-note); }
+.furniture-catalog-drawer .catalog-card-name { grid-row: 1; align-self: center; }
 .catalog-card[aria-pressed="true"] { outline: 2px solid var(--studio-sienna); outline-offset: -2px; background: var(--studio-selection); }
 .catalog-fit-result { font-size: var(--font-note); color: var(--text-secondary); }
 .catalog-trial { display: grid; gap: 4px; padding: 4px 8px; border-block: 1px solid var(--border); flex: 0 1 auto; min-height: 0; overflow: auto; }
