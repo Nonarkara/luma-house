@@ -194,7 +194,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   .view-switch button { min-height: 36px; padding: 6px 10px; font-size: var(--font-body); }
   .history-tools .icon-button { width: 36px; height: 36px; }
   .canvas-frame { min-height: 320px; }
-  .plan-canvas { width: min(84cqw, calc((100cqh - 68px) * var(--site-ratio, 1.4))); }
+  .plan-canvas { width: min(calc(100cqw - 76px), calc((100cqh - 80px) * var(--site-ratio, 1.4))); }
   .scale-chip { top: 8px; left: 8px; max-width: calc(100% - 60px); gap: 4px; }
   .value-lens-launch { top: 8px; right: 8px; width: 40px; height: 40px; }
   .room-name { font-size: var(--font-note); }
@@ -351,7 +351,7 @@ body { overflow-y: auto; }
 .view-switch button { min-height: 44px; font-size: var(--font-body); }
 .canvas-frame.is-plan { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto repeat(9, auto); min-height: max-content; overflow: visible; align-content: start; }
 .is-plan > .plan-viewport { position: relative; inset: auto; grid-column: 1 / -1; grid-row: 2; min-height: 320px; height: clamp(320px, 50dvh, 640px); background: var(--studio-sheet); }
-.is-plan .plan-canvas { width: min(86cqw, calc((100cqh - 68px) * var(--site-ratio, 1.4))); }
+.is-plan .plan-canvas { width: min(calc(100cqw - 76px), calc((100cqh - 80px) * var(--site-ratio, 1.4))); }
 .is-plan > .scale-chip { position: static; grid-column: 1 / -1; grid-row: 1; width: auto; max-width: none; margin: 0; padding: var(--space-2) 68px var(--space-2) var(--space-2); background: transparent; border: 0; gap: var(--space-1); }
 .scale-chip input { min-height: 44px; width: 52px; font-size: var(--font-body); }
 /* The scale group and the Calibrate action belong together: the action is
@@ -410,8 +410,7 @@ body { overflow-y: auto; }
 .plan-room-key button[aria-pressed="true"] { background: var(--studio-selection); box-shadow: inset 3px 0 var(--studio-sienna) !important; }
 .room-key-number, .plan-room-key .room-area { display: block; font: 500 var(--font-note)/1.4 var(--type-mono); margin: 0; white-space: nowrap; }
 .plan-room-key .room-name { font: 600 var(--font-note)/1.4 var(--type-body); overflow-wrap: anywhere; }
-.dimension, .scale-label { font-size: var(--font-note); opacity: 1; letter-spacing: 0; }
-.scale-label { bottom: -52px; }
+.dimension { font-size: var(--font-note); opacity: 1; letter-spacing: 0; }
 .dimension-x { bottom: -24px; }
 .assistant-bar input { font-size: var(--font-body); min-height: 44px; }
 .assistant-cta { min-height: 44px; white-space: nowrap; }

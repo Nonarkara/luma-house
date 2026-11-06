@@ -1396,19 +1396,6 @@ button:active {
   margin-bottom: 4px;
 }
 
-.scale-label {
-  position: absolute;
-  right: 0;
-  bottom: -30px;
-  font-size: 9px;
-  color: var(--text-tertiary);
-  letter-spacing: .5px;
-}
-
-.scale-label span {
-  color: var(--accent-primary);
-}
-
 .dimension {
   position: absolute;
   color: var(--text-secondary);
@@ -4117,7 +4104,6 @@ h3,
 .science-kicker,
 .science-metric small,
 .science-net small,
-.scale-label,
 .dimension,
 .room-area {
   font-family: 'JetBrains Mono', monospace;
@@ -7175,7 +7161,7 @@ dialog.ab-modal::backdrop { background: rgb(15 23 42 / .55); }
 
 /* Keep physical proportions and source-image coordinates aligned at every size. */
 .plan-viewport { container-type: size; }
-.plan-canvas { width: min(90cqw, calc((100cqh - 78px) * var(--site-ratio, 1.4))); height: auto; aspect-ratio: var(--site-ratio, 1.4); }
+.plan-canvas { width: min(calc(100cqw - 76px), calc((100cqh - 80px) * var(--site-ratio, 1.4))); height: auto; aspect-ratio: var(--site-ratio, 1.4); }
 
 /* ---------------------------------------------------------------------------
  * Touch sizing — kept LAST in the file on purpose.

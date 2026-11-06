@@ -184,7 +184,6 @@ export const FloorPlan = React.memo(function FloorPlan({
             </svg>
           )}
           <div className="north-mark" aria-label="North points upward"><ArrowRight /> <span>N</span></div>
-          <div className="scale-label">{site.unit} m grid <span>•</span> {site.w.toFixed(1)} × {site.h.toFixed(1)} m field</div>
           {showSun && (
             <svg className="sun-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" aria-hidden="true">
               {Array.from(new Set(sunPatchList.map((patch) => patch.roomId))).map((roomId) => {
