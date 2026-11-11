@@ -72,6 +72,13 @@ const MUTATIONS = [
     to: '        const opening = null as Opening | null\n        if (!opening) {',
     spec: 'e2e/cutting.spec.ts',
   },
+  {
+    name: 'the field dimensions hang outside the sheet again',
+    file: 'src/design/studio.css',
+    from: '.dimension-x { bottom: -24px; }',
+    to: '.dimension-x { bottom: -240px; }',
+    spec: 'e2e/msh-chrome.spec.ts',
+  },
 ]
 
 async function build() {
