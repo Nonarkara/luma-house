@@ -1,12 +1,13 @@
 import { chromium } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
-const HASH = (await readFile('docs/evidence/sample-hash.txt', 'utf8')).trim()
+const HASH = (await readFile(process.env.SAMPLE_HASH_FILE ?? 'docs/evidence/sample-hash.txt', 'utf8')).trim()
+const BASE = process.argv[2] ?? 'http://[::1]:4186'
 const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=metal', '--enable-unsafe-swiftshader'] })
 for (const [w, h] of [[1440, 900], [390, 844]]) {
   const ctx = await b.newContext({ viewport: { width: w, height: h } })
   const page = await ctx.newPage()
   await page.addInitScript(() => window.localStorage.setItem('luma-journey:welcome:shanghai-50', '1'))
-  await page.goto(`http://[::1]:4186/#plan=${HASH}`)
+  await page.goto(`${BASE}/#plan=${HASH}`)
   await page.locator('.plan-canvas').waitFor({ timeout: 30000 })
   await page.waitForTimeout(1200)
   // Zoom out to the whole sheet.
