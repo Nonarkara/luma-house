@@ -109,6 +109,13 @@ test.describe('the chrome of the gallery', () => {
       // phone: the chrome outweighed the work by nearly two to one.
       expect(gallery.pictureH, `the picture must outweigh the chrome below it at ${width}px`).toBeGreaterThan(gallery.bottomChrome)
       expect(gallery.bottomChrome / gallery.viewH, `the chrome below the picture stays under a third at ${width}px`).toBeLessThan(0.35)
+      if (width <= 720) {
+        // The gallery does not edit the plan, so on a phone it drops the 45px
+        // history band and keeps bottom chrome comfortably under 30%.
+        const toolsHeight = await page.locator('.canvas-tools').evaluate(el => el.getBoundingClientRect().height)
+        expect(toolsHeight, 'the phone gallery drops the unused history band').toBe(0)
+        expect(gallery.bottomChrome / gallery.viewH, `the phone gallery chrome below the picture stays under 30%`).toBeLessThan(0.30)
+      }
       // And the picture keeps at least two fifths of the screen.
       expect(gallery.pictureH / gallery.viewH, `the picture keeps two fifths of the screen at ${width}px`).toBeGreaterThan(0.4)
     }

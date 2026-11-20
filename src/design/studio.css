@@ -125,7 +125,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .scale-chip { top: 12px; left: 12px; padding: 6px 8px; max-width: calc(100% - 68px); font-size: var(--font-note); flex-wrap: wrap; }
 .scale-chip input, .scale-chip strong { color: var(--studio-sienna); }
 .ruler-arm { min-height: 32px; color: var(--studio-sienna); border-bottom: 1px solid var(--studio-sienna); }
-.value-lens-launch { top: 12px; right: 12px; width: 40px; height: 40px; min-width: 0; padding: 0; display: grid; place-items: center; }
+.value-lens-launch { top: 12px; right: 12px; width: 40px; height: 40px; min-width: 0; padding: 0; display: grid; grid-template-columns: none; gap: 0; place-items: center; }
 .value-lens-launch span { display: none; }
 .draw-hint { top: auto; bottom: 10px; left: 12px; right: 12px; width: fit-content; max-width: calc(100% - 100px); transform: none; font-size: var(--font-note); padding: 6px 8px; color: var(--text-secondary); }
 .contextual-action-bar { position: static; transform: none !important; bottom: auto; max-width: calc(100% - 24px); overflow-x: auto; background: var(--studio-sheet); color: var(--studio-ink); }
@@ -1236,8 +1236,8 @@ body { overflow-y: auto; }
 /* In the Renders gallery the 3D preview sits inside a stage row that is sized
    to fill. The shell left a 112px void under the model; it fills the stage now. */
 .render-stage > .spatial3d-shell { height: 100%; }
-.render-navigation { display: flex; align-items: center; gap: 4px; min-width: 0; }
-.render-navigation > .render-thumbs { flex: 1; min-width: 0; }
+.render-navigation { display: flex; align-items: center; gap: 4px; min-width: 0; padding-inline: 4px; border-top: 1px solid var(--studio-border); background: var(--studio-sheet); }
+.render-navigation > .render-thumbs { flex: 1; min-width: 0; border-top: 0; border-inline: 1px solid var(--studio-border); }
 .render-step { flex: none; width: 32px; height: 32px; padding: 4px; border: 1px solid var(--border); background: var(--studio-sheet); color: var(--studio-ink); cursor: pointer; }
 .render-step svg { width: 20px; height: 20px; }
 .spatial-bottom-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 22px; padding: 5px 10px; }
@@ -1294,11 +1294,15 @@ body { overflow-y: auto; }
 .spatial-bottom > .spatial-ghost-note .button { min-height: 32px; padding: 4px 8px; }
 
 /*
-  Phone: the 3D and Renders views have no plan toolbar, so their tool dock was
-  a 390px band holding 89px of undo and redo and 300px of nothing. The dock is
-  now only as wide as what it carries.
+  Phone: the 3D view has no plan toolbar, so its tool dock shrinks to the
+  88px undo/redo pair. The Renders gallery does not edit the plan at all, so
+  it drops the 45px history band completely and returns those pixels to the
+  3D study picture.
 */
 @media (max-width: 720px) {
+  .app-shell .design-stage:has(.render-gallery) > .canvas-tools {
+    display: none;
+  }
   .app-shell .canvas-tools:not(:has(.floating-island-toolbar)) {
     grid-template-columns: auto;
     justify-self: end;

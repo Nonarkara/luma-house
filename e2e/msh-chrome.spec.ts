@@ -455,4 +455,21 @@ test.describe('the chrome of the plan view', () => {
     expect(field.needed, 'the phone does cut the prompt').toBeGreaterThan(field.available)
     expect(field.overflow, 'a cut prompt says so').toBe('ellipsis')
   })
+
+  test('the value-lens icon stays centered in its square button', async ({ page }) => {
+    for (const [width, height] of [[1440, 900], [1024, 800], [390, 844]] as const) {
+      await page.setViewportSize({ width, height })
+      await openStudio(page)
+      const drift = await page.evaluate(() => {
+        const btn = document.querySelector('.value-lens-launch')!.getBoundingClientRect()
+        const svg = document.querySelector('.value-lens-launch svg')!.getBoundingClientRect()
+        return {
+          dx: Math.abs((svg.left + svg.width / 2) - (btn.left + btn.width / 2)),
+          dy: Math.abs((svg.top + svg.height / 2) - (btn.top + btn.height / 2)),
+        }
+      })
+      expect(drift.dx, `value-lens icon is horizontally centered at ${width}px`).toBeLessThanOrEqual(2)
+      expect(drift.dy, `value-lens icon is vertically centered at ${width}px`).toBeLessThanOrEqual(2)
+    }
+  })
 })
