@@ -1295,12 +1295,12 @@ body { overflow-y: auto; }
 
 /*
   Phone: the 3D view has no plan toolbar, so its tool dock shrinks to the
-  88px undo/redo pair. The Renders gallery does not edit the plan at all, so
-  it drops the 45px history band completely and returns those pixels to the
-  3D study picture.
+  88px undo/redo pair. In the Renders gallery, when there is no history to
+  undo or redo, drop the inert 45px band completely and return those pixels
+  to the 3D study picture; if the user has an edit to undo, keep it reachable.
 */
 @media (max-width: 720px) {
-  .app-shell .design-stage:has(.render-gallery) > .canvas-tools {
+  .app-shell .design-stage:has(.render-gallery) > .canvas-tools:not(:has(button:not(:disabled))) {
     display: none;
   }
   .app-shell .canvas-tools:not(:has(.floating-island-toolbar)) {
